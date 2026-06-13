@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: executing
-stopped_at: Completed 219-00-PLAN.md (Wave 0 skeleton + RED tests)
-last_updated: "2026-06-13T21:57:33.552Z"
+stopped_at: "Completed 219-01-PLAN.md (dispatch_write pipeline + SC#1/#3/#5 GREEN)"
+last_updated: "2026-06-13T22:05:10.246Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 101
   completed_phases: 91
   total_plans: 378
-  completed_plans: 375
+  completed_plans: 376
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
 Phase: 219 (Write Dispatch) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -106,6 +106,7 @@ Progress: [██████████] 100%
 | Phase 218-write-tool-rendering-from-actiondef P01 | 97 | 1 tasks | 1 files |
 | Phase 218-write-tool-rendering-from-actiondef P02 | 1187 | 3 tasks | 3 files |
 | Phase 219-write-dispatch P00 | 15 | 3 tasks | 6 files |
+| Phase 219-write-dispatch P01 | 20 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -148,7 +149,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-13T21:57:33.544Z
-Stopped at: Completed 219-00-PLAN.md (Wave 0 skeleton + RED tests)
+Last session: 2026-06-13T22:05:10.238Z
+Stopped at: Completed 219-01-PLAN.md (dispatch_write pipeline + SC#1/#3/#5 GREEN)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth

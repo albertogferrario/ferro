@@ -3033,7 +3033,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   5. `CallToolResult::structured` is the result constructor for every write tool response; no bare `content[]` arrays are constructed by hand.
 **Plans**: 3 plans
 - [x] 219-00-PLAN.md — Wave 0: compiling skeleton (WriteDispatcher types, error variants, idempotency migration) + RED tests (SC#1/#3/#5)
-- [ ] 219-01-PLAN.md — Wave 1: framework machinery (dispatch_write guard re-eval + idempotency + audit, handle_write_call routing) — turns SC#1/#3/#5 green
+- [x] 219-01-PLAN.md — Wave 1: framework machinery (dispatch_write guard re-eval + idempotency + audit, handle_write_call routing) — turns SC#1/#3/#5 green
 - [ ] 219-02-PLAN.md — Wave 2: sample-app wiring (TenantScoped Order, executor + guard evaluator) + SC#2/#4/#3 e2e fixtures + full CI gate
 
 ### Phase 220: Confirmation Gating for Destructive Actions
@@ -3067,7 +3067,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 |-------|----------------|--------|-----------|
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
-| 219. Write Dispatch | 1/3 | In Progress|  |
+| 219. Write Dispatch | 2/3 | In Progress|  |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
 
@@ -3104,7 +3104,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 ---
 
