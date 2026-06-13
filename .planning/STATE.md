@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v14.0
 milestone_name: Channel Projection — Non-Visual Rendering
-status: verifying
-stopped_at: Phase 216 context gathered
-last_updated: "2026-06-13T15:12:37.105Z"
+status: executing
+stopped_at: Completed 216-01-PLAN.md
+last_updated: "2026-06-13T15:42:04.204Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 99
   completed_phases: 90
-  total_plans: 370
-  completed_plans: 369
-  percent: 100
+  total_plans: 373
+  completed_plans: 370
+  percent: 99
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 215 — Non-visual rendering context — BaseContext + Intent extensions
+**Current focus:** Phase 216 — conversational-text-renderer-output-crate
 
 ## Current Position
 
 Milestone: v14.0 Channel Projection — Non-Visual Rendering — 🚧 ACTIVE (started 2026-06-13). Scope: ship the first production conversational-text `Renderer` + the `BaseContext`/`FieldDef`/`Intent` extensions COMP-05 found it needs. [v13.x batch all ✅: v13.0 (207–211), v13.1 (212), v13.2 SHIPPED 0.2.55 (213), v13.3 (214)]
-Phase: 216
-Plan: Not started
+Phase: 216 (conversational-text-renderer-output-crate) — EXECUTING
+Plan: 2 of 3
 Next: define CHAN-* requirements → roadmap → `/gsd-discuss-phase 215`
 Prior: Phase 212 ✅ (v13.1 CRUD macros); Phase 214 ✅ (v13.3 scaffold parity); Phase 213 ✅ SHIPPED 0.2.55. COMP-05 (Phase 208) analysis is v14.0's seed.
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
 Progress: v14.0 — defining requirements (0 phases). v13.x ✅ complete (207–214).
 
@@ -407,6 +407,7 @@ Progress: [██████████] 100%
 | Phase 212-crud-handler-proc-macros P03 | 25 | 3 tasks | 5 files |
 | Phase 215 P01 | 200s | 2 tasks | 3 files |
 | Phase 215-non-visual-rendering-context-basecontext-intent-extensions P02 | 480s | 2 tasks | 7 files |
+| Phase 216 P01 | 285 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -453,7 +454,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T15:12:37.096Z
-Stopped at: Phase 216 context gathered
-Resume file: .planning/phases/216-conversational-text-renderer-output-crate/216-CONTEXT.md
+Last session: 2026-06-13T15:42:04.196Z
+Stopped at: Completed 216-01-PLAN.md
+Resume file: None
 Next action: `/gsd-complete-milestone` to archive the completed v13.x work, or scope a v14.0 Channel Projection phase to continue. Operator: the eventual release bundles the committed-not-released Phase 214 + 212 work (0.2.56) — push those commits, and 214's `ci.yml`/`publish.yml` need a manual `workflow`-scope push.

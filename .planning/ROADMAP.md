@@ -2997,8 +2997,8 @@ Plans:
 
 **Requirements:** CHAN-03, CHAN-04
 
-**Plans:** 3 plans (3 waves)
-- [ ] 216-01-PLAN.md — FieldDef::render_hint schema extension (CHAN-03) + 11-site literal migration (compiles the tree)
+**Plans:** 1/3 plans executed
+- [x] 216-01-PLAN.md — FieldDef::render_hint schema extension (CHAN-03) + 11-site literal migration (compiles the tree)
 - [ ] 216-02-PLAN.md — ferro-text crate + TextRenderer per-intent strategies, guard filter, verbosity, render_hint, Focus/Analyze fallback, tests (CHAN-04)
 - [ ] 216-03-PLAN.md — facade re-export + publish.yml Wave 1b + workspace members + full gate (CHAN-04)
 
