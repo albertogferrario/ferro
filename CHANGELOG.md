@@ -13,8 +13,9 @@ All notable changes to Ferro crates are documented here. Format loosely follows
   user body moves to a named inner fn (IDE jump-to-def preserved).
 - `TenantScoped` trait (`type Id: FromStr`, async `find_for_tenant(id, tenant_id)`):
   the lookup contract the macros call; tenant-scoped by construction.
-- `Validator::validate_or_redirect(&data, url)`: composes the existing
-  `with_old_input` + `into_action_error` chain into the validator's `?` flow.
+- `Validator::validate_or_redirect(url)`: composes the existing
+  `with_old_input` + `into_action_error` chain into the validator's `?` flow
+  (uses the data already held by the validator — no separate `&data` argument).
 
 ---
 
