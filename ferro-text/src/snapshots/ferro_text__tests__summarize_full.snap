@@ -1,0 +1,6 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Invoice
+Key metrics: Total, Status, Items Count

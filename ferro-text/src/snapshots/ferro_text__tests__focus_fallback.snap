@@ -1,0 +1,8 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Profile
+  - Avatar (image)
+  - Website (link)
+Note: This is a media/navigational view; full text representation is limited.

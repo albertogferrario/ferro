@@ -1,0 +1,9 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+approval_workflow — process
+
+Currently: draft
+Fields: Title, Status, Amount
+Available actions: submit, cancel

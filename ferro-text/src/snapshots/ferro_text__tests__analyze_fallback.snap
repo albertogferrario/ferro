@@ -1,0 +1,7 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Sales Report
+Fields: Revenue, Units
+Note: Time-series and trend data has no full text representation in this channel.

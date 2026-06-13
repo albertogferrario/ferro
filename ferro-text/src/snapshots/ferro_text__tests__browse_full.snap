@@ -1,0 +1,9 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Product
+Fields:
+  - Name
+  - Price
+  - Sku

@@ -1,0 +1,9 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Registration
+Fields to fill in:
+  - Email (required)
+  - Name (required)
+  - Phone

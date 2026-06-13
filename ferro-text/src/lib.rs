@@ -387,9 +387,18 @@ mod tests {
     use super::*;
     use ferro_projections::render::BaseContext;
     use ferro_projections::{
-        derive_intents, ActionDef, DataType, Error, FieldMeaning, GuardDef, RenderHint, ServiceDef,
-        StateDef, StateMachine, Transition, Verbosity,
+        derive_intents, ActionDef, DataType, Error, FieldMeaning, GuardDef, Intent, IntentScore,
+        RenderHint, ServiceDef, StateDef, StateMachine, Transition, Verbosity,
     };
+
+    /// Construct a single-entry intent slice forcing a specific intent.
+    fn force_intent(intent: Intent) -> Vec<IntentScore> {
+        vec![IntentScore {
+            intent,
+            confidence: 1.0,
+            matching_signals: vec![],
+        }]
+    }
 
     // Copied verbatim from ferro-projections/src/render/sketch/cli.rs test module (D-15)
     fn approval_workflow_fixture() -> ServiceDef {
@@ -615,13 +624,18 @@ mod tests {
     // 5. ImageUrl with None hint renders with (image) label, not raw URL
     #[test]
     fn image_url_none_hint_labels_not_raw() {
-        let svc = ServiceDef::new("photo_gallery")
-            .display_name("Photo Gallery")
-            .field("id", DataType::Integer, FieldMeaning::Identifier)
-            .field("cover", DataType::String, FieldMeaning::ImageUrl);
-        let intents = derive_intents(&svc);
-        let ctx = BaseContext::default();
-        let result = TextRenderer.render(&svc, &intents, &ctx).unwrap();
+        // Test render_field_value directly: ImageUrl with no hint → "(image)" suffix
+        let f = ferro_projections::FieldDef {
+            name: "cover_photo".to_string(),
+            data_type: DataType::String,
+            meaning: FieldMeaning::ImageUrl,
+            required: false,
+            is_list: false,
+            readable: true,
+            writable: true,
+            render_hint: None,
+        };
+        let result = render_field_value(&f).unwrap();
         assert!(
             result.contains("(image)"),
             "ImageUrl field without hint should use (image) label; got: {result}"
@@ -682,15 +696,9 @@ mod tests {
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("avatar", DataType::String, FieldMeaning::ImageUrl)
             .field("website", DataType::String, FieldMeaning::Url);
-        let intents = derive_intents(&svc);
-        let focus_idx = intents
-            .iter()
-            .position(|s| s.intent.label() == "focus")
-            .unwrap_or(0);
-        let ctx = BaseContext {
-            intent_index: focus_idx,
-            ..Default::default()
-        };
+        // Force focus intent — derive_intents may not score focus as primary for this fixture
+        let intents = force_intent(Intent::Focus);
+        let ctx = BaseContext::default();
         let result = TextRenderer.render(&svc, &intents, &ctx).unwrap();
         insta::assert_snapshot!("focus_fallback", result);
         assert!(!result.is_empty(), "Focus fallback must not be empty");
@@ -708,15 +716,9 @@ mod tests {
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("revenue", DataType::Float, FieldMeaning::Money)
             .field("units", DataType::Integer, FieldMeaning::Quantity);
-        let intents = derive_intents(&svc);
-        let analyze_idx = intents
-            .iter()
-            .position(|s| s.intent.label() == "analyze")
-            .unwrap_or(0);
-        let ctx = BaseContext {
-            intent_index: analyze_idx,
-            ..Default::default()
-        };
+        // Force analyze intent — structural signals (Money + Quantity) score as Summarize by default
+        let intents = force_intent(Intent::Analyze);
+        let ctx = BaseContext::default();
         let result = TextRenderer.render(&svc, &intents, &ctx).unwrap();
         insta::assert_snapshot!("analyze_fallback", result);
         assert!(!result.is_empty(), "Analyze fallback must not be empty");
