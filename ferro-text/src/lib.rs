@@ -12,7 +12,9 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
-use ferro_projections::render::{field_display_name, is_system_field, BaseContext, Renderer, Verbosity};
+use ferro_projections::render::{
+    field_display_name, is_system_field, BaseContext, Renderer, Verbosity,
+};
 use ferro_projections::{
     ActionDef, Error, FieldDef, FieldMeaning, IntentScore, RenderHint, ServiceDef,
 };
@@ -58,10 +60,7 @@ impl Renderer for TextRenderer {
 /// An action is hidden only if **any** of its `preconditions` maps to an explicit
 /// `false` in `evaluated_guards`. An absent key means the guard is unconstrained
 /// and the action renders.
-fn action_passes_guards(
-    action: &ActionDef,
-    evaluated_guards: &HashMap<String, bool>,
-) -> bool {
+fn action_passes_guards(action: &ActionDef, evaluated_guards: &HashMap<String, bool>) -> bool {
     action
         .preconditions
         .iter()
@@ -257,9 +256,7 @@ fn render_summarize(service: &ServiceDef, ctx: &BaseContext) -> String {
 
     match ctx.verbosity {
         Verbosity::Brief => {
-            let first_metric = metric_fields
-                .first()
-                .map(|f| field_display_name(&f.name));
+            let first_metric = metric_fields.first().map(|f| field_display_name(&f.name));
             if let Some(label) = first_metric {
                 let _ = writeln!(out, "{entity} — {label}");
             } else {
@@ -344,7 +341,11 @@ fn render_focus(service: &ServiceDef, _ctx: &BaseContext) -> String {
     let mut out = String::new();
 
     let _ = writeln!(out, "{entity}");
-    for f in service.fields.iter().filter(|f| !is_system_field(&f.meaning)) {
+    for f in service
+        .fields
+        .iter()
+        .filter(|f| !is_system_field(&f.meaning))
+    {
         if let Some(value) = render_field_value(f) {
             let _ = writeln!(out, "  - {value}");
         }
@@ -597,7 +598,11 @@ mod tests {
         let svc = ServiceDef::new("shipment")
             .display_name("Shipment")
             .field("id", DataType::Integer, FieldMeaning::Identifier)
-            .field("tracking_number", DataType::String, FieldMeaning::EntityName)
+            .field(
+                "tracking_number",
+                DataType::String,
+                FieldMeaning::EntityName,
+            )
             .state_machine(
                 StateMachine::new("shipping_lifecycle")
                     .initial("pending")
@@ -661,7 +666,10 @@ mod tests {
             render_hint: Some(RenderHint::AltText("Photo".to_string())),
         };
         let result = render_field_value(&f).unwrap();
-        assert_eq!(result, "Photo", "AltText should render the alt text verbatim");
+        assert_eq!(
+            result, "Photo",
+            "AltText should render the alt text verbatim"
+        );
         assert!(
             !result.contains("http"),
             "should not contain raw URL; got: {result}"

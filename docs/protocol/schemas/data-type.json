@@ -1,7 +1,5 @@
 {
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/data-type.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+  "type": "string",
   "enum": [
     "string",
     "integer",
@@ -14,6 +12,8 @@
     "uuid",
     "enum"
   ],
+  "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
   "title": "DataType",
-  "type": "string"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/data-type.json"
 }

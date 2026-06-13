@@ -1,7 +1,54 @@
 {
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "data_type": {
+      "$ref": "#/$defs/DataType"
+    },
+    "meaning": {
+      "$ref": "#/$defs/FieldMeaning"
+    },
+    "required": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_list": {
+      "type": "boolean",
+      "default": false
+    },
+    "readable": {
+      "type": "boolean",
+      "default": true
+    },
+    "writable": {
+      "type": "boolean",
+      "default": true
+    },
+    "render_hint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RenderHint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Non-visual rendering hint. `None` preserves current behavior\n(renderers emit a `\"(link)\"`/`\"(image)\"` label for `Url`/`ImageUrl` fields)."
+    }
+  },
+  "required": [
+    "name",
+    "data_type",
+    "meaning"
+  ],
+  "description": "A field definition within a service projection.",
+  "title": "FieldDef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "DataType": {
-      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+      "type": "string",
       "enum": [
         "string",
         "integer",
@@ -14,11 +61,12 @@
         "uuid",
         "enum"
       ],
-      "type": "string"
+      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
     },
     "FieldMeaning": {
       "anyOf": [
         {
+          "type": "string",
           "enum": [
             "identifier",
             "foreign_key",
@@ -38,51 +86,37 @@
             "updated_at",
             "date_time",
             "sensitive"
-          ],
-          "type": "string"
+          ]
         },
         {
           "type": "string"
         }
       ],
       "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
+    },
+    "RenderHint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "alt_text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "alt_text"
+          ],
+          "additionalProperties": false,
+          "description": "Substitute this string in place of the raw URL/ImageUrl value."
+        },
+        {
+          "type": "string",
+          "const": "skip",
+          "description": "Omit this field entirely from non-visual output."
+        }
+      ],
+      "description": "Non-visual rendering hint for URL/ImageUrl fields.\n\nApplied by non-visual renderers (e.g., `TextRenderer` in `ferro-text`) to\nhandle fields that have no meaningful text representation without context.\nAbsent hint (`None` on `FieldDef::render_hint`) preserves current behavior."
     }
   },
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-def.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "A field definition within a service projection.",
-  "properties": {
-    "data_type": {
-      "$ref": "#/$defs/DataType"
-    },
-    "is_list": {
-      "default": false,
-      "type": "boolean"
-    },
-    "meaning": {
-      "$ref": "#/$defs/FieldMeaning"
-    },
-    "name": {
-      "type": "string"
-    },
-    "readable": {
-      "default": true,
-      "type": "boolean"
-    },
-    "required": {
-      "default": true,
-      "type": "boolean"
-    },
-    "writable": {
-      "default": true,
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "name",
-    "data_type",
-    "meaning"
-  ],
-  "title": "FieldDef",
-  "type": "object"
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/field-def.json"
 }

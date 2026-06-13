@@ -1,13 +1,13 @@
 {
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/cardinality.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`].",
+  "type": "string",
   "enum": [
     "one_to_one",
     "one_to_many",
     "many_to_one",
     "many_to_many"
   ],
+  "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`].",
   "title": "Cardinality",
-  "type": "string"
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/cardinality.json"
 }

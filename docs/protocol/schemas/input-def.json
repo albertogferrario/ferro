@@ -1,7 +1,37 @@
 {
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "data_type": {
+      "$ref": "#/$defs/DataType"
+    },
+    "meaning": {
+      "$ref": "#/$defs/FieldMeaning"
+    },
+    "required": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "data_type",
+    "meaning"
+  ],
+  "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema.",
+  "title": "InputDef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "DataType": {
-      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+      "type": "string",
       "enum": [
         "string",
         "integer",
@@ -14,11 +44,12 @@
         "uuid",
         "enum"
       ],
-      "type": "string"
+      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
     },
     "FieldMeaning": {
       "anyOf": [
         {
+          "type": "string",
           "enum": [
             "identifier",
             "foreign_key",
@@ -38,8 +69,7 @@
             "updated_at",
             "date_time",
             "sensitive"
-          ],
-          "type": "string"
+          ]
         },
         {
           "type": "string"
@@ -48,35 +78,5 @@
       "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
     }
   },
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/input-def.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema.",
-  "properties": {
-    "data_type": {
-      "$ref": "#/$defs/DataType"
-    },
-    "description": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "meaning": {
-      "$ref": "#/$defs/FieldMeaning"
-    },
-    "name": {
-      "type": "string"
-    },
-    "required": {
-      "default": true,
-      "type": "boolean"
-    }
-  },
-  "required": [
-    "name",
-    "data_type",
-    "meaning"
-  ],
-  "title": "InputDef",
-  "type": "object"
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/input-def.json"
 }

@@ -1,33 +1,33 @@
 {
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/navigation-hint.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship.",
   "oneOf": [
     {
+      "type": "string",
       "const": "inline",
-      "description": "Embed related data in current view (e.g., customer name on order card).",
-      "type": "string"
+      "description": "Embed related data in current view (e.g., customer name on order card)."
     },
     {
+      "type": "string",
       "const": "link",
-      "description": "Show as navigable link to related entity.",
-      "type": "string"
+      "description": "Show as navigable link to related entity."
     },
     {
+      "type": "string",
       "const": "tab",
-      "description": "Show as separate tab in detail view.",
-      "type": "string"
+      "description": "Show as separate tab in detail view."
     },
     {
+      "type": "string",
       "const": "nested",
-      "description": "Show as nested list/table within current view.",
-      "type": "string"
+      "description": "Show as nested list/table within current view."
     },
     {
+      "type": "string",
       "const": "hidden",
-      "description": "Relationship exists but not shown in default navigation.",
-      "type": "string"
+      "description": "Relationship exists but not shown in default navigation."
     }
   ],
-  "title": "NavigationHint"
+  "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship.",
+  "title": "NavigationHint",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/navigation-hint.json"
 }

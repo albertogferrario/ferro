@@ -1,7 +1,85 @@
 {
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/InputDef"
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "transition_trigger": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "description": "A business operation schema describing what an action does and what it needs.\n\nActions are the verbs of a service: \"submit order\", \"approve review\", \"send invoice\".\nEach action defines its input contract, preconditions that must hold, effects that\nwill occur, and an optional link to a state machine transition.\n\n```\nuse ferro_projections::{ActionDef, InputDef, DataType, FieldMeaning};\n\nlet action = ActionDef::new(\"submit_order\")\n    .display_name(\"Submit Order\")\n    .description(\"Validates and submits a customer order for processing\")\n    .input(InputDef::new(\"order_id\", DataType::Integer, FieldMeaning::Identifier))\n    .precondition(\"has_items\")\n    .precondition(\"payment_valid\")\n    .effect(\"notify_customer\")\n    .transition_trigger(\"submit\");\n```",
+  "title": "ActionDef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "InputDef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "data_type": {
+          "$ref": "#/$defs/DataType"
+        },
+        "meaning": {
+          "$ref": "#/$defs/FieldMeaning"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "data_type",
+        "meaning"
+      ],
+      "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema."
+    },
     "DataType": {
-      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+      "type": "string",
       "enum": [
         "string",
         "integer",
@@ -14,11 +92,12 @@
         "uuid",
         "enum"
       ],
-      "type": "string"
+      "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time."
     },
     "FieldMeaning": {
       "anyOf": [
         {
+          "type": "string",
           "enum": [
             "identifier",
             "foreign_key",
@@ -38,93 +117,14 @@
             "updated_at",
             "date_time",
             "sensitive"
-          ],
-          "type": "string"
+          ]
         },
         {
           "type": "string"
         }
       ],
       "description": "Semantic field meaning. Known variants: identifier, foreign_key, entity_name, email, phone, url, image_url, money, percentage, quantity, status, category, boolean, free_text, created_at, updated_at, date_time, sensitive. Any other string is a custom domain-specific meaning."
-    },
-    "InputDef": {
-      "description": "An input parameter definition for an action.\n\nReuses [`DataType`] and [`FieldMeaning`] from the field module to maintain\na single type vocabulary across the projection schema.",
-      "properties": {
-        "data_type": {
-          "$ref": "#/$defs/DataType"
-        },
-        "description": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "meaning": {
-          "$ref": "#/$defs/FieldMeaning"
-        },
-        "name": {
-          "type": "string"
-        },
-        "required": {
-          "default": true,
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "name",
-        "data_type",
-        "meaning"
-      ],
-      "type": "object"
     }
   },
-  "$id": "https://ferro-rs.dev/protocol/2026-03-01/action-def.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "A business operation schema describing what an action does and what it needs.\n\nActions are the verbs of a service: \"submit order\", \"approve review\", \"send invoice\".\nEach action defines its input contract, preconditions that must hold, effects that\nwill occur, and an optional link to a state machine transition.\n\n```\nuse ferro_projections::{ActionDef, InputDef, DataType, FieldMeaning};\n\nlet action = ActionDef::new(\"submit_order\")\n    .display_name(\"Submit Order\")\n    .description(\"Validates and submits a customer order for processing\")\n    .input(InputDef::new(\"order_id\", DataType::Integer, FieldMeaning::Identifier))\n    .precondition(\"has_items\")\n    .precondition(\"payment_valid\")\n    .effect(\"notify_customer\")\n    .transition_trigger(\"submit\");\n```",
-  "properties": {
-    "description": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "display_name": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
-    "effects": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "inputs": {
-      "items": {
-        "$ref": "#/$defs/InputDef"
-      },
-      "type": "array"
-    },
-    "name": {
-      "type": "string"
-    },
-    "preconditions": {
-      "items": {
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "transition_trigger": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  },
-  "required": [
-    "name"
-  ],
-  "title": "ActionDef",
-  "type": "object"
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/action-def.json"
 }
