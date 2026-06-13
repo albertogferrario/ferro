@@ -3,6 +3,21 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] — ferro-macros / framework (Phase 212 — CRUD Handler Proc Macros)
+
+### Added
+
+- `#[resource_get]` / `#[resource_post]` route-attribute proc macros: fold the
+  tenant-resolve + typed-param + tenant-scoped-lookup + 404-on-miss prelude into a
+  single attribute while `tenant` and the resource stay real typed parameters; the
+  user body moves to a named inner fn (IDE jump-to-def preserved).
+- `TenantScoped` trait (`type Id: FromStr`, async `find_for_tenant(id, tenant_id)`):
+  the lookup contract the macros call; tenant-scoped by construction.
+- `Validator::validate_or_redirect(&data, url)`: composes the existing
+  `with_old_input` + `into_action_error` chain into the validator's `?` flow.
+
+---
+
 ## [Unreleased] — ferro-json-ui / ferro-mcp / ferro-cli (Phases 162–163)
 
 Changes landed on `v12.0/json-ui-v2`. Accumulated through Phases 162–164; single publish at Phase 161 (merge to master).
