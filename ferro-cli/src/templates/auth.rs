@@ -181,10 +181,7 @@ pub async fn register(req: Request) -> Response {
         ..Default::default()
     };
 
-    let db = ferro::DB::connection()
-        .map_err(|e| ferro::error_response!(500, e.to_string()))?;
-    let user = user::Entity::insert(user)
-        .exec_with_returning(db.inner())
+    let user = user::Entity::insert_one(user)
         .await
         .map_err(|e| {
             HttpResponse::json(serde_json::json!({

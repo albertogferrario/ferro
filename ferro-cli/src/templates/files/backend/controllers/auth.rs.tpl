@@ -1,11 +1,14 @@
 //! Authentication controller
 
 use ferro::{
+    database::{Model as DatabaseModel, ModelMut},
+    hashing,
     serde_json, Auth, Inertia, InertiaProps, Request, Response, SavedInertiaContext, Validate,
 };
+use sea_orm::Set;
 use serde::Deserialize;
 
-use crate::models::user::User;
+use crate::models::user::{self, User};
 
 // ============================================================================
 // Login
@@ -340,7 +343,11 @@ pub async fn reset_password(req: Request) -> Response {
 
     // Find user and update password
     if let Some(user) = User::find_by_email(&form.email).await? {
-        user.update_password(&form.password).await?;
+        let hashed = hashing::hash(&form.password)
+            .map_err(|e| ferro::FrameworkError::internal(e.to_string()))?;
+        let mut active: user::ActiveModel = user.into();
+        active.password = Set(hashed);
+        user::Entity::update_one(active).await?;
         PasswordResetToken::delete_for_email(&form.email).await?;
     }
 

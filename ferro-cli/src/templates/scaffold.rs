@@ -621,12 +621,13 @@ pub fn scaffold_controller_with_fk_template(
 //! Generated with `ferro make:scaffold`
 {unvalidated_comment}
 use ferro::{{
+    database::{{Model as DatabaseModel, ModelMut}},
     http::{{Request, Response, HttpResponse}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
     ActiveValue, ValidateRules,
 }};
-use sea_orm::{{EntityTrait, ActiveModelTrait}};
+use sea_orm::Set;
 use serde::{{Deserialize, Serialize}};
 
 use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
@@ -658,9 +659,7 @@ pub struct {name}EditProps {{
 
 /// List all {plural}
 pub async fn index(req: Request) -> Response {{
-    let db = req.db();
-    let {plural} = {snake_name}::Entity::find()
-        .all(db)
+    let {plural} = {snake_name}::Entity::all()
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -670,9 +669,7 @@ pub async fn index(req: Request) -> Response {{
 
 /// Show a single {snake}
 pub async fn show(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -682,7 +679,6 @@ pub async fn show(req: Request, id: i64) -> Response {{
 
 /// Show create form
 pub async fn create(req: Request) -> Response {{
-    let db = req.db();
 {fk_create_fetches}
     Inertia::render(&req, "{plural_pascal}/Create", {name}CreateProps {{ errors: None{fk_create_props_assign} }})
 }}
@@ -690,7 +686,6 @@ pub async fn create(req: Request) -> Response {{
 /// Store a new {snake}
 pub async fn store(req: Request) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
-    let db = req.db();
     let form: {name}Form = req.input().await.map_err(|e| {{
         HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
     }})?;
@@ -708,7 +703,8 @@ pub async fn store(req: Request) -> Response {{
         updated_at: ActiveValue::Set(chrono::Utc::now()),
     }};
 
-    let result = model.insert(db).await
+    let result = {snake_name}::Entity::insert_one(model)
+        .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
     HttpResponse::redirect(&format!("/{plural}/{{}}", result.id))
@@ -716,9 +712,7 @@ pub async fn store(req: Request) -> Response {{
 
 /// Show edit form
 pub async fn edit(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -730,13 +724,11 @@ pub async fn edit(req: Request, id: i64) -> Response {{
 /// Update an existing {snake}
 pub async fn update(req: Request, id: i64) -> Response {{
     let ctx = SavedInertiaContext::from(&req);
-    let db = req.db();
     let form: {name}Form = req.input().await.map_err(|e| {{
         HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
     }})?;
 
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -749,9 +741,9 @@ pub async fn update(req: Request, id: i64) -> Response {{
         }});
     }}
 
-    {snake}
-        .update()
-{update_fields}        .save()
+    let mut active: {snake_name}::ActiveModel = {snake}.into();
+{update_fields}
+    {snake_name}::Entity::update_one(active)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -760,9 +752,7 @@ pub async fn update(req: Request, id: i64) -> Response {{
 
 /// Delete a {snake}
 pub async fn destroy(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    {snake_name}::Entity::delete_by_id(id)
-        .exec(db)
+    {snake_name}::Entity::delete_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -806,12 +796,13 @@ pub fn scaffold_controller_template(
 //! Generated with `ferro make:scaffold`
 
 use ferro::{{
+    database::{{Model as DatabaseModel, ModelMut}},
     http::{{Request, Response, HttpResponse}},
     inertia::{{Inertia, SavedInertiaContext}},
     validation::Validatable,
     ActiveValue, ValidateRules,
 }};
-use sea_orm::{{EntityTrait, ActiveModelTrait}};
+use sea_orm::Set;
 use serde::{{Deserialize, Serialize}};
 
 use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
@@ -843,9 +834,7 @@ pub struct {name}EditProps {{
 
 /// List all {plural}
 pub async fn index(req: Request) -> Response {{
-    let db = req.db();
-    let {plural} = {snake_name}::Entity::find()
-        .all(db)
+    let {plural} = {snake_name}::Entity::all()
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -854,9 +843,7 @@ pub async fn index(req: Request) -> Response {{
 
 /// Show a single {snake}
 pub async fn show(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -883,14 +870,14 @@ pub async fn store(req: Request) -> Response {{
         }});
     }}
 
-    let db = req.db();
     let model = {snake_name}::ActiveModel {{
         id: ActiveValue::NotSet,
 {insert_fields}        created_at: ActiveValue::Set(chrono::Utc::now()),
         updated_at: ActiveValue::Set(chrono::Utc::now()),
     }};
 
-    let result = model.insert(db).await
+    let result = {snake_name}::Entity::insert_one(model)
+        .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
     HttpResponse::redirect(&format!("/{plural}/{{}}", result.id))
@@ -898,9 +885,7 @@ pub async fn store(req: Request) -> Response {{
 
 /// Show edit form
 pub async fn edit(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -915,9 +900,7 @@ pub async fn update(req: Request, id: i64) -> Response {{
         HttpResponse::bad_request(format!("Invalid form data: {{}}", e))
     }})?;
 
-    let db = req.db();
-    let {snake} = {snake_name}::Entity::find_by_id(id)
-        .one(db)
+    let {snake} = {snake_name}::Entity::find_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?
         .ok_or_else(|| HttpResponse::not_found("{name} not found"))?;
@@ -930,9 +913,9 @@ pub async fn update(req: Request, id: i64) -> Response {{
         }});
     }}
 
-    {snake}
-        .update()
-{update_fields}        .save()
+    let mut active: {snake_name}::ActiveModel = {snake}.into();
+{update_fields}
+    {snake_name}::Entity::update_one(active)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -941,9 +924,7 @@ pub async fn update(req: Request, id: i64) -> Response {{
 
 /// Delete a {snake}
 pub async fn destroy(req: Request, id: i64) -> Response {{
-    let db = req.db();
-    {snake_name}::Entity::delete_by_id(id)
-        .exec(db)
+    {snake_name}::Entity::delete_by_pk(id)
         .await
         .map_err(|e| HttpResponse::internal_server_error(e.to_string()))?;
 
@@ -979,12 +960,15 @@ pub fn api_controller_template(
 //!
 //! Generated with `ferro make:scaffold --api`
 
-use ferro::{{handler, json_response, ActiveValue, Request, Response, ValidateRules}};
-use crate::models::{snake_name}::{{self, Column, Entity, Model as {name}}};
-use sea_orm::{{ColumnTrait, EntityTrait, QueryFilter}};
+use ferro::{{
+    database::{{Model as DatabaseModel, ModelMut}},
+    handler, json_response, ActiveValue, Request, Response, ValidateRules,
+}};
+use sea_orm::Set;
+use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
 
 /// Form data for creating/updating {name}
-#[derive(Debug, serde::Deserialize, ValidateRules)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, ValidateRules)]
 pub struct {name}Form {{
 {form_fields}
 }}
@@ -993,9 +977,8 @@ pub struct {name}Form {{
 ///
 /// GET /{plural_snake}
 #[handler]
-pub async fn index(req: Request) -> Response {{
-    let db = req.db();
-    let {plural_snake} = Entity::find().all(db).await.map_err(|e| {{
+pub async fn index(_req: Request) -> Response {{
+    let {plural_snake} = Entity::all().await.map_err(|e| {{
         tracing::error!("Failed to fetch {plural_snake}: {{:?}}", e);
         ferro::error_response!(500, "Failed to fetch {plural_snake}")
     }})?;
@@ -1015,11 +998,10 @@ pub async fn index(req: Request) -> Response {{
 /// GET /{plural_snake}/{{id}}
 #[handler]
 pub async fn show(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id: i64 = req.param_as::<i64>("id")
+        .map_err(|_| ferro::error_response!(400, "Invalid id parameter"))?;
 
-    let {snake_name} = Entity::find_by_id(id as i32)
-        .one(db)
+    let {snake_name} = Entity::find_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
@@ -1037,30 +1019,19 @@ pub async fn show(req: Request) -> Response {{
 /// POST /{plural_snake}
 #[handler]
 pub async fn store(req: Request) -> Response {{
-    let db = req.db();
     let form: {name}Form = req.input().await?;
 
-    let {snake_name} = {snake_name}::ActiveModel {{
+    let model = {snake_name}::ActiveModel {{
 {insert_fields}
         ..Default::default()
     }};
 
-    let result = Entity::insert({snake_name})
-        .exec(db)
+    let created = Entity::insert_one(model)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to create {snake_name}: {{:?}}", e);
             ferro::error_response!(500, "Failed to create {snake_name}")
         }})?;
-
-    let created = Entity::find_by_id(result.last_insert_id)
-        .one(db)
-        .await
-        .map_err(|e| {{
-            tracing::error!("Failed to fetch created {snake_name}: {{:?}}", e);
-            ferro::error_response!(500, "Failed to fetch created {snake_name}")
-        }})?
-        .ok_or_else(|| ferro::error_response!(500, "Failed to retrieve created {snake_name}"))?;
 
     json_response!({{
         "data": created,
@@ -1073,12 +1044,11 @@ pub async fn store(req: Request) -> Response {{
 /// PUT /{plural_snake}/{{id}}
 #[handler]
 pub async fn update(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id: i64 = req.param_as::<i64>("id")
+        .map_err(|_| ferro::error_response!(400, "Invalid id parameter"))?;
     let form: {name}Form = req.input().await?;
 
-    let existing = Entity::find_by_id(id as i32)
-        .one(db)
+    let existing = Entity::find_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
@@ -1086,9 +1056,9 @@ pub async fn update(req: Request) -> Response {{
         }})?
         .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
-    let updated = existing
-        .update()
-{update_fields}        .save()
+    let mut active: {snake_name}::ActiveModel = existing.into();
+{update_fields}
+    let updated = Entity::update_one(active)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to update {snake_name}: {{:?}}", e);
@@ -1106,20 +1076,10 @@ pub async fn update(req: Request) -> Response {{
 /// DELETE /{plural_snake}/{{id}}
 #[handler]
 pub async fn destroy(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id: i64 = req.param_as::<i64>("id")
+        .map_err(|_| ferro::error_response!(400, "Invalid id parameter"))?;
 
-    let existing = Entity::find_by_id(id as i32)
-        .one(db)
-        .await
-        .map_err(|e| {{
-            tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
-            ferro::error_response!(500, "Failed to fetch {snake_name}")
-        }})?
-        .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
-
-    Entity::delete_by_id(existing.id)
-        .exec(db)
+    Entity::delete_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to delete {snake_name}: {{:?}}", e);
@@ -1165,8 +1125,7 @@ pub fn api_controller_with_fk_template(
             format!(
                 r#"
     // Fetch {} for nested data
-    let {}_map: std::collections::HashMap<i64, {}> = {}Entity::find()
-        .all(db)
+    let {}_map: std::collections::HashMap<i64, {}> = {}Entity::all()
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {}: {{:?}}", e);
@@ -1232,8 +1191,7 @@ pub fn api_controller_with_fk_template(
             format!(
                 r#"
     // Fetch related {target_model}
-    let related_{target_snake} = {target_model}Entity::find_by_id({snake_name}.{fk_field})
-        .one(db)
+    let related_{target_snake} = {target_model}Entity::find_by_pk({snake_name}.{fk_field})
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch related {target_model}: {{:?}}", e);
@@ -1309,12 +1267,12 @@ pub fn api_controller_with_fk_template(
 //!
 //! Generated with `ferro make:scaffold --api`
 {unvalidated_comment}
-use ferro::{{handler, json_response, ActiveValue, Request, Response, ValidateRules}};
-use crate::models::{snake_name}::{{self, Column, Entity, Model as {name}}};
-use sea_orm::{{ColumnTrait, EntityTrait, QueryFilter}};
+use ferro::{{database::{{Model as DatabaseModel, ModelMut}}, handler, json_response, Request, Response, ValidateRules}};
+use crate::models::{snake_name}::{{self, Entity, Model as {name}}};
+use sea_orm::Set;
 {fk_imports}
 /// Form data for creating/updating {name}
-#[derive(Debug, serde::Deserialize, ValidateRules)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, ValidateRules)]
 pub struct {name}Form {{
 {form_fields}
 }}
@@ -1323,9 +1281,8 @@ pub struct {name}Form {{
 ///
 /// GET /{plural_snake}
 #[handler]
-pub async fn index(req: Request) -> Response {{
-    let db = req.db();
-    let {plural_snake} = Entity::find().all(db).await.map_err(|e| {{
+pub async fn index(_req: Request) -> Response {{
+    let {plural_snake} = Entity::all().await.map_err(|e| {{
         tracing::error!("Failed to fetch {plural_snake}: {{:?}}", e);
         ferro::error_response!(500, "Failed to fetch {plural_snake}")
     }})?;
@@ -1345,11 +1302,9 @@ pub async fn index(req: Request) -> Response {{
 /// GET /{plural_snake}/{{id}}
 #[handler]
 pub async fn show(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id = req.param_as::<i64>("id").map_err(|_| ferro::error_response!(400, "Invalid id"))?;
 
-    let {snake_name} = Entity::find_by_id(id as i32)
-        .one(db)
+    let {snake_name} = Entity::find_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
@@ -1365,7 +1320,6 @@ pub async fn show(req: Request) -> Response {{
 /// POST /{plural_snake}
 #[handler]
 pub async fn store(req: Request) -> Response {{
-    let db = req.db();
     let form: {name}Form = req.input().await?;
 
     let {snake_name} = {snake_name}::ActiveModel {{
@@ -1373,22 +1327,12 @@ pub async fn store(req: Request) -> Response {{
         ..Default::default()
     }};
 
-    let result = Entity::insert({snake_name})
-        .exec(db)
+    let created = Entity::insert_one({snake_name})
         .await
         .map_err(|e| {{
             tracing::error!("Failed to create {snake_name}: {{:?}}", e);
             ferro::error_response!(500, "Failed to create {snake_name}")
         }})?;
-
-    let created = Entity::find_by_id(result.last_insert_id)
-        .one(db)
-        .await
-        .map_err(|e| {{
-            tracing::error!("Failed to fetch created {snake_name}: {{:?}}", e);
-            ferro::error_response!(500, "Failed to fetch created {snake_name}")
-        }})?
-        .ok_or_else(|| ferro::error_response!(500, "Failed to retrieve created {snake_name}"))?;
 
     json_response!({{
         "data": created,
@@ -1401,12 +1345,10 @@ pub async fn store(req: Request) -> Response {{
 /// PUT /{plural_snake}/{{id}}
 #[handler]
 pub async fn update(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id = req.param_as::<i64>("id").map_err(|_| ferro::error_response!(400, "Invalid id"))?;
     let form: {name}Form = req.input().await?;
 
-    let existing = Entity::find_by_id(id as i32)
-        .one(db)
+    let existing = Entity::find_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
@@ -1414,9 +1356,9 @@ pub async fn update(req: Request) -> Response {{
         }})?
         .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
-    let updated = existing
-        .update()
-{update_fields}        .save()
+    let mut active: {snake_name}::ActiveModel = existing.into();
+{update_fields}
+    let updated = Entity::update_one(active)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to update {snake_name}: {{:?}}", e);
@@ -1434,11 +1376,9 @@ pub async fn update(req: Request) -> Response {{
 /// DELETE /{plural_snake}/{{id}}
 #[handler]
 pub async fn destroy(req: Request) -> Response {{
-    let db = req.db();
-    let id: i64 = req.param("id").unwrap_or_default();
+    let id = req.param_as::<i64>("id").map_err(|_| ferro::error_response!(400, "Invalid id"))?;
 
-    let existing = Entity::find_by_id(id as i32)
-        .one(db)
+    Entity::find_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to fetch {snake_name}: {{:?}}", e);
@@ -1446,8 +1386,7 @@ pub async fn destroy(req: Request) -> Response {{
         }})?
         .ok_or_else(|| ferro::error_response!(404, "{name} not found"))?;
 
-    Entity::delete_by_id(existing.id)
-        .exec(db)
+    Entity::delete_by_pk(id)
         .await
         .map_err(|e| {{
             tracing::error!("Failed to delete {snake_name}: {{:?}}", e);

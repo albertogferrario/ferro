@@ -1,11 +1,14 @@
 //! Profile controller
 
 use ferro::{
+    database::{Model as DatabaseModel, ModelMut},
+    hashing,
     serde_json, Auth, Inertia, InertiaProps, Request, Response, SavedInertiaContext, Validate,
 };
+use sea_orm::Set;
 use serde::Deserialize;
 
-use crate::models::user::User;
+use crate::models::user::{self, User};
 
 // ============================================================================
 // Show Profile
@@ -34,7 +37,7 @@ pub struct UpdateProfileRequest {
 
 pub async fn update(req: Request) -> Response {
     let ctx = SavedInertiaContext::from(&req);
-    let user_id = Auth::user_id().ok_or_else(|| ferro::FrameworkError::AuthenticationRequired)?;
+    let user_id = Auth::id().ok_or_else(|| ferro::FrameworkError::Unauthorized)?;
     let form: UpdateProfileRequest = req.input().await?;
 
     // Validate the form
@@ -50,8 +53,8 @@ pub async fn update(req: Request) -> Response {
     }
 
     // Get current user
-    let user = User::find_by_id(user_id).await?.ok_or_else(|| {
-        ferro::FrameworkError::NotFound("User not found".to_string())
+    let current_user = user::Entity::find_by_pk(user_id).await?.ok_or_else(|| {
+        ferro::FrameworkError::model_not_found("User")
     })?;
 
     // Check if email is already taken by another user
@@ -70,8 +73,11 @@ pub async fn update(req: Request) -> Response {
         }
     }
 
-    // Update user
-    user.update_profile(&form.name, &form.email).await?;
+    // Update name and email
+    let mut active: user::ActiveModel = current_user.into();
+    active.name = Set(form.name.clone());
+    active.email = Set(form.email.clone());
+    user::Entity::update_one(active).await?;
 
     Inertia::redirect_ctx(&ctx, "/profile")
 }
@@ -91,7 +97,7 @@ pub struct UpdatePasswordRequest {
 
 pub async fn update_password(req: Request) -> Response {
     let ctx = SavedInertiaContext::from(&req);
-    let user_id = Auth::user_id().ok_or_else(|| ferro::FrameworkError::AuthenticationRequired)?;
+    let user_id = Auth::id().ok_or_else(|| ferro::FrameworkError::Unauthorized)?;
     let form: UpdatePasswordRequest = req.input().await?;
 
     // Validate the form
@@ -121,12 +127,12 @@ pub async fn update_password(req: Request) -> Response {
     }
 
     // Get current user
-    let user = User::find_by_id(user_id).await?.ok_or_else(|| {
-        ferro::FrameworkError::NotFound("User not found".to_string())
+    let current_user = user::Entity::find_by_pk(user_id).await?.ok_or_else(|| {
+        ferro::FrameworkError::model_not_found("User")
     })?;
 
     // Verify current password
-    if !user.verify_password(&form.current_password)? {
+    if !current_user.verify_password(&form.current_password)? {
         return Inertia::render_ctx(
             &ctx,
             "Profile",
@@ -139,8 +145,12 @@ pub async fn update_password(req: Request) -> Response {
         .map(|r| r.status(422));
     }
 
-    // Update password
-    user.update_password(&form.password).await?;
+    // Hash and update password
+    let hashed = hashing::hash(&form.password)
+        .map_err(|e| ferro::FrameworkError::internal(e.to_string()))?;
+    let mut active: user::ActiveModel = current_user.into();
+    active.password = Set(hashed);
+    user::Entity::update_one(active).await?;
 
     Inertia::redirect_ctx(&ctx, "/profile")
 }
@@ -150,15 +160,14 @@ pub async fn update_password(req: Request) -> Response {
 // ============================================================================
 
 pub async fn destroy(req: Request) -> Response {
-    let user_id = Auth::user_id().ok_or_else(|| ferro::FrameworkError::AuthenticationRequired)?;
+    let user_id = Auth::id().ok_or_else(|| ferro::FrameworkError::Unauthorized)?;
 
-    // Get current user
-    let user = User::find_by_id(user_id).await?.ok_or_else(|| {
-        ferro::FrameworkError::NotFound("User not found".to_string())
+    // Get current user and delete
+    let current_user = user::Entity::find_by_pk(user_id).await?.ok_or_else(|| {
+        ferro::FrameworkError::model_not_found("User")
     })?;
 
-    // Delete user
-    user.delete().await?;
+    user::Entity::delete_by_pk(current_user.id).await?;
 
     // Logout
     Auth::logout();

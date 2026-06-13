@@ -33,6 +33,8 @@ pub struct Validator<'a> {
     custom_messages: HashMap<String, String>,
     custom_attributes: HashMap<String, String>,
     stop_on_first_failure: bool,
+    /// Pre-seeded errors added before rule evaluation (e.g. for cross-field checks).
+    pre_errors: Vec<(String, String)>,
 }
 
 impl<'a> Validator<'a> {
@@ -44,7 +46,31 @@ impl<'a> Validator<'a> {
             custom_messages: HashMap::new(),
             custom_attributes: HashMap::new(),
             stop_on_first_failure: false,
+            pre_errors: Vec::new(),
         }
+    }
+
+    /// Pre-seed a validation error for a field without adding a rule.
+    ///
+    /// Useful for cross-field checks (e.g. password confirmation) performed
+    /// before calling `validate()`. The error appears in the final result
+    /// alongside any rule-based errors.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let mut validator = Validator::new(&data)
+    ///     .rules("password", rules![required(), min(8)]);
+    ///
+    /// if form.password != form.password_confirmation {
+    ///     validator = validator.with_error("password_confirmation", "Passwords do not match.");
+    /// }
+    ///
+    /// validator.validate()?;
+    /// ```
+    pub fn with_error(mut self, field: impl Into<String>, message: impl Into<String>) -> Self {
+        self.pre_errors.push((field.into(), message.into()));
+        self
     }
 
     /// Add a single validation rule for a field.
@@ -131,6 +157,11 @@ impl<'a> Validator<'a> {
     /// Run validation and return errors if any.
     pub fn validate(self) -> Result<(), ValidationError> {
         let mut errors = ValidationError::new();
+
+        // Pre-seeded errors (from `with_error`) always appear first.
+        for (field, message) in &self.pre_errors {
+            errors.add(field, message.clone());
+        }
 
         for (field, rules) in &self.rules {
             let value = self.get_value(field);

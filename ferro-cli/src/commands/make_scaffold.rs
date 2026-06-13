@@ -826,7 +826,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::Set;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "{table_name}")]
 pub struct Model {{
     #[sea_orm(primary_key)]
@@ -903,11 +903,11 @@ fn generate_controller(
 
     let file_path = controllers_dir.join(format!("{snake_name}_controller.rs"));
 
-    // Build update field assignments (builder setter calls)
+    // Build update field assignments (SeaORM ActiveModel Set statements)
     let mut update_fields = String::new();
     for field in fields {
         update_fields.push_str(&format!(
-            "        .set_{}(form.{}.clone())\n",
+            "    active.{} = Set(form.{}.clone());\n",
             field.name, field.name
         ));
     }

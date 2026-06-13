@@ -32,8 +32,8 @@ use ferro::{
     SecurityHeaders, SessionConfig, SessionMiddleware, DB,
     // Events
     EventDispatcher,
-    // Queue
-    Queue, QueueConfig,
+    // Queue (accessed as ferro::queue::Queue and ferro::queue::QueueConfig)
+    queue::{Queue, QueueConfig},
     // Storage
     Storage, DiskConfig,
     // Cache
