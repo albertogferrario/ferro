@@ -9,12 +9,16 @@ The pipeline has three stages:
 ```
 ServiceDef  →  derive_intents(&service_def)  →  IntentScore[]
                                                       ↓
-JsonUiRenderer.render(&service_def, &intents, &ctx)  →  serde_json::Value
+                      Renderer.render(&service_def, &intents, &ctx)  →  Output
 ```
 
 1. **ServiceDef** — describe your service: field names, data types, semantic meanings, state machines, guards, and actions.
 2. **derive_intents** — analyzes the service definition and returns a ranked list of `IntentScore` values. The highest-scoring intent is the primary one.
-3. **JsonUiRenderer** — takes the service definition, the ranked intents, and a render context, and produces a ferro-json-ui component tree.
+3. **Renderer** — takes the service definition, the ranked intents, and a render context, and produces output. The `Renderer` trait is modality-agnostic: each implementation declares its own `Output` and `Context` types. Two renderers ship today:
+   - **`JsonUiRenderer`** (`Output = Spec`, `Context = VisualContext`) — produces a ferro-json-ui component tree for screens.
+   - **`TextRenderer`** (`Output = String`, `Context = BaseContext`) — produces conversational text for non-visual channels (see [Conversational-Text Rendering](#conversational-text-rendering)).
+
+The same `ServiceDef` drives every renderer; the modality is chosen by which renderer and context you use.
 
 ## Quick Start
 
@@ -127,6 +131,37 @@ Every field needs a `DataType` and a `FieldMeaning`. The data type describes the
 | `FieldMeaning::CreatedAt` / `FieldMeaning::UpdatedAt` / `FieldMeaning::DateTime` | Timestamp fields |
 | `FieldMeaning::Sensitive` | Sensitive value treated as a password input |
 | `FieldMeaning::Custom(String)` | Domain-specific meaning not covered above |
+
+**Render hints.** `FieldDef` carries an optional `render_hint: Option<RenderHint>` consumed by non-visual renderers. It controls how a `Url` or `ImageUrl` field — whose value has no useful text form on its own — is presented. The visual renderer ignores it; `None` (the default) preserves existing behavior. Attach a hint with the `field_with_hint` builder:
+
+```rust
+use ferro::{DataType, FieldMeaning, RenderHint, ServiceDef};
+
+let profile = ServiceDef::new("profile")
+    .field("id", DataType::Integer, FieldMeaning::Identifier)
+    // Substitute alt text in place of the raw image URL in text output
+    .field_with_hint(
+        "avatar",
+        DataType::String,
+        FieldMeaning::ImageUrl,
+        RenderHint::AltText("User avatar".into()),
+    )
+    // Drop a navigational URL from non-visual output entirely
+    .field_with_hint(
+        "tracking_url",
+        DataType::String,
+        FieldMeaning::Url,
+        RenderHint::Skip,
+    );
+```
+
+To set a hint on a field built elsewhere, `FieldDef::with_render_hint(hint)` is the consuming-builder equivalent.
+
+| `RenderHint` variant | Effect in non-visual output |
+|----------------------|-----------------------------|
+| `RenderHint::AltText(String)` | Render the given string in place of the raw URL/image value |
+| `RenderHint::Skip` | Omit the field from non-visual output entirely |
+| `None` (no hint) | `Url` → a `(link)` label, `ImageUrl` → an `(image)` label; never the raw URL |
 
 ### Intent Derivation
 
@@ -273,6 +308,108 @@ let spec = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a val
 // - Guard labels displayed on the action
 ```
 
+## Conversational-Text Rendering
+
+`TextRenderer` is a non-visual `Renderer` that projects the same `ServiceDef` into plain text suitable for a conversational channel — a chat reply, a CLI summary, a notification body. It produces `String` output and takes a `BaseContext` instead of a `VisualContext`.
+
+```rust
+use ferro::{
+    derive_intents, BaseContext, Renderer, TextRenderer, Verbosity,
+    DataType, FieldMeaning, ServiceDef,
+};
+
+let product = ServiceDef::new("product")
+    .display_name("Product")
+    .field("id", DataType::Integer, FieldMeaning::Identifier)
+    .field("name", DataType::String, FieldMeaning::EntityName)
+    .field("price", DataType::Float, FieldMeaning::Money);
+
+let intents = derive_intents(&product);
+let text = TextRenderer
+    .render(&product, &intents, &BaseContext::default())
+    .expect("rendering a valid service definition should not fail");
+// Product
+// Fields:
+//   - Name
+//   - Price
+```
+
+`BaseContext::default()` renders the primary intent at full verbosity with no guard filtering — the equivalent of the visual renderer's defaults.
+
+### BaseContext fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `intent_index` | `usize` | Index into the `IntentScore` list; `0` for the primary intent |
+| `current_state` | `Option<String>` | Active workflow state, surfaced by Process/Track output |
+| `evaluated_guards` | `HashMap<String, bool>` | Guard-name → result. Filters action affordances (see below) |
+| `verbosity` | `Verbosity` | `Verbosity::Full` (default) or `Verbosity::Brief` |
+
+`BaseContext` is also the modality-agnostic base the visual `VisualContext` embeds, so guard and verbosity context is shared across renderers.
+
+### Per-intent output
+
+The renderer dispatches on the primary intent. Five intents map cleanly to text:
+
+| Intent | Output shape |
+|--------|--------------|
+| `Browse` | Entity name + its identifying fields as a list |
+| `Collect` | "Fields to fill in" — the writable inputs, with `(required)` markers |
+| `Process` | Current state + the guard-passing actions available from it |
+| `Summarize` | Entity name + a one-line "Key metrics" list |
+| `Track` | Current state + the next reachable states |
+
+`Focus` and `Analyze` have no full text form (a media/navigational detail view and a time-series view, respectively). They render a **defined fallback** — the available fields plus a one-line note — rather than failing or fabricating data:
+
+```text
+Profile
+  - Avatar (image)
+  - Website (link)
+Note: This is a media/navigational view; full text representation is limited.
+```
+
+An empty intent slice returns `ProjectionsError::NoIntents` rather than emitting a placeholder label.
+
+### Guard filtering
+
+In a Process render, an action is shown only when its guards pass. `evaluated_guards` maps each guard name to a boolean; an action is **hidden** only when one of its preconditions is explicitly `false`. An absent key renders the action (the guard is treated as not-yet-evaluated), so `BaseContext::default()` — an empty map — shows every action, matching the visual renderer.
+
+```rust
+use std::collections::HashMap;
+use ferro::{BaseContext, Renderer, TextRenderer, Verbosity, derive_intents};
+
+// approval_workflow: actions submit, approve, reject, cancel
+// approve and reject require the `is_approver` guard.
+let intents = derive_intents(&approval_workflow);
+
+// No guard context → every action is listed:
+let all = TextRenderer.render(&approval_workflow, &intents, &BaseContext::default()).unwrap();
+// ... Available actions: submit, approve, reject, cancel
+
+// Caller is not an approver → approve and reject are filtered out:
+let mut guards = HashMap::new();
+guards.insert("is_approver".to_string(), false);
+let ctx = BaseContext { evaluated_guards: guards, ..Default::default() };
+let filtered = TextRenderer.render(&approval_workflow, &intents, &ctx).unwrap();
+// ... Available actions: submit, cancel
+```
+
+This makes guard evaluation the consumer's responsibility — the renderer never tells a caller they can perform an action their guards would reject.
+
+### Verbosity
+
+`Verbosity::Full` (the default) renders the complete per-intent view. `Verbosity::Brief` collapses it to a single line — useful for a notification or a quick acknowledgement:
+
+```rust
+use ferro::{BaseContext, Renderer, TextRenderer, Verbosity};
+
+let ctx = BaseContext { verbosity: Verbosity::Brief, ..Default::default() };
+let brief = TextRenderer.render(&approval_workflow, &intents, &ctx).unwrap();
+// approval_workflow — Currently: draft. You can: submit, approve, reject, cancel.
+```
+
+Brief output still respects guard filtering, so it only ever lists permitted actions.
+
 ## Reference
 
 | Type | Description |
@@ -289,10 +426,14 @@ let spec = JsonUiRenderer.render(&order, &intents, &ctx).expect("rendering a val
 | `IntentScore` | A ranked intent result with `intent`, `confidence`, and `matching_signals` |
 | `IntentHint` | Override directive: `Primary(intent)` promotes, `Exclude(intent)` blocks |
 | `derive_intents` | Analyzes a `ServiceDef` and returns a confidence-ranked `Vec<IntentScore>` |
-| `JsonUiRenderer` | Implements `Renderer`; converts `ServiceDef` + intents + context to JSON-UI |
-| `Renderer` | Trait implemented by renderers; one method: `render(def, intents, ctx)` |
-| `VisualContext` | Render parameters: intent index, current state, mode, template overrides |
-| `RenderMode` | `Display` for read-only output; `Input` for editable form output |
+| `JsonUiRenderer` | Implements `Renderer`; converts `ServiceDef` + intents + context to JSON-UI (`Output = Spec`) |
+| `TextRenderer` | Implements `Renderer`; converts `ServiceDef` + intents + `BaseContext` to conversational text (`Output = String`) |
+| `Renderer` | Modality-agnostic trait; one method `render(def, intents, ctx)` with associated `Output`/`Context` types |
+| `VisualContext` | Visual render parameters: intent index, current state, mode, template overrides (embeds `BaseContext`) |
+| `BaseContext` | Modality-agnostic render parameters: intent index, current state, evaluated guards, verbosity |
+| `RenderMode` | `Display` for read-only output; `Input` for editable form output (visual only) |
+| `Verbosity` | `Full` (default, complete render) or `Brief` (single-line) for non-visual output |
+| `RenderHint` | Optional `FieldDef` hint for non-visual rendering of `Url`/`ImageUrl`: `AltText(String)` or `Skip` |
 
 ## Rendering a Projection Inside an App Shell
 
