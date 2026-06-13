@@ -4,7 +4,7 @@ milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: verifying
 stopped_at: Completed 217-03-PLAN.md (publish ordering, docs, CI gate — Phase 217 DONE)
-last_updated: "2026-06-13T19:27:25.129Z"
+last_updated: "2026-06-13T19:37:26.492Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 101
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
-Phase: 217 (Tenant Context + Per-Tenant API-Key Auth) — EXECUTING
-Plan: 4 of 4
+Phase: 218
+Plan: Not started
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -94,6 +94,7 @@ Progress: [██████████] 100%
 | 216 | 3 | - | - |
 | 214 | 2 | - | - |
 | 212 | 3 | - | - |
+| 217 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
