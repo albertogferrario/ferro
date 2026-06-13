@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v14.0
-milestone_name: Channel Projection — Non-Visual Rendering
-status: verifying
-stopped_at: Completed 216-03-PLAN.md
+milestone: v15.0
+milestone_name: Agent-Operable App (Consumer MCP)
+status: defining-requirements
+stopped_at: v14.0 shipped (0.2.58); v15.0 started — defining requirements
 last_updated: "2026-06-13T16:44:51.291Z"
 last_activity: 2026-06-13
 progress:
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 216 — conversational-text-renderer-output-crate
+**Current focus:** v15.0 Agent-Operable App (Consumer MCP) — defining requirements
 
 ## Current Position
 
-Milestone: v14.0 Channel Projection — Non-Visual Rendering — 🚧 ACTIVE (started 2026-06-13). Scope: ship the first production conversational-text `Renderer` + the `BaseContext`/`FieldDef`/`Intent` extensions COMP-05 found it needs. [v13.x batch all ✅: v13.0 (207–211), v13.1 (212), v13.2 SHIPPED 0.2.55 (213), v13.3 (214)]
-Phase: 216
-Plan: Not started
-Next: define CHAN-* requirements → roadmap → `/gsd-discuss-phase 215`
-Prior: Phase 212 ✅ (v13.1 CRUD macros); Phase 214 ✅ (v13.3 scaffold parity); Phase 213 ✅ SHIPPED 0.2.55. COMP-05 (Phase 208) analysis is v14.0's seed.
-Status: Phase complete — ready for verification
+Milestone: v15.0 Agent-Operable App (Consumer MCP) — 🚧 ACTIVE (started 2026-06-13). Scope: a tenant operates a live ferro app through a per-tenant MCP endpoint whose tools are projection-derived — projection→MCP tools, write/act via MCP (guard-filtered), inbound intent loop (`ferro-ai`), per-tenant API-key auth. Validated against gestiscilo. [v14.0 ✅ SHIPPED 0.2.58 (215–216): first non-visual `Renderer` — `ferro-text::TextRenderer`]
+Phase: Not started (defining requirements)
+Plan: —
+Next: research (consumer-MCP tools, NL→action dispatch, per-tenant auth) → define requirements → roadmap
+Prior: v14.0 ✅ Channel Projection (215–216, text renderer); v13.x ✅ (207–214). Builds on v12.6 consumer-MCP OAuth endpoint + v14.0 guard surface + `ferro-ai` + v13.1 `TenantScoped`.
+Status: Milestone started — defining requirements
 
-Progress: v14.0 — defining requirements (0 phases). v13.x ✅ complete (207–214).
+Progress: v15.0 — defining requirements (0 phases). v14.0 ✅ shipped (215–216).
 
 Last activity: 2026-06-13
-Workspace version: 0.2.55 (published); 0.2.56 bumped locally (Phase 212); Phase 214 + 212 committed-not-released — eventual publish bundles both and needs a manual `workflow`-scope push for 214's CI yaml
+Workspace version: 0.2.58 (published — v14.0 shipped end-to-end incl. new `ferro-text` crate)
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
 
