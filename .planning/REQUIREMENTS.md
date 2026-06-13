@@ -54,8 +54,8 @@ structured-API, mobile `device_class`/chart-card, and inbound `ferro-ai` classif
 (see Future Requirements). The renderer lives in an output crate; `ferro-projections` stays
 renderer-free (v11.5 rule).
 
-- [ ] **CHAN-01**: `BaseContext` carries non-visual rendering context — `evaluated_guards` (a map/representation of guard→bool so a renderer shows an action only when its guard passes; today all actions render regardless of caller role) and `verbosity` (`Brief`/`Full`). Existing visual/MCP renderers compile unchanged.
-- [ ] **CHAN-02**: `Intent::label() -> &str` replaces the fragile `format!("{:?}", intent)` debug-derived label across renderers; an empty intent slice returns a render error/warning rather than a silent `"unknown"`.
+- [x] **CHAN-01**: `BaseContext` carries non-visual rendering context — `evaluated_guards` (a map/representation of guard→bool so a renderer shows an action only when its guard passes; today all actions render regardless of caller role) and `verbosity` (`Brief`/`Full`). Existing visual/MCP renderers compile unchanged.
+- [x] **CHAN-02**: `Intent::label() -> &str` replaces the fragile `format!("{:?}", intent)` debug-derived label across renderers; an empty intent slice returns a render error/warning rather than a silent `"unknown"`.
 - [ ] **CHAN-03**: `FieldDef` carries a `render_hint` (e.g. `AltText(String)` / `Skip`) so a renderer handles `ImageUrl`/`Url` (Focus intent) fields without emitting a useless raw-URL label; absent hint preserves current behavior.
 - [ ] **CHAN-04**: A production conversational-text `Renderer` in its own output crate projects a `ServiceDef` to text for the cleanly-mapping intents (Browse, Collect, Process, Summarize, Track), guard-filtered (CHAN-01) and verbosity-aware, with a defined, tested fallback for the Focus/Analyze modality gaps. Re-exported via the `ferro` facade; covered by deterministic snapshot/string tests over the COMP-05 anchor fixture.
 
@@ -96,7 +96,7 @@ renderer-free (v11.5 rule).
 | CRUD-04 | Phase 212 | Complete |
 | CRUD-05 | Phase 212 | Complete |
 | CRUD-06 | Phase 212 | Complete |
-| CHAN-01 | Phase 215 | Pending |
-| CHAN-02 | Phase 215 | Pending |
+| CHAN-01 | Phase 215 | Complete |
+| CHAN-02 | Phase 215 | Complete |
 | CHAN-03 | Phase 216 | Pending |
 | CHAN-04 | Phase 216 | Pending |
