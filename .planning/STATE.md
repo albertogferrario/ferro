@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v14.0
 milestone_name: Channel Projection — Non-Visual Rendering
-status: v14.0 started — defining requirements
+status: executing
 stopped_at: Phase 215 context gathered
-last_updated: "2026-06-13T14:06:02.791Z"
-last_activity: 2026-06-13
+last_updated: "2026-06-13T14:29:14.364Z"
+last_activity: 2026-06-13 -- Phase 215 planning complete
 progress:
   total_phases: 98
   completed_phases: 89
-  total_plans: 368
+  total_plans: 370
   completed_plans: 367
-  percent: 100
+  percent: 99
 ---
 
 # Project State
@@ -29,11 +29,11 @@ Phase: Not started (defining requirements)
 Plan: —
 Next: define CHAN-* requirements → roadmap → `/gsd-discuss-phase 215`
 Prior: Phase 212 ✅ (v13.1 CRUD macros); Phase 214 ✅ (v13.3 scaffold parity); Phase 213 ✅ SHIPPED 0.2.55. COMP-05 (Phase 208) analysis is v14.0's seed.
-Status: v14.0 started — defining requirements
+Status: Ready to execute
 
 Progress: v14.0 — defining requirements (0 phases). v13.x ✅ complete (207–214).
 
-Last activity: 2026-06-13
+Last activity: 2026-06-13 -- Phase 215 planning complete
 Workspace version: 0.2.55 (published); 0.2.56 bumped locally (Phase 212); Phase 214 + 212 committed-not-released — eventual publish bundles both and needs a manual `workflow`-scope push for 214's CI yaml
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
