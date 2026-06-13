@@ -1,148 +1,251 @@
 ---
 phase: 212-crud-handler-proc-macros
 milestone: v13.1
-status: scoped — discuss-phase needed before plan
+status: Ready for planning
 created: 2026-06-12
+gathered: 2026-06-13
 created_by: gestiscilo Phase 202 evidence-gathering pass
 renumbered: "2026-06-12 — relocated from 209 to 212 (new milestone v13.1) to resolve a phase-number collision: ferro ROADMAP already owns 209 for COMP-01 Gestiscilo Migration"
 paired_consumer_phase: gestiscilo-it/app Phase 202 (see 202-EVIDENCE.md §8)
 ---
 
-# Phase 212 — CRUD handler proc macros
+# Phase 212: CRUD Handler Proc Macros - Context
 
-Design proc macros for the recurring "GET form" + "POST handler" CRUD shapes that ferro framework consumers write today as 5–15 lines of boilerplate per handler. Two macros in scope, one previously-proposed macro explicitly dropped.
+**Gathered:** 2026-06-13
+**Status:** Ready for planning
 
-## Motivation
+<domain>
+## Phase Boundary
 
-ferro is the product, not internal scaffolding for any one consumer. The first consumer (gestiscilo) hit a duplication wall in its operator controllers — 55+ tenant-resource lookups, 88+ form-error redirects, 21+ raw param-parse ladders. The existing ferro APIs that gestiscilo Phase 202 will adopt (`Request::param_as<T>`, `ValidationError::into_action_error`) already close ~75% of the boilerplate, but each handler still writes:
+Ship two route-attribute proc macros plus one validator helper that fold the recurring
+tenant-scoped CRUD prelude ferro consumers write by hand today:
 
-```rust
-let business = resolve_tenant().await.map_err(|_| ActionError::msg("Sessione scaduta"))?;
-let id: i64 = req.param_as("id").map_err(|_| error_response(404, "ID non valido"))?;
-let resource = Resource::find_for_tenant(id, business.id).await?.ok_or_else(...)?;
-```
+- **`#[resource_get]`** — wraps a GET handler displaying a single tenant-scoped resource (edit
+  form, detail, confirm page): typed path-param extraction → tenant resolution → tenant-scoped
+  lookup → 404-on-miss, leaving only the user's body.
+- **`#[resource_post]`** — wraps a POST handler mutating a tenant-scoped resource: the same
+  prelude plus a validation-failure redirect envelope.
+- **`Validator::validate_or_redirect(&data, &url)`** — collapses the existing
+  `into_action_error` chain into the validator's own `?` flow.
 
-That 3-line prelude repeats 200+ times across a single consumer. A proc macro can fold it into a route attribute. Other ferro consumers — current and future — write the same shape; the macros benefit the framework's whole consumer surface, not just gestiscilo's local LoC.
+**Killer feature:** the prelude folds into a single route attribute *while tenant and resource
+stay real, typed function parameters* (IDE jump-to-def + autocomplete keep working) and the macro
+reuses ferro's existing tenant and validation layers — compression without a new mental model or a
+duplicate control surface. That is the substance-first win (compressive + conceptual), not raw
+line count.
 
-The macros do not save gestiscilo enough lines on their own to be worth a ferro phase if scoped only to gestiscilo's savings. They ARE worth a ferro phase scoped to ferro's framework-product axis.
+**Out of scope (explicitly dropped):**
+- `#[confirm_page]` macro — the gestiscilo evidence pass found ZERO recurring confirm-page shape
+  (202-EVIDENCE §1 Pattern E); destructive actions POST directly to `/elimina`. No macro target.
+- Multipart upload macros — gestiscilo has 4 distinct upload domains with different shapes;
+  separate macros if warranted, not part of 212.
+- Reducing one consumer's LoC as the success metric — this is scoped to ferro's framework-product
+  axis (any consumer benefits), not gestiscilo's local savings.
 
-## What's in scope
+</domain>
 
-### Macro 1 — `#[resource_get]`
+<decisions>
+## Implementation Decisions
 
-Wraps a GET handler that displays a single tenant-scoped resource (edit form, detail page, confirm page).
+The seven open design questions from the scoping doc are resolved below. Each reuses an existing
+ferro surface where one exists, keeping the core small (continuous conceptual coherence).
 
-Generated prelude:
-- Path param extraction (typed) — macro takes `path = "{id:i64}"` or similar
-- Caller-supplied tenant resolver (configurable — defaults to a `TenantResolver` trait the consumer implements)
-- Resource lookup via a `TenantScoped` trait the consumer implements on its model
-- 404 dispatch on miss — uses caller-provided `on_miss` URL or Response builder
+### Tenant resolution (Q1)
+- **D-01:** The macro resolves the tenant through the **existing** tenant layer —
+  `ferro::current_tenant()` / the configured `TenantScopeProvider`
+  (`framework/src/lib.rs:133`) — NOT a new `TenantResolver` trait. ferro already owns
+  "how is the tenant resolved"; adding a second knob would duplicate that control surface
+  (rejected per the no-duplicate-control-surface principle). Consumers whose tenant lives
+  elsewhere configure the existing provider/middleware.
+- **D-02:** Provide an optional escape-hatch macro arg `tenant = "<expr>"` (a Rust expression /
+  function path) for consumers not on the standard provider. Default = the existing
+  `current_tenant()` surface; the arg is the exception, not the norm. gestiscilo's thread-local
+  `resolve_tenant()` is bridged to `current_tenant()` (or passed via this arg) — research confirms
+  which.
 
-Sketch:
+### Resource lookup trait (Q2)
+- **D-03:** A small **`TenantScoped` trait** the consumer implements on its model is the default:
+  an associated `Id` type (bound `FromStr`, so not hardcoded to `i64`) and
+  `find_for_tenant(id: Self::Id, tenant_id) -> Result<Option<Self>, _>`. The macro calls it with
+  zero config in the common case.
+- **D-04:** An optional `find = "<path::fn>"` macro arg overrides the lookup for models that don't
+  fit the trait signature. Trait-default keeps the common case zero-config; the arg is the escape
+  hatch.
 
+### 404 / miss strategy (Q3)
+- **D-05:** `on_miss = "/url"` macro arg → redirect to that URL on a lookup miss (the common
+  dashboard case). If `on_miss` is omitted → emit a **generic** miss: `Response::not_found()` for
+  `#[resource_get]`, `ActionError::not_found(...)` for `#[resource_post]`. The macro MUST NOT emit
+  any consumer-specific styling (e.g. gestiscilo's `dashboard_error_view`) — `ferro-macros` is a
+  project-agnostic crate; consumers style the generic 404 via their own middleware.
+
+### Macro composition (Q4)
+- **D-06:** `#[resource_get]` **emits `#[ferro::handler]`** internally; `#[resource_post]` **emits
+  `#[ferro::action]`** (`ferro-macros/src/lib.rs:232` and `:265`). The user writes a single
+  attribute at the call site. The user's original body moves into a clearly-named inner fn
+  (e.g. `__{name}_inner`) so `cargo expand` reads cleanly and rust-analyzer sees real types.
+
+### `validate_or_redirect` shape (Q5)
+- **D-07:** A **method on `Validator`** that consumes `self` and returns
+  `Result<(), ferro::ActionError>`, composing the EXISTING error path — no new logic:
+  ```rust
+  pub fn validate_or_redirect(self, data: &Value, url: impl Into<String>)
+      -> Result<(), ActionError> {
+      self.validate().map_err(|e| e.with_old_input(data).into_action_error(url))
+  }
+  ```
+  It reuses `ValidationError::with_old_input` + `into_action_error`
+  (`framework/src/validation/error.rs:160`) so per-field errors + old input flash exactly as the
+  modern chain does today. `&data` is passed because `with_old_input` needs the original payload.
+
+### Form-URL synthesis (Q6)
+- **D-08:** When `redirect_to` / `form_url` / `on_miss` is a fmt template with `{param}`
+  placeholders, the macro substitutes them from the **path params it already extracted** (the
+  resource id and any declared path params) via `format!`. A placeholder that does NOT correspond
+  to an extracted path param is a **compile error** with a clear message — no query/body/session
+  magic; the consumer builds that URL in the body and passes it explicitly.
+
+### IDE / editor experience (Q7)
+- **D-09:** Design for rust-analyzer: (a) the resolved bindings (`tenant: &Tenant`,
+  `customer: &Customer`) are REAL typed parameters in the user's signature — the macro reads them
+  from the signature, it does not invent hidden names — so autocomplete and jump-to-def work;
+  (b) the body lives in a named inner fn; (c) rustdoc ships `cargo expand` walkthroughs for both
+  expansions. The plan MUST include an explicit "IDE experience" verification (expand + a
+  rust-analyzer-style type check on the bindings).
+
+### Requirement labels (derive in REQUIREMENTS.md)
+- **D-10 — CRUD-01..CRUD-06:**
+  - **CRUD-01** — `#[resource_get]` folds typed-param + tenant resolution + tenant-scoped lookup +
+    404-on-miss; tenant/resource surface as real typed params.
+  - **CRUD-02** — `#[resource_post]` folds the same prelude + the validation-failure redirect
+    envelope.
+  - **CRUD-03** — `Validator::validate_or_redirect(&data, &url) -> Result<(), ActionError>`
+    composing the existing `with_old_input` + `into_action_error`.
+  - **CRUD-04** — `TenantScoped` trait (assoc `Id: FromStr` + `find_for_tenant`) with a `find =`
+    override; tenant resolved via the existing `current_tenant()`/`TenantScopeProvider` (no new
+    control surface), with a `tenant = expr` escape hatch.
+  - **CRUD-05** — IDE experience preserved: typed params, named inner fn, rustdoc `cargo expand`
+    walkthroughs, verified.
+  - **CRUD-06** — macros exported via the `ferro` facade; a reference example/test fixture using
+    both macros; CHANGELOG entry + workspace version bump (next patch, 0.2.56+ — 0.2.55 already
+    published).
+
+### Claude's Discretion
+- Exact `TenantScoped` trait method names/associated-type bounds beyond `Id: FromStr`.
+- Whether `path = "{id:i64}"` syntax or a positional resource-type arg drives id extraction —
+  planner picks the cleanest macro surface consistent with D-08.
+- Whether the bridge from gestiscilo's thread-local `resolve_tenant()` to `current_tenant()` is
+  documentation-only or a tiny adapter (research determines).
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Consumer evidence (the duplication this folds)
+- `/Users/alberto/repositories/gestiscilo-it/app/.planning/phases/202-adopt-ferro-crud-macros/202-EVIDENCE.md`
+  — the full duplication survey (Pattern A tenant resolution ×244, Pattern A/C resource lookup,
+  Pattern B form-error redirect ×129). Cross-repo absolute path; read if the sibling repo is
+  present. The key counts are summarized in the "Consumer evidence" section below.
+
+### Composition targets in the ferro surface
+- `ferro-macros/src/lib.rs:232` (`#[handler]`) and `:265` (`#[action]`) — the attribute macros
+  `#[resource_get]`/`#[resource_post]` emit (D-06).
+- `framework/src/validation/error.rs:160` — `ValidationError::into_action_error(url)` +
+  `with_old_input` — the exact composition `validate_or_redirect` reuses (D-07).
+- `framework/src/validation/validator.rs` — `Validator` API (`new`, `rules`, `validate`,
+  `with_error`); the new `validate_or_redirect` method lives here.
+- `framework/src/http/action.rs` — `ActionError` (`msg`, `validation_failed`, `not_found`,
+  `redirect_to`) and `ActionResult` (D-05, D-07).
+- `framework/src/http/request.rs:177` — `Request::param_as<T: FromStr>` (typed path extraction)
+  and the `extensions::<T>()` type-map.
+- `framework/src/lib.rs:133` — the existing tenant surface: `current_tenant`,
+  `TenantScopeProvider`, `FrameworkTenantScopeProvider`, resolvers (D-01/D-02). Do not add a
+  parallel tenant-resolution knob.
+
+### Phase scope
+- `.planning/ROADMAP.md` §"Phase 212: CRUD Handler Proc Macros" — goal + dependencies.
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+- **`#[handler]` / `#[action]` attribute macros** (`ferro-macros/src/lib.rs`) — `#[resource_get]`
+  and `#[resource_post]` wrap these rather than re-implementing the HTTP plumbing.
+- **Tenant layer** — `current_tenant()` / `TenantScopeProvider` / `FrameworkTenantScopeProvider`
+  already decide tenant resolution structurally (v12.6). The macro binds to it.
+- **`ValidationError::into_action_error` + `with_old_input`** — the modern form-error chain
+  `validate_or_redirect` composes; no new error path.
+- **`Request::param_as<T>`** — typed path extraction the macro emits.
+- **`ActionError` / `ActionResult`** — the macro's miss + validation arms return these.
+
+### Established Patterns
+- Attribute proc macros emit `#[handler]`/`#[action]`-wrapped fns (consistent with existing macro
+  layering).
+- User-facing symbols are re-exported from the `ferro` facade (`framework/src/lib.rs`).
+- Project-agnostic `ferro-*` crates: no hardcoded consumer identity/styling (D-05).
+
+### Integration Points
+- `ferro-macros/src/lib.rs` — the two new `#[proc_macro_attribute]` fns.
+- `framework/src/validation/validator.rs` — the new `validate_or_redirect` method.
+- A new small trait module (`TenantScoped`) — likely in `ferro-orm` or `framework` per the planner.
+- `framework/src/lib.rs` — facade re-exports of the macros + trait.
+- A reference example/test fixture exercising both macros (CRUD-06).
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+### Macro surface sketches (from the scoping doc — the intended call-site ergonomics)
 ```rust
 #[ferro::resource_get(Customer, on_miss = "/dashboard/clienti")]
-pub async fn edit(req: Request, tenant: &Tenant, customer: &Customer) -> Response {
-    // user body — tenant + customer already resolved, no preamble
-}
-```
+pub async fn edit(req: Request, tenant: &Tenant, customer: &Customer) -> Response { /* body */ }
 
-Expanded form (approximate):
-
-```rust
-#[ferro::handler]
-pub async fn edit(req: Request) -> Response {
-    let tenant = req.tenant().await.map_err(...)?;
-    let id: i64 = req.param_as("id").map_err(|_| ferro::dashboard_404("/dashboard/clienti"))?;
-    let customer = Customer::find_for_tenant(id, tenant.id)
-        .await
-        .map_err(|e| ferro::dashboard_500(e))?
-        .ok_or_else(|| ferro::dashboard_404("/dashboard/clienti"))?;
-    edit_inner(req, &tenant, &customer).await
-}
-async fn edit_inner(req: Request, tenant: &Tenant, customer: &Customer) -> Response {
-    // original user body
-}
-```
-
-### Macro 2 — `#[resource_post]`
-
-Wraps a POST handler that mutates a tenant-scoped resource (save edit, delete, transition state).
-
-Generated prelude + form-error envelope:
-- Same tenant + resource resolution as `#[resource_get]`
-- Macro arg: `redirect_to = "..."` for the success redirect (literal or fmt template)
-- Macro arg: `form_url = "..."` for the validation-failure redirect (literal or fmt template, typically the edit GET)
-- New helper on `Validator`: `.validate_or_redirect(&data, &form_url)` — collapses the existing 2-line `into_action_error` chain into the validator's own `?` flow
-
-Sketch:
-
-```rust
-#[ferro::resource_post(Customer, redirect_to = "/dashboard/clienti", form_url = "/dashboard/clienti/{id}/modifica")]
+#[ferro::resource_post(Customer,
+    redirect_to = "/dashboard/clienti",
+    form_url = "/dashboard/clienti/{id}/modifica")]
 pub async fn save(req: Request, tenant: &Tenant, customer: &Customer) -> ActionResult {
     let form: ClienteForm = req.form_mut().await?;
     let data = json!({ /* ... */ });
     Validator::new(&data)
         .rules("name", rules![required()])
-        .rules("email", rules![email()])
-        .messages(/* ... */)
         .validate_or_redirect(&data, /* form_url synthesised by macro */)?;
     Customer::update(&data).await?;
     Ok(())
 }
 ```
 
-### Out of scope (explicitly dropped)
+### Consumer evidence the macros must support (from 202-EVIDENCE)
+- **Tenant resolution** — 244 `resolve_tenant()` call sites; every POST opens with the same
+  3-line shape. Macro must work with consumer-defined tenant resolution (gestiscilo uses a
+  thread-local; others use middleware/extractors) → D-01/D-02.
+- **Resource lookup** — `find_for_tenant(id, tenant_id)` is gestiscilo's signature; others differ
+  → `TenantScoped` trait + `find =` override (D-03/D-04).
+- **Form-error redirect** — 129 sites (16 modern chain, 73 single-Response, 72 legacy discard).
+  `validate_or_redirect` should make the modern chain ergonomic enough that the legacy idiom
+  stops tempting anyone (D-07).
 
-- `#[confirm_page]` macro — the gestiscilo evidence pass found ZERO recurring confirm-page view shape (202-EVIDENCE.md §1 Pattern E). Destructive actions are inline buttons that POST directly to `/elimina`. No macro target.
+</specifics>
 
-- Multipart upload macros — gestiscilo has 4 distinct upload domains (operator file, customer self-upload, staff photo, document signing) with different shapes. Separate macros if warranted, not part of 212.
+<deferred>
+## Deferred Ideas
 
-## Consumer evidence (what the macros must support)
+- `#[confirm_page]` macro — no recurring shape found; dropped (see Phase Boundary).
+- Multipart upload macros — 4 distinct upload domains; separate future phases if warranted.
+- **gestiscilo Phase 202b** — the consumer-side adoption of these macros ships AFTER 212
+  publishes, on top of the already-cleaned consumer code. Cross-repo; not this phase. (gestiscilo
+  Phase 202 adopts the existing `param_as`/`into_action_error` APIs and does not depend on 212.)
 
-The full duplication survey is in `/Users/alberto/repositories/gestiscilo-it/app/.planning/phases/202-adopt-ferro-crud-macros/202-EVIDENCE.md`. Key data ferro should plan against:
+None of the above belongs in Phase 212 — discussion stayed within the macro-design scope.
 
-**Tenant-resolution call sites (Pattern A + 112 'Sessione scaduta' map_err)** — 244 `resolve_tenant()` calls across gestiscilo controllers. Every POST handler opens with the same 3-line shape. The macro must work with consumer-defined tenant resolution (gestiscilo's is a thread-local; other apps may use middleware or extractors).
+</deferred>
 
-**Resource lookup (Pattern A 55 + Pattern C 39)** — `find_for_tenant(id, tenant_id)` is the gestiscilo signature. Other consumers may have different signatures. The macro depends on a `TenantScoped` trait the consumer implements.
+---
 
-**Form-error redirect (Pattern B 129)** — 16 sites already use the modern chain, 73 use a single-Response shape, 72 use the legacy discard idiom. The new `validate_or_redirect` validator helper should make the modern chain ergonomic to the point that the legacy idiom doesn't tempt anyone.
-
-## Open design questions for discuss-phase
-
-1. **Tenant resolution coupling**: how does the macro know how to resolve the tenant? Options:
-   - **A**: a `TenantResolver` trait on `Request` that consumers implement once
-   - **B**: a macro argument `tenant = "expr"` that takes a Rust expression to evaluate
-   - **C**: a runtime extension type registered at app boot — `#[resource_get(Customer)]` looks up `req.extensions::<TenantResolver>()`
-
-2. **Resource trait shape**: gestiscilo's models all use `find_for_tenant(id: i64, tenant_id: i64) -> Result<Option<Self>, Error>`. Make that the required trait signature? Or accept a function-pointer macro arg `find = "Customer::find_for_tenant"`?
-
-3. **404 strategy**: should the macro emit gestiscilo-style `dashboard_error_view` HTML, or a generic 404? Two paths:
-   - **A**: macro emits a plain ferro `Response::not_found()` and the consumer is expected to install a 404 handler middleware that styles it
-   - **B**: macro arg `on_miss = "url"` redirects, `on_miss = handler_path` calls a consumer-provided function
-
-4. **Macro composition with `#[handler]` / `#[action]`**: `#[resource_get]` wraps `#[handler]`; `#[resource_post]` wraps `#[action]`. Should the macros emit those directly, or be standalone? Outer-most-attribute convention matters for cargo expand readability.
-
-5. **`Validator::validate_or_redirect` shape**: is this a method on `Validator`, on `ValidationError`, or a free function? Where does the `&data` round-trip live? See `framework/src/validation/error.rs:160` for the existing `into_action_error` pattern that's likely the right composition target.
-
-6. **Form URL synthesis**: when `form_url` is a fmt template with `{id}` placeholders, where do the placeholders come from? The macro can read them from the route params it already extracted (`id` from `path = "{id:i64}"`), but other placeholders (e.g. `{from_query}`) need explicit syntax.
-
-7. **Editor experience**: jump-to-definition, rustdoc rendering, IDE autocomplete — proc macros often break these. The 212 design needs an "IDE experience" section before plan-write.
-
-## Deliverables when 212 ships
-
-- `ferro_macros::resource_get` + `ferro_macros::resource_post` proc macros, exported via the `ferro` facade
-- `Validator::validate_or_redirect(&data, &url) -> Result<(), ActionError>` helper that composes with the macro
-- A `TenantResolver` trait (or the chosen shape from §1) — small surface, well-documented
-- A `TenantScoped` trait (or chosen shape from §2) — small surface
-- Reference example app or test fixture showing the macros in use
-- Rustdoc with `cargo expand` walkthroughs for the two non-trivial expansions
-- ferro CHANGELOG entry + version bump (workspace 0.2.54 → 0.2.55 at minimum)
-
-## Paired consumer phase
-
-`gestiscilo-it/app` Phase 202 (consumer-side adoption sweep) ships independently of 212 — it adopts the EXISTING ferro APIs (`param_as`, `into_action_error`, `tenant_resource_or_404` helper) and doesn't depend on the macros. After 212 publishes, an optional Phase 202b in gestiscilo adopts the macros on top of the cleaned-up consumer code. The split lets the boilerplate-removal value ship fast and decouples it from the proc-macro design timeline.
-
-## Next step
-
-`/gsd-discuss-phase 212` (run inside the ferro repo) to lock the seven open questions in §"Open design questions". Plan-phase follows discuss-phase.
+*Phase: 212-crud-handler-proc-macros*
+*Context gathered: 2026-06-13*
