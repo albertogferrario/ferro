@@ -2982,7 +2982,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 ## Phases
 
-- [ ] **Phase 217: Tenant Context + Per-Tenant API-Key Auth** — Extend `McpContext` to embed `BaseContext` (`tenant_id` + `evaluated_guards`) and add SHA-256 API-key validation branch alongside the existing OAuth JWT path; both resolve to the same `BearerCheck::Authenticated(principal)` outcome; API key carries an explicit scope field (`read` / `read_write`).
+- [x] **Phase 217: Tenant Context + Per-Tenant API-Key Auth** — Extend `McpContext` to embed `BaseContext` (`tenant_id` + `evaluated_guards`) and add SHA-256 API-key validation branch alongside the existing OAuth JWT path; both resolve to the same `BearerCheck::Authenticated(principal)` outcome; API key carries an explicit scope field (`read` / `read_write`). (completed 2026-06-13)
 - [ ] **Phase 218: Write-Tool Rendering from ActionDef** — Extend `McpRenderer` and `build_input_schema` to derive one MCP write tool per `ActionDef`; guard-filtered via `ctx.evaluated_guards`; `destructiveHint` / `idempotentHint` annotations derived from `ActionDef` attributes; Phase 205 `CallToolResult::structured` regression test extended to cover every new tool.
 - [ ] **Phase 219: Write Dispatch** — New `dispatch_write()` / `handle_write_call()` mirroring the read dispatch: tenant-scoped and fail-closed, guard re-evaluated server-side at execution (not advisory), idempotency-key parameter on every write tool, audit log entry per call, typed `CallToolResult::structured` result.
 - [ ] **Phase 220: Confirmation Gating for Destructive Actions** — Wrap write dispatch with `ferro-ai::ConfirmationStore` behind a feature flag; synthesize a stable `confirm_<action>` tool per destructive action; configurable TTL (5–10 min via `McpServerConfig`); unconfirmed, expired, or mismatched attempts do not mutate data.
@@ -3004,7 +3004,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   - [x] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
   - [x] 217-01-PLAN.md — ferro-mcp-oauth: mcp_api_keys migration + generate_mcp_api_key + validate_api_key (GREEN oauth unit tests)
   - [x] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
-  - [ ] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
+  - [x] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
 
 ### Phase 218: Write-Tool Rendering from ActionDef
 **Goal**: Each `ServiceDef`'s guarded actions are projected into MCP write tools visible in `tools/list`, derived purely from `ActionDef` — no hand-authored tool definitions.
@@ -3059,7 +3059,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 217. Tenant Context + Per-Tenant API-Key Auth | 3/4 | In Progress|  |
+| 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete   | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 0/TBD | Not started | - |
 | 219. Write Dispatch | 0/TBD | Not started | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
@@ -3098,7 +3098,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 ---
 

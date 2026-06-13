@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
-status: executing
-stopped_at: "Completed 217-02-PLAN.md (McpContext threading + GREEN SC#3/SC#5 tests)"
-last_updated: "2026-06-13T19:09:25.839Z"
+status: verifying
+stopped_at: Completed 217-03-PLAN.md (publish ordering, docs, CI gate — Phase 217 DONE)
+last_updated: "2026-06-13T19:27:25.129Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 101
-  completed_phases: 89
+  completed_phases: 90
   total_plans: 372
-  completed_plans: 370
-  percent: 99
+  completed_plans: 371
+  percent: 100
 ---
 
 # Project State
@@ -31,7 +31,7 @@ Plan: 4 of 4
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Progress: v15.0 — 0/5 phases. v14.0 ✅ shipped (215–216, 0.2.58).
 
@@ -99,6 +99,7 @@ Progress: [██████████] 100%
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
 | Phase 217-tenant-context-per-tenant-api-key-auth P01 | 8 | 2 tasks | 3 files |
 | Phase 217-tenant-context-per-tenant-api-key-auth P02 | 5 | 2 tasks | 1 files |
+| Phase 217-tenant-context-per-tenant-api-key-auth P03 | 15 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -141,7 +142,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-13T19:09:25.825Z
-Stopped at: Completed 217-02-PLAN.md (McpContext threading + GREEN SC#3/SC#5 tests)
+Last session: 2026-06-13T19:27:25.120Z
+Stopped at: Completed 217-03-PLAN.md (publish ordering, docs, CI gate — Phase 217 DONE)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
