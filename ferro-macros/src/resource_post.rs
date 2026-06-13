@@ -203,6 +203,10 @@ fn parse_resource_post_attrs(attr: TokenStream) -> Result<ResourcePostAttrs, syn
 }
 
 /// Validate `{placeholder}` tokens in a URL string.
+///
+/// Recognized names are `"id"` and the resource param name. An unterminated `{`
+/// with no closing `}` is rejected — it would produce a malformed `format!` string
+/// in the generated code if accepted silently.
 fn validate_url_placeholders(
     url: &str,
     resource_param_name: &str,
@@ -223,6 +227,12 @@ fn validate_url_placeholders(
                 }
                 i = start + end_off + 1;
                 continue;
+            } else {
+                // `{` with no matching `}` — unterminated placeholder.
+                return Err(format!(
+                    "#[resource_post]: unterminated `{{` placeholder in `{context}` — \
+                     missing closing `}}`"
+                ));
             }
         }
         i += 1;
@@ -372,11 +382,22 @@ pub fn resource_post_impl(attr: TokenStream, input: TokenStream) -> TokenStream 
 
     // Build tenant resolution code
     let tenant_resolution = if let Some(ref expr_str) = attrs.tenant_expr {
-        let expr: proc_macro2::TokenStream = expr_str.parse().unwrap_or_else(|_| {
-            quote! { compile_error!("#[resource_post]: `tenant` expression failed to parse") }
-        });
+        // Escape hatch: bind WITHOUT an explicit type annotation so type inference yields
+        // the owned TenantContext the caller's expression returns — mirroring the default arm.
+        // The delegation site does `&__tenant`, which then correctly produces `&TenantContext`.
+        let expr: proc_macro2::TokenStream = match expr_str.parse() {
+            Ok(ts) => ts,
+            Err(_) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    "#[resource_post]: `tenant` expression failed to parse",
+                )
+                .to_compile_error()
+                .into();
+            }
+        };
         quote! {
-            let __tenant: #tenant_ty = { #expr };
+            let __tenant = { #expr };
         }
     } else {
         quote! {
@@ -387,9 +408,17 @@ pub fn resource_post_impl(attr: TokenStream, input: TokenStream) -> TokenStream 
 
     // Build tenant-scoped lookup (load-bearing: always passes tenant.id — T-212-01)
     let lookup = if let Some(ref find_path_str) = attrs.find_fn {
-        let find_path: proc_macro2::TokenStream = find_path_str.parse().unwrap_or_else(|_| {
-            quote! { compile_error!("#[resource_post]: `find` path failed to parse") }
-        });
+        let find_path: proc_macro2::TokenStream = match find_path_str.parse() {
+            Ok(ts) => ts,
+            Err(_) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    "#[resource_post]: `find` path failed to parse",
+                )
+                .to_compile_error()
+                .into();
+            }
+        };
         quote! {
             let __resource_opt = #find_path(__resource_id, __tenant.id).await
                 .map_err(|_| #ferro::HttpResponse::new().status(500))?;
@@ -411,7 +440,7 @@ pub fn resource_post_impl(attr: TokenStream, input: TokenStream) -> TokenStream 
             quote! {
                 None => {
                     return Err(#ferro::HttpResponse::new()
-                        .status(302)
+                        .status(303)
                         .header("Location", #url));
                 }
             }
@@ -420,7 +449,7 @@ pub fn resource_post_impl(attr: TokenStream, input: TokenStream) -> TokenStream 
                 None => {
                     let __miss_url = format!(#fmt, #(#args),*);
                     return Err(#ferro::HttpResponse::new()
-                        .status(302)
+                        .status(303)
                         .header("Location", &__miss_url));
                 }
             }

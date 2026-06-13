@@ -157,7 +157,9 @@ fn parse_resource_get_attrs(attr: TokenStream) -> Result<ResourceGetAttrs, syn::
 /// Validate `{placeholder}` tokens in a URL string.
 ///
 /// Recognized names are `"id"` and the resource param name. Any unknown
-/// placeholder emits `compile_error!`.
+/// placeholder emits a compile error. An unterminated `{` with no closing `}`
+/// is also rejected — it is almost always a typo and would produce a malformed
+/// `format!` string in the generated code if accepted silently.
 fn validate_url_placeholders(
     url: &str,
     resource_param_name: &str,
@@ -178,6 +180,12 @@ fn validate_url_placeholders(
                 }
                 i = start + end_off + 1;
                 continue;
+            } else {
+                // `{` with no matching `}` — unterminated placeholder.
+                return Err(format!(
+                    "#[resource_get]: unterminated `{{` placeholder in `{context}` — \
+                     missing closing `}}`"
+                ));
             }
         }
         i += 1;
@@ -328,12 +336,23 @@ pub fn resource_get_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     // Build tenant resolution code
     let tenant_resolution = if let Some(ref expr_str) = attrs.tenant_expr {
-        // Escape hatch: emit the expression verbatim in a block
-        let expr: proc_macro2::TokenStream = expr_str.parse().unwrap_or_else(|_| {
-            quote! { compile_error!("#[resource_get]: `tenant` expression failed to parse") }
-        });
+        // Escape hatch: emit the expression verbatim in a block.
+        // Bind WITHOUT an explicit type annotation so type inference yields the owned
+        // TenantContext the caller's expression returns — mirroring the default arm.
+        // The delegation site does `&__tenant`, which then correctly produces `&TenantContext`.
+        let expr: proc_macro2::TokenStream = match expr_str.parse() {
+            Ok(ts) => ts,
+            Err(_) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    "#[resource_get]: `tenant` expression failed to parse",
+                )
+                .to_compile_error()
+                .into();
+            }
+        };
         quote! {
-            let __tenant: #tenant_ty = { #expr };
+            let __tenant = { #expr };
         }
     } else {
         // Default: current_tenant() (D-01)
@@ -345,9 +364,17 @@ pub fn resource_get_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     // Build tenant-scoped lookup code (load-bearing: always passes tenant.id)
     let lookup = if let Some(ref find_path_str) = attrs.find_fn {
-        let find_path: proc_macro2::TokenStream = find_path_str.parse().unwrap_or_else(|_| {
-            quote! { compile_error!("#[resource_get]: `find` path failed to parse") }
-        });
+        let find_path: proc_macro2::TokenStream = match find_path_str.parse() {
+            Ok(ts) => ts,
+            Err(_) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    "#[resource_get]: `find` path failed to parse",
+                )
+                .to_compile_error()
+                .into();
+            }
+        };
         quote! {
             let __resource_opt = #find_path(__resource_id, __tenant.id).await
                 .map_err(|_| #ferro::HttpResponse::new().status(500))?;
@@ -417,7 +444,6 @@ pub fn resource_get_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
             #inner_fn_name(&mut __ferro_req, &__tenant, &__resource).await
         }
 
-        #(#fn_attrs)*
         async fn #inner_fn_name #fn_generics(
             req: &mut #ferro::Request,
             #tenant_pat: #tenant_ty,
