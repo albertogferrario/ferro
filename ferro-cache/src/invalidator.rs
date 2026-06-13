@@ -149,11 +149,19 @@ mod tests {
 
         cache
             .tags(&["business:1:product:7"])
-            .put("availability:foo", &"slot-grid-blob", Duration::from_secs(60))
+            .put(
+                "availability:foo",
+                &"slot-grid-blob",
+                Duration::from_secs(60),
+            )
             .await
             .unwrap();
         assert!(
-            cache.tags(&["business:1:product:7"]).has("availability:foo").await.unwrap(),
+            cache
+                .tags(&["business:1:product:7"])
+                .has("availability:foo")
+                .await
+                .unwrap(),
             "precondition: entry exists before invalidator runs"
         );
 
@@ -202,14 +210,25 @@ mod tests {
             vec![format!("business:1:product:{}", e.product)]
         });
 
-        EvtFlushNonMatching { product: 99 }.dispatch().await.unwrap();
+        EvtFlushNonMatching { product: 99 }
+            .dispatch()
+            .await
+            .unwrap();
 
         assert!(
-            cache.tags(&["business:1:product:7"]).has("a").await.unwrap(),
+            cache
+                .tags(&["business:1:product:7"])
+                .has("a")
+                .await
+                .unwrap(),
             "unrelated tag must survive"
         );
         assert!(
-            !cache.tags(&["business:1:product:99"]).has("b").await.unwrap(),
+            !cache
+                .tags(&["business:1:product:99"])
+                .has("b")
+                .await
+                .unwrap(),
             "matching tag must be evicted"
         );
     }

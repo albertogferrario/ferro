@@ -6,7 +6,9 @@
 use ferro::serde_json::{json, Value};
 use ferro::ServiceDef;
 use ferro::{handler, HttpResponse, Request, Response};
-use ferro_mcp_server::{handle_initialize, handle_tools_call, handle_tools_list, McpServerConfig};
+use ferro_mcp_server::{
+    handle_initialize, handle_tools_call, handle_tools_list, McpContext, McpServerConfig,
+};
 
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
@@ -88,7 +90,7 @@ pub async fn handle(req: Request) -> Response {
 
     let mut payload = match method {
         "initialize" => handle_initialize(params, &config).await,
-        "tools/list" => handle_tools_list(&exposed_services(), &config).await,
+        "tools/list" => handle_tools_list(&exposed_services(), &McpContext::default(), &config).await,
         "tools/call" => {
             let db = ferro::DB::connection().map_err(|e| {
                 HttpResponse::json(json!({
@@ -153,7 +155,7 @@ pub async fn handle(req: Request) -> Response {
 
             // Allowed — forward tenant context to dispatch (SC-1).
             let tenant_id = ferro::current_tenant().map(|t| t.id);
-            handle_tools_call(params, &services, db.inner(), tenant_id).await
+            handle_tools_call(params, &services, db.inner(), tenant_id, &McpContext::default()).await
         }
         _ => json!({ "error": { "code": -32601, "message": "Method not found" } }),
     };

@@ -14,7 +14,7 @@ mod tests {
         DbTenantLookup, JwtClaimResolver, Middleware, Next, TenantContext, TenantFailureMode,
         TenantMiddleware, TenantResolver,
     };
-    use ferro_mcp_server::handle_tools_call;
+    use ferro_mcp_server::{handle_tools_call, McpContext};
     use sea_orm::{ActiveModelTrait, ActiveValue::Set, Database, DatabaseConnection};
     use sea_orm_migration::prelude::*;
     use std::sync::Arc;
@@ -251,7 +251,7 @@ mod tests {
         // Call dispatch with the resolved tenant_id (mirrors handler's current_tenant().map(|t| t.id)).
         let call_params = json!({"name": "list_order", "arguments": {"limit": 10}});
         let services = vec![order_service()];
-        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id)).await;
+        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id), &McpContext::default()).await;
 
         // Post-fix envelope: content is a valid text block, rows live in structuredContent.
         let content = result["result"]["content"]
@@ -312,7 +312,7 @@ mod tests {
 
         let call_params = json!({"name": "list_order", "arguments": {"limit": 10}});
         let services = vec![order_service()];
-        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id)).await;
+        let result = handle_tools_call(call_params, &services, &db, Some(tenant_ctx.id), &McpContext::default()).await;
 
         // Post-fix envelope: content is a valid text block, rows live in structuredContent.
         let content = result["result"]["content"]
