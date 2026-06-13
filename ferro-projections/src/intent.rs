@@ -35,6 +35,24 @@ pub enum Intent {
     Custom(String),
 }
 
+impl Intent {
+    /// Stable, lowercase string label for this intent, decoupled from
+    /// `#[derive(Debug)]`. Known variants return the same snake_case string
+    /// serde produces; `Custom(s)` returns `s.as_str()`.
+    pub fn label(&self) -> &str {
+        match self {
+            Intent::Browse => "browse",
+            Intent::Focus => "focus",
+            Intent::Collect => "collect",
+            Intent::Process => "process",
+            Intent::Summarize => "summarize",
+            Intent::Analyze => "analyze",
+            Intent::Track => "track",
+            Intent::Custom(s) => s.as_str(),
+        }
+    }
+}
+
 /// A scored intent with confidence and the structural signals that contributed.
 ///
 /// Produced by the structural analysis engine (Phase 89). Confidence ranges
@@ -292,5 +310,23 @@ mod tests {
         assert_ne!(Intent::Browse, Intent::Custom("browse".into()));
         assert_ne!(Intent::Focus, Intent::Custom("focus".into()));
         assert_ne!(Intent::Track, Intent::Custom("track".into()));
+    }
+
+    // -- Intent::label() --
+
+    #[test]
+    fn intent_label_known_variants() {
+        assert_eq!(Intent::Browse.label(), "browse");
+        assert_eq!(Intent::Focus.label(), "focus");
+        assert_eq!(Intent::Collect.label(), "collect");
+        assert_eq!(Intent::Process.label(), "process");
+        assert_eq!(Intent::Summarize.label(), "summarize");
+        assert_eq!(Intent::Analyze.label(), "analyze");
+        assert_eq!(Intent::Track.label(), "track");
+    }
+
+    #[test]
+    fn intent_label_custom_returns_inner_string() {
+        assert_eq!(Intent::Custom("reporting".into()).label(), "reporting");
     }
 }
