@@ -2858,7 +2858,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 212. CRUD Handler Proc Macros | 3/3 | Complete   | 2026-06-13 |
+| 212. CRUD Handler Proc Macros | 3/3 | Complete    | 2026-06-13 |
 
 #### Phase Details
 

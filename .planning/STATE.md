@@ -4,7 +4,7 @@ milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
 status: verifying
 stopped_at: Completed 212-crud-handler-proc-macros/212-03-PLAN.md
-last_updated: "2026-06-13T05:41:38.103Z"
+last_updated: "2026-06-13T06:06:22.543Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 95
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Milestone: v13.1 CRUD Handler Proc Macros — 🚧 ACTIVE (2026-06-13). [v13.0 Compressive Validation ✅ complete (207–211); v13.2 Render Completeness ✅ SHIPPED 0.2.55; v13.3 Scaffold↔Library Parity ✅ complete (214)]
-Phase: 212 (crud-handler-proc-macros) — EXECUTING
-Plan: 3 of 3
+Phase: 212
+Plan: Not started
 Next: /gsd-discuss-phase 212
 Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
 Status: Phase complete — ready for verification
@@ -91,7 +91,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 352
+- Total plans completed: 355
 - Average duration: —
 - Total execution time: —
 
@@ -158,6 +158,7 @@ Progress: [██████████] 100%
 | 210 | 4 | - | - |
 | 211 | 2 | - | - |
 | 214 | 2 | - | - |
+| 212 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 108-p0-accuracy-fixes P01 | 3 | 1 tasks | 3 files |
