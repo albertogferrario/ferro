@@ -881,3 +881,456 @@ async fn smoke_in_process_rmcp_duplex() {
 
     client.cancel().await.ok();
 }
+
+// ---------------------------------------------------------------------------
+// Wave 3: Agent tool-use loop + gated live eval test.
+//
+// The live test is #[ignore] + FERRO_AGENT_EVAL=1-gated. Default `cargo test`
+// with no env vars skips it entirely (no API key, no network, no LLM cost).
+// The actual baseline-producing run is Wave 4 (autonomous: false).
+// ---------------------------------------------------------------------------
+
+use ferro_ai::client::{AnthropicClient, CompletionRequest, CompletionResponse, LlmClient,
+                       Message, Role, ToolChoice, ToolRequest as LlmToolRequest};
+
+/// Prompt version string. Increment when the system/user prompt changes to
+/// invalidate previously-committed baselines.
+const PROMPT_VERSION: &str = "v1";
+
+/// Maximum tool-use iterations per trial. Bounds LLM cost per trial.
+const MAX_ITERATIONS: usize = 8;
+
+/// Number of trials per corpus task in the live eval run.
+const TRIALS_PER_TASK: usize = 3;
+
+/// Build the 3 allowed tool definitions (D-06).
+///
+/// Tool schemas:
+/// - `generation_context`: no arguments (empty properties object).
+/// - `json_ui_catalog`: optional `component` filter string.
+/// - `checkpoint_projection`: required `name` string.
+///
+/// D-06: only these 3 read-only introspection tools are exposed to the agent.
+fn build_agent_tools() -> Vec<LlmToolRequest> {
+    vec![
+        LlmToolRequest {
+            name: "generation_context".into(),
+            description: "Returns framework conventions for authoring Ferro services: \
+                          naming rules, file structure, common patterns, and anti-patterns. \
+                          Call this first to understand the authoring context."
+                .into(),
+            parameters_schema: serde_json::json!({
+                "type": "object",
+                "properties": {}
+            }),
+        },
+        LlmToolRequest {
+            name: "json_ui_catalog".into(),
+            description: "Returns the component catalog: component types, their props schemas, \
+                          intent vocabulary, builder API, and directive reference. \
+                          Use to discover which components and intents exist, and how \
+                          to structure the ServiceDef fields for the desired intent."
+                .into(),
+            parameters_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "component": {
+                        "type": "string",
+                        "description": "Optional component name filter (case-insensitive). \
+                                        Omit to get the full catalog."
+                    }
+                }
+            }),
+        },
+        LlmToolRequest {
+            name: "checkpoint_projection".into(),
+            description: "Validates a named projection by walking its seams. \
+                          Returns a verdict with status (Pass/Warn/Fail) and next steps. \
+                          Call after writing the ServiceDef to a projection file to \
+                          verify the field→column seam and structural validity."
+                .into(),
+            parameters_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Projection function name as defined in src/projections/ \
+                                        (e.g. \"telescope_slot_service\")."
+                    }
+                },
+                "required": ["name"]
+            }),
+        },
+    ]
+}
+
+/// Build the system prompt for the agent eval.
+///
+/// The system prompt:
+/// - Provides the ServiceDef JSON schema via `schemars::schema_for!(ServiceDef)`.
+/// - Instructs the agent to use the available tools then emit a final ServiceDef JSON.
+/// - Explicitly forbids `intent_hints` (T2 disqualifier — stated before any run).
+/// - Does NOT name the target intent or use ferro intent vocabulary (contamination discipline).
+fn build_system_prompt() -> String {
+    let schema = schemars::schema_for!(ServiceDef);
+    let schema_str = serde_json::to_string_pretty(&schema)
+        .unwrap_or_else(|_| "{}".to_string());
+
+    format!(
+        "You are an expert at authoring Ferro framework service definitions (ServiceDef). \
+         Your task is to produce a valid ServiceDef JSON that accurately models the \
+         described business domain.\n\
+         \n\
+         ## ServiceDef JSON Schema\n\
+         \n\
+         ```json\n\
+         {schema_str}\n\
+         ```\n\
+         \n\
+         ## Instructions\n\
+         \n\
+         1. Use the available tools to understand the authoring context and component vocabulary.\n\
+         2. Model the described domain faithfully using appropriate field meanings, data types, \
+            relationships, actions, and guards.\n\
+         3. Do NOT include `intent_hints` in your ServiceDef — the system derives intent \
+            structurally from field meanings and state machines. Including `intent_hints` \
+            invalidates the evaluation.\n\
+         4. When you have fully explored the tools and are ready, emit your final answer as \
+            a JSON code block containing ONLY the ServiceDef JSON (no surrounding text).\n\
+         5. The ServiceDef must be complete and data-bound: fields must have meaningful \
+            `meaning` values, state machines must have real states and transitions, \
+            and the spec must pass catalog validation."
+    )
+}
+
+/// Transcript record written to disk during the live eval run.
+/// One file per corpus task, containing all trial ServiceDefs.
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct TranscriptOutput {
+    task_id: String,
+    target_intent: String,
+    model: String,
+    prompt_version: String,
+    trials: Vec<TrialOutput>,
+}
+
+/// A single trial's output in the transcript.
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+struct TrialOutput {
+    trial: u32,
+    /// The agent's final ServiceDef JSON (the scorer input for replay).
+    service_def: serde_json::Value,
+    /// Optional audit trace — tool calls made during this trial.
+    #[serde(default)]
+    tool_calls: Vec<ToolCallRecord>,
+}
+
+/// Audit record of a single tool invocation during a trial.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
+struct ToolCallRecord {
+    name: String,
+    /// Tool call input (agent-supplied arguments).
+    input: serde_json::Value,
+    /// First 200 chars of result, for audit purposes only.
+    result_summary: String,
+}
+
+/// Extract the final ServiceDef JSON from the agent's text response.
+///
+/// The agent is instructed to emit a JSON code block. This function strips
+/// optional ```json ... ``` fences and parses the inner JSON. Falls back to
+/// attempting to parse the raw text as JSON if no fence is found.
+fn extract_service_def_json(text: &str) -> Option<serde_json::Value> {
+    // Try to extract content from a ```json ... ``` fence.
+    let fenced = text
+        .split("```json")
+        .nth(1)
+        .and_then(|s| s.split("```").next())
+        .map(str::trim);
+
+    // If no ```json fence, try plain ``` fence.
+    let fenced = fenced.or_else(|| {
+        text.split("```")
+            .nth(1)
+            .map(str::trim)
+    });
+
+    // Parse whichever we found, or fall back to the raw text.
+    let candidate = fenced.unwrap_or(text.trim());
+    serde_json::from_str(candidate).ok()
+}
+
+/// Run a single agent trial: multi-turn tool-use loop returning the final
+/// ServiceDef JSON emitted by the agent.
+///
+/// History reconstruction rule (mod.rs ToolUse doc-comment):
+/// Push `Message{role: Assistant, content: assistant_content}` FIRST before
+/// appending `Message{role: Tool, content: result, tool_call_id: Some(block.id)}`.
+///
+/// Iterations are capped at `MAX_ITERATIONS` to bound LLM cost.
+async fn run_agent_trial(
+    llm: &AnthropicClient,
+    rmcp_client: &rmcp::service::RunningService<RoleClient, ()>,
+    task_description: &str,
+    project_root: &std::path::Path,
+) -> (serde_json::Value, Vec<ToolCallRecord>) {
+    let _ = project_root; // Reserved for future checkpoint_projection calls with a real project.
+
+    let tools = build_agent_tools();
+    let system = build_system_prompt();
+
+    let mut messages: Vec<Message> = vec![Message {
+        role: Role::User,
+        content: format!(
+            "Please author a ServiceDef JSON for the following business domain:\n\n{task_description}"
+        ),
+        tool_call_id: None,
+    }];
+
+    let mut tool_calls_log: Vec<ToolCallRecord> = Vec::new();
+
+    for _iteration in 0..MAX_ITERATIONS {
+        let request = CompletionRequest {
+            system: Some(system.clone()),
+            messages: messages.clone(),
+            max_tokens: 4096,
+            model_override: Some("claude-opus-4-8".into()),
+            schema: None,
+            tools: Some(tools.clone()),
+            tool_choice: Some(ToolChoice::Auto),
+        };
+
+        let response = match llm.complete_with_tools(request).await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("complete_with_tools error: {e}");
+                return (serde_json::Value::Null, tool_calls_log);
+            }
+        };
+
+        match response {
+            CompletionResponse::Text(text) => {
+                // Final answer — extract ServiceDef JSON and return.
+                let service_def = extract_service_def_json(&text)
+                    .unwrap_or(serde_json::Value::Null);
+                return (service_def, tool_calls_log);
+            }
+            CompletionResponse::ToolUse { blocks, assistant_content } => {
+                // Push the assistant's turn BEFORE appending tool results.
+                messages.push(Message {
+                    role: Role::Assistant,
+                    content: assistant_content,
+                    tool_call_id: None,
+                });
+
+                // Dispatch each tool call through the in-process rmcp client.
+                for block in &blocks {
+                    // D-06: only the 3 allowed tools are dispatched here.
+                    let result_text =
+                        call_dev_tool(rmcp_client, &block.name, block.input.clone()).await;
+
+                    // Audit log (result_summary truncated — never logs the API key).
+                    tool_calls_log.push(ToolCallRecord {
+                        name: block.name.clone(),
+                        input: block.input.clone(),
+                        result_summary: result_text.chars().take(200).collect(),
+                    });
+
+                    messages.push(Message {
+                        role: Role::Tool,
+                        content: result_text,
+                        tool_call_id: Some(block.id.clone()),
+                    });
+                }
+            }
+        }
+    }
+
+    // Iteration cap reached without a Text response.
+    eprintln!("run_agent_trial: iteration cap ({MAX_ITERATIONS}) reached without final answer");
+    (serde_json::Value::Null, tool_calls_log)
+}
+
+/// Live agent eval — refreshes transcript and baseline artifacts.
+///
+/// Gated behind `FERRO_AGENT_EVAL=1` (env) AND `#[ignore]` so default
+/// `cargo test` / CI skips this entirely (no API key, no network, no LLM cost).
+///
+/// Run with:
+/// ```
+/// FERRO_AGENT_EVAL=1 FERRO_AI_API_KEY=sk-ant-... \
+///   cargo test -p ferro-mcp --test agent_harness \
+///   -- --ignored --nocapture agent_eval_live_refresh_baseline
+/// ```
+///
+/// Outputs written to `ferro-mcp/tests/fixtures/agent_harness/`:
+/// - `transcripts/<task_id>.json` — per-task trial records.
+/// - `baseline.json` — model, prompt_version, per-tier rates.
+///
+/// The API key is sourced from `FERRO_AI_API_KEY` / `ANTHROPIC_API_KEY` only.
+/// It is NEVER logged, printed, or written into any transcript or baseline file
+/// (T-210-08 mitigation).
+#[tokio::test]
+#[ignore = "live LLM eval; run with FERRO_AGENT_EVAL=1 and FERRO_AI_API_KEY set"]
+async fn agent_eval_live_refresh_baseline() {
+    if std::env::var("FERRO_AGENT_EVAL").is_err() {
+        eprintln!("skipping: set FERRO_AGENT_EVAL=1 to run live eval");
+        return;
+    }
+
+    // Source API key from env only — never log it, never write it to any file.
+    let api_key = std::env::var("FERRO_AI_API_KEY")
+        .or_else(|_| std::env::var("ANTHROPIC_API_KEY"))
+        .expect("FERRO_AI_API_KEY or ANTHROPIC_API_KEY must be set for live eval");
+
+    let llm = AnthropicClient::new(api_key, Some("claude-opus-4-8".into()));
+
+    // Use workspace root as the project root for the in-process MCP tools.
+    let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("ferro-mcp has a parent workspace dir")
+        .to_path_buf();
+
+    // Load corpus.
+    let corpus_raw = include_str!("fixtures/agent_harness/corpus.json");
+    let corpus: Vec<CorpusTask> =
+        serde_json::from_str(corpus_raw).expect("corpus.json must be valid JSON");
+
+    // Transcript output directory.
+    let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let transcripts_dir = manifest_dir
+        .join("tests/fixtures/agent_harness/transcripts");
+    std::fs::create_dir_all(&transcripts_dir)
+        .expect("transcript dir creation must succeed");
+
+    // Baseline accumulation.
+    // tier_pass_counts[t] = number of (task × trial) pairs passing tier t (0-indexed).
+    let mut tier_pass_counts = [0u32; 4];
+    let mut total_trials = 0u32;
+    let mut per_intent: std::collections::HashMap<String, [u32; 5]> =
+        std::collections::HashMap::new(); // [t1,t2,t3,t4,count] per intent
+
+    for task in &corpus {
+        eprintln!("=== Task: {} (target: {}) ===", task.id, task.target_intent);
+
+        // Parse target intent (PascalCase in corpus → snake_case for scorer).
+        let target_intent: Intent = serde_json::from_value(
+            serde_json::Value::String(task.target_intent.to_lowercase())
+        ).unwrap_or_else(|_| {
+            // Fallback: try PascalCase directly (serde rename may handle it).
+            serde_json::from_value(serde_json::Value::String(task.target_intent.clone()))
+                .expect("target_intent must be a valid Intent variant")
+        });
+
+        // Stand up a fresh in-process rmcp client for each task.
+        let rmcp_client = spawn_in_process_client(project_root.clone()).await;
+
+        let mut trial_outputs: Vec<TrialOutput> = Vec::new();
+        let entry = per_intent.entry(task.target_intent.clone()).or_insert([0u32; 5]);
+
+        for trial_idx in 0..TRIALS_PER_TASK {
+            eprintln!("  Trial {}/{TRIALS_PER_TASK}...", trial_idx + 1);
+
+            let (service_def_json, tool_calls) =
+                run_agent_trial(&llm, &rmcp_client, &task.description, &project_root).await;
+
+            // Score the trial.
+            let result = score(&service_def_json, target_intent.clone()).await;
+            eprintln!(
+                "    T1={} T2={} T3={} T4={}",
+                result.t1, result.t2, result.t3, result.t4
+            );
+
+            // Accumulate.
+            if result.t1 { tier_pass_counts[0] += 1; entry[0] += 1; }
+            if result.t2 { tier_pass_counts[1] += 1; entry[1] += 1; }
+            if result.t3 { tier_pass_counts[2] += 1; entry[2] += 1; }
+            if result.t4 { tier_pass_counts[3] += 1; entry[3] += 1; }
+            entry[4] += 1;
+            total_trials += 1;
+
+            trial_outputs.push(TrialOutput {
+                trial: trial_idx as u32,
+                service_def: service_def_json,
+                tool_calls,
+            });
+        }
+
+        rmcp_client.cancel().await.ok();
+
+        // Write per-task transcript.
+        let transcript = TranscriptOutput {
+            task_id: task.id.clone(),
+            target_intent: task.target_intent.clone(),
+            model: "claude-opus-4-8".into(),
+            prompt_version: PROMPT_VERSION.into(),
+            trials: trial_outputs,
+        };
+        let transcript_path = transcripts_dir.join(format!("{}.json", task.id));
+        let transcript_json = serde_json::to_string_pretty(&transcript)
+            .expect("transcript serialization must succeed");
+        std::fs::write(&transcript_path, &transcript_json)
+            .expect("transcript write must succeed");
+        eprintln!("  Wrote transcript: {}", transcript_path.display());
+    }
+
+    // Compute per-tier pass rates (fractional — stored as pass counts + total for
+    // exact replay assertion).
+    let t1_rate = tier_pass_counts[0] as f64 / total_trials as f64;
+    let t2_rate = tier_pass_counts[1] as f64 / total_trials as f64;
+    let t3_rate = tier_pass_counts[2] as f64 / total_trials as f64;
+    let t4_rate = tier_pass_counts[3] as f64 / total_trials as f64;
+
+    eprintln!(
+        "\n=== Baseline ===\nT1={t1_rate:.2} T2={t2_rate:.2} T3={t3_rate:.2} T4={t4_rate:.2} (n={total_trials})"
+    );
+
+    // Build per-intent breakdown.
+    let per_intent_rates: std::collections::HashMap<String, serde_json::Value> = per_intent
+        .iter()
+        .map(|(intent, counts)| {
+            let n = counts[4] as f64;
+            let rates = serde_json::json!({
+                "t1": counts[0] as f64 / n,
+                "t2": counts[1] as f64 / n,
+                "t3": counts[2] as f64 / n,
+                "t4": counts[3] as f64 / n,
+                "trials": counts[4],
+            });
+            (intent.clone(), rates)
+        })
+        .collect();
+
+    // Write baseline artifact. Stores integer pass counts alongside fractions
+    // so replay assertions can use exact equality on counts rather than floats.
+    let now = chrono::Utc::now().to_rfc3339();
+    let baseline = serde_json::json!({
+        "model": "claude-opus-4-8",
+        "prompt_version": PROMPT_VERSION,
+        "generated_at": now,
+        "tasks": corpus.len(),
+        "trials_per_task": TRIALS_PER_TASK,
+        "total_trials": total_trials,
+        "tier_pass_counts": {
+            "t1": tier_pass_counts[0],
+            "t2": tier_pass_counts[1],
+            "t3": tier_pass_counts[2],
+            "t4": tier_pass_counts[3],
+        },
+        "tier_rates": {
+            "t1": t1_rate,
+            "t2": t2_rate,
+            "t3": t3_rate,
+            "t4": t4_rate,
+        },
+        "per_intent": per_intent_rates,
+    });
+
+    let baseline_path = manifest_dir
+        .join("tests/fixtures/agent_harness/baseline.json");
+    let baseline_json =
+        serde_json::to_string_pretty(&baseline).expect("baseline serialization must succeed");
+    std::fs::write(&baseline_path, &baseline_json)
+        .expect("baseline write must succeed");
+    eprintln!("Wrote baseline: {}", baseline_path.display());
+}
