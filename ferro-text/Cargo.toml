@@ -1,0 +1,17 @@
+[package]
+name = "ferro-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Conversational-text renderer for Ferro service projections"
+repository = "https://github.com/albertogferrario/ferro"
+homepage = "https://ferro-rs.dev"
+readme = "README.md"
+keywords = ["text", "renderer", "projections", "ferro"]
+categories = ["web-programming", "web-programming::http-server"]
+
+[dependencies]
+ferro-projections = { path = "../ferro-projections", version = "0.2" }
+
+[dev-dependencies]
+insta = { version = "1", features = ["yaml"] }

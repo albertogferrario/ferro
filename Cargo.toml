@@ -32,6 +32,7 @@ members = [
     "ferro-bundle",
     "ferro-deployments",
     "ferro-assets",
+    "ferro-text",
 ]
 
 [workspace.package]
