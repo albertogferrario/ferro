@@ -3000,7 +3000,11 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   3. A `read`-scoped API key returns only read tools from `tools/list` and is rejected with an MCP scope error on any `tools/call` targeting a write tool.
   4. A request with an invalid or expired API key is rejected before any tool routing — identical to the existing OAuth invalid-token path.
   5. Cross-tenant isolation: a test authenticates as tenant A and asserts that no tool listing or call surfaces data owned by tenant B.
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
+  - [ ] 217-01-PLAN.md — ferro-mcp-oauth: mcp_api_keys migration + generate_mcp_api_key + validate_api_key (GREEN oauth unit tests)
+  - [ ] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
+  - [ ] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
 
 ### Phase 218: Write-Tool Rendering from ActionDef
 **Goal**: Each `ServiceDef`'s guarded actions are projected into MCP write tools visible in `tools/list`, derived purely from `ActionDef` — no hand-authored tool definitions.
