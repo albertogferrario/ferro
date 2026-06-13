@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
-status: Between phases — v13.1 active, ready to discuss Phase 212
+status: executing
 stopped_at: Phase 212 context gathered
-last_updated: "2026-06-13T04:33:34.219Z"
-last_activity: 2026-06-13
+last_updated: "2026-06-13T04:54:09.263Z"
+last_activity: 2026-06-13 -- Phase 212 planning complete
 progress:
   total_phases: 95
   completed_phases: 86
-  total_plans: 358
+  total_plans: 361
   completed_plans: 357
-  percent: 100
+  percent: 99
 ---
 
 # Project State
@@ -29,11 +29,11 @@ Phase: 212 (CRUD Handler Proc Macros) — scoped, not started
 Plan: Not started
 Next: /gsd-discuss-phase 212
 Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
-Status: Between phases — v13.1 active, ready to discuss Phase 212
+Status: Ready to execute
 
 Progress: v13.0 ✅ 5/5 (207–211); v13.2 ✅ shipped (213); v13.3 ✅ (214); v13.1 0/1 (212 next)
 
-Last activity: 2026-06-13
+Last activity: 2026-06-13 -- Phase 212 planning complete
 Workspace version: 0.2.55 (published); Phase 214 changes committed locally, not yet released
 
 Phase 206 (ferro-storage provider-agnostic STORAGE_* env vars) ✅ COMPLETE 2026-06-12 — 5 phase commits on master, all 10 SCs PASS (`cargo check -p ferro-storage --features s3` 0; `cargo test -p ferro-storage --features s3 --lib config::tests` 7/7), workspace 0.2.53 → 0.2.54, AWS_* aliases deprecated with one-release cushion. Push pending bundles 0.2.53 (CDN quartet) + 0.2.54 (STORAGE_*) in one publish wave.
