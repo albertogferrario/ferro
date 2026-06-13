@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v13.1
 milestone_name: CRUD Handler Proc Macros
-status: executing
-stopped_at: Completed 212-02-PLAN.md
-last_updated: "2026-06-13T05:20:56.414Z"
+status: verifying
+stopped_at: Completed 212-crud-handler-proc-macros/212-03-PLAN.md
+last_updated: "2026-06-13T05:41:38.103Z"
 last_activity: 2026-06-13
 progress:
   total_phases: 95
-  completed_phases: 86
+  completed_phases: 87
   total_plans: 361
-  completed_plans: 359
-  percent: 99
+  completed_plans: 360
+  percent: 100
 ---
 
 # Project State
@@ -29,7 +29,7 @@ Phase: 212 (crud-handler-proc-macros) — EXECUTING
 Plan: 3 of 3
 Next: /gsd-discuss-phase 212
 Prior: Phase 214 ✅ COMPLETE 2026-06-13 (v13.3 — scaffold↔library parity via `ferro` facade exports + corrected templates + two-layer CI guard; 10/10 verified; `ci.yml`/`publish.yml` await a manual `workflow`-scope push); Phase 213 ✅ SHIPPED 0.2.55; Phase 211 ✅ COMP-04
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Progress: v13.0 ✅ 5/5 (207–211); v13.2 ✅ shipped (213); v13.3 ✅ (214); v13.1 0/1 (212 next)
 
@@ -402,6 +402,7 @@ Progress: [██████████] 100%
 | Phase 214 P02 | 90m | 3 tasks | 12 files |
 | Phase 212 P01 | 276s | 2 tasks | 4 files |
 | Phase 212-crud-handler-proc-macros P02 | 17 | 3 tasks | 13 files |
+| Phase 212-crud-handler-proc-macros P03 | 25 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -448,7 +449,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-13T05:20:56.405Z
-Stopped at: Completed 212-02-PLAN.md
+Last session: 2026-06-13T05:41:38.096Z
+Stopped at: Completed 212-crud-handler-proc-macros/212-03-PLAN.md
 Resume file: None
 Next action: `/gsd-discuss-phase 212` to begin v13.1 CRUD Handler Proc Macros (the active milestone). Alternatively `/gsd-complete-milestone` to formally archive the completed v13.0/v13.2/v13.3 work first. Operator: push the local Phase 214 commits (incl. `ci.yml`/`publish.yml`, which need a manual `workflow`-scope push) before the next release.

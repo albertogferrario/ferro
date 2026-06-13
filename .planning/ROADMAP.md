@@ -2854,11 +2854,11 @@ Plans:
 
 #### Phases
 
-- [ ] **Phase 212: CRUD Handler Proc Macros** — `#[resource_get]` + `#[resource_post]` proc macros (tenant + typed-param + tenant-scoped-lookup + 404 prelude), `Validator::validate_or_redirect` helper, `TenantResolver` / `TenantScoped` traits, reference fixture, `cargo expand` rustdoc. Seven open design questions to lock in discuss-phase. Paired (optional, post-publish) with gestiscilo Phase 202b adoption.
+- [x] **Phase 212: CRUD Handler Proc Macros** — `#[resource_get]` + `#[resource_post]` proc macros (tenant + typed-param + tenant-scoped-lookup + 404 prelude), `Validator::validate_or_redirect` helper, `TenantResolver` / `TenantScoped` traits, reference fixture, `cargo expand` rustdoc. Seven open design questions to lock in discuss-phase. Paired (optional, post-publish) with gestiscilo Phase 202b adoption. (completed 2026-06-13)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 212. CRUD Handler Proc Macros | 2/3 | In Progress|  |
+| 212. CRUD Handler Proc Macros | 3/3 | Complete   | 2026-06-13 |
 
 #### Phase Details
 
@@ -2872,10 +2872,10 @@ Plans:
 
 **Status:** Planned — 3 plans across 3 waves. Execute with `/gsd-execute-phase 212`.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 212-01-PLAN.md — Foundations: `Validator::validate_or_redirect` (CRUD-03) + `TenantScoped` trait (CRUD-04) + unit tests (Wave 1, no deps)
 - [x] 212-02-PLAN.md — Proc macros: `#[resource_get]` + `#[resource_post]` + trybuild harness/fixtures + facade re-exports (CRUD-01, CRUD-02, CRUD-05) (Wave 2, depends_on 01)
-- [ ] 212-03-PLAN.md — Reference + release: dual-macro reference fixture + cargo-expand rustdoc + CHANGELOG + version bump 0.2.56 (CRUD-06) (Wave 3, depends_on 02)
+- [x] 212-03-PLAN.md — Reference + release: dual-macro reference fixture + cargo-expand rustdoc + CHANGELOG + version bump 0.2.56 (CRUD-06) (Wave 3, depends_on 02)
 
 ## 📋 v13.2 Projection Render Completeness (Phase 213, scoped 2026-06-12)
 
