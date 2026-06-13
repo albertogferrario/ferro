@@ -3017,7 +3017,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   4. `ToolAnnotations` carry `readOnlyHint: false` and `destructiveHint` derived from `ActionDef` attributes (not inferred per-tool in the renderer).
   5. The Phase 205 `CallToolResult` strict-deserialization regression test is extended to cover every write-path tool introduced in this phase.
 **Plans**: 3 plans
-- [ ] 218-00-PLAN.md — Wave 0 RED tests (schema + renderer + SC#5 strict-deser)
+- [x] 218-00-PLAN.md — Wave 0 RED tests (schema + renderer + SC#5 strict-deser)
 - [ ] 218-01-PLAN.md — build_action_input_schema (Identifier injection, Sensitive exclusion)
 - [ ] 218-02-PLAN.md — render_action_tool + collision pass + SC#5 GREEN + CI gate
 
@@ -3063,7 +3063,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
-| 218. Write-Tool Rendering from ActionDef | 0/TBD | Not started | - |
+| 218. Write-Tool Rendering from ActionDef | 1/3 | In Progress|  |
 | 219. Write Dispatch | 0/TBD | Not started | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
@@ -3101,7 +3101,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 4/4 plans complete
+**Plans:** 1/3 plans executed
 
 ---
 

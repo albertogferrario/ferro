@@ -15,7 +15,7 @@
 
 ### Write Tools
 
-- [ ] **AMCP-03**: Each `ServiceDef`'s guarded actions are projected into MCP write tools (input schema derived from `ActionDef` inputs), exposed in `tools/list` only when the tenant's guards for that action pass, and annotated for the agent (read-only vs destructive). Tool definitions are derived purely from `ServiceDef` — no hand-authored per-tool surface.
+- [x] **AMCP-03**: Each `ServiceDef`'s guarded actions are projected into MCP write tools (input schema derived from `ActionDef` inputs), exposed in `tools/list` only when the tenant's guards for that action pass, and annotated for the agent (read-only vs destructive). Tool definitions are derived purely from `ServiceDef` — no hand-authored per-tool surface.
 - [ ] **AMCP-04**: An agent can create, update, or state-transition a record by invoking a write tool; execution is tenant-scoped and **re-evaluates the action's guard server-side at call time** (the agent is never trusted), is idempotent against retries, and returns a spec-compliant typed result.
 
 ### Safety
@@ -52,7 +52,7 @@
 |-------------|-------|--------|
 | AMCP-01 | Phase 217 | Complete |
 | AMCP-02 | Phase 217 | Complete |
-| AMCP-03 | Phase 218 | Pending |
+| AMCP-03 | Phase 218 | Complete |
 | AMCP-04 | Phase 219 | Pending |
 | AMCP-05 | Phase 220 | Pending |
 | AMCP-06 | Phase 221 | Pending |
