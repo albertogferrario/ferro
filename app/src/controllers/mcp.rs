@@ -71,11 +71,18 @@ pub async fn handle(req: Request) -> Response {
         .get::<ferro::serde_json::Value>()
         .ok_or_else(|| HttpResponse::new().status(401))?;
 
-    // 3. Parse user_id from sub claim — non-numeric or absent sub → 400 (T-200-SUB).
+    // 3. Parse user_id and scope from principal before req.json() consumes req.
+    //    scope is present for API-key principals ({"sub","tenant_id","scope"}) and absent
+    //    for JWT principals ({"sub","tenant_id"}). None → jsonrpc.rs maps to "read_write"
+    //    (full access — OAuth JWT path, by design).
     let user_id: i64 = principal["sub"]
         .as_str()
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| HttpResponse::new().status(400))?;
+    let key_scope: Option<String> = principal
+        .get("scope")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     // 4. Dispatch JSON-RPC body.
     let body: Value = req.json().await.map_err(|e| {
@@ -90,7 +97,14 @@ pub async fn handle(req: Request) -> Response {
 
     let mut payload = match method {
         "initialize" => handle_initialize(params, &config).await,
-        "tools/list" => handle_tools_list(&exposed_services(), &McpContext::default(), &config).await,
+        "tools/list" => {
+            let ctx = McpContext {
+                tenant_id: ferro::current_tenant().map(|t| t.id),
+                scope: key_scope.clone(),
+                ..Default::default()
+            };
+            handle_tools_list(&exposed_services(), &ctx, &config).await
+        }
         "tools/call" => {
             let db = ferro::DB::connection().map_err(|e| {
                 HttpResponse::json(json!({
@@ -153,9 +167,14 @@ pub async fn handle(req: Request) -> Response {
                 }
             }
 
-            // Allowed — forward tenant context to dispatch (SC-1).
+            // Allowed — forward tenant context and resolved scope to dispatch (SC-1, D-06).
             let tenant_id = ferro::current_tenant().map(|t| t.id);
-            handle_tools_call(params, &services, db.inner(), tenant_id, &McpContext::default()).await
+            let ctx = McpContext {
+                tenant_id,
+                scope: key_scope,
+                ..Default::default()
+            };
+            handle_tools_call(params, &services, db.inner(), tenant_id, &ctx).await
         }
         _ => json!({ "error": { "code": -32601, "message": "Method not found" } }),
     };
