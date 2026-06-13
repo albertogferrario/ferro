@@ -2728,7 +2728,7 @@ Plans:
 | 208. COMP-05 Cross-Modality Vocabulary Sketch | 2/2 | Complete    | 2026-06-12 |
 | 209. COMP-01 Slice A Gestiscilo Migration | 1/2 | In Progress|  |
 | 210. COMP-03 Agent-Success-Rate Harness | 4/4 | Complete    | 2026-06-13 |
-| 211. COMP-04 Time-to-Working-App Benchmark | 0/TBD | Not started | - |
+| 211. COMP-04 Time-to-Working-App Benchmark | 0/2 | Planned | - |
 
 #### Phase Details
 
@@ -2837,7 +2837,9 @@ Plans:
 
 **Phase-time calibration:** Whether to assert a wall-clock threshold in CI (and at what value) is decided after a first cold-cache run. If CI disk constraints make it infeasible, the benchmark remains a committed manual artifact.
 
-**Plans:** TBD
+**Plans:** 2 plans
+- [ ] 211-01-PLAN.md — Benchmark apparatus (autonomous): gated criterion `iter_custom` benchmark (5 steps, per-step Instants, build asserts exit 0), criterion dev-dep, cold-cache Dockerfile + RESULTS.md template with seeded weakness
+- [ ] 211-02-PLAN.md — Cold-cache run (human-action): developer runs the Docker benchmark, fills RESULTS.md with the real `cache: cold` row + full env spec, finalizes the SC#5 discovered-weaknesses finding
 
 ---
 
