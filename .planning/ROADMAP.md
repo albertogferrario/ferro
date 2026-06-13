@@ -3060,3 +3060,38 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 219. Write Dispatch | 0/TBD | Not started | - |
 | 220. Confirmation Gating for Destructive Actions | 0/TBD | Not started | - |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
+
+---
+
+## v13.4 Cache-Events Bridge (Phase 222, scoped 2026-06-13)
+
+**Milestone Goal:** Bridge `ferro-cache` and `ferro-events` so consumers can declare "when event `E` fires, flush these cache tags" once at boot — instead of writing per-app `impl Listener<E>` glue that knows about the cache. This is the missing primitive for short-TTL read-through caches on hot endpoints (e.g. availability windows in gestiscilo): the cache machinery already exists in `ferro-cache::TaggedCache`, and the bus already exists in `ferro-events`, but consumers today have to hand-author the bridge listener and remember every write site that mutates cached state.
+
+**Source:** Surfaced 2026-06-13 during gestiscilo availability-perf investigation. The per-request structural fix (gestiscilo Phase 210 prerequisite work — hoisting prefetches out of the per-slot loop) cuts a single request from ~1k DB queries to ~5, but cross-request redundancy remains: every browser open rebuilds the same window. The operator's read — that the deeper issue is caching/architecture — is correct, and the principle that cross-cutting primitives belong in ferro (`feedback_ferro_first_primitives.md` on the gestiscilo side) points at this bridge as the natural ferro surface to add.
+
+### Phases
+
+- [ ] **Phase 222: Cache-Events Bridge** — Add a `CacheInvalidator` trait + `register_invalidator::<E, F>(cache, key_fn)` helper to `ferro-cache` that subscribes an event-bus listener which flushes the tags returned by `key_fn(&event)`. Tag scheme stays consumer-defined (string keys). Listener failure is best-effort and logged — it does not propagate back to the original event dispatcher.
+
+### Phase Details
+
+### Phase 222: Cache-Events Bridge
+
+**Goal:** A consumer can register one line at boot — `register_invalidator::<BookingCreated, _>(cache.clone(), |evt| vec![format!("business:{}:product:{}", evt.business_id, evt.product_id)]).await` — and the bus + cache do the rest. No hand-authored `impl Listener<E>` per-app glue. The cache mechanics + event integration both stay framework-side; consumers stay declarative.
+
+**Depends on:** `ferro-cache` (already shipped: `Cache`, `TaggedCache`, `MemoryStore`, `RedisStore`) and `ferro-events` (already shipped: `Event`, `Listener`, `EventDispatcher`, `dispatch`). No new crates; bridge lands in `ferro-cache` with `ferro-events` added as a non-optional workspace dep (small surface, used by every ferro app that already takes both).
+
+**Success Criteria** (what must be TRUE) — to refine in discuss-phase:
+  1. `ferro_cache::CacheInvalidator<E: Event>` is a trait with `fn keys(&self, event: &E) -> Vec<String>`; the convenience `register_invalidator::<E, F>(cache, key_fn)` registers a blanket impl using a closure.
+  2. Dispatching an event for which an invalidator is registered flushes the returned tags via the existing `TaggedCache::flush` path — verified by a unit test: insert tagged entry → dispatch event → assert `get` returns `None`.
+  3. Multiple invalidators can be registered for the same event type — all run; order is unspecified but documented.
+  4. Listener failure (e.g. cache store unavailable) is logged and swallowed — it does not propagate back to `EventDispatcher::dispatch`, so a degraded cache cannot brick the original write path.
+  5. The bridge respects the existing `ferro-events` queued-listener marker: if `CacheInvalidator` is intentionally synchronous-only (chosen during discuss-phase), this is documented and enforced.
+  6. A doc example in `ferro-cache/src/lib.rs` shows the end-to-end pattern (cache construction → invalidator registration → event dispatch → cache miss on next read).
+  7. `CHANGELOG.md` entry + workspace version bump (0.2.58 → 0.2.59); the published crate exposes the new surface under a stable path.
+
+**Provenance:** Scoped from gestiscilo 2026-06-13 availability-perf session. Pairs with gestiscilo Phase 210 (consumer-side adoption — mounts a `TaggedCache` on the availability endpoint and uses `register_invalidator` for `BookingCreated`, `BookingCancelled`, and the new `ClosedDayChanged` / `InventoryUnitStatusChanged` gestiscilo-side events).
+
+**Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
+
+**Plans:** TBD (likely 2 plans: bridge + tests; CHANGELOG + version bump folded into closeout).

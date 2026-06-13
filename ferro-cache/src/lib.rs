@@ -45,11 +45,13 @@
 
 mod cache;
 mod error;
+mod invalidator;
 mod stores;
 mod tagged;
 
 pub use cache::{Cache, CacheConfig, CacheStore};
 pub use error::Error;
+pub use invalidator::register_invalidator;
 pub use tagged::TaggedCache;
 
 #[cfg(feature = "memory")]

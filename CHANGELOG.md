@@ -3,6 +3,21 @@
 All notable changes to Ferro crates are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] — ferro-cache (Phase 222 — Cache-Events Bridge)
+
+### Added
+
+- `ferro_cache::register_invalidator::<E, F>(cache, key_fn)`: register a
+  cache-invalidation listener for events of type `E` in one call. When `E`
+  is dispatched, `key_fn(&event) -> Vec<String>` returns the tag set to
+  flush; each tag is flushed via `Cache::tags(...).flush()`. Multiple
+  invalidators per event type are allowed. Per-flush failures are logged
+  via `tracing::warn!` and swallowed at the dispatcher boundary so a
+  degraded cache cannot brick the write path that fired the event.
+- `ferro-cache` now depends on `ferro-events` (small surface; not optional).
+
+---
+
 ## [Unreleased] — ferro-macros / framework (Phase 212 — CRUD Handler Proc Macros)
 
 ### Added
