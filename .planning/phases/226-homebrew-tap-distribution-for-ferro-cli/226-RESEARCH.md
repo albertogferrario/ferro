@@ -798,12 +798,15 @@ A3 is the most actionable: the executor should verify `ferro --version` output f
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **`ferro --version` output format.**
+Resolved during planning (see 226-01-PLAN.md `<verified_facts>`).
+
+1. **`ferro --version` output format.** — **RESOLVED:** clap `#[command(version)]` emits bare
+   `ferro <X.Y.Z>` (e.g. `ferro 0.2.59`), no `v` prefix. So `assert_match version.to_s, shell_output(...)`
+   with `version.to_s` = `0.2.59` is correct. Encoded in Plan 01.
    - What we know: `ferro --version` is called in the existing e2e-tag job.
-   - What's unclear: Whether it outputs `ferro 0.2.59` or `ferro v0.2.59` or `0.2.59`.
-   - Recommendation: Run `cargo run -p ferro-cli -- --version` locally or check the e2e job output. Use `assert_match version.to_s, shell_output(...)` where `version.to_s` is `0.2.59`. If the binary outputs `v0.2.59`, the assertion must match that.
+   - Recommendation (taken): bare-version assertion.
 
 2. **Shell completions / manpage in formula.**
    - What we know: CONTEXT.md lists this as Claude's discretion.
