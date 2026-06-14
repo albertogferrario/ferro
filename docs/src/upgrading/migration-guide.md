@@ -91,9 +91,9 @@ If using the MCP server for IDE integration:
 // After
 {
   "mcpServers": {
-    "ferro-mcp": {
-      "command": "ferro-mcp",
-      "args": ["serve"]
+    "ferro": {
+      "command": "/absolute/path/to/target/debug/ferro",
+      "args": ["mcp"]
     }
   }
 }
