@@ -14,7 +14,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target }}
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -92,7 +92,7 @@ jobs:
 
   release:
     name: Create Release
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -124,7 +124,7 @@ jobs:
   # Update install script with correct repo name
   update-install-script:
     name: Update Install Script
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: release
     runs-on: ubuntu-latest
     permissions:
@@ -150,7 +150,7 @@ jobs:
   e2e-tag:
     name: E2E from release artifact (tag)
     needs: build
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: true   # TODO(D-10): flip to false after scaffold-template-alignment phase ships a clean published ferro-rs
 

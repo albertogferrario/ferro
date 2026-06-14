@@ -318,13 +318,25 @@ jobs:
             sleep 5
           done
 
-      - name: Create and push tag
+      - name: Tag release and trigger binary build
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          SHA=$(git rev-parse HEAD)
-          gh api repos/${{ github.repository }}/git/refs \
-            -f ref="refs/tags/v$VERSION" \
-            -f sha="$SHA"
+          TAG="v$VERSION"
+          # Idempotent: only create + push the tag if it does not already exist
+          # (re-runs and the bump commit's own re-trigger must not 422).
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "refs/tags/$TAG"; then
+            echo "Tag $TAG already exists on the remote — skipping tag creation."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created and pushed $TAG."
+          fi
+          # A tag pushed with GITHUB_TOKEN does not fire workflows (GitHub recursion
+          # guard), so explicitly dispatch release.yml against the tag to build the
+          # binaries + GitHub Release. workflow_dispatch is exempt from the guard.
+          gh workflow run release.yml --ref "$TAG" \
+            && echo "Dispatched release.yml for $TAG." \
+            || echo "::warning::Could not auto-dispatch release.yml — run it manually for $TAG."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
