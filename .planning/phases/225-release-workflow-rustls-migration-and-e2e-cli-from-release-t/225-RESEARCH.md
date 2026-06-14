@@ -629,22 +629,30 @@ RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **reqwest coherence scope (other crates)**
+All three were resolved during planning (see 225-01/02/03-PLAN.md).
+
+1. **reqwest coherence scope (other crates)** — **RESOLVED:** included in the same wave.
+   Plan 01 Task 2 applies the `default-features = false` + `rustls-tls` fix to all reqwest users
+   (ferro-cli + the five coherence crates), per D-01 "one TLS backend = one source of truth."
    - What we know: D-01 explicitly names ferro-cli for reqwest; five other crates use reqwest without `default-features=false`.
-   - What's unclear: Whether the planner should include these in the same wave (scope expansion) or note them as follow-up.
-   - Recommendation: Include in the same wave; D-01 states "One TLS backend = one source of truth."
+   - Recommendation (taken): Include in the same wave.
 
-2. **`needs: build` two-mode design**
+2. **`needs: build` two-mode design** — **RESOLVED:** two separate jobs.
+   Plan 03 implements `e2e-tag` (`needs: build`, `push` tags) and `e2e-drift` (no `needs`,
+   `schedule` + `workflow_dispatch`, installs `ferro-cli` from crates.io). GH Actions has no
+   runtime-conditional `needs`, so the split is required.
    - What we know: A job with `needs: build` is skipped when `build` doesn't run (schedule/dispatch). A job without `needs` can't download artifacts from the build job.
-   - What's unclear: The exact GitHub Actions YAML pattern for a single job that conditionally depends on another — GH Actions does not support runtime-conditional `needs`.
-   - Recommendation: Implement as two separate jobs: `e2e-tag` (needs: build, only on `push`) and `e2e-drift` (no needs, only on `schedule`/`workflow_dispatch`). Alternatively, accept that the scheduled drift-check installs from crates.io and runs separately; the two jobs share the same step definitions.
+   - Recommendation (taken): two separate jobs sharing the same scaffold step definitions.
 
-3. **D-10 sequencing: when does continue-on-error flip to false?**
+3. **D-10 sequencing: when does continue-on-error flip to false?** — **RESOLVED:** ship with
+   `continue-on-error: true` now; flip is deferred. Plan 03 lands both e2e jobs with
+   `continue-on-error: true` and a `TODO(D-10)` comment documenting the flip condition: set to
+   `false` once the separate scaffold-template-alignment phase publishes a clean `ferro-rs`. That
+   alignment phase is not yet scheduled and is out of scope for Phase 225 (the rustls half is independent).
    - What we know: The published scaffold at time of research has COMP-04 drift (52 errors).
-   - What's unclear: When the template-alignment phase is planned and whether it will ship before or after Phase 225.
-   - Recommendation: Ship Phase 225 with `continue-on-error: true` and add a TODO comment referencing the alignment phase. The planner should document the flip condition explicitly.
+   - Recommendation (taken): `continue-on-error: true` + `TODO(D-10)` flip-condition comment.
 
 ---
 

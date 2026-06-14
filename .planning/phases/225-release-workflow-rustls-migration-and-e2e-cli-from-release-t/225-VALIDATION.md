@@ -1,9 +1,9 @@
 ---
 phase: 225
 slug: release-workflow-rustls-migration-and-e2e-cli-from-release-t
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-14
 ---
 
@@ -72,11 +72,11 @@ created: 2026-06-14
 
 ## Validation Sign-Off
 
-- [ ] All tasks have an `<automated>` verify (cargo tree / build / test / deny / CI job exit) or a Manual-Only entry
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (none — existing infra)
-- [ ] No watch-mode flags
-- [ ] Feedback latency acceptable (structural checks < 10s)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have an `<automated>` verify (cargo tree / build / test / deny / CI job exit) or a Manual-Only entry
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none — existing infra)
+- [x] No watch-mode flags
+- [x] Feedback latency acceptable (structural checks < 10s)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-14
