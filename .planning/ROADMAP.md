@@ -3063,7 +3063,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   5. A low-confidence classification returns a clarification response to the agent rather than dispatching to the wrong tool.
 **Plans**: 3 plans
 - [x] 221-01-PLAN.md — Feature wiring (`ai`/`ai-live`) + `ToolSelection` + `render_tool_descriptions` + reqwest-free `ReplayClassificationProvider` + committed turn fixtures (Wave 0 spine, SC#3 deps)
-- [ ] 221-02-PLAN.md — `process_nl_turn` turn core (read/write routing, confirmation gate, low-confidence clarification) + non-ignored deterministic replay test (SC#1, SC#2, SC#3, SC#5)
+- [x] 221-02-PLAN.md — `process_nl_turn` turn core (read/write routing, confirmation gate, low-confidence clarification) + non-ignored deterministic replay test (SC#1, SC#2, SC#3, SC#5)
 - [ ] 221-03-PLAN.md — App `POST /mcp/chat` endpoint + `#[ignore]`-gated live-eval test with cost announcement (SC#4)
 **UI hint**: no
 
@@ -3075,7 +3075,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
 | 220. Confirmation Gating for Destructive Actions | 3/3 | Complete    | 2026-06-14 |
-| 221. Inbound NL Intent Loop | 1/3 | In Progress|  |
+| 221. Inbound NL Intent Loop | 2/3 | In Progress|  |
 
 ---
 
@@ -3110,7 +3110,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 ---
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: executing
-stopped_at: "Completed 221-01-PLAN.md — Wave-0 spine: ai/ai-live features, ToolSelection, render_tool_descriptions, ReplayClassificationProvider, 4 fixtures"
-last_updated: "2026-06-14T01:30:36.828Z"
+stopped_at: "Completed 221-02-PLAN.md — process_nl_turn + end-to-end replay test (SC#1/SC#2/SC#3/SC#5)"
+last_updated: "2026-06-14T01:47:01.705Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 102
   completed_phases: 93
   total_plans: 384
-  completed_plans: 381
+  completed_plans: 382
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
 
 Phase: 221 (inbound-nl-intent-loop) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -114,6 +114,7 @@ Progress: [██████████] 100%
 | Phase 220-confirmation-gating-for-destructive-actions P01 | cross-session | 3 tasks | 4 files |
 | Phase 220-confirmation-gating-for-destructive-actions P02 | 900 | 2 tasks | 4 files |
 | Phase 221-inbound-nl-intent-loop P01 | 1025 | 3 tasks | 13 files |
+| Phase 221 P02 | 12 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -156,7 +157,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T01:30:36.819Z
-Stopped at: Completed 221-01-PLAN.md — Wave-0 spine: ai/ai-live features, ToolSelection, render_tool_descriptions, ReplayClassificationProvider, 4 fixtures
+Last session: 2026-06-14T01:47:01.697Z
+Stopped at: Completed 221-02-PLAN.md — process_nl_turn + end-to-end replay test (SC#1/SC#2/SC#3/SC#5)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
