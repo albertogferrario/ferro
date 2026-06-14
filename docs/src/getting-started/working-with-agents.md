@@ -4,7 +4,7 @@ Ferro is built agent-first: agents get the same structural understanding of your
 
 ## Setting Up ferro-mcp
 
-Ferro's CLI binary doubles as an MCP server. The same `ferro` binary you use for migrations and scaffolding exposes 57 introspection tools when invoked with the `mcp` subcommand. There is no separate binary to install — build your project and the MCP server is ready.
+Ferro's CLI binary doubles as an MCP server. The same `ferro` binary you use for migrations and scaffolding exposes a full suite of introspection tools when invoked with the `mcp` subcommand. There is no separate binary to install — build your project and the MCP server is ready.
 
 ```bash
 cargo build
@@ -102,17 +102,17 @@ The bridge between MCP introspection and code generation is explicit in Ferro: M
 
 1. The agent calls `code_templates` and receives a list of templates. The `model` template entry includes:
    ```
-   generation_hint: "Use `ferro make:model <ModelName>` to scaffold a new model with migration"
+   generation_hint: "Use `ferro make:scaffold <ModelName>` to scaffold a new model with migration"
    ```
 
-2. The agent reads the hint, identifies the CLI command: `ferro make:model`.
+2. The agent reads the hint, identifies the CLI command: `ferro make:scaffold`.
 
 3. The agent executes the CLI command:
    ```bash
-   ferro make:model Post
+   ferro make:scaffold Post
    ```
 
-4. Ferro generates `app/models/post.rs` and a timestamped migration file with the correct SeaORM structure.
+4. Ferro generates `src/models/post.rs` and a timestamped migration file with the correct SeaORM structure.
 
 5. The agent reads the generated file using `get_handler` or directly, confirms the structure matches intent, and proceeds to add fields or relationships.
 
