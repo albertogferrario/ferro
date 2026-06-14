@@ -15,7 +15,11 @@ The defining feature is **service projections**: declare a service and intent, g
 ## Quick Start
 
 ```bash
-cargo install ferro-cli
+# macOS / Linux — no Rust required
+brew install albertogferrario/ferro/ferro
+
+# or, with Rust:  cargo install ferro-cli
+
 ferro new myapp
 cd myapp
 ferro serve
