@@ -3031,7 +3031,7 @@ Plans:
 
 **Requirements**: D-01..D-06 (CONTEXT decisions; no REQUIREMENTS.md IDs mapped) + operator actions
 **Depends on:** Phase 225 (release.yml already builds the per-arch tarballs; the rustls migration removed the openssl/pkg-config build dependency, so even a source fallback is clean)
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 **Resolved decisions** (see 226-CONTEXT.md / 226-RESEARCH.md):
 - Binary-only formula (4 arches: macOS arm64/x86_64 + Linux x86_64/aarch64); no source fallback (D-02).
@@ -3040,7 +3040,7 @@ Plans:
 - Formula `test do` + tap CI (`brew audit --strict` + `test-bot`), staged in-repo for the operator (D-05).
 
 Plans:
-- [ ] 226-01-PLAN.md — Seed binary formula template + in-repo bump script (D-02, D-03) [wave 1]
+- [x] 226-01-PLAN.md — Seed binary formula template + in-repo bump script (D-02, D-03) [wave 1]
 - [ ] 226-02-PLAN.md — Wire bump-homebrew-formula job into release.yml + stage tap CI (D-03, D-04, D-05) [wave 2]
 - [ ] 226-03-PLAN.md — Surface `brew install` in installation docs + README (D-06) [wave 1]
 - [ ] 226-04-PLAN.md — Operator runbook: create tap repo + PAT secret + live brew install verification (D-01, D-04) [wave 3, non-autonomous]
