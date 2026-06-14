@@ -3051,13 +3051,13 @@ Plans:
 
 **Requirements**: TBD (capture in discuss-phase)
 **Depends on:** Phase 226 (brew/rustls shipped — the facts the docs must now reflect)
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 **Scope notes:** focus on factual accuracy, not a rewrite. Known-good already: `docs/src/getting-started/installation.md` (install section). Likely stale candidates: any TLS/sea-orm config examples, version numbers, getting-started walkthrough. CHANGELOG entry deferred (no CHANGELOG system exists; out of scope per CONTEXT.md). READMEs/scripts are Phase 228.
 
 Plans:
 - [x] 227-01-PLAN.md — reference/cli.md: brew-first install + db:sync --skip-migrations fix (D-05, DISC-02) [wave 1]
-- [ ] 227-02-PLAN.md — phantom make:model, stale 0.2.33 pin + broken link, stale MCP config, stale milestone/tool-count (DISC-03..07) [wave 1]
+- [x] 227-02-PLAN.md — phantom make:model, stale 0.2.33 pin + broken link, stale MCP config, stale milestone/tool-count (DISC-03..07) [wave 1]
 - [ ] 227-03-PLAN.md — whole-tree clean-confirmation sweep: TLS/version-pin/phantom-command grep + mdbook build (D-01, D-04) [wave 2]
 
 ### Phase 228: README and Scaffold Doc Sweep
