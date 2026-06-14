@@ -2986,7 +2986,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 - [x] **Phase 218: Write-Tool Rendering from ActionDef** — Extend `McpRenderer` and `build_input_schema` to derive one MCP write tool per `ActionDef`; guard-filtered via `ctx.evaluated_guards`; `destructiveHint` / `idempotentHint` annotations derived from `ActionDef` attributes; Phase 205 `CallToolResult::structured` regression test extended to cover every new tool. (completed 2026-06-13)
 - [x] **Phase 219: Write Dispatch** — New `dispatch_write()` / `handle_write_call()` mirroring the read dispatch: tenant-scoped and fail-closed, guard re-evaluated server-side at execution (not advisory), idempotency-key parameter on every write tool, audit log entry per call, typed `CallToolResult::structured` result. (completed 2026-06-13)
 - [x] **Phase 220: Confirmation Gating for Destructive Actions** — Wrap write dispatch with `ferro-ai::ConfirmationStore` behind a feature flag; synthesize a stable `confirm_<action>` tool per destructive action; configurable TTL (5–10 min via `McpServerConfig`); unconfirmed, expired, or mismatched attempts do not mutate data. (completed 2026-06-14)
-- [ ] **Phase 221: Inbound NL Intent Loop** — `ferro-ai::Classifier<ToolSelection>` classifies a natural-language message directly to tool + arguments; guard-checked and confirmation-gated before dispatch; result rendered back via `CallToolResult::structured`. Ships with a replay/smoke path (`FERRO_AI_LIVE_EVAL=1` gates all live LLM calls) so the loop is CI-testable without live-LLM spend.
+- [x] **Phase 221: Inbound NL Intent Loop** — `ferro-ai::Classifier<ToolSelection>` classifies a natural-language message directly to tool + arguments; guard-checked and confirmation-gated before dispatch; result rendered back via `CallToolResult::structured`. Ships with a replay/smoke path (`FERRO_AI_LIVE_EVAL=1` gates all live LLM calls) so the loop is CI-testable without live-LLM spend. (completed 2026-06-14)
 
 ## Phase Details
 
@@ -3064,7 +3064,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 **Plans**: 3 plans
 - [x] 221-01-PLAN.md — Feature wiring (`ai`/`ai-live`) + `ToolSelection` + `render_tool_descriptions` + reqwest-free `ReplayClassificationProvider` + committed turn fixtures (Wave 0 spine, SC#3 deps)
 - [x] 221-02-PLAN.md — `process_nl_turn` turn core (read/write routing, confirmation gate, low-confidence clarification) + non-ignored deterministic replay test (SC#1, SC#2, SC#3, SC#5)
-- [ ] 221-03-PLAN.md — App `POST /mcp/chat` endpoint + `#[ignore]`-gated live-eval test with cost announcement (SC#4)
+- [x] 221-03-PLAN.md — App `POST /mcp/chat` endpoint + `#[ignore]`-gated live-eval test with cost announcement (SC#4)
 **UI hint**: no
 
 #### Progress
@@ -3075,7 +3075,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
 | 220. Confirmation Gating for Destructive Actions | 3/3 | Complete    | 2026-06-14 |
-| 221. Inbound NL Intent Loop | 2/3 | In Progress|  |
+| 221. Inbound NL Intent Loop | 3/3 | Complete   | 2026-06-14 |
 
 ---
 
@@ -3110,7 +3110,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 ---
 

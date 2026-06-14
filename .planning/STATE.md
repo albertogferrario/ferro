@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
-status: executing
-stopped_at: "Completed 221-02-PLAN.md — process_nl_turn + end-to-end replay test (SC#1/SC#2/SC#3/SC#5)"
-last_updated: "2026-06-14T01:47:01.705Z"
+status: verifying
+stopped_at: "Completed 221-03-PLAN.md — POST /mcp/chat endpoint + live-eval gate (SC#4). Phase 221 complete. v15.0 milestone complete."
+last_updated: "2026-06-14T02:15:29.894Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 102
-  completed_phases: 93
+  completed_phases: 94
   total_plans: 384
-  completed_plans: 382
-  percent: 99
+  completed_plans: 383
+  percent: 100
 ---
 
 # Project State
@@ -31,7 +31,7 @@ Plan: 3 of 3
 Next: `/gsd-plan-phase 217`
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Progress: v15.0 — 0/5 phases. v14.0 ✅ shipped (215–216, 0.2.58).
 
@@ -115,6 +115,7 @@ Progress: [██████████] 100%
 | Phase 220-confirmation-gating-for-destructive-actions P02 | 900 | 2 tasks | 4 files |
 | Phase 221-inbound-nl-intent-loop P01 | 1025 | 3 tasks | 13 files |
 | Phase 221 P02 | 12 | 2 tasks | 3 files |
+| Phase 221-inbound-nl-intent-loop P03 | 27 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -157,7 +158,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T01:47:01.697Z
-Stopped at: Completed 221-02-PLAN.md — process_nl_turn + end-to-end replay test (SC#1/SC#2/SC#3/SC#5)
+Last session: 2026-06-14T02:15:29.886Z
+Stopped at: Completed 221-03-PLAN.md — POST /mcp/chat endpoint + live-eval gate (SC#4). Phase 221 complete. v15.0 milestone complete.
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
