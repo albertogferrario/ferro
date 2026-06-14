@@ -14,6 +14,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target }}
+    if: github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -91,6 +92,7 @@ jobs:
 
   release:
     name: Create Release
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -117,6 +119,7 @@ jobs:
   # Update install script with correct repo name
   update-install-script:
     name: Update Install Script
+    if: github.event_name == 'push'
     needs: release
     runs-on: ubuntu-latest
     permissions:
