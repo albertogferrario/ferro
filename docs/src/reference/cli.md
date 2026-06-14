@@ -1033,18 +1033,19 @@ If no seeders directory exists, the command will prompt you to create one with `
 Synchronize the database schema and generate entity files.
 
 ```bash
-# Sync entities from existing database
+# Sync entities, running any pending migrations first (default)
 ferro db:sync
 
-# Run migrations first, then sync
-ferro db:sync --migrate
+# Sync entities without running migrations
+ferro db:sync --skip-migrations
 ```
 
 **Options:**
 
 | Option | Description |
 |--------|-------------|
-| `--migrate` | Run pending migrations before syncing |
+| `--skip-migrations` | Skip running migrations before syncing (migrations run by default) |
+| `--regenerate-models` | Regenerate SeaORM model wrappers |
 
 This command:
 1. Discovers the database schema (tables, columns, types)
