@@ -3062,7 +3062,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
   4. With `FERRO_AI_LIVE_EVAL=1`, the loop makes a live LLM call and the result matches the replay fixture (or the fixture is updated); the live path announces an estimated cost before making the first call.
   5. A low-confidence classification returns a clarification response to the agent rather than dispatching to the wrong tool.
 **Plans**: 3 plans
-- [ ] 221-01-PLAN.md — Feature wiring (`ai`/`ai-live`) + `ToolSelection` + `render_tool_descriptions` + reqwest-free `ReplayClassificationProvider` + committed turn fixtures (Wave 0 spine, SC#3 deps)
+- [x] 221-01-PLAN.md — Feature wiring (`ai`/`ai-live`) + `ToolSelection` + `render_tool_descriptions` + reqwest-free `ReplayClassificationProvider` + committed turn fixtures (Wave 0 spine, SC#3 deps)
 - [ ] 221-02-PLAN.md — `process_nl_turn` turn core (read/write routing, confirmation gate, low-confidence clarification) + non-ignored deterministic replay test (SC#1, SC#2, SC#3, SC#5)
 - [ ] 221-03-PLAN.md — App `POST /mcp/chat` endpoint + `#[ignore]`-gated live-eval test with cost announcement (SC#4)
 **UI hint**: no
@@ -3075,7 +3075,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
 | 220. Confirmation Gating for Destructive Actions | 3/3 | Complete    | 2026-06-14 |
-| 221. Inbound NL Intent Loop | 0/3 | Not started | - |
+| 221. Inbound NL Intent Loop | 1/3 | In Progress|  |
 
 ---
 
@@ -3110,7 +3110,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 3/3 plans complete
+**Plans:** 1/3 plans executed
 
 ---
 

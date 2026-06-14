@@ -24,7 +24,7 @@
 
 ### Conversational Loop
 
-- [ ] **AMCP-06**: A natural-language message is classified to a tool + arguments (`ferro-ai`), guard-checked and confirmation-gated, dispatched, and the result rendered back — the conversational turn. The loop ships with a gated replay/smoke path (env-flag, e.g. `FERRO_AI_LIVE_EVAL=1`) so it is CI-testable without live-LLM spend.
+- [x] **AMCP-06**: A natural-language message is classified to a tool + arguments (`ferro-ai`), guard-checked and confirmation-gated, dispatched, and the result rendered back — the conversational turn. The loop ships with a gated replay/smoke path (env-flag, e.g. `FERRO_AI_LIVE_EVAL=1`) so it is CI-testable without live-LLM spend.
 
 ---
 
@@ -55,6 +55,6 @@
 | AMCP-03 | Phase 218 | Complete |
 | AMCP-04 | Phase 219 | Complete |
 | AMCP-05 | Phase 220 | Complete |
-| AMCP-06 | Phase 221 | Pending |
+| AMCP-06 | Phase 221 | Complete |
 
 *Phase assignments filled by the roadmapper. Roadmap created 2026-06-13.*
