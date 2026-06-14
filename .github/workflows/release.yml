@@ -182,3 +182,37 @@ jobs:
           ferro make:job EmailNotification
           # DO NOT add [patch.crates-io] — must build against PUBLISHED ferro-rs (RESEARCH Pitfall 3)
           RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build
+
+  e2e-drift:
+    name: E2E published artifact drift check (scheduled)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # TODO(D-10): flip to false after scaffold-template-alignment phase ships a clean published ferro-rs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+
+      - name: Install ferro-cli from crates.io
+        run: cargo install ferro-cli   # drop --locked if ferro-cli is published without Cargo.lock (RESEARCH A3)
+
+      - name: Run COMP-04 scaffold sequence
+        run: |
+          set -euo pipefail
+          ferro --version
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+          ferro new bench-app --no-interaction --no-git
+          cd bench-app
+          ferro make:auth
+          ferro make:scaffold --no-smart-defaults -q -y --api Article title:string body:text
+          ferro make:scaffold --no-smart-defaults -q -y --api Product name:string price:float
+          ferro make:scaffold --no-smart-defaults -q -y --api Order status:string total:float
+          ferro make:scaffold --no-smart-defaults -q -y Post title:string body:text
+          ferro make:job EmailNotification
+          # DO NOT add [patch.crates-io] — must build against PUBLISHED ferro-rs
+          RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build
