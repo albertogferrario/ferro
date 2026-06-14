@@ -22,6 +22,7 @@ brew install albertogferrario/ferro/ferro
 
 ferro new myapp
 cd myapp
+ferro db:migrate
 ferro serve
 ```
 

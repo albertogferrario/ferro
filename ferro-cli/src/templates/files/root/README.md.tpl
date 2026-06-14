@@ -41,7 +41,6 @@ The backend is served at <http://localhost:8080>. The Vite dev server runs at <h
 | Command              | Purpose                                   |
 | -------------------- | ----------------------------------------- |
 | `ferro serve`        | Start dev server with hot reload          |
-| `ferro routes`       | List all registered HTTP routes           |
 | `ferro db:migrate`   | Apply pending database migrations         |
 | `ferro db:rollback`  | Revert the last batch of migrations       |
 | `ferro db:fresh`     | Drop all tables and re-run migrations     |

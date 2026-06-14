@@ -135,12 +135,13 @@ main() {
     echo "Next steps:"
     printf "  ${CYAN}cd %s${NC}\n" "$PROJECT_NAME"
     printf "  ${CYAN}cd frontend && npm install && cd ..${NC}\n"
-    printf "  ${CYAN}ferro db:migrate${NC}\n"
-    printf "  ${CYAN}ferro serve${NC}\n"
     echo ""
-    printf "Or install the Ferro CLI permanently (toolchain-free):\n"
+    printf "  # Install the Ferro CLI (toolchain-free) — required for the commands below:\n"
     printf "  ${CYAN}brew install albertogferrario/ferro/ferro${NC}\n"
     printf "  ${CYAN}cargo install ferro-cli${NC}  # alternate (requires Rust)\n"
+    echo ""
+    printf "  ${CYAN}ferro db:migrate${NC}\n"
+    printf "  ${CYAN}ferro serve${NC}\n"
     echo ""
 }
 
