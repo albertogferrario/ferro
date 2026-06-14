@@ -22,26 +22,45 @@ use reqwest_eventsource::{Event, RequestBuilderExt};
 /// Provide the API key via `new(api_key, ...)` or read it from
 /// `FERRO_AI_API_KEY` (with `ANTHROPIC_API_KEY` as fallback) via
 /// [`crate::config::AiConfig::from_env`].
+
+/// Default Anthropic Messages API base URL. The `/v1/messages` endpoint is
+/// derived by appending to this.
+const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
+
 pub struct AnthropicClient {
     client: reqwest::Client,
     api_key: String,
     model: Option<String>,
+    base_url: String,
 }
 
 impl AnthropicClient {
     /// Create a new client with an explicit API key and optional model override.
     ///
     /// The internal `reqwest::Client` uses a 60-second timeout (T-165-04).
+    ///
+    /// The base URL is resolved from the `ANTHROPIC_BASE_URL` environment
+    /// variable, falling back to `https://api.anthropic.com`. The override is
+    /// useful for proxies and for hermetic integration tests that point the
+    /// client at a local mock server (matching the `adk-anthropic` convention).
     pub fn new(api_key: String, model: Option<String>) -> Self {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .expect("failed to build reqwest client");
+        let base_url = std::env::var("ANTHROPIC_BASE_URL")
+            .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         Self {
             client,
             api_key,
             model,
+            base_url,
         }
+    }
+
+    /// The Messages API endpoint, derived from the resolved base URL.
+    fn messages_url(&self) -> String {
+        format!("{}/v1/messages", self.base_url.trim_end_matches('/'))
     }
 
     /// Build the request body for the Anthropic Messages API.
@@ -188,7 +207,7 @@ impl LlmClient for AnthropicClient {
 
         let resp = self
             .client
-            .post("https://api.anthropic.com/v1/messages")
+            .post(self.messages_url())
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -234,7 +253,7 @@ impl LlmClient for AnthropicClient {
 
         let builder = self
             .client
-            .post("https://api.anthropic.com/v1/messages")
+            .post(self.messages_url())
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -292,7 +311,7 @@ impl LlmClient for AnthropicClient {
 
         let resp = self
             .client
-            .post("https://api.anthropic.com/v1/messages")
+            .post(self.messages_url())
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
