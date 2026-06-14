@@ -60,7 +60,10 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu
+          # gcc-aarch64-linux-gnu gives the compiler; libc6-dev-arm64-cross gives the
+          # aarch64 libc dev headers (bits/libc-header-start.h) that ring's C build needs.
+          # The latter is only a *recommended* dep, so --no-install-recommends would drop it.
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
 
       - name: Build (native)
         run: cargo build --release --target ${{ matrix.target }} -p ferro-cli
