@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v15.0
-milestone_name: Agent-Operable App (Consumer MCP)
-status: shipped
-stopped_at: "v15.0 Agent-Operable App (Consumer MCP) shipped 2026-06-14 (tag v15.0). Phases 217-221 complete, AMCP-01..06 validated. Next: new milestone or gestiscilo adoption."
-last_updated: "2026-06-14T02:57:31.145Z"
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
+status: v15.0 milestone shipped.
+stopped_at: context exhaustion at 90% (2026-06-14)
+last_updated: "2026-06-14T14:38:00.490Z"
 last_activity: 2026-06-14
 progress:
-  total_phases: 102
-  completed_phases: 94
-  total_plans: 384
-  completed_plans: 383
+  total_phases: 97
+  completed_phases: 89
+  total_plans: 368
+  completed_plans: 367
   percent: 100
 ---
 
@@ -158,7 +158,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T02:15:29.886Z
-Stopped at: Completed 221-03-PLAN.md — POST /mcp/chat endpoint + live-eval gate (SC#4). Phase 221 complete. v15.0 milestone complete.
+Last session: 2026-06-14T14:38:00.434Z
+Stopped at: context exhaustion at 90% (2026-06-14)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth

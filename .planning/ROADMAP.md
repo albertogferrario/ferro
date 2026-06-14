@@ -3013,6 +3013,16 @@ A tenant can operate a live ferro application through a per-tenant MCP endpoint 
 
 **Plans:** 3/3 plans complete
 
+### Phase 225: Release Workflow rustls Migration and E2E CLI-from-Release Test
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 224
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 225 to break down)
+
 ---
 
 ## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
