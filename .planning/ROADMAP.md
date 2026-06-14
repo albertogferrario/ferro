@@ -2985,7 +2985,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 - [x] **Phase 217: Tenant Context + Per-Tenant API-Key Auth** — Extend `McpContext` to embed `BaseContext` (`tenant_id` + `evaluated_guards`) and add SHA-256 API-key validation branch alongside the existing OAuth JWT path; both resolve to the same `BearerCheck::Authenticated(principal)` outcome; API key carries an explicit scope field (`read` / `read_write`). (completed 2026-06-13)
 - [x] **Phase 218: Write-Tool Rendering from ActionDef** — Extend `McpRenderer` and `build_input_schema` to derive one MCP write tool per `ActionDef`; guard-filtered via `ctx.evaluated_guards`; `destructiveHint` / `idempotentHint` annotations derived from `ActionDef` attributes; Phase 205 `CallToolResult::structured` regression test extended to cover every new tool. (completed 2026-06-13)
 - [x] **Phase 219: Write Dispatch** — New `dispatch_write()` / `handle_write_call()` mirroring the read dispatch: tenant-scoped and fail-closed, guard re-evaluated server-side at execution (not advisory), idempotency-key parameter on every write tool, audit log entry per call, typed `CallToolResult::structured` result. (completed 2026-06-13)
-- [ ] **Phase 220: Confirmation Gating for Destructive Actions** — Wrap write dispatch with `ferro-ai::ConfirmationStore` behind a feature flag; synthesize a stable `confirm_<action>` tool per destructive action; configurable TTL (5–10 min via `McpServerConfig`); unconfirmed, expired, or mismatched attempts do not mutate data.
+- [x] **Phase 220: Confirmation Gating for Destructive Actions** — Wrap write dispatch with `ferro-ai::ConfirmationStore` behind a feature flag; synthesize a stable `confirm_<action>` tool per destructive action; configurable TTL (5–10 min via `McpServerConfig`); unconfirmed, expired, or mismatched attempts do not mutate data. (completed 2026-06-14)
 - [ ] **Phase 221: Inbound NL Intent Loop** — `ferro-ai::Classifier<ToolSelection>` classifies a natural-language message directly to tool + arguments; guard-checked and confirmation-gated before dispatch; result rendered back via `CallToolResult::structured`. Ships with a replay/smoke path (`FERRO_AI_LIVE_EVAL=1` gates all live LLM calls) so the loop is CI-testable without live-LLM spend.
 
 ## Phase Details
@@ -3049,7 +3049,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 **Plans**: 3 plans
   - [x] 220-00-PLAN.md — Wave 0: ferro-ai feature-split (default=llm, reqwest-free confirmation) + consumer audit + confirmation feature scaffolding + RED tests
   - [x] 220-01-PLAN.md — Wave 1: D-08 seam gate + request_confirm/confirm handlers + token binding/mismatch + guard re-eval + two-tool synthesis (GREEN)
-  - [ ] 220-02-PLAN.md — Wave 2: sample-app ConfirmationStore wiring + feature-off build-graph assertion (SC#5) + full --all-features CI gate
+  - [x] 220-02-PLAN.md — Wave 2: sample-app ConfirmationStore wiring + feature-off build-graph assertion (SC#5) + full --all-features CI gate
 
 ### Phase 221: Inbound NL Intent Loop
 **Goal**: A natural-language message is classified to a tool and arguments, guard-checked, confirmation-gated for write intents, dispatched, and the result returned — the full conversational turn. The loop is CI-testable without live-LLM spend.
@@ -3071,7 +3071,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
-| 220. Confirmation Gating for Destructive Actions | 2/3 | In Progress|  |
+| 220. Confirmation Gating for Destructive Actions | 3/3 | Complete   | 2026-06-14 |
 | 221. Inbound NL Intent Loop | 0/TBD | Not started | - |
 
 ---
@@ -3107,7 +3107,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 **Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 ---
 
