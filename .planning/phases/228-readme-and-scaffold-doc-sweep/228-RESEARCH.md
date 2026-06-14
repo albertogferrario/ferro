@@ -320,7 +320,11 @@ The deliverable is a draft file created inside the ferro repo; the planner shoul
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Both questions are resolved and adopted in 228-01-PLAN.md.
+> **Q1 resolution:** replace `cargo run` with `ferro serve` and drop the "once" qualifier, keeping the "types are regenerated automatically" clarification (Task 1, tpl:85).
+> **Q2 resolution:** keep the `npm install` step (create-app.sh line ~137) — it is required for the Inertia frontend and is NOT a discrepancy; only the command lines 138/139/142 change (Task 3).
 
 1. **`cargo run` reference in tpl:85 — remove or keep?**
    - What we know: The line says "run `cargo run` once to generate types before running `npm run dev`". The surrounding sentence immediately clarifies "Types are regenerated automatically on each server start." This is factually true but redundant if the user is using `ferro serve`.
