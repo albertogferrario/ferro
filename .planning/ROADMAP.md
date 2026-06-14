@@ -3066,10 +3066,10 @@ Plans:
 
 **Requirements**: TBD (capture in discuss-phase)
 **Depends on:** Phase 227 (align READMEs to the audited docs)
-**Plans:** 0 plans
+**Plans:** 1 plan
 
 Plans:
-- [ ] TBD (run /gsd-discuss-phase 228 → /gsd-plan-phase 228 to break down)
+- [ ] 228-01-PLAN.md — README + scaffold-template + installer-script consistency sweep (brew-first, ferro db:migrate/ferro serve, MSRV 1.88+/Node 18+, neutral Status line) + tap-repo README draft
 
 ---
 
