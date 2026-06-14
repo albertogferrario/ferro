@@ -13,8 +13,10 @@
 
 use ferro::serde_json::{json, Value};
 use ferro::{handler, HttpResponse, Request, Response};
-use ferro_mcp_server::{McpContext, McpServerConfig};
+use ferro_mcp_server::McpServerConfig;
 
+#[cfg(feature = "ai-live")]
+use ferro_mcp_server::McpContext;
 #[cfg(feature = "ai-live")]
 use std::sync::Arc;
 
@@ -39,20 +41,24 @@ pub async fn handle_chat(req: Request) -> Response {
         .get::<ferro::serde_json::Value>()
         .ok_or_else(|| HttpResponse::new().status(401))?;
 
-    // Parse user_id and scope from principal before req.json() consumes the body.
+    // Extract fields from principal BEFORE req.json() moves `req`.
+    // user_id validates the principal is well-formed; scope feeds McpContext.
     let _user_id: i64 = principal["sub"]
         .as_str()
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| HttpResponse::new().status(400))?;
+    // key_scope is only used under ai-live but must be extracted here before req moves.
+    #[cfg(feature = "ai-live")]
     let key_scope: Option<String> = principal
         .get("scope")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    // Parse `{ "message": "..." }` from the JSON body.
-    let body: Value = req.json().await.map_err(|e| {
-        HttpResponse::json(json!({ "error": e.to_string() }))
-    })?;
+    // Parse `{ "message": "..." }` from the JSON body (moves req).
+    let body: Value = req
+        .json()
+        .await
+        .map_err(|e| HttpResponse::json(json!({ "error": e.to_string() })))?;
     let nl_message = body["message"].as_str().unwrap_or("").to_string();
     if nl_message.is_empty() {
         return Err(HttpResponse::json(
@@ -61,29 +67,27 @@ pub async fn handle_chat(req: Request) -> Response {
         .status(400));
     }
 
-    // Resolve db and tenant_id from the authenticated principal (never from body).
-    let db = ferro::DB::connection().map_err(|e| {
-        HttpResponse::json(json!({ "error": e.to_string() }))
-    })?;
-    let tenant_id = ferro::current_tenant().map(|t| t.id);
-
-    let ctx = McpContext {
-        tenant_id,
-        scope: key_scope,
-        ..Default::default()
-    };
-    let services = super::mcp::exposed_services();
-    let dispatcher = super::mcp::make_write_dispatcher();
-
     // Delegate to process_nl_turn with the live AnthropicProvider.
-    // Compiled only under the `ai-live` feature; endpoints built without `ai-live`
-    // will not include this handler.
+    // Compiled only under the `ai-live` feature.
     #[cfg(feature = "ai-live")]
     let result = {
-        let provider: Arc<dyn ferro_ai::ClassificationProvider> =
-            Arc::new(ferro_ai::AnthropicProvider::from_env().map_err(|e| {
-                HttpResponse::json(json!({ "error": e.to_string() }))
-            })?);
+        // Resolve db and tenant_id from the authenticated principal (never from body).
+        let db = ferro::DB::connection()
+            .map_err(|e| HttpResponse::json(json!({ "error": e.to_string() })))?;
+        let tenant_id = ferro::current_tenant().map(|t| t.id);
+
+        let ctx = McpContext {
+            tenant_id,
+            scope: key_scope,
+            ..Default::default()
+        };
+        let services = super::mcp::exposed_services();
+        let dispatcher = super::mcp::make_write_dispatcher();
+
+        let provider: Arc<dyn ferro_ai::ClassificationProvider> = Arc::new(
+            ferro_ai::AnthropicProvider::from_env()
+                .map_err(|e| HttpResponse::json(json!({ "error": e.to_string() })))?,
+        );
 
         ferro_mcp_server::intent::process_nl_turn(
             &nl_message,
@@ -102,9 +106,9 @@ pub async fn handle_chat(req: Request) -> Response {
         .await
     };
 
-    // When built without `ai-live`, the /mcp/chat route is not registered, so this
-    // branch is unreachable at runtime. The compile-time guard below ensures the
-    // handler body always returns a value regardless of feature combination.
+    // When built without `ai-live`, the /mcp/chat route should not be registered,
+    // but the handler body must compile. This branch is unreachable at runtime when
+    // the route is not exposed.
     #[cfg(not(feature = "ai-live"))]
     let result: Value = json!({
         "result": {

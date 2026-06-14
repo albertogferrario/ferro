@@ -255,7 +255,10 @@ mod intent_loop {
                 classifier_config.clone(),
             );
 
-            match classifier.classify(&system, &fixture.nl_message, &schema).await {
+            match classifier
+                .classify(&system, &fixture.nl_message, &schema)
+                .await
+            {
                 Ok(result) => {
                     let live_tool = &result.value.tool_name;
                     if live_tool != &fixture.expected_tool {
@@ -293,7 +296,10 @@ mod intent_loop {
                     }
                 }
                 Err(e) => {
-                    mismatches.push(format!("fixture '{}': classification error: {}", fixture.turn_id, e));
+                    mismatches.push(format!(
+                        "fixture '{}': classification error: {}",
+                        fixture.turn_id, e
+                    ));
                 }
             }
         }
