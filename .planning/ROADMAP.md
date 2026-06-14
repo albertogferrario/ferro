@@ -3029,18 +3029,21 @@ Plans:
 
 **Goal:** Make `brew install` a first-class way for a new user to get the `ferro` CLI and run `ferro new` — no Rust toolchain, no `curl | sh`, no manual PATH. Stand up an own Homebrew tap (`homebrew-ferro` repo → `brew install albertogferrario/ferro/ferro`) rather than homebrew-core (avoids the pre-1.0 notability/review gate and a likely `ferro` formula-name collision; can graduate to core post-1.0). Ship a binary formula pointing at the GitHub release tarballs already produced by `release.yml` (`ferro-<tag>-<target>.tar.gz`, macOS arm64/x86_64 + Linux) with per-arch sha256 — no user-side compile — and a tag-triggered auto-bump job in `release.yml` that recomputes the SHA256s and updates `Formula/ferro.rb` in the tap so it is never manual toil. Surface `brew install` in the install docs/README.
 
-**Requirements**: TBD (capture in discuss-phase)
+**Requirements**: D-01..D-06 (CONTEXT decisions; no REQUIREMENTS.md IDs mapped) + operator actions
 **Depends on:** Phase 225 (release.yml already builds the per-arch tarballs; the rustls migration removed the openssl/pkg-config build dependency, so even a source fallback is clean)
-**Plans:** 0 plans
+**Plans:** 4 plans
 
-**Open decisions for discuss-phase:**
-- Binary-only formula, or also a from-source fallback (`depends_on "rust" => :build`) for unsupported arches?
-- Auto-bump mechanism: `mislav/bump-homebrew-formula-action` vs a small in-repo script?
-- Token/deploy-key strategy for pushing the bump to the separate tap repo.
-- Whether to add a `brew test`/formula-audit job (`brew test-bot` / `brew audit --strict`) in CI.
+**Resolved decisions** (see 226-CONTEXT.md / 226-RESEARCH.md):
+- Binary-only formula (4 arches: macOS arm64/x86_64 + Linux x86_64/aarch64); no source fallback (D-02).
+- Auto-bump via an IN-REPO SHELL SCRIPT (`scripts/bump-homebrew-formula.sh`), NOT the mislav action — it cannot update multi-arch conditional formulae (D-03).
+- Push to the tap via a fine-grained PAT secret `HOMEBREW_TAP_TOKEN` (Contents:write on homebrew-ferro only), direct commit to main (D-04).
+- Formula `test do` + tap CI (`brew audit --strict` + `test-bot`), staged in-repo for the operator (D-05).
 
 Plans:
-- [ ] TBD (run /gsd-discuss-phase 226 → /gsd-plan-phase 226 to break down)
+- [ ] 226-01-PLAN.md — Seed binary formula template + in-repo bump script (D-02, D-03) [wave 1]
+- [ ] 226-02-PLAN.md — Wire bump-homebrew-formula job into release.yml + stage tap CI (D-03, D-04, D-05) [wave 2]
+- [ ] 226-03-PLAN.md — Surface `brew install` in installation docs + README (D-06) [wave 1]
+- [ ] 226-04-PLAN.md — Operator runbook: create tap repo + PAT secret + live brew install verification (D-01, D-04) [wave 3, non-autonomous]
 
 ---
 
