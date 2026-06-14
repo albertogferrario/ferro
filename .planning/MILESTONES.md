@@ -1,5 +1,25 @@
 # Project Milestones: Ferro Framework
 
+## v15.0 Agent-Operable App (Consumer MCP) (Shipped: 2026-06-14)
+
+**Phases completed:** 5 phases (217-221), 16 plans
+
+**Delivered:** A tenant can operate a live ferro application through a per-tenant MCP endpoint whose tools are derived from the app's projections — reading and acting on real data through an agent rather than the dashboard. Extends projection/intent to a fourth `Renderer` target (`ServiceDef -> MCP tools`) plus the inbound message->action loop. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
+
+**Key accomplishments:**
+
+- **Tenant context + per-tenant API-key auth (Phase 217, AMCP-01/02)** — `McpContext` embeds `tenant_id` + `evaluated_guards` + `scope`; a SHA-256-hashed per-tenant API key authenticates beside OAuth JWT, both resolving to the same `Authenticated(principal)`; a server-side scope gate rejects write tools on read-scoped keys; cross-tenant isolation is structural.
+- **Write-tool rendering from ActionDef (Phase 218, AMCP-03)** — each `mcp_exposed` `ServiceDef`'s `ActionDef`s are projected into MCP write tools in `tools/list`, input schemas derived from `ActionDef` inputs, guard-filtered per tenant, annotated read-only/destructive — no hand-authored per-tool surface.
+- **Write dispatch (Phase 219, AMCP-04)** — `dispatch_write`/`handle_write_call` execute write tools tenant-scoped with the action's guard **re-evaluated server-side at call time against live DB** (fail-closed, never trusting the agent), idempotency enforced, an audit entry recorded, and a `CallToolResult::structured` result returned.
+- **Confirmation gating for destructive actions (Phase 220, AMCP-05)** — a destructive action cannot execute in one call; a two-tool `request_confirm_<action>` -> `confirm_<action>` flow backed by `ferro-ai::ConfirmationStore` with a TTL issues a server-minted single-use token, re-evaluating guards at confirm time. `ferro-ai` was feature-split (`llm`/`confirmation`) so read-only consumers pay no LLM/reqwest cost.
+- **Inbound NL intent loop (Phase 221, AMCP-06)** — `process_nl_turn` classifies a natural-language message into a `ToolSelection` via `ferro-ai::Classifier`, then routes it through the existing read/write/confirm/clarify machinery (zero new dispatch/guard/confirm logic), treating the classifier output as untrusted. The loop is **CI-testable without live-LLM spend**: a reqwest-free replay provider + committed fixtures exercise all branches with no network, while the live path is isolated behind `ai-live` + `FERRO_AI_LIVE_EVAL=1` and cost-announced.
+
+**Requirements:** AMCP-01 ... AMCP-06 — all validated.
+
+**Quality:** every phase passed goal verification (5/5 success criteria) and the full `fmt + clippy --all --all-targets -D warnings + test --all-features` gate. Phase 221's code review surfaced a read-path authorization bypass (the NL read path skipped the app `mcp_ability` Gate the direct `/mcp` path enforces) and a feature-leak on the non-`ai-live` `/mcp/chat` fallback — both fixed before close. One non-blocking follow-up remains: WR-03 (the `replay_deterministic` test does not assert single-execution idempotency).
+
+**Follow-up:** consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort — the v15.0 milestone shipped the framework capability + synthetic/replay validation only.
+
 ## v14.0 Channel Projection — Non-Visual Rendering (Shipped: 2026-06-13)
 
 **Phases completed:** 99 phases, 373 plans, 307 tasks

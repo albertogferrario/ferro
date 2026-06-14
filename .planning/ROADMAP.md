@@ -66,7 +66,7 @@
 - ✅ **v13.2 Projection Render Completeness** — Phase 213 (SHIPPED in 0.2.55, 2026-06-13 — Gap A kanban structure/content split integration-verified live on gestiscilo feat/207; Gaps B–E unit+live where exercisable. Scoped 2026-06-12 from COMP-01 Slice A findings). Make `JsonUiRenderer`'s projection render *content-complete* so real-world views actually migrate. Phase 209 confirmed the render is layout-complete but content-incomplete: Browse data-binds, but Process emits a placeholder kanban (`emit_kanban_root`, "state-machine awareness is a deferred idea"), Summarize emits empty StatCard values (`emit_statcard_root`, `value: String::new()`), the `actions` slot is an empty stub for every intent (`emit_actions_placeholder`, "Deferred to Phase 118+"), `ImageUrl` fields don't render in tables, and projections emit a standalone spec with no app-shell layout. This is the unblock for all future projection migration. Scope at `phases/213-projection-render-completeness/213-CONTEXT.md` (to be created). Depends on Phase 209 (the validation that scoped it).
 - ✅ **v13.3 Scaffold↔Library Parity & Published-Artifact Smoke Test** — Phase 214 (complete 2026-06-13 — parity fixed via `ferro` facade exports + corrected scaffold templates, plus a two-layer CI guard; 10/10 must-haves verified; the `ci.yml`/`publish.yml` jobs await a manual `workflow`-scope push). Source: COMP-04 (Phase 211) cold-cache benchmark, which found the **published 0.2.55 scaffold does not compile** — `cargo build` of a freshly scaffolded app fails with 52 errors (scaffold templates reference `ferro::error_response!`, `#[rule]`, `ferro::Queue`, and `ActiveValue` that the published `ferro` crate doesn't export, plus `make:job` emits `use ferro_queue::…` without adding `ferro-queue` to the generated `Cargo.toml`). Two parts: (1) align the `ferro-cli` scaffold templates with the published `ferro` surface so `ferro new → make:auth → make:scaffold ×3 → make:job → cargo build` compiles clean; (2) add a CI smoke test that scaffolds and builds against the *published* artifact so a non-compiling release can never ship silently again — the permanent guard COMP-04's apparatus enables. Framework-correctness, not a Compressive Validation item. Scope at `phases/214-scaffold-library-parity/214-CONTEXT.md`. Depends on Phase 211 (the validation that found it).
 - ✅ [**v14.0 Channel Projection — Non-Visual Rendering**](milestones/v14.0-ROADMAP.md) — Phases 215-216 (shipped 2026-06-13). First production non-visual `Renderer` (`ferro-text::TextRenderer`) projecting the same `ServiceDef` as the visual/MCP renderers, plus the `BaseContext`/`FieldDef`/`Intent` extensions (CHAN-01–04). Voice, structured-API, mobile `device_class`/chart-card, and inbound `ferro-ai` classification deferred to a follow-up channel milestone.
-- 🚧 **v15.0 Agent-Operable App (Consumer MCP)** — Phases 217-221 (in progress). Extends the projection/intent abstraction to a write-and-act MCP surface: per-tenant API-key auth, `ActionDef`-derived write tools (guard-filtered), server-side guard re-enforcement at execution, `ferro-ai` confirmation gating for destructive actions, and an inbound natural-language intent loop with replay/smoke CI path. Validated against gestiscilo via synthetic fixtures.
+- ✅ [**v15.0 Agent-Operable App (Consumer MCP)**](milestones/v15.0-ROADMAP.md) — Phases 217-221 (shipped 2026-06-14). Extends the projection/intent abstraction to a write-and-act MCP surface: per-tenant API-key auth, `ActionDef`-derived write tools (guard-filtered), server-side guard re-enforcement at execution, `ferro-ai` confirmation gating for destructive actions, and an inbound natural-language intent loop with a replay/smoke CI path (CI-testable without live-LLM spend). Validated against gestiscilo via synthetic fixtures; consumer adoption is a separate follow-up.
 
 ---
 
@@ -2972,110 +2972,11 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 
 ---
 
-## v15.0 Agent-Operable App (Consumer MCP)
+### ✅ v15.0 Agent-Operable App (Consumer MCP) — Shipped 2026-06-14
 
-**Milestone Goal:** A tenant operates a live ferro application through a per-tenant MCP endpoint whose tools are derived from the app's projections — reading and acting on real data through an agent rather than the dashboard. Extends the projection/intent abstraction to a fourth `Renderer` target (`ServiceDef → MCP tools`) and adds the inbound message → action loop. Validated against gestiscilo via synthetic fixtures (consumer adoption is a separate follow-up phase).
+Phases 217–221 (AMCP-01–06) — full details archived in [milestones/v15.0-ROADMAP.md](milestones/v15.0-ROADMAP.md).
 
-**Builds on:** v12.6 consumer-MCP OAuth endpoint and `ferro-mcp-server` / `McpRenderer` (read tools already ship); v14.0 projection/intent + guard-evaluation surface (`BaseContext.evaluated_guards`, `ServiceDef`, `ActionDef`); `ferro-ai` structured classification and `ConfirmationStore`; v13.1 `TenantScoped` isolation contract.
-
-**No new crates.** All work lands in `ferro-mcp-server`. The only new Cargo dependency is `ferro-ai` added to `ferro-mcp-server` behind a feature flag (`confirmation`/`nl-loop`) so read-only consumers do not pay for LLM HTTP clients.
-
-## Phases
-
-- [x] **Phase 217: Tenant Context + Per-Tenant API-Key Auth** — Extend `McpContext` to embed `BaseContext` (`tenant_id` + `evaluated_guards`) and add SHA-256 API-key validation branch alongside the existing OAuth JWT path; both resolve to the same `BearerCheck::Authenticated(principal)` outcome; API key carries an explicit scope field (`read` / `read_write`). (completed 2026-06-13)
-- [x] **Phase 218: Write-Tool Rendering from ActionDef** — Extend `McpRenderer` and `build_input_schema` to derive one MCP write tool per `ActionDef`; guard-filtered via `ctx.evaluated_guards`; `destructiveHint` / `idempotentHint` annotations derived from `ActionDef` attributes; Phase 205 `CallToolResult::structured` regression test extended to cover every new tool. (completed 2026-06-13)
-- [x] **Phase 219: Write Dispatch** — New `dispatch_write()` / `handle_write_call()` mirroring the read dispatch: tenant-scoped and fail-closed, guard re-evaluated server-side at execution (not advisory), idempotency-key parameter on every write tool, audit log entry per call, typed `CallToolResult::structured` result. (completed 2026-06-13)
-- [x] **Phase 220: Confirmation Gating for Destructive Actions** — Wrap write dispatch with `ferro-ai::ConfirmationStore` behind a feature flag; synthesize a stable `confirm_<action>` tool per destructive action; configurable TTL (5–10 min via `McpServerConfig`); unconfirmed, expired, or mismatched attempts do not mutate data. (completed 2026-06-14)
-- [x] **Phase 221: Inbound NL Intent Loop** — `ferro-ai::Classifier<ToolSelection>` classifies a natural-language message directly to tool + arguments; guard-checked and confirmation-gated before dispatch; result rendered back via `CallToolResult::structured`. Ships with a replay/smoke path (`FERRO_AI_LIVE_EVAL=1` gates all live LLM calls) so the loop is CI-testable without live-LLM spend. (completed 2026-06-14)
-
-## Phase Details
-
-### Phase 217: Tenant Context + Per-Tenant API-Key Auth
-**Goal**: Every tool listing and tool call is scoped to a resolved tenant with evaluated guards, and tenants can authenticate with a per-tenant API key as an alternative to OAuth JWT.
-**Depends on**: Phase 216 (v14.0 `BaseContext.evaluated_guards` and `ServiceDef` — already shipped)
-**Requirements**: AMCP-01, AMCP-02
-**Success Criteria** (what must be TRUE):
-  1. `McpContext` embeds `tenant_id: Option<i64>` and `evaluated_guards: HashMap<String, bool>` sourced from `BaseContext`; every `tools/list` and `tools/call` path reads from this context.
-  2. A request authenticated with a valid per-tenant API key resolves the same `tenant_id` as the equivalent OAuth JWT request; both paths produce the same `BearerCheck::Authenticated(principal)` outcome type.
-  3. A `read`-scoped API key returns only read tools from `tools/list` and is rejected with an MCP scope error on any `tools/call` targeting a write tool.
-  4. A request with an invalid or expired API key is rejected before any tool routing — identical to the existing OAuth invalid-token path.
-  5. Cross-tenant isolation: a test authenticates as tenant A and asserts that no tool listing or call surfaces data owned by tenant B.
-**Plans**: 4 plans
-  - [x] 217-00-PLAN.md — Wave 0: RED tests + compiling skeleton (ferro-mcp-oauth dep, extended McpContext, async resolve_tenant, Auth error, handle_tools_list ctx, scope gate)
-  - [x] 217-01-PLAN.md — ferro-mcp-oauth: mcp_api_keys migration + generate_mcp_api_key + validate_api_key (GREEN oauth unit tests)
-  - [x] 217-02-PLAN.md — ferro-mcp-server: McpContext threading + scope gate + cross-tenant isolation tests GREEN
-  - [x] 217-03-PLAN.md — publish.yml wave-order fix + docs + full CI gate
-
-### Phase 218: Write-Tool Rendering from ActionDef
-**Goal**: Each `ServiceDef`'s guarded actions are projected into MCP write tools visible in `tools/list`, derived purely from `ActionDef` — no hand-authored tool definitions.
-**Depends on**: Phase 217
-**Requirements**: AMCP-03
-**Success Criteria** (what must be TRUE):
-  1. `tools/list` includes one write tool per `ActionDef` in each opt-in `ServiceDef`; the tool name is derived from `action.name` (no hand-authored overrides in `McpRenderer`).
-  2. Each write tool's input schema is derived from `ActionDef.inputs` via `build_action_input_schema(action, service)` — not hand-authored per tool.
-  3. A tool for an action whose guard evaluates to `false` for the calling tenant is absent from `tools/list`; a tenant whose guard evaluates to `true` sees it.
-  4. `ToolAnnotations` carry `readOnlyHint: false` and `destructiveHint` derived from `ActionDef` attributes (not inferred per-tool in the renderer).
-  5. The Phase 205 `CallToolResult` strict-deserialization regression test is extended to cover every write-path tool introduced in this phase.
-**Plans**: 3 plans
-- [x] 218-00-PLAN.md — Wave 0 RED tests (schema + renderer + SC#5 strict-deser)
-- [x] 218-01-PLAN.md — build_action_input_schema (Identifier injection, Sensitive exclusion)
-- [x] 218-02-PLAN.md — render_action_tool + collision pass + SC#5 GREEN + CI gate
-
-### Phase 219: Write Dispatch
-**Goal**: An agent can invoke a write tool and the server executes the action tenant-scoped with guards re-evaluated at execution time, idempotency enforced, and an audit trail recorded.
-**Depends on**: Phase 218
-**Requirements**: AMCP-04
-**Success Criteria** (what must be TRUE):
-  1. `dispatch_write()` re-evaluates the action's guard at execution using live DB state; a direct `tools/call` on a guarded action with a calling tenant whose guard is `false` returns an MCP error — not a successful execution.
-  2. All write operations route through the `TenantScoped` contract; a cross-tenant write fixture (tenant A authenticating and targeting a resource owned by tenant B) asserts failure, not silent success.
-  3. Two calls with the same `idempotency_key` return the same result; the second call does not re-execute the action — verified by a test asserting exactly one write in the DB after two identical calls.
-  4. Each write tool call produces an audit log entry containing tool name, tenant ID, action name, and relevant parameter IDs — recoverable after the fact.
-  5. `CallToolResult::structured` is the result constructor for every write tool response; no bare `content[]` arrays are constructed by hand.
-**Plans**: 3 plans
-- [x] 219-00-PLAN.md — Wave 0: compiling skeleton (WriteDispatcher types, error variants, idempotency migration) + RED tests (SC#1/#3/#5)
-- [x] 219-01-PLAN.md — Wave 1: framework machinery (dispatch_write guard re-eval + idempotency + audit, handle_write_call routing) — turns SC#1/#3/#5 green
-- [x] 219-02-PLAN.md — Wave 2: sample-app wiring (TenantScoped Order, executor + guard evaluator) + SC#2/#4/#3 e2e fixtures + full CI gate
-
-### Phase 220: Confirmation Gating for Destructive Actions
-**Goal**: A destructive or irreversible action cannot execute in a single tool call; it requires an explicit confirmation token issued by the server and validated at dispatch time.
-**Depends on**: Phase 219
-**Requirements**: AMCP-05
-**Success Criteria** (what must be TRUE):
-  1. Calling a destructive write tool without a prior confirmation token returns a structured MCP response indicating confirmation is required — the action is not executed.
-  2. The two-step flow (`request_confirm_<action>` → `confirm_<action>`) completes successfully and executes the action exactly once.
-  3. A confirmation token that has expired (beyond the configured TTL) is rejected; the action is not executed.
-  4. A confirmation token issued for one action or record cannot be used to authorize a different action or record — mismatch returns an error, not execution.
-  5. Consumers that do not enable the `confirmation` feature flag compile successfully and their read tools are unaffected; only write tools for destructive actions require the feature.
-**Plans**: 3 plans
-  - [x] 220-00-PLAN.md — Wave 0: ferro-ai feature-split (default=llm, reqwest-free confirmation) + consumer audit + confirmation feature scaffolding + RED tests
-  - [x] 220-01-PLAN.md — Wave 1: D-08 seam gate + request_confirm/confirm handlers + token binding/mismatch + guard re-eval + two-tool synthesis (GREEN)
-  - [x] 220-02-PLAN.md — Wave 2: sample-app ConfirmationStore wiring + feature-off build-graph assertion (SC#5) + full --all-features CI gate
-
-### Phase 221: Inbound NL Intent Loop
-**Goal**: A natural-language message is classified to a tool and arguments, guard-checked, confirmation-gated for write intents, dispatched, and the result returned — the full conversational turn. The loop is CI-testable without live-LLM spend.
-**Depends on**: Phase 220
-**Requirements**: AMCP-06
-**Success Criteria** (what must be TRUE):
-  1. A natural-language message is classified to a `ToolSelection { tool_name, arguments }` via `ferro-ai::Classifier`; the result is guard-checked and routed to the existing `dispatch()` (read) or `dispatch_write()` (write) path — no separate classification-specific dispatch logic.
-  2. A write intent classified from a natural-language message is routed through the confirmation gate before execution; the loop does not dispatch write actions without a confirmation round-trip.
-  3. With `FERRO_AI_LIVE_EVAL` unset, the loop runs entirely from recorded transcript fixtures and exercises all classification, guard-check, confirmation, and dispatch paths without calling the LLM.
-  4. With `FERRO_AI_LIVE_EVAL=1`, the loop makes a live LLM call and the result matches the replay fixture (or the fixture is updated); the live path announces an estimated cost before making the first call.
-  5. A low-confidence classification returns a clarification response to the agent rather than dispatching to the wrong tool.
-**Plans**: 3 plans
-- [x] 221-01-PLAN.md — Feature wiring (`ai`/`ai-live`) + `ToolSelection` + `render_tool_descriptions` + reqwest-free `ReplayClassificationProvider` + committed turn fixtures (Wave 0 spine, SC#3 deps)
-- [x] 221-02-PLAN.md — `process_nl_turn` turn core (read/write routing, confirmation gate, low-confidence clarification) + non-ignored deterministic replay test (SC#1, SC#2, SC#3, SC#5)
-- [x] 221-03-PLAN.md — App `POST /mcp/chat` endpoint + `#[ignore]`-gated live-eval test with cost announcement (SC#4)
-**UI hint**: no
-
-#### Progress
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 217. Tenant Context + Per-Tenant API-Key Auth | 4/4 | Complete    | 2026-06-13 |
-| 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
-| 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
-| 220. Confirmation Gating for Destructive Actions | 3/3 | Complete    | 2026-06-14 |
-| 221. Inbound NL Intent Loop | 3/3 | Complete    | 2026-06-14 |
+A tenant can operate a live ferro application through a per-tenant MCP endpoint whose tools are projection-derived: per-tenant API-key auth + tenant/guard context (217), write tools rendered from `ActionDef` (218), tenant-scoped write dispatch with server-side guard re-evaluation, idempotency, and audit (219), confirmation gating for destructive actions (220), and the inbound natural-language intent loop — classify → guard → confirm → dispatch — CI-testable without live-LLM spend (221). Extends projection/intent to a fourth `Renderer` target (`ServiceDef → MCP tools`). All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags; consumer (gestiscilo) adoption is a separate follow-up.
 
 ---
 

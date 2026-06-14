@@ -92,6 +92,13 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - ✓ File storage abstraction (local, S3) — existing
 - ✓ Tag-based caching — existing
 
+**v15.0 Agent-Operable App / Consumer MCP (shipped 2026-06-14):**
+- ✓ Per-tenant API-key auth + tenant/guard context on the MCP endpoint (AMCP-01/02) — v15.0
+- ✓ `ActionDef`-derived MCP write tools, guard-filtered (AMCP-03) — v15.0
+- ✓ Tenant-scoped write dispatch with server-side guard re-evaluation, idempotency, and audit (AMCP-04) — v15.0
+- ✓ Confirmation gating for destructive actions via `ferro-ai::ConfirmationStore` (AMCP-05) — v15.0
+- ✓ Inbound natural-language intent loop, CI-testable without live-LLM spend (AMCP-06) — v15.0
+
 **v1.0 DX Overhaul (shipped 2026-01-16):**
 - ✓ Simplified handler definitions with #[handler] macro — v1.0
 - ✓ FerroModel derive macro for automatic SeaORM trait implementations — v1.0
