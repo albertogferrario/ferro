@@ -2988,7 +2988,7 @@ A tenant can operate a live ferro application through a per-tenant MCP endpoint 
 
 ### Phases
 
-- [ ] **Phase 222: Cache-Events Bridge** — Add a `CacheInvalidator` trait + `register_invalidator::<E, F>(cache, key_fn)` helper to `ferro-cache` that subscribes an event-bus listener which flushes the tags returned by `key_fn(&event)`. Tag scheme stays consumer-defined (string keys). Listener failure is best-effort and logged — it does not propagate back to the original event dispatcher.
+- [x] **Phase 222: Cache-Events Bridge** — Added `register_invalidator::<E, F>(cache, key_fn)` (+ `register_invalidator_on` dispatcher overload) to `ferro-cache`, subscribing an event-bus listener that flushes the tags returned by `key_fn(&event)`. Tag scheme stays consumer-defined (string keys). Listener failure is best-effort and logged — it does not propagate back to the original event dispatcher. Shipped v0.2.59. (Closure-only surface — the originally-scoped `CacheInvalidator` trait was dropped as unnecessary indirection; see SC#1 note.)
 
 ### Phase Details
 
@@ -2999,7 +2999,7 @@ A tenant can operate a live ferro application through a per-tenant MCP endpoint 
 **Depends on:** `ferro-cache` (already shipped: `Cache`, `TaggedCache`, `MemoryStore`, `RedisStore`) and `ferro-events` (already shipped: `Event`, `Listener`, `EventDispatcher`, `dispatch`). No new crates; bridge lands in `ferro-cache` with `ferro-events` added as a non-optional workspace dep (small surface, used by every ferro app that already takes both).
 
 **Success Criteria** (what must be TRUE) — to refine in discuss-phase:
-  1. `ferro_cache::CacheInvalidator<E: Event>` is a trait with `fn keys(&self, event: &E) -> Vec<String>`; the convenience `register_invalidator::<E, F>(cache, key_fn)` registers a blanket impl using a closure.
+  1. ⚠️ DEVIATION (as-shipped): no `CacheInvalidator` trait. The trait existed in the scope only to be blanket-impl'd by a closure, so the shipped design exposes the closure helper directly — `register_invalidator::<E, F>(cache, key_fn)` and `register_invalidator_on::<E, F>(&dispatcher, cache, key_fn)`, both `F: Fn(&E) -> Vec<String> + Send + Sync + 'static`. Same user-facing capability (map event → tags at boot), less indirection. The named-trait form is not part of the public surface.
   2. Dispatching an event for which an invalidator is registered flushes the returned tags via the existing `TaggedCache::flush` path — verified by a unit test: insert tagged entry → dispatch event → assert `get` returns `None`.
   3. Multiple invalidators can be registered for the same event type — all run; order is unspecified but documented.
   4. Listener failure (e.g. cache store unavailable) is logged and swallowed — it does not propagate back to `EventDispatcher::dispatch`, so a degraded cache cannot brick the original write path.
@@ -3009,7 +3009,7 @@ A tenant can operate a live ferro application through a per-tenant MCP endpoint 
 
 **Provenance:** Scoped from gestiscilo 2026-06-13 availability-perf session. Pairs with gestiscilo Phase 210 (consumer-side adoption — mounts a `TaggedCache` on the availability endpoint and uses `register_invalidator` for `BookingCreated`, `BookingCancelled`, and the new `ClosedDayChanged` / `InventoryUnitStatusChanged` gestiscilo-side events).
 
-**Status:** Scoped — `/gsd-discuss-phase 222` next (lock the sync vs queued-listener decision; lock the `keys()` shape — `Vec<String>` vs `impl IntoIterator<Item = String>`).
+**Status:** ✅ Shipped (v0.2.59, commits `4d81a596` + `2172c8e0`). Locked decisions (resolved to lean defaults): D-01 `Vec<String>`, D-02 synchronous in-dispatch, D-03 multi-invalidator, D-04 `Fn` closure, D-05 closure-captured `Arc<Cache>`. SC#2–7 met; SC#1 shipped as a closure-only surface (no `CacheInvalidator` trait — see deviation note above). Verified 2026-06-14: `cargo test -p ferro-cache --all-features` → 23 passed (6 invalidator tests). Note: the consumer companion (gestiscilo Phase 210) blocks on the 0.2.59 crates.io publish.
 
 **Plans:** 3/3 plans complete
 

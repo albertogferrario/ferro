@@ -32,10 +32,10 @@ Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13
 
 Status: v15.0 milestone shipped.
 
-Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216).
+Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
 
-Last activity: 2026-06-14 - Completed quick task 260614-nd3: strengthen replay_deterministic test (assert single-execution)
-Workspace version: 0.2.58
+Last activity: 2026-06-14 - Reconciled Phase 222 state: code already shipped (ferro-cache invalidator bridge, v0.2.59); verified 23 tests pass, marked complete in ROADMAP (SC#1 shipped closure-only, no CacheInvalidator trait)
+Workspace version: 0.2.59
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.
