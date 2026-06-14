@@ -48,8 +48,8 @@ impl AnthropicClient {
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .expect("failed to build reqwest client");
-        let base_url = std::env::var("ANTHROPIC_BASE_URL")
-            .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+        let base_url =
+            std::env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
         Self {
             client,
             api_key,
