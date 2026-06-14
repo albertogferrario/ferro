@@ -325,7 +325,7 @@ ferro make:auth --force
 
 The command uses an ALTER TABLE approach because most projects already have a users table with basic fields. The migration adds only the authentication-specific columns.
 
-**See also:** [Authentication guide](../authentication.md) for the complete auth setup walkthrough.
+**See also:** [Authentication guide](../features/authentication.md) for the complete auth setup walkthrough.
 
 ### `ferro make:event`
 
@@ -704,7 +704,7 @@ The `#[derive(ApiResource)]` macro generates the `Resource` trait implementation
 
 **After generation**, add `pub mod user_resource;` to `src/resources/mod.rs`.
 
-**See also:** [API Resources guide](../api-resources.md) for the complete resource system documentation.
+**See also:** [API Resources guide](../features/api-resources.md) for the complete resource system documentation.
 
 ### `ferro make:scaffold`
 

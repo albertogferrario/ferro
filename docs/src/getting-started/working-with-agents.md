@@ -120,7 +120,7 @@ The key insight: the agent never guesses the CLI command syntax. `generation_con
 
 **Other generation hints flow the same way:**
 
-- `code_templates` → `ferro make:handler` — scaffold a request handler
+- `code_templates` → `ferro make:action` — scaffold a request handler
 - `code_templates` → `ferro make:migration` — scaffold a database migration
 - `code_templates` → `ferro make:job` — scaffold a background job
 - `generation_context` for the current route → `ferro make:controller` with the matching name
