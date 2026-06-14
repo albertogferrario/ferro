@@ -14,7 +14,9 @@ mod tests {
         DbTenantLookup, JwtClaimResolver, Middleware, Next, TenantContext, TenantFailureMode,
         TenantMiddleware, TenantResolver,
     };
-    use ferro_mcp_server::{handle_tools_call, McpContext, McpServerConfig, WriteDispatcher};
+    #[cfg(feature = "confirmation")]
+    use ferro_mcp_server::McpServerConfig;
+    use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
 
     fn noop_dispatcher() -> WriteDispatcher {
         WriteDispatcher {

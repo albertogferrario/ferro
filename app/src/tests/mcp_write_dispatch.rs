@@ -21,7 +21,9 @@ mod tests {
     use crate::migrations::Migrator;
     use ferro::serde_json::json;
     use ferro_audit::{history_for_target, AuditTarget};
-    use ferro_mcp_server::{handle_tools_call, McpContext, McpServerConfig, WriteDispatcher};
+    #[cfg(feature = "confirmation")]
+    use ferro_mcp_server::McpServerConfig;
+    use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
     use sea_orm::{
         ActiveModelTrait, ActiveValue::Set, ColumnTrait, Database, DatabaseConnection, EntityTrait,
         QueryFilter,
