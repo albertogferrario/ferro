@@ -147,6 +147,30 @@ is clean).
 
 </deferred>
 
+<deviation>
+## Execution Deviation — token-free pivot (2026-06-14)
+
+During execution the operator asked to eliminate the PAT entirely. **D-03/D-04 revised:**
+the formula is no longer bumped by a PAT-authenticated push *from* `release.yml` *into* the
+tap (cross-repo write → required `HOMEBREW_TAP_TOKEN`). Instead the **tap updates itself**:
+`homebrew-ferro/.github/workflows/update-formula.yml` runs on a 6-hourly `schedule` +
+`workflow_dispatch`, reads ferro's **public** releases, renders `Formula/ferro.rb` from
+`Formula/ferro.rb.tpl` via `bin/update-formula.sh`, and commits to its **own** repo using the
+built-in `GITHUB_TOKEN` (`permissions: contents: write`). **No PAT, no secret, no cross-repo
+credential anywhere** — strictly less privilege. Tradeoff: the bump lands on the next poll tick
+(or instantly via "Run workflow") rather than the exact second of release — irrelevant for `brew`.
+
+Consequences:
+- Removed from the ferro repo: the `bump-homebrew-formula` job in `release.yml`, `scripts/bump-homebrew-formula.sh`,
+  and the `homebrew/` staging dir — all relocated into the self-contained tap (single source of truth).
+- D-01 (tap repo) and the seeding are DONE: `albertogferrario/homebrew-ferro` created + seeded
+  (`Formula/ferro.rb` + `.tpl`, `bin/update-formula.sh`, `.github/workflows/{tests,update-formula}.yml`);
+  the update workflow runs green ("no published release yet — nothing to do").
+- D-06 docs unchanged and still correct (`brew install albertogferrario/ferro/ferro`).
+- The ONLY remaining step to go live: ferro must publish its first release (push+tag → release.yml
+  builds the 4 tarballs); the tap then auto-bumps to real checksums and `brew install` works.
+</deviation>
+
 ---
 
 *Phase: 226-homebrew-tap-distribution-for-ferro-cli*
