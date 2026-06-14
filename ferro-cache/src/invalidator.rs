@@ -113,7 +113,7 @@ where
 ///
 /// # Example
 ///
-/// See the [module-level documentation](self) for a complete wiring example.
+/// See the [crate-level documentation](crate) for a complete wiring example.
 pub fn register_invalidator<E, F>(cache: Arc<Cache>, key_fn: F)
 where
     E: Event,

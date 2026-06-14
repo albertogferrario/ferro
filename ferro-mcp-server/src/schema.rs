@@ -105,8 +105,8 @@ pub fn build_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Val
 ///
 /// Injects the parent service's first `FieldMeaning::Identifier` field as a required
 /// parameter (the record to act on), then maps each `ActionDef.inputs` entry via
-/// [`data_type_to_json_schema`]. `FieldMeaning::Sensitive` inputs are excluded
-/// (mirrors [`is_filter_field`] gate 3 — PITFALLS §3). `action.preconditions` and
+/// the `data_type_to_json_schema` mapping. `FieldMeaning::Sensitive` inputs are excluded
+/// (mirrors the `is_filter_field` gate 3 — PITFALLS §3). `action.preconditions` and
 /// `action.effects` are NOT rendered — preconditions drive the list-time guard filter only.
 pub fn build_action_input_schema(
     action: &ActionDef,

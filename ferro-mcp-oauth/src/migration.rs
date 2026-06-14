@@ -85,7 +85,7 @@ enum OauthClients {
 ///
 /// Schema: `id`, `tenant_id`, `key_hash` (SHA-256 hex, unique), `scope`,
 /// `revoked_at` (NULL = active), `created_at`, `updated_at`.
-/// Exported as [`ferro_mcp_oauth::CreateMcpApiKeysTable`].
+/// Exported as `ferro_mcp_oauth::CreateMcpApiKeysTable`.
 #[derive(DeriveMigrationName)]
 pub struct MigrationMcpApiKeys;
 
@@ -186,7 +186,7 @@ enum McpApiKeys {
 /// `created_at`. The UNIQUE constraint is COMPOSITE on `(tenant_id,
 /// idempotency_key)` — not a single-column unique — preventing one tenant from
 /// replaying another tenant's stored result (cross-tenant idempotency leak).
-/// Exported as [`ferro_mcp_oauth::CreateMcpIdempotencyKeysTable`].
+/// Exported as `ferro_mcp_oauth::CreateMcpIdempotencyKeysTable`.
 #[derive(DeriveMigrationName)]
 pub struct MigrationMcpIdempotencyKeys;
 
