@@ -6,9 +6,9 @@ Built with the [Ferro](https://github.com/albertogferrario/ferro) web framework.
 
 ## Prerequisites
 
-- **Rust** (stable, 1.75+) — install via [rustup](https://rustup.rs)
-- **Ferro CLI** — `cargo install ferro-cli` (or build from source)
-- **Node.js** 20+ and **npm** — for the frontend (Vite + Inertia)
+- **Rust** (stable, 1.88+) — install via [rustup](https://rustup.rs)
+- **Ferro CLI** — `brew install albertogferrario/ferro/ferro` (toolchain-free; no Rust needed). Alternatives: `cargo install ferro-cli` or build from source.
+- **Node.js** 18+ and **npm** — for the frontend (Vite + Inertia)
 - **SQLite** is used by default; no extra install needed. For PostgreSQL, set `DATABASE_URL` accordingly.
 
 Run `ferro doctor` to verify your environment.
@@ -79,10 +79,10 @@ All runtime configuration is in `.env`. See `.env.example` for every supported v
 
 ## Troubleshooting
 
-- **`ferro: command not found`** — install with `cargo install ferro-cli`.
+- **`ferro: command not found`** — install with `brew install albertogferrario/ferro/ferro` (or `cargo install ferro-cli`).
 - **Migrations fail** — delete `database.db` and run `ferro db:fresh`.
 - **Frontend assets missing** — run `npm install` inside `frontend/`, then restart `ferro serve`.
-- **TypeScript errors about `Cannot find module './types/inertia-props'`** — run `cargo run` once to generate types before running `npm run dev`. Types are regenerated automatically on each server start. See the framework docs page `cli/frontend-types.md` for the full convention.
+- **TypeScript errors about `Cannot find module './types/inertia-props'`** — run `ferro serve` to start the server — types are regenerated automatically on each start. See the framework docs page `cli/frontend-types.md` for the full convention.
 - **Port 8080 in use** — change `SERVER_PORT` in `.env`.
 
 For framework-level issues, see the [Ferro docs](https://github.com/albertogferrario/ferro).
