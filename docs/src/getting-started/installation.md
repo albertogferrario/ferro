@@ -2,9 +2,12 @@
 
 ## Requirements
 
-- Rust 1.75+ (with Cargo)
-- Node.js 18+ (for frontend)
-- PostgreSQL, SQLite, or MySQL
+The Ferro CLI installs toolchain-free via Homebrew (below). The following are only needed to
+**build and run** a scaffolded app:
+
+- Rust 1.88+ (with Cargo) — to build the app (no OpenSSL needed; the scaffold uses rustls)
+- Node.js 18+ (for the frontend dev server)
+- PostgreSQL, SQLite, or MySQL — SQLite is the default, no setup required
 
 ## Installing the CLI
 
