@@ -3075,7 +3075,7 @@ Shipped the first production non-visual `Renderer`: `ferro-text::TextRenderer` p
 | 218. Write-Tool Rendering from ActionDef | 3/3 | Complete    | 2026-06-13 |
 | 219. Write Dispatch | 3/3 | Complete    | 2026-06-13 |
 | 220. Confirmation Gating for Destructive Actions | 3/3 | Complete    | 2026-06-14 |
-| 221. Inbound NL Intent Loop | 3/3 | Complete   | 2026-06-14 |
+| 221. Inbound NL Intent Loop | 3/3 | Complete    | 2026-06-14 |
 
 ---
 
