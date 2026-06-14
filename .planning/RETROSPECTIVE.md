@@ -164,6 +164,37 @@ feature; `insta` snapshots over the COMP-05 `approval_workflow` anchor.
 
 ---
 
+## Milestone: v15.0 — Agent-Operable App (Consumer MCP)
+
+**Shipped:** 2026-06-14
+**Phases:** 5 (217-221) | **Plans:** 16
+
+### What Was Built
+A tenant operates a live ferro app through a per-tenant MCP endpoint whose tools are projection-derived: per-tenant API-key auth + tenant/guard context (217), `ActionDef`-derived write tools (218), tenant-scoped write dispatch with server-side guard re-evaluation + idempotency + audit (219), confirmation gating for destructive actions (220), and an inbound NL intent loop classifying messages into tool calls — CI-testable without live-LLM spend (221). All in `ferro-mcp-server` with `ferro-ai` behind feature flags.
+
+### What Worked
+- **Reuse-as-entry-point discipline.** The intent loop (221) added zero new dispatch/guard/confirm logic — it composed the 217–220 machinery. This kept the security surface single-sourced and made the loop unit-testable with a replay provider.
+- **Feature-split for cost isolation.** Splitting `ferro-ai` into `llm`/`confirmation`/`classifier-trait` features kept the CI/replay path reqwest-free and let read-only consumers avoid the LLM HTTP stack — verified with `cargo tree`.
+- **Adversarial verification caught a real bug.** The Phase 221 code review + goal verifier independently found a read-path authorization bypass that contradicted the phase's own SC#1; the verifier correctly returned `gaps_found` rather than rubber-stamping, and it was fixed before close.
+
+### What Was Inefficient
+- **Milestone-complete CLI mis-scoped the range** (counted all unarchived phase dirs as v15.0 → "102 phases"); the MILESTONES/ROADMAP artifacts had to be corrected manually. Root cause: prior milestones were never phase-archived, so `.planning/phases/` holds the whole project.
+- **A research assumption was wrong** (the `ClassificationProvider` trait was `llm`-gated, not reqwest-free as researched); the executor caught it and added a `classifier-trait` feature, but it was a mid-execution detour.
+
+### Patterns Established
+- **Authorization-closure seam:** when a project-agnostic crate must enforce an app-level policy gate (here, `mcp_ability` via `Gate`), pass a fail-closed predicate closure (mirroring the existing `guard_evaluator` boxed-closure pattern) rather than pulling the app's auth types into the library.
+- **Isolate-before-spend for LLM features:** live LLM paths gated behind a feature + env flag + cost announcement; CI runs replay-only against committed fixtures.
+
+### Key Lessons
+- A green task list is not a met goal — goal-backward verification + adversarial code review on security-bearing phases is worth the extra cycle.
+- When a phase claims "same pipeline as the direct path," verify the claim against where the gate actually lives (controller vs library), not the prose.
+
+### Cost Observations
+- Model mix: planning on opus; research/pattern-map/execution/verification/review on sonnet.
+- One gap-closure cycle on Phase 221 (the read-path auth fix) + two non-blocking review follow-ups (one fixed, one deferred).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
