@@ -3051,12 +3051,14 @@ Plans:
 
 **Requirements**: TBD (capture in discuss-phase)
 **Depends on:** Phase 226 (brew/rustls shipped — the facts the docs must now reflect)
-**Plans:** 0 plans
+**Plans:** 3 plans
 
-**Scope notes:** focus on factual accuracy, not a rewrite. Known-good already: `docs/src/getting-started/installation.md` (install section). Likely stale candidates: any TLS/sea-orm config examples, version numbers, getting-started walkthrough. Consider whether a CHANGELOG entry for 0.2.60/0.2.61 belongs here.
+**Scope notes:** focus on factual accuracy, not a rewrite. Known-good already: `docs/src/getting-started/installation.md` (install section). Likely stale candidates: any TLS/sea-orm config examples, version numbers, getting-started walkthrough. CHANGELOG entry deferred (no CHANGELOG system exists; out of scope per CONTEXT.md). READMEs/scripts are Phase 228.
 
 Plans:
-- [ ] TBD (run /gsd-discuss-phase 227 → /gsd-plan-phase 227 to break down)
+- [ ] 227-01-PLAN.md — reference/cli.md: brew-first install + db:sync --skip-migrations fix (D-05, DISC-02) [wave 1]
+- [ ] 227-02-PLAN.md — phantom make:model, stale 0.2.33 pin + broken link, stale MCP config, stale milestone/tool-count (DISC-03..07) [wave 1]
+- [ ] 227-03-PLAN.md — whole-tree clean-confirmation sweep: TLS/version-pin/phantom-command grep + mdbook build (D-01, D-04) [wave 2]
 
 ### Phase 228: README and Scaffold Doc Sweep
 
