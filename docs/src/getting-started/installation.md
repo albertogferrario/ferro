@@ -8,7 +8,21 @@
 
 ## Installing the CLI
 
-Install the Ferro CLI globally:
+### Homebrew (macOS and Linux — recommended)
+
+No Rust toolchain required:
+
+```bash
+brew install albertogferrario/ferro/ferro
+```
+
+### curl installer (macOS and Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/albertogferrario/ferro/main/scripts/install.sh | sh
+```
+
+### Cargo (requires Rust)
 
 ```bash
 cargo install ferro-cli
