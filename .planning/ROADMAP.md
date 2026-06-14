@@ -3025,6 +3025,23 @@ Plans:
 - [x] 225-02-PLAN.md — release.yml: drop `cross` for aarch64, native cross-linker + ring CC env (D-04)
 - [x] 225-03-PLAN.md — release.yml: e2e-tag + e2e-drift jobs (continue-on-error, COMP-04 sequence vs published ferro-rs) (D-06, D-07, D-08, D-09, D-10)
 
+### Phase 226: Homebrew Tap Distribution for ferro-cli
+
+**Goal:** Make `brew install` a first-class way for a new user to get the `ferro` CLI and run `ferro new` — no Rust toolchain, no `curl | sh`, no manual PATH. Stand up an own Homebrew tap (`homebrew-ferro` repo → `brew install albertogferrario/ferro/ferro`) rather than homebrew-core (avoids the pre-1.0 notability/review gate and a likely `ferro` formula-name collision; can graduate to core post-1.0). Ship a binary formula pointing at the GitHub release tarballs already produced by `release.yml` (`ferro-<tag>-<target>.tar.gz`, macOS arm64/x86_64 + Linux) with per-arch sha256 — no user-side compile — and a tag-triggered auto-bump job in `release.yml` that recomputes the SHA256s and updates `Formula/ferro.rb` in the tap so it is never manual toil. Surface `brew install` in the install docs/README.
+
+**Requirements**: TBD (capture in discuss-phase)
+**Depends on:** Phase 225 (release.yml already builds the per-arch tarballs; the rustls migration removed the openssl/pkg-config build dependency, so even a source fallback is clean)
+**Plans:** 0 plans
+
+**Open decisions for discuss-phase:**
+- Binary-only formula, or also a from-source fallback (`depends_on "rust" => :build`) for unsupported arches?
+- Auto-bump mechanism: `mislav/bump-homebrew-formula-action` vs a small in-repo script?
+- Token/deploy-key strategy for pushing the bump to the separate tap repo.
+- Whether to add a `brew test`/formula-audit job (`brew test-bot` / `brew audit --strict`) in CI.
+
+Plans:
+- [ ] TBD (run /gsd-discuss-phase 226 → /gsd-plan-phase 226 to break down)
+
 ---
 
 ## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
