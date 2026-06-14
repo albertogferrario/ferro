@@ -125,16 +125,12 @@ pub async fn handle_chat(req: Request) -> Response {
         .await
     };
 
-    // When built without `ai-live`, the /mcp/chat route should not be registered,
-    // but the handler body must compile. This branch is unreachable at runtime when
-    // the route is not exposed.
+    // Built without `ai-live`: /mcp/chat is non-functional in this build. Return
+    // 501 Not Implemented rather than a 200 `isError` envelope, so a non-ai-live build
+    // does not advertise the NL-intent feature surface to authenticated callers (WR-02).
     #[cfg(not(feature = "ai-live"))]
-    let result: Value = json!({
-        "result": {
-            "content": [{ "type": "text", "text": "NL intent loop requires the ai-live feature" }],
-            "isError": true
-        }
-    });
+    return Err(HttpResponse::new().status(501));
 
+    #[cfg(feature = "ai-live")]
     Ok(HttpResponse::json(result))
 }
