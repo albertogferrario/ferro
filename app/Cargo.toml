@@ -32,6 +32,10 @@ tracing = "0.1"
 # Pulls in ferro-ai (confirmation feature, reqwest-free) via ferro-mcp-server.
 confirmation = ["ferro-mcp-server/confirmation", "dep:ferro-ai"]
 
+# Enables the live NL classification path via AnthropicProvider (adds reqwest transitively).
+# Implies confirmation: the /mcp/chat endpoint exercises the full pipeline including D-08.
+ai-live = ["ferro-mcp-server/ai-live", "ferro-mcp-server/confirmation", "dep:ferro-ai", "ferro-ai/llm", "confirmation"]
+
 [dev-dependencies]
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }

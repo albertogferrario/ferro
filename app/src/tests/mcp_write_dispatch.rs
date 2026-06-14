@@ -20,6 +20,7 @@
 mod tests {
     use crate::migrations::Migrator;
     use ferro::serde_json::json;
+    #[cfg(not(feature = "confirmation"))]
     use ferro_audit::{history_for_target, AuditTarget};
     #[cfg(feature = "confirmation")]
     use ferro_mcp_server::McpServerConfig;
@@ -29,7 +30,9 @@ mod tests {
         QueryFilter,
     };
     use sea_orm_migration::prelude::*;
+    #[cfg(not(feature = "confirmation"))]
     use std::sync::atomic::{AtomicUsize, Ordering};
+    #[cfg(not(feature = "confirmation"))]
     use std::sync::Arc;
 
     // ── Fixture helpers ──────────────────────────────────────────────────────

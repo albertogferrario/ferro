@@ -57,6 +57,7 @@ routes! {
     group!("/", {
         post!("/mcp", controllers::mcp::handle).name("mcp.endpoint"),
         get!("/mcp", controllers::mcp::method_not_allowed).name("mcp.endpoint.get"),
+        post!("/mcp/chat", controllers::mcp_chat::handle_chat).name("mcp.chat"),
     }).middleware(BearerAuthMiddleware {
         mcp_config: McpServerConfig::from_env(),
     }).middleware(

@@ -23,13 +23,13 @@ use std::sync::OnceLock;
 static CONFIRMATION_STORE: OnceLock<ferro_ai::InMemoryConfirmationStore> = OnceLock::new();
 
 #[cfg(feature = "confirmation")]
-fn confirmation_store() -> &'static ferro_ai::InMemoryConfirmationStore {
+pub(crate) fn confirmation_store() -> &'static ferro_ai::InMemoryConfirmationStore {
     CONFIRMATION_STORE.get_or_init(ferro_ai::InMemoryConfirmationStore::new)
 }
 
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
-fn exposed_services() -> Vec<ServiceDef> {
+pub(crate) fn exposed_services() -> Vec<ServiceDef> {
     vec![crate::projections::order::service_def()]
 }
 
@@ -38,7 +38,7 @@ fn exposed_services() -> Vec<ServiceDef> {
 /// For the synthetic fixture, a tenant is treated as a "manager" when it has
 /// at least one associated user in the DB. This reads live DB state and
 /// never consults a cached map (D-02 / T-219-02).
-async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConnection) -> bool {
+pub(crate) async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConnection) -> bool {
     use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
     let backend = db.get_database_backend();
     let stmt = Statement::from_sql_and_values(
@@ -65,7 +65,7 @@ async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConnection) -> b
 ///
 /// The closures capture no external state; `db` and `tenant_id` are passed as args
 /// to avoid the 'static borrow trap (PITFALLS §4).
-fn make_write_dispatcher() -> WriteDispatcher {
+pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
     WriteDispatcher {
         executor: Box::new(|action_name, inputs, tenant_id, db| {
             // Convert borrowed args to owned values so the async block can move them.
