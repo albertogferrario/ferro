@@ -4,6 +4,22 @@ Ferro provides a powerful CLI tool for project scaffolding, code generation, dat
 
 ## Installation
 
+The Ferro CLI installs toolchain-free via Homebrew (recommended). Rust is only needed to **build and run** a scaffolded app, not to install the CLI.
+
+### Homebrew (macOS and Linux — recommended)
+
+```bash
+brew install albertogferrario/ferro/ferro
+```
+
+### curl installer (macOS and Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/albertogferrario/ferro/main/scripts/install.sh | sh
+```
+
+### Cargo (requires Rust)
+
 ```bash
 cargo install ferro-cli
 ```
@@ -11,9 +27,9 @@ cargo install ferro-cli
 Or build from source:
 
 ```bash
-git clone https://github.com/albertogferrario/ferro
-cd ferro/ferro-cli
-cargo install --path .
+git clone https://github.com/albertogferrario/ferro.git
+cd ferro
+cargo install --path ferro-cli
 ```
 
 ## Project Commands
