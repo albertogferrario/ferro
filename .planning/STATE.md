@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
-status: verifying
-stopped_at: "Completed 221-03-PLAN.md — POST /mcp/chat endpoint + live-eval gate (SC#4). Phase 221 complete. v15.0 milestone complete."
+status: shipped
+stopped_at: "v15.0 Agent-Operable App (Consumer MCP) shipped 2026-06-14 (tag v15.0). Phases 217-221 complete, AMCP-01..06 validated. Next: new milestone or gestiscilo adoption."
 last_updated: "2026-06-14T02:57:31.145Z"
 last_activity: 2026-06-14
 progress:
@@ -20,20 +20,19 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 221 — inbound-nl-intent-loop
+**Current focus:** v15.0 shipped — planning next milestone (or gestiscilo adoption)
 
 ## Current Position
 
-Milestone: v15.0 Agent-Operable App (Consumer MCP) — ACTIVE (roadmap created 2026-06-13). Scope: extend the projection/intent abstraction to a write-and-act MCP surface. Per-tenant API-key auth (Phase 217), `ActionDef`-derived write tools (Phase 218), server-side guard-enforced write dispatch (Phase 219), `ferro-ai` confirmation gating for destructive actions (Phase 220), inbound NL intent loop with replay/smoke CI path (Phase 221). All work in `ferro-mcp-server`. Validated via synthetic fixtures.
+Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
-Phase: 221
-Plan: Not started
-Next: `/gsd-plan-phase 217`
+Phase: 221 ✅ complete
+Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
-Status: Phase complete — ready for verification
+Status: v15.0 milestone shipped.
 
-Progress: v15.0 — 0/5 phases. v14.0 ✅ shipped (215–216, 0.2.58).
+Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216).
 
 Last activity: 2026-06-14
 Workspace version: 0.2.58
