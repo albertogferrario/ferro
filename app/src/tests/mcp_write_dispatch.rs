@@ -21,7 +21,7 @@ mod tests {
     use crate::migrations::Migrator;
     use ferro::serde_json::json;
     use ferro_audit::{history_for_target, AuditTarget};
-    use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
+    use ferro_mcp_server::{handle_tools_call, McpContext, McpServerConfig, WriteDispatcher};
     use sea_orm::{
         ActiveModelTrait, ActiveValue::Set, ColumnTrait, Database, DatabaseConnection, EntityTrait,
         QueryFilter,
@@ -235,6 +235,16 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "confirmation")]
+    fn test_config() -> McpServerConfig {
+        McpServerConfig {
+            app_name: "TestApp".into(),
+            app_url: "https://test.example".into(),
+            version: "0.0.0".into(),
+            confirmation_ttl_seconds: 300,
+        }
+    }
+
     /// Invoke a write tool through the full `handle_tools_call` path.
     async fn call_write_tool(
         tool_name: &str,
@@ -250,7 +260,19 @@ mod tests {
             ..Default::default()
         };
         let params = json!({ "name": tool_name, "arguments": arguments });
-        handle_tools_call(params, &services, db, tenant_id, &ctx, dispatcher).await
+        handle_tools_call(
+            params,
+            &services,
+            db,
+            tenant_id,
+            &ctx,
+            dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
+        )
+        .await
     }
 
     // ── SC#2: Cross-tenant write denied (T-219-01) ───────────────────────────
@@ -295,6 +317,11 @@ mod tests {
     /// The `dispatch_write` pipeline (Plan 01) calls `AuditEntry::write` after
     /// every successful execution. This test recovers the entry via
     /// `history_for_target` and asserts: action name, tenant_id, and after present.
+    ///
+    /// Gated: with the confirmation feature on, `submit` (a destructive action) requires
+    /// the two-step confirm flow before executing. The Phase 220 SC#1–#4 tests in
+    /// ferro-mcp-server cover the confirmed-execution → audit-trail path feature-on.
+    #[cfg(not(feature = "confirmation"))]
     #[tokio::test]
     async fn write_call_produces_audit_entry() {
         let db = setup_db().await;
@@ -348,6 +375,12 @@ mod tests {
     /// An `AtomicUsize` counter increments every time the executor runs. After two
     /// calls with the same key the counter must equal 1 (replay skipped execution).
     /// The DB order status must reflect exactly one transition, not two.
+    ///
+    /// Gated: with the confirmation feature on, `submit` (a destructive action) requires
+    /// the two-step confirm flow before executing. The idempotency layer is exercised
+    /// inside dispatch_write which is reached only after confirmation; the Phase 220
+    /// SC#2 (exactly-once) tests in ferro-mcp-server cover the confirmed path feature-on.
+    #[cfg(not(feature = "confirmation"))]
     #[tokio::test]
     async fn idempotent_write_e2e() {
         let db = setup_db().await;
@@ -418,6 +451,10 @@ mod tests {
             Some(1),
             &ctx,
             &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
         )
         .await;
 
@@ -428,6 +465,10 @@ mod tests {
             Some(1),
             &ctx,
             &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
         )
         .await;
 

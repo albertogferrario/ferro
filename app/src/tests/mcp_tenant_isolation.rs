@@ -14,7 +14,7 @@ mod tests {
         DbTenantLookup, JwtClaimResolver, Middleware, Next, TenantContext, TenantFailureMode,
         TenantMiddleware, TenantResolver,
     };
-    use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
+    use ferro_mcp_server::{handle_tools_call, McpContext, McpServerConfig, WriteDispatcher};
 
     fn noop_dispatcher() -> WriteDispatcher {
         WriteDispatcher {
@@ -265,6 +265,10 @@ mod tests {
             Some(tenant_ctx.id),
             &McpContext::default(),
             &noop_dispatcher(),
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &McpServerConfig::default(),
         )
         .await;
 
@@ -334,6 +338,10 @@ mod tests {
             Some(tenant_ctx.id),
             &McpContext::default(),
             &noop_dispatcher(),
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &McpServerConfig::default(),
         )
         .await;
 

@@ -183,6 +183,7 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
+ "ferro-ai",
  "ferro-audit",
  "ferro-mcp-oauth",
  "ferro-mcp-server",
