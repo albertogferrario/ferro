@@ -147,8 +147,15 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add scripts/install.sh scripts/create-app.sh
-          git diff --staged --quiet || git commit -m "chore: update install scripts with repo name"
-          git push
+          # This job runs on a detached tag HEAD; only commit/push (to master) when
+          # the sed actually changed something — otherwise `git push` on detached HEAD
+          # fails (exit 128). The sed is a no-op while REPO already matches.
+          if git diff --staged --quiet; then
+            echo "Install scripts already correct — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: update install scripts with repo name"
+          git push origin HEAD:master
 
   e2e-tag:
     name: E2E from release artifact (tag)
