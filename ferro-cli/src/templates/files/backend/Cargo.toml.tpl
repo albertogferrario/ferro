@@ -12,8 +12,8 @@ path = "src/main.rs"
 [dependencies]
 ferro = {{ package = "ferro-rs", version = "0.2" }}
 tokio = {{ version = "1", features = ["full"] }}
-sea-orm-migration = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }}
-sea-orm = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls", "macros"] }}
+sea-orm-migration = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }}
+sea-orm = {{ version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }}
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_json = "1.0"
 async-trait = "0.1"
