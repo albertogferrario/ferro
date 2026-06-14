@@ -587,7 +587,16 @@ pub async fn handle_request_confirm(
         "inputs": args
     });
 
-    if let Err(e) = store
+    // NOTE (WR-04): retried request_confirm calls mint a new token each time
+    // (the store is keyed on the token, not on the (tenant, action, record)
+    // tuple), leaving the previous token live until TTL expiry. This is
+    // acceptable for the v15.0 walking skeleton: each token is single-use,
+    // TTL-bounded (≤600 s), and bound to (tenant_id, action_name, record_id) —
+    // a write still requires exactly one valid confirm, and dispatch_write
+    // idempotency prevents double-execution even on a race. Hardening path:
+    // re-key the store on (tenant, action, record) when a persistent /
+    // DB-backed store replaces InMemoryConfirmationStore.
+    if let Err(_e) = store
         .request_confirmation(
             &token,
             binding_payload,
@@ -597,7 +606,7 @@ pub async fn handle_request_confirm(
     {
         return json!({ "result": write_tool_error_result(json!({
             "error_kind": "execution_error",
-            "message": format!("failed to store confirmation: {e}")
+            "message": "failed to store confirmation token"
         })) });
     }
 
@@ -659,10 +668,10 @@ pub async fn handle_confirm(
                 "message": "confirmation token expired or not found"
             })) });
         }
-        Err(e) => {
+        Err(_) => {
             return json!({ "result": write_tool_error_result(json!({
                 "error_kind": "execution_error",
-                "message": format!("confirmation store error: {e}")
+                "message": "confirmation store error"
             })) });
         }
     };
@@ -707,10 +716,10 @@ pub async fn handle_confirm(
     for guard_name in &action.preconditions {
         let passes = match (dispatcher.guard_evaluator)(guard_name, tid, stored_inputs, db).await {
             Ok(p) => p,
-            Err(e) => {
+            Err(_) => {
                 return json!({ "result": write_tool_error_result(json!({
                     "error_kind": "guard_denied",
-                    "message": format!("precondition '{guard_name}' error at confirm time: {e}")
+                    "message": "precondition not met at confirm time"
                 })) });
             }
         };
