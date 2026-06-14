@@ -13,7 +13,7 @@ categories = ["web-programming", "authentication"]
 [dependencies]
 ferro = { path = "../framework", version = "0.2", package = "ferro-rs" }
 jsonwebtoken = "9"
-sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
 sea-orm-migration = "1.0"
 rand = "0.8"
 base64 = "0.22"
@@ -27,4 +27,4 @@ chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
-sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }

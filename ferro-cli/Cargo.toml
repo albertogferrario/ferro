@@ -32,8 +32,8 @@ notify-debouncer-mini = "0.4"
 dirs = "5"
 dotenvy = "0.15"
 tokio = { version = "1", features = ["full"] }
-sea-orm-migration = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls"] }
-sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-native-tls", "with-uuid", "with-chrono"] }
+sea-orm-migration = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "with-uuid", "with-chrono"] }
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 toml = "0.8"
@@ -45,7 +45,7 @@ ferro-json-ui = { path = "../ferro-json-ui", version = "0.2" }
 ferro-mcp = { path = "../ferro-mcp", version = "0.2" }
 ferro-ai = { path = "../ferro-ai", version = "0.2" }
 ferro-projections = { path = "../ferro-projections", version = "0.2", optional = true }
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 rand = "0.8"
 sha2 = "0.10"
 anyhow = "1"

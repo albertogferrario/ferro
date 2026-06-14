@@ -49,7 +49,7 @@ ferro-theme = { path = "../ferro-theme", version = "0.2", optional = true }
 ferro-whatsapp = { path = "../ferro-whatsapp", version = "0.2", optional = true }
 dotenvy = "0.15"
 inventory = "0.3"
-sea-orm = { version = "1.0", features = ["sqlx-postgres", "sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
+sea-orm = { version = "1.0", features = ["sqlx-postgres", "sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
 sea-orm-migration = "1.0"
 thiserror = "1.0"
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
