@@ -17,7 +17,7 @@ mod intent_loop {
     ///
     /// Mirrors the Phase 210 `Transcript`/`TrialRecord` pattern but simplified
     /// to a single turn (no multi-trial structure needed for classification replay).
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Clone, Deserialize, Serialize)]
     pub struct IntentTurnFixture {
         pub turn_id: String,
         pub nl_message: String,
@@ -846,15 +846,40 @@ mod intent_loop {
         let raw_approve = include_str!("fixtures/intent_loop/transcripts/approve-order.json");
         let f_approve: IntentTurnFixture = serde_json::from_str(raw_approve).expect("must parse");
 
-        for fixture in [&f_list, &f_approve] {
+        for src_fixture in [&f_list, &f_approve] {
+            // Clone so we can inject an idempotency_key into the write fixture.
+            let mut fixture = src_fixture.clone();
+
+            // Inject an idempotency_key into the write fixture's arguments only.
+            // On run 2 the stored result is replayed and the executor is NOT
+            // re-invoked, which is what makes the exec-count assertion below
+            // non-trivial. Injecting into the read fixture (list_order) would
+            // pass an unknown filter to the list handler, so we skip it there.
+            if fixture.expected_tool != "list_order" {
+                if let Some(args) = fixture.recorded_selection["arguments"].as_object_mut() {
+                    args.insert(
+                        "idempotency_key".to_string(),
+                        serde_json::json!("replay-determinism-key"),
+                    );
+                }
+            }
+
             let db = setup_db().await;
             let services = vec![test_service()];
             let ctx = ferro_mcp_server::McpContext::default();
 
+            // Counting executor shared across both runs (run1 + run2) of this
+            // fixture: the idempotency replay means it must fire at most once.
+            let exec_count = Arc::new(AtomicUsize::new(0));
+
             let make_dispatcher = || WriteDispatcher {
                 guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-                executor: Box::new(|_, _, _, _| {
-                    Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
+                executor: Box::new({
+                    let count = exec_count.clone();
+                    move |_, _, _, _| {
+                        count.fetch_add(1, Ordering::SeqCst);
+                        Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
+                    }
                 }),
             };
 
@@ -868,7 +893,7 @@ mod intent_loop {
             #[cfg(feature = "confirmation")]
             let mcp_config = ferro_mcp_server::McpServerConfig::default();
 
-            let provider1 = single_fixture_provider(fixture);
+            let provider1 = single_fixture_provider(&fixture);
             let result1 = ferro_mcp_server::process_nl_turn(
                 &fixture.nl_message,
                 &services,
@@ -886,7 +911,7 @@ mod intent_loop {
             )
             .await;
 
-            let provider2 = single_fixture_provider(fixture);
+            let provider2 = single_fixture_provider(&fixture);
             let result2 = ferro_mcp_server::process_nl_turn(
                 &fixture.nl_message,
                 &services,
@@ -910,6 +935,27 @@ mod intent_loop {
             assert_eq!(
                 sc1, sc2,
                 "fixture '{}': structuredContent must be identical on two runs",
+                fixture.turn_id
+            );
+
+            // Single-execution assertion. The read path (list_order) never
+            // reaches the write executor, so its count must be 0. The write
+            // path executes exactly once across both runs: run 1 executes and
+            // stores under the injected idempotency_key, run 2 replays the
+            // stored result without re-invoking the executor. If idempotency
+            // replay were removed, run 2 would re-execute and this count would
+            // be 2 — so the assertion is non-trivial.
+            let expected = if fixture.expected_tool == "list_order" {
+                0
+            } else {
+                1
+            };
+            assert_eq!(
+                exec_count.load(Ordering::SeqCst),
+                expected,
+                "fixture '{}': write path must execute exactly once across two \
+                 runs (idempotency replay) and the read path must never invoke \
+                 the executor",
                 fixture.turn_id
             );
         }
