@@ -81,7 +81,3 @@
   - [doctor](cli/doctor.md)
   - [frontend-types](cli/frontend-types.md)
   - [routes:json-schema](cli/routes-json-schema.md)
-
-# Upgrading
-
-- [Migration Guide](upgrading/migration-guide.md)
