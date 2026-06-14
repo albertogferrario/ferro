@@ -179,20 +179,131 @@ mod intent_loop {
     /// When enabled: makes real classification calls against the Anthropic API,
     /// asserts the returned tool_name matches the fixture's expected_tool, and
     /// announces the estimated cost before the first call.
+    ///
+    /// Run with:
+    ///   FERRO_AI_LIVE_EVAL=1 ANTHROPIC_API_KEY=sk-ant-... \
+    ///     cargo test -p ferro-mcp-server --features ai-live,confirmation \
+    ///     -- --ignored intent_loop_live_eval
+    ///
+    /// Set FERRO_AI_UPDATE_FIXTURES=1 to overwrite committed fixtures on mismatch.
+    #[cfg(feature = "ai-live")]
     #[tokio::test]
     #[ignore]
     async fn intent_loop_live_eval() {
         if std::env::var("FERRO_AI_LIVE_EVAL").as_deref() != Ok("1") {
             return;
         }
-        // Announce cost BEFORE first API call (isolate-before-spend discipline).
+
+        // Load fixtures for the live eval run.
+        let raw_list = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let raw_approve = include_str!("fixtures/intent_loop/transcripts/approve-order.json");
+        let raw_cancel = include_str!("fixtures/intent_loop/transcripts/cancel-order.json");
+        let raw_ambiguous = include_str!("fixtures/intent_loop/transcripts/ambiguous.json");
+
+        let f_list: IntentTurnFixture =
+            serde_json::from_str(raw_list).expect("list-orders.json must parse");
+        let f_approve: IntentTurnFixture =
+            serde_json::from_str(raw_approve).expect("approve-order.json must parse");
+        let f_cancel: IntentTurnFixture =
+            serde_json::from_str(raw_cancel).expect("cancel-order.json must parse");
+        let f_ambiguous: IntentTurnFixture =
+            serde_json::from_str(raw_ambiguous).expect("ambiguous.json must parse");
+
+        let fixtures = [f_list, f_approve, f_cancel, f_ambiguous];
+
+        // Cost announcement BEFORE the first API call (isolate-before-spend discipline, SC#4).
         eprintln!(
-            "FERRO_AI_LIVE_EVAL=1: running live classification \
-             (~4 turns × ~$0.005/call ≈ $0.02)"
+            "FERRO_AI_LIVE_EVAL=1: running live classification ({} turns x ~$0.005/call = ~${:.2})",
+            fixtures.len(),
+            fixtures.len() as f64 * 0.005
         );
-        // Live path implemented in Plan 03 when AnthropicProvider is wired.
-        // This stub ensures the #[ignore] gate compiles and is exercisable.
-        todo!("live eval wired in Plan 03 when process_nl_turn is available");
+
+        // Instantiate the live Anthropic provider (requires ANTHROPIC_API_KEY env var).
+        let provider = std::sync::Arc::new(
+            ferro_ai::AnthropicProvider::from_env()
+                .expect("ANTHROPIC_API_KEY must be set for live eval"),
+        );
+
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "tool_name": { "type": "string", "description": "The tool to invoke" },
+                "arguments": { "type": "object", "description": "Arguments for the tool" },
+                "confidence": { "type": "number", "description": "Classifier confidence in [0.0, 1.0]" }
+            },
+            "required": ["tool_name", "arguments", "confidence"]
+        });
+
+        // Build a minimal system prompt for classification.
+        let services = [test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let system = ferro_mcp_server::render_tool_descriptions(&services, &ctx)
+            .expect("render_tool_descriptions must succeed");
+
+        let classifier_config = ferro_ai::ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+
+        let update_fixtures = std::env::var("FERRO_AI_UPDATE_FIXTURES").as_deref() == Ok("1");
+
+        let mut mismatches: Vec<String> = Vec::new();
+
+        for fixture in &fixtures {
+            let classifier = ferro_ai::Classifier::<ferro_mcp_server::ToolSelection>::new(
+                provider.clone(),
+                classifier_config.clone(),
+            );
+
+            match classifier.classify(&system, &fixture.nl_message, &schema).await {
+                Ok(result) => {
+                    let live_tool = &result.value.tool_name;
+                    if live_tool != &fixture.expected_tool {
+                        let msg = format!(
+                            "fixture '{}': live returned '{}', expected '{}'",
+                            fixture.turn_id, live_tool, fixture.expected_tool
+                        );
+                        if update_fixtures {
+                            eprintln!("FERRO_AI_UPDATE_FIXTURES=1: would update fixture '{}' (manual step — rewrite the JSON file and recommit)", fixture.turn_id);
+                        }
+                        mismatches.push(msg);
+                    } else {
+                        eprintln!(
+                            "fixture '{}': live classification MATCHED expected tool '{}'",
+                            fixture.turn_id, live_tool
+                        );
+                    }
+                }
+                Err(ferro_ai::Error::LowConfidence {
+                    best_guess,
+                    confidence,
+                }) => {
+                    eprintln!(
+                        "fixture '{}': low confidence ({:.0}%), best guess: {:?}",
+                        fixture.turn_id,
+                        confidence * 100.0,
+                        best_guess.get("tool_name").and_then(|v| v.as_str())
+                    );
+                    // Low confidence on the ambiguous fixture is expected behaviour.
+                    if fixture.turn_id != "ambiguous" {
+                        mismatches.push(format!(
+                            "fixture '{}': unexpected low confidence {:.2}",
+                            fixture.turn_id, confidence
+                        ));
+                    }
+                }
+                Err(e) => {
+                    mismatches.push(format!("fixture '{}': classification error: {}", fixture.turn_id, e));
+                }
+            }
+        }
+
+        if !mismatches.is_empty() {
+            panic!(
+                "Live eval mismatches (set FERRO_AI_UPDATE_FIXTURES=1 to update fixtures):\n{}",
+                mismatches.join("\n")
+            );
+        }
     }
 
     // ── End-to-end replay tests (SC#1 / SC#2 / SC#3 / SC#5) ─────────────────
