@@ -116,6 +116,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  bump-homebrew-formula:
+    name: Bump Homebrew formula
+    if: github.event_name == 'push' && !contains(github.ref_name, '-')
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump formula in homebrew-ferro tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: bash scripts/bump-homebrew-formula.sh "${{ github.ref_name }}"
+
   # Update install script with correct repo name
   update-install-script:
     name: Update Install Script
