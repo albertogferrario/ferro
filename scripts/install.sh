@@ -181,7 +181,7 @@ create_project() {
         echo "Next steps:"
         printf "  ${CYAN}cd %s${NC}\n" "$PROJECT_NAME"
         printf "  ${CYAN}cd frontend && npm install && cd ..${NC}\n"
-        printf "  ${CYAN}ferro migrate${NC}\n"
+        printf "  ${CYAN}ferro db:migrate${NC}\n"
         printf "  ${CYAN}ferro serve${NC}\n"
     fi
 }
