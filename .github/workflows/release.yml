@@ -46,6 +46,14 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # Explicitly add the target to the active toolchain. The action's `targets:`
+      # input can miss when a repo-pinned toolchain or a preinstalled runner
+      # toolchain is selected, surfacing as "target may not be installed" / E0463
+      # when cross-compiling (e.g. x86_64-apple-darwin on an arm64 macos runner).
+      - name: Add Rust target
+        if: '!matrix.cross'
+        run: rustup target add ${{ matrix.target }}
+
       - name: Install cross
         if: matrix.cross
         run: cargo install cross --git https://github.com/cross-rs/cross
