@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'   # Weekly Monday 06:00 UTC — published-library drift check
 
 env:
   CARGO_TERM_COLOR: always
@@ -135,3 +138,47 @@ jobs:
           git add scripts/install.sh scripts/create-app.sh
           git diff --staged --quiet || git commit -m "chore: update install scripts with repo name"
           git push
+
+  e2e-tag:
+    name: E2E from release artifact (tag)
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # TODO(D-10): flip to false after scaffold-template-alignment phase ships a clean published ferro-rs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+
+      - name: Download linux x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ferro-x86_64-unknown-linux-gnu
+          path: ./dist
+
+      - name: Extract and install ferro binary
+        run: |
+          tar -xzf ./dist/ferro-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz -C ./dist
+          chmod +x ./dist/ferro
+          echo "$PWD/dist" >> $GITHUB_PATH
+
+      - name: Run COMP-04 scaffold sequence
+        run: |
+          set -euo pipefail
+          ferro --version
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+          ferro new bench-app --no-interaction --no-git
+          cd bench-app
+          ferro make:auth
+          ferro make:scaffold --no-smart-defaults -q -y --api Article title:string body:text
+          ferro make:scaffold --no-smart-defaults -q -y --api Product name:string price:float
+          ferro make:scaffold --no-smart-defaults -q -y --api Order status:string total:float
+          ferro make:scaffold --no-smart-defaults -q -y Post title:string body:text
+          ferro make:job EmailNotification
+          # DO NOT add [patch.crates-io] — must build against PUBLISHED ferro-rs (RESEARCH Pitfall 3)
+          RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build
