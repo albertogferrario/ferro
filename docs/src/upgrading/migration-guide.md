@@ -62,12 +62,11 @@ The CLI binary has been renamed:
 ```bash
 # Before
 cancer serve
-cancer make:model User
 cancer migrate
 
 # After
 ferro serve
-ferro make:model User
+ferro make:scaffold User
 ferro db:migrate
 ```
 
