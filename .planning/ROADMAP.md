@@ -3018,10 +3018,10 @@ A tenant can operate a live ferro application through a per-tenant MCP endpoint 
 **Goal:** The `ferro` release binary and `cargo install ferro-cli` build with no system OpenSSL (no libssl-dev/pkg-config/C-cross), via a workspace-wide native-tls→rustls/ring migration; aarch64-linux builds natively without `cross`; and a from-release e2e gate exercises the real released binary scaffolding a real app against the published `ferro-rs` library (catching the COMP-04 "ships silently broken" class).
 **Requirements**: TBD (driven by CONTEXT.md decisions D-01..D-10)
 **Depends on:** Phase 224
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 225-01-PLAN.md — Workspace-wide native-tls→rustls/ring migration (18 sea-orm/lettre occurrences + reqwest coherence) + structural verification (D-01, D-02, D-03, D-05)
+- [x] 225-01-PLAN.md — Workspace-wide native-tls→rustls/ring migration (18 sea-orm/lettre occurrences + reqwest coherence) + structural verification (D-01, D-02, D-03, D-05)
 - [ ] 225-02-PLAN.md — release.yml: drop `cross` for aarch64, native cross-linker + ring CC env (D-04)
 - [ ] 225-03-PLAN.md — release.yml: e2e-tag + e2e-drift jobs (continue-on-error, COMP-04 sequence vs published ferro-rs) (D-06, D-07, D-08, D-09, D-10)
 

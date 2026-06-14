@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 225 context gathered
-last_updated: "2026-06-14T15:34:06.603Z"
-last_activity: 2026-06-14 -- Phase 225 planning complete
+stopped_at: Completed 225-01-PLAN.md (rustls TLS migration — Tasks 1/2/3 done)
+last_updated: "2026-06-14T15:55:13.074Z"
+last_activity: 2026-06-14
 progress:
   total_phases: 233
   completed_phases: 209
   total_plans: 654
-  completed_plans: 640
+  completed_plans: 641
   percent: 98
 ---
 
@@ -20,13 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v15.0 shipped — planning next milestone (or gestiscilo adoption)
+**Current focus:** Phase 225 — release-workflow-rustls-migration-and-e2e-cli-from-release-t
 
 ## Current Position
 
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
-Phase: 221 ✅ complete
+Phase: 225 (release-workflow-rustls-migration-and-e2e-cli-from-release-t) — EXECUTING
+Plan: 2 of 3
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -34,7 +35,7 @@ Status: Ready to execute
 
 Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
 
-Last activity: 2026-06-14 -- Phase 225 planning complete
+Last activity: 2026-06-14
 Workspace version: 0.2.59
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -116,6 +117,7 @@ Progress: [██████████] 100%
 | Phase 221-inbound-nl-intent-loop P01 | 1025 | 3 tasks | 13 files |
 | Phase 221 P02 | 12 | 2 tasks | 3 files |
 | Phase 221-inbound-nl-intent-loop P03 | 27 | 2 tasks | 7 files |
+| Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P01 | 31540193 | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -164,7 +166,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:06:23.790Z
-Stopped at: Phase 225 context gathered
-Resume file: .planning/phases/225-release-workflow-rustls-migration-and-e2e-cli-from-release-t/225-CONTEXT.md
+Last session: 2026-06-14T15:55:13.063Z
+Stopped at: Completed 225-01-PLAN.md (rustls TLS migration — Tasks 1/2/3 done)
+Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
