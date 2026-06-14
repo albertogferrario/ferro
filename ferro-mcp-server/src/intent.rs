@@ -1,15 +1,31 @@
 //! NL intent loop types and helpers.
 //!
-//! Provides `ToolSelection` (the classifier output type) and
-//! `render_tool_descriptions` (a text formatter for the classifier system prompt).
+//! Provides `ToolSelection` (the classifier output type),
+//! `render_tool_descriptions` (a text formatter for the classifier system prompt),
+//! and `process_nl_turn` (the conversational-turn core that classifies an NL
+//! message and routes it through the existing read/write/confirm/clarify machinery).
 //!
-//! Gated by the `ai` Cargo feature. The `process_nl_turn` function that ties
-//! classification to dispatch is added in Plan 02.
+//! Gated by the `ai` Cargo feature.
 
 use crate::renderer::{render_exposed_tools, McpContext};
 use ferro_projections::ServiceDef;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
+
+#[cfg(feature = "ai")]
+use crate::jsonrpc::handle_tools_call;
+#[cfg(feature = "ai")]
+use crate::write_dispatch::handle_write_call;
+#[cfg(feature = "ai")]
+use crate::write_dispatch::write_tool_error_result;
+#[cfg(feature = "ai")]
+use crate::write_dispatch::WriteDispatcher;
+#[cfg(feature = "ai")]
+use sea_orm::DatabaseConnection;
+#[cfg(feature = "ai")]
+use serde_json::json;
+#[cfg(feature = "ai")]
+use std::sync::Arc;
 
 /// Classifier output for a single conversational turn.
 ///
@@ -54,6 +70,142 @@ pub fn render_tool_descriptions(
         })
         .collect();
     Ok(lines.join("\n"))
+}
+
+/// Classify an NL message and route it through the existing read/write/confirm/clarify machinery.
+///
+/// This is the conversational-turn core for AMCP-06. It composes existing entry
+/// points and adds zero new dispatch, guard, confirmation, or envelope logic:
+///
+/// - `list_*` tool names route to the read path (`handle_tools_call`).
+/// - All other tool names route to `handle_write_call`, which owns scope check,
+///   guard re-evaluation, idempotency, the D-08 confirmation seam, execute, and audit.
+/// - `Error::LowConfidence` maps to a `needs_clarification` structured response
+///   without invoking any dispatch path (SC#5).
+///
+/// The classifier output (`ToolSelection`) is UNTRUSTED model output (prompt-injection
+/// surface). It enters the identical `tools/call` pipeline as any direct call — no
+/// trust shortcut (SC#1). `tenant_id` is derived from the authenticated principal
+/// param, never from the classified arguments (T-221-07).
+#[cfg(feature = "ai")]
+#[allow(clippy::too_many_arguments)]
+pub async fn process_nl_turn(
+    nl_message: &str,
+    services: &[ServiceDef],
+    db: &DatabaseConnection,
+    tenant_id: Option<i64>,
+    ctx: &McpContext,
+    provider: Arc<dyn ferro_ai::ClassificationProvider>,
+    classifier_config: ferro_ai::ClassifierConfig,
+    dispatcher: &WriteDispatcher,
+    #[cfg(feature = "confirmation")] store: &dyn ferro_ai::ConfirmationStore,
+    #[cfg(feature = "confirmation")] config: &crate::McpServerConfig,
+) -> serde_json::Value {
+    // Step 1: build the system prompt from exposed tool descriptions.
+    let system = match render_tool_descriptions(services, ctx) {
+        Ok(s) => s,
+        Err(e) => {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "render_error",
+                "message": e.to_string()
+            })) });
+        }
+    };
+
+    // Step 2: build the ToolSelection JSON schema (snake_case keys matching the serde repr).
+    let schema = json!({
+        "type": "object",
+        "properties": {
+            "tool_name": { "type": "string", "description": "The tool to invoke" },
+            "arguments": { "type": "object", "description": "Arguments for the tool" },
+            "confidence": { "type": "number", "description": "Classifier confidence in [0.0, 1.0]" }
+        },
+        "required": ["tool_name", "arguments", "confidence"]
+    });
+
+    // Step 3: classify.
+    let classifier = ferro_ai::Classifier::<ToolSelection>::new(provider, classifier_config);
+
+    match classifier.classify(&system, nl_message, &schema).await {
+        // Step 4a: low-confidence → needs_clarification, no dispatch (SC#5, T-221-06).
+        Err(ferro_ai::Error::LowConfidence {
+            best_guess,
+            confidence,
+        }) => {
+            let question = format!(
+                "I'm not sure what you mean (confidence {:.0}%). Did you mean to {}? \
+                 Or could you be more specific?",
+                confidence * 100.0,
+                best_guess
+                    .get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("do something")
+            );
+            json!({
+                "result": {
+                    "content": [{ "type": "text", "text": question }],
+                    "isError": false,
+                    "structuredContent": {
+                        "status": "needs_clarification",
+                        "question": question,
+                        "best_guess": best_guess
+                    }
+                }
+            })
+        }
+
+        // Step 4b: other errors → error envelope.
+        Err(other) => {
+            json!({ "result": write_tool_error_result(json!({
+                "error_kind": "classification_error",
+                "message": other.to_string()
+            })) })
+        }
+
+        // Step 4c: successful classification → route.
+        Ok(result) => {
+            let sel = result.value;
+            // Build call_params in the same shape as a normal tools/call request.
+            let call_params = json!({
+                "name": sel.tool_name,
+                "arguments": sel.arguments
+            });
+
+            if sel.tool_name.starts_with("list_") {
+                // Read path (SC#1 read): handle_tools_call owns service lookup + dispatch.
+                handle_tools_call(
+                    call_params,
+                    services,
+                    db,
+                    tenant_id,
+                    ctx,
+                    dispatcher,
+                    #[cfg(feature = "confirmation")]
+                    store,
+                    #[cfg(feature = "confirmation")]
+                    config,
+                )
+                .await
+            } else {
+                // Write path (SC#1 write, SC#2): handle_write_call owns scope check,
+                // guard re-eval (live DB), idempotency, D-08 confirmation seam, execute,
+                // and audit. No parallel pipeline here.
+                handle_write_call(
+                    call_params,
+                    services,
+                    db,
+                    tenant_id,
+                    ctx,
+                    dispatcher,
+                    #[cfg(feature = "confirmation")]
+                    store,
+                    #[cfg(feature = "confirmation")]
+                    config,
+                )
+                .await
+            }
+        }
+    }
 }
 
 #[cfg(test)]
