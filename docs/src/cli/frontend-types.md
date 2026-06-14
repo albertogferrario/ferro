@@ -94,7 +94,7 @@ The pinned `ferro-cli` version is read from your project's `Cargo.lock` (the
 `ferro-rs` package's version). You can override it explicitly:
 
 ```bash
-ferro docker:init --ferro-version 0.2.33 --force
+ferro docker:init --ferro-version <pinned> --force
 ```
 
 ### Upgrading an existing project
@@ -112,5 +112,5 @@ Inspect the diff before committing.
 ## Related commands
 
 - [`ferro doctor`](doctor.md) — runs the `frontend_types_convention` check
-- [`ferro docker:init`](do-init.md) — regenerates the Dockerfile with the
+- [`ferro docker:init`](../reference/cli.md#ferro-dockerinit) — regenerates the Dockerfile with the
   current `types-gen` stage
