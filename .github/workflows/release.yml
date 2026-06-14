@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+  # Token-free auto-release: build the binaries once the Publish workflow succeeds on
+  # master (GITHUB_TOKEN can't trigger a tag-push/dispatch, but workflow_run is exempt).
+  workflow_run:
+    workflows: ["Publish"]
+    types: [completed]
+    branches: [master]
   schedule:
     - cron: '0 6 * * 1'   # Weekly Monday 06:00 UTC — published-library drift check
 
@@ -12,9 +18,39 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Single source of truth for the release tag + whether to build, across all event
+  # types: tag-push / manual dispatch → github.ref_name; Publish-completed → vX.Y.Z from
+  # Cargo.toml (only when Publish succeeded).
+  meta:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.r.outputs.tag }}
+      proceed: ${{ steps.r.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: r
+        run: |
+          EV="${{ github.event_name }}"
+          if [ "$EV" = "push" ] || [ "$EV" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EV" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              VER=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+              echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+              echo "proceed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.target }}
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: meta
+    if: needs.meta.outputs.proceed == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -77,7 +113,7 @@ jobs:
           mkdir -p dist
           cp target/${{ matrix.target }}/release/ferro dist/
           cd dist
-          tar -czvf ../ferro-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }} ferro
+          tar -czvf ../ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }} ferro
 
       - name: Prepare artifact (Windows)
         if: matrix.os == 'windows-latest'
@@ -85,18 +121,18 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist
           Copy-Item target/${{ matrix.target }}/release/ferro.exe dist/
-          Compress-Archive -Path dist/ferro.exe -DestinationPath ferro-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+          Compress-Archive -Path dist/ferro.exe -DestinationPath ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ferro-${{ matrix.target }}
-          path: ferro-${{ github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+          path: ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }}
 
   release:
     name: Create Release
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: build
+    if: needs.meta.outputs.proceed == 'true'
+    needs: [meta, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -112,6 +148,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.meta.outputs.tag }}
           draft: false
           prerelease: false
           files: artifacts/**/*
@@ -127,8 +164,8 @@ jobs:
   # Update install script with correct repo name
   update-install-script:
     name: Update Install Script
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: release
+    if: needs.meta.outputs.proceed == 'true'
+    needs: [meta, release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -159,8 +196,8 @@ jobs:
 
   e2e-tag:
     name: E2E from release artifact (tag)
-    needs: build
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [meta, build]
+    if: needs.meta.outputs.proceed == 'true'
     runs-on: ubuntu-latest
     # Blocking gate: COMP-04 resolved at 0.2.60 — the published scaffold compiles + boots,
     # so a broken scaffold now fails this job loudly (was continue-on-error until 2026-06-14).
@@ -181,7 +218,7 @@ jobs:
 
       - name: Extract and install ferro binary
         run: |
-          tar -xzf ./dist/ferro-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz -C ./dist
+          tar -xzf ./dist/ferro-${{ needs.meta.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz -C ./dist
           chmod +x ./dist/ferro
           echo "$PWD/dist" >> $GITHUB_PATH
 
