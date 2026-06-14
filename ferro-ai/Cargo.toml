@@ -13,7 +13,7 @@ readme = "README.md"
 # LLM-only deps — optional behind the `llm` feature (default on).
 # DO NOT add these to the `confirmation` feature; the confirmation module
 # uses only async-trait, tokio, serde, dashmap, chrono, ferro-events.
-reqwest           = { version = "0.12", features = ["json", "stream"], optional = true }
+reqwest           = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"], optional = true }
 reqwest-eventsource = { version = "0.6", default-features = false, optional = true }
 futures           = { version = "0.3", default-features = false, features = ["std"], optional = true }
 async-stream      = { version = "0.3", optional = true }
