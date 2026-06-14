@@ -34,7 +34,7 @@ Status: v15.0 milestone shipped.
 
 Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216).
 
-Last activity: 2026-06-14
+Last activity: 2026-06-14 - Completed quick task 260614-nd3: strengthen replay_deterministic test (assert single-execution)
 Workspace version: 0.2.58
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -151,6 +151,12 @@ Before planning each phase, verify these open questions:
 ### Blockers/Concerns
 
 None active. Research flags above are pre-phase checks, not blockers.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260614-nd3 | make replay_deterministic test assert single-execution via idempotency key and exec_count | 2026-06-14 | f14a4421 | [260614-nd3-make-replay-deterministic-test-assert-si](./quick/260614-nd3-make-replay-deterministic-test-assert-si/) |
 
 ### Roadmap Evolution
 
