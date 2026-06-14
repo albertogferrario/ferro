@@ -69,18 +69,10 @@ mod intent_loop {
     /// `classify_raw` returns the recorded selection for each NL message.
     #[tokio::test]
     async fn fixtures_parse_and_replay_returns_recorded() {
-        let raw_list = include_str!(
-            "fixtures/intent_loop/transcripts/list-orders.json"
-        );
-        let raw_approve = include_str!(
-            "fixtures/intent_loop/transcripts/approve-order.json"
-        );
-        let raw_cancel = include_str!(
-            "fixtures/intent_loop/transcripts/cancel-order.json"
-        );
-        let raw_ambiguous = include_str!(
-            "fixtures/intent_loop/transcripts/ambiguous.json"
-        );
+        let raw_list = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let raw_approve = include_str!("fixtures/intent_loop/transcripts/approve-order.json");
+        let raw_cancel = include_str!("fixtures/intent_loop/transcripts/cancel-order.json");
+        let raw_ambiguous = include_str!("fixtures/intent_loop/transcripts/ambiguous.json");
 
         let f_list: IntentTurnFixture =
             serde_json::from_str(raw_list).expect("list-orders.json must parse");
@@ -139,7 +131,11 @@ mod intent_loop {
             let returned_tool_matches_recorded = result
                 .get("tool_name")
                 .and_then(|v| v.as_str())
-                .map(|t| t == fixture.recorded_selection["tool_name"].as_str().unwrap_or(""))
+                .map(|t| {
+                    t == fixture.recorded_selection["tool_name"]
+                        .as_str()
+                        .unwrap_or("")
+                })
                 .unwrap_or(false);
             assert!(
                 returned_tool_matches_recorded,
@@ -153,8 +149,7 @@ mod intent_loop {
     #[tokio::test]
     async fn replay_provider_returns_error_on_miss() {
         let raw = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
-        let fixture: IntentTurnFixture =
-            serde_json::from_str(raw).expect("must parse");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
 
         let provider = ReplayClassificationProvider::from_fixtures(&[fixture]);
         let result = provider
@@ -166,10 +161,7 @@ mod intent_loop {
             )
             .await;
 
-        assert!(
-            result.is_err(),
-            "unknown message must return error"
-        );
+        assert!(result.is_err(), "unknown message must return error");
         match result.unwrap_err() {
             AiError::Provider { status, message } => {
                 assert!(status.is_none(), "miss error status must be None");

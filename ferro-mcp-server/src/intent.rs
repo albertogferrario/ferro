@@ -69,8 +69,7 @@ mod tests {
             "arguments": { "limit": 10 },
             "confidence": 0.95
         });
-        let sel: ToolSelection =
-            serde_json::from_value(json.clone()).expect("must deserialize");
+        let sel: ToolSelection = serde_json::from_value(json.clone()).expect("must deserialize");
         assert_eq!(sel.tool_name, "list_order");
         assert_eq!(sel.confidence, 0.95);
         let re_serialized = serde_json::to_value(&sel).expect("must serialize");
@@ -96,7 +95,11 @@ mod tests {
         });
         // Deserialize succeeds (snake_case matches serde representation).
         let result = serde_json::from_value::<ToolSelection>(json);
-        assert!(result.is_ok(), "snake_case keys must deserialize: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "snake_case keys must deserialize: {:?}",
+            result.err()
+        );
         // camelCase keys must NOT deserialize (schema mismatch guard).
         let camel = serde_json::json!({
             "toolName": "approve",
@@ -104,10 +107,7 @@ mod tests {
             "confidence": 0.9
         });
         let bad = serde_json::from_value::<ToolSelection>(camel);
-        assert!(
-            bad.is_err(),
-            "camelCase tool_name key must not deserialize"
-        );
+        assert!(bad.is_err(), "camelCase tool_name key must not deserialize");
     }
 
     /// render_tool_descriptions returns a non-empty string containing each
@@ -120,8 +120,7 @@ mod tests {
             .field("status", DataType::String, FieldMeaning::Status);
 
         let ctx = McpContext::default();
-        let text =
-            render_tool_descriptions(&[svc], &ctx).expect("must render");
+        let text = render_tool_descriptions(&[svc], &ctx).expect("must render");
 
         assert!(!text.is_empty(), "output must not be empty");
         assert!(
@@ -138,14 +137,14 @@ mod tests {
             .mcp_exposed(true)
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("status", DataType::String, FieldMeaning::Status)
-            .action(
-                ActionDef::new("approve")
-                    .input(InputDef::new("id", DataType::Integer, FieldMeaning::Identifier)),
-            );
+            .action(ActionDef::new("approve").input(InputDef::new(
+                "id",
+                DataType::Integer,
+                FieldMeaning::Identifier,
+            )));
 
         let ctx = McpContext::default();
-        let text =
-            render_tool_descriptions(&[svc], &ctx).expect("must render");
+        let text = render_tool_descriptions(&[svc], &ctx).expect("must render");
 
         assert!(
             text.contains("[args:"),
