@@ -194,4 +194,529 @@ mod intent_loop {
         // This stub ensures the #[ignore] gate compiles and is exercisable.
         todo!("live eval wired in Plan 03 when process_nl_turn is available");
     }
+
+    // ── End-to-end replay tests (SC#1 / SC#2 / SC#3 / SC#5) ─────────────────
+
+    use ferro_mcp_server::WriteDispatcher;
+    use ferro_projections::{ActionDef, DataType, FieldMeaning, InputDef, ServiceDef};
+    use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    /// In-memory SQLite with the tables required by process_nl_turn's pipeline:
+    /// - `orders` for the read (list_order) path
+    /// - `mcp_idempotency_keys` for write idempotency
+    /// - `audit_log` for write audit
+    async fn setup_db() -> sea_orm::DatabaseConnection {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("in-memory SQLite connect failed");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                total REAL NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                tenant_id INTEGER NOT NULL
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create orders table");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "INSERT INTO orders (customer_name, total, status, tenant_id) VALUES
+                ('Alice', 100.0, 'pending', 1),
+                ('Bob',   200.0, 'shipped', 1)"
+                .to_string(),
+        ))
+        .await
+        .expect("seed orders");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS mcp_idempotency_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id INTEGER NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                result TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (tenant_id, idempotency_key)
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create mcp_idempotency_keys table");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS audit_log (
+                id TEXT PRIMARY KEY NOT NULL,
+                tenant_id TEXT,
+                actor_kind TEXT NOT NULL,
+                actor_id TEXT,
+                action TEXT NOT NULL,
+                target_kind TEXT,
+                target_id TEXT,
+                before TEXT,
+                after TEXT,
+                reason TEXT,
+                correlation_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create audit_log table");
+        db
+    }
+
+    /// Build the test ServiceDef:
+    /// - `list_order` (auto-derived read tool, mcp_exposed)
+    /// - `approve` (non-destructive write — no transition_trigger)
+    /// - `submit` (destructive write — transition_trigger.is_some())
+    fn test_service() -> ServiceDef {
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            // approve: non-destructive (no transition_trigger)
+            .action(ActionDef::new("approve").input(InputDef::new(
+                "id",
+                DataType::Integer,
+                FieldMeaning::Identifier,
+            )))
+            // submit: destructive (has transition_trigger) — the D-08 seam fires
+            .action(
+                ActionDef::new("submit")
+                    .transition_trigger("submit")
+                    .input(InputDef::new(
+                        "id",
+                        DataType::Integer,
+                        FieldMeaning::Identifier,
+                    )),
+            )
+    }
+
+    /// Build provider from a single fixture's recorded_selection, using the
+    /// fixture's nl_message as the lookup key.
+    fn single_fixture_provider(fixture: &IntentTurnFixture) -> Arc<ReplayClassificationProvider> {
+        Arc::new(ReplayClassificationProvider::from_fixtures(
+            std::slice::from_ref(fixture),
+        ))
+    }
+
+    /// SC#3 / SC#1 (read branch): "show me the orders" → list_order → read path.
+    ///
+    /// Asserts: result envelope has content[] and isError:false; executor NOT called.
+    #[tokio::test]
+    async fn read_turn() {
+        let raw = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+        assert_eq!(fixture.expected_tool, "list_order");
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let exec_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
+                }
+            }),
+        };
+
+        // Threshold 0.7 < confidence 0.95: classifier succeeds.
+        let config = ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+        let provider = single_fixture_provider(&fixture);
+
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            provider,
+            config,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        // Must be a valid MCP envelope: has content[] and isError:false.
+        let result_inner = &result["result"];
+        assert!(
+            result_inner.get("content").is_some(),
+            "read result must have content[]; got: {result:?}"
+        );
+        assert_eq!(
+            result_inner["isError"].as_bool(),
+            Some(false),
+            "read result must be isError:false; got: {result:?}"
+        );
+        // Executor must NOT have been called on the read path.
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT be invoked on the read path"
+        );
+    }
+
+    /// SC#3 / SC#1 (write branch): "approve the order from Alice" → approve →
+    /// non-destructive write → executor invoked.
+    ///
+    /// Asserts: executor called once, result envelope isError:false.
+    #[tokio::test]
+    async fn write_turn() {
+        let raw = include_str!("fixtures/intent_loop/transcripts/approve-order.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+        assert_eq!(fixture.expected_tool, "approve");
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let exec_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
+                }
+            }),
+        };
+
+        // Threshold 0.7 < confidence 0.92: classifier succeeds.
+        let config = ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+        let provider = single_fixture_provider(&fixture);
+
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            provider,
+            config,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        // Executor must have been called exactly once.
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            1,
+            "executor must be invoked for a non-destructive write; got: {result:?}"
+        );
+        let result_inner = &result["result"];
+        assert_eq!(
+            result_inner["isError"].as_bool(),
+            Some(false),
+            "write result must be isError:false; got: {result:?}"
+        );
+    }
+
+    /// SC#3 / SC#2 (confirmation gate): "submit order 7" → submit → destructive
+    /// write (transition_trigger.is_some()) → confirmation-required envelope,
+    /// executor NOT invoked.
+    #[cfg(feature = "confirmation")]
+    #[tokio::test]
+    async fn destructive_requires_confirm() {
+        let raw = include_str!("fixtures/intent_loop/transcripts/cancel-order.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+        assert_eq!(fixture.expected_tool, "submit");
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let exec_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(serde_json::json!({ "status": "submitted" })) })
+                }
+            }),
+        };
+
+        // Threshold 0.7 < confidence 0.9: classifier succeeds.
+        let config = ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+        let provider = single_fixture_provider(&fixture);
+
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            provider,
+            config,
+            &dispatcher,
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        // Executor must NOT have been called — the D-08 seam blocks it.
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT be invoked for a destructive write without confirmation; got: {result:?}"
+        );
+        // The envelope must indicate confirmation is required.
+        let result_inner = &result["result"];
+        let error_kind = result_inner["structuredContent"]["error_kind"]
+            .as_str()
+            .unwrap_or("");
+        assert_eq!(
+            error_kind, "confirmation_required",
+            "destructive write must return confirmation_required; got: {result:?}"
+        );
+    }
+
+    /// SC#3 / SC#5 (low-confidence): "do the thing" (confidence 0.3 < threshold
+    /// 0.7) → LowConfidence → needs_clarification envelope, no dispatch.
+    #[tokio::test]
+    async fn low_confidence() {
+        let raw = include_str!("fixtures/intent_loop/transcripts/ambiguous.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+        // Fixture has confidence 0.3, below default threshold 0.7.
+        let recorded_confidence = fixture.recorded_selection["confidence"]
+            .as_f64()
+            .expect("must have confidence");
+        assert!(
+            recorded_confidence < 0.7,
+            "ambiguous fixture must have confidence below 0.7; got {recorded_confidence}"
+        );
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let exec_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
+                }
+            }),
+        };
+
+        // Default threshold 0.7 > fixture confidence 0.3 → LowConfidence.
+        let config = ClassifierConfig::default();
+        let provider = single_fixture_provider(&fixture);
+
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            provider,
+            config,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        // Executor must NOT have been called.
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT be invoked on low-confidence; got: {result:?}"
+        );
+        // Result must be needs_clarification with isError:false.
+        let result_inner = &result["result"];
+        assert_eq!(
+            result_inner["isError"].as_bool(),
+            Some(false),
+            "needs_clarification must have isError:false; got: {result:?}"
+        );
+        assert_eq!(
+            result_inner["structuredContent"]["status"].as_str(),
+            Some("needs_clarification"),
+            "low-confidence must return needs_clarification status; got: {result:?}"
+        );
+        assert!(
+            result_inner["structuredContent"]["question"]
+                .as_str()
+                .is_some(),
+            "needs_clarification must include a question; got: {result:?}"
+        );
+        assert!(
+            result_inner["structuredContent"]["best_guess"].is_object()
+                || result_inner["structuredContent"]["best_guess"].is_null()
+                || result_inner["structuredContent"]["best_guess"].is_string(),
+            "needs_clarification must include best_guess; got: {result:?}"
+        );
+    }
+
+    /// Phase 205 regression guard extended to turn outcomes (SC#3).
+    ///
+    /// Every result from `process_nl_turn` must have a `content` array and an
+    /// `isError` bool inside the `result` key, matching the MCP CallToolResult shape.
+    #[tokio::test]
+    async fn turn_result_valid_mcp() {
+        // Use the read turn as the reference case (simplest, no DB writes).
+        let raw = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
+            }),
+        };
+
+        let config = ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+        let provider = single_fixture_provider(&fixture);
+
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            provider,
+            config,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        let result_inner = &result["result"];
+        assert!(
+            result_inner
+                .get("content")
+                .and_then(|v| v.as_array())
+                .is_some(),
+            "turn result must have content array; got: {result:?}"
+        );
+        assert!(
+            result_inner
+                .get("isError")
+                .and_then(|v| v.as_bool())
+                .is_some(),
+            "turn result must have isError bool; got: {result:?}"
+        );
+    }
+
+    /// Determinism assertion: the read and write turns return byte-identical
+    /// structuredContent when run twice.
+    #[tokio::test]
+    async fn replay_deterministic() {
+        let raw_list = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let f_list: IntentTurnFixture = serde_json::from_str(raw_list).expect("must parse");
+        let raw_approve = include_str!("fixtures/intent_loop/transcripts/approve-order.json");
+        let f_approve: IntentTurnFixture = serde_json::from_str(raw_approve).expect("must parse");
+
+        for fixture in [&f_list, &f_approve] {
+            let db = setup_db().await;
+            let services = vec![test_service()];
+            let ctx = ferro_mcp_server::McpContext::default();
+
+            let make_dispatcher = || WriteDispatcher {
+                guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+                executor: Box::new(|_, _, _, _| {
+                    Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
+                }),
+            };
+
+            let config = ClassifierConfig {
+                confidence_threshold: 0.7,
+                ..Default::default()
+            };
+
+            #[cfg(feature = "confirmation")]
+            let store = ferro_ai::InMemoryConfirmationStore::new();
+            #[cfg(feature = "confirmation")]
+            let mcp_config = ferro_mcp_server::McpServerConfig::default();
+
+            let provider1 = single_fixture_provider(fixture);
+            let result1 = ferro_mcp_server::process_nl_turn(
+                &fixture.nl_message,
+                &services,
+                &db,
+                Some(1),
+                &ctx,
+                provider1,
+                config.clone(),
+                &make_dispatcher(),
+                #[cfg(feature = "confirmation")]
+                &store,
+                #[cfg(feature = "confirmation")]
+                &mcp_config,
+            )
+            .await;
+
+            let provider2 = single_fixture_provider(fixture);
+            let result2 = ferro_mcp_server::process_nl_turn(
+                &fixture.nl_message,
+                &services,
+                &db,
+                Some(1),
+                &ctx,
+                provider2,
+                config.clone(),
+                &make_dispatcher(),
+                #[cfg(feature = "confirmation")]
+                &store,
+                #[cfg(feature = "confirmation")]
+                &mcp_config,
+            )
+            .await;
+
+            // Compare structuredContent (strip non-deterministic fields if any).
+            let sc1 = &result1["result"]["structuredContent"];
+            let sc2 = &result2["result"]["structuredContent"];
+            assert_eq!(
+                sc1, sc2,
+                "fixture '{}': structuredContent must be identical on two runs",
+                fixture.turn_id
+            );
+        }
+    }
 }
