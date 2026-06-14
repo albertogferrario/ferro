@@ -30,18 +30,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           EV="${{ github.event_name }}"
           if [ "$EV" = "push" ] || [ "$EV" = "workflow_dispatch" ]; then
             echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
             echo "proceed=true" >> "$GITHUB_OUTPUT"
-          elif [ "$EV" = "workflow_run" ]; then
-            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
-              VER=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+          elif [ "$EV" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            VER=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+            # Publish "succeeds" even when it SKIPS (no library change). Only proceed when
+            # this version has no GitHub Release yet — i.e. Publish actually shipped a new one.
+            if gh release view "v$VER" >/dev/null 2>&1; then
+              echo "Release v$VER already exists — no new publish; skipping auto-release."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+            else
               echo "tag=v$VER" >> "$GITHUB_OUTPUT"
               echo "proceed=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "proceed=false" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "proceed=false" >> "$GITHUB_OUTPUT"
