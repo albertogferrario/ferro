@@ -3045,6 +3045,30 @@ Plans:
 - [x] 226-03-PLAN.md — Surface `brew install` in installation docs + README (D-06) [wave 1]
 - [x] 226-04-PLAN.md — Operator runbook: create tap repo + PAT secret + live brew install verification (D-01, D-04) [wave 3, non-autonomous]
 
+### Phase 227: Documentation Audit and Update for v0.2.61
+
+**Goal:** Comprehensive sweep of `docs/src/` for accuracy after the v0.2.59→0.2.61 changes. Only the install pages were updated inline (brew install added in Phase 226; MSRV 1.88 + rustls/toolchain-free clarified on 2026-06-14). Audit every other page for stale content: any `runtime-tokio-native-tls`/OpenSSL in config or example snippets (now rustls), references to the old install/getting-started flow, version pins, the scaffold structure (now ships `runtime-tokio-rustls`), and the generators (`make:auth`/`make:scaffold`/`make:job`) + `ferro serve` flow. Verify code/command examples against the live CLI. Surface and fix discrepancies, don't silently work around.
+
+**Requirements**: TBD (capture in discuss-phase)
+**Depends on:** Phase 226 (brew/rustls shipped — the facts the docs must now reflect)
+**Plans:** 0 plans
+
+**Scope notes:** focus on factual accuracy, not a rewrite. Known-good already: `docs/src/getting-started/installation.md` (install section). Likely stale candidates: any TLS/sea-orm config examples, version numbers, getting-started walkthrough. Consider whether a CHANGELOG entry for 0.2.60/0.2.61 belongs here.
+
+Plans:
+- [ ] TBD (run /gsd-discuss-phase 227 → /gsd-plan-phase 227 to break down)
+
+### Phase 228: README and Scaffold Doc Sweep
+
+**Goal:** Make every README + the generated-app docs consistent and current. Covers: root `README.md` (verify the brew-first install + quickstart match the docs and the real flow); the `albertogferrario/homebrew-ferro` tap repo (add a README describing `brew install albertogferrario/ferro/ferro`, the token-free self-bump, and how it tracks ferro releases); the scaffold's generated `README.md` template (`ferro-cli/src/templates/files/backend/` — ensure it reflects the rustls/SQLite-default app and the `ferro serve` flow); and `scripts/install.sh`/`create-app.sh` user-facing messaging. Ensure the toolchain-free-CLI vs Rust-needed-to-build-app distinction is stated consistently everywhere.
+
+**Requirements**: TBD (capture in discuss-phase)
+**Depends on:** Phase 227 (align READMEs to the audited docs)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-discuss-phase 228 → /gsd-plan-phase 228 to break down)
+
 ---
 
 ## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
