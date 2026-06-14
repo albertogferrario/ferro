@@ -6,6 +6,10 @@ use async_trait::async_trait;
 use futures::{stream, StreamExt};
 use reqwest_eventsource::{Event, RequestBuilderExt};
 
+/// Default Anthropic Messages API base URL. The `/v1/messages` endpoint is
+/// derived by appending to this.
+const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
+
 /// Anthropic Messages API client.
 ///
 /// Implements [`LlmClient`] against `https://api.anthropic.com/v1/messages`.
@@ -22,11 +26,6 @@ use reqwest_eventsource::{Event, RequestBuilderExt};
 /// Provide the API key via `new(api_key, ...)` or read it from
 /// `FERRO_AI_API_KEY` (with `ANTHROPIC_API_KEY` as fallback) via
 /// [`crate::config::AiConfig::from_env`].
-
-/// Default Anthropic Messages API base URL. The `/v1/messages` endpoint is
-/// derived by appending to this.
-const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
-
 pub struct AnthropicClient {
     client: reqwest::Client,
     api_key: String,
