@@ -182,7 +182,7 @@ Ready to build something? Check out the [full documentation](https://docs.ferro-
 
 ## Status
 
-v0.2.0 — pre-1.0. Breaking changes are allowed between minor versions until 1.0. Current milestone work targets v12.0 spec-driven rendering.
+Pre-1.0. Breaking changes are allowed between minor versions until 1.0.
 
 ## License
 
