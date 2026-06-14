@@ -683,20 +683,20 @@ No items in any category — confirmed by the phase boundary in CONTEXT.md (new 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Replay provider location — ferro-ai vs ferro-mcp-server tests?**
    - What we know: `ClassificationProvider` is in ferro-ai; the replay impl is pure trait impl with no ferro-ai-specific imports needed.
    - What's unclear: whether a shared `ReplayClassificationProvider` should live in `ferro-ai` (alongside `ConstProvider` in its own unit tests) or only in ferro-mcp-server test infrastructure.
-   - Recommendation (Claude's Discretion): place in `ferro-mcp-server/tests/` or `src/intent.rs` behind `#[cfg(test)]`. Keeping it in test code avoids publishing a test utility in the ferro-ai crate surface. The Phase 210 harness puts its replay infrastructure in `ferro-mcp/tests/` — follow the same convention.
+   - RESOLVED: the replay provider lives in `ferro-mcp-server/tests/intent_loop.rs` (per plans 221-01/221-02), mirroring the Phase 210 harness convention of keeping replay infrastructure in `ferro-mcp/tests/`. This keeps the test utility out of the ferro-ai crate surface.
 
 2. **`render_tool_descriptions` text format**
    - What we know: it wraps `render_exposed_tools(services, ctx)` and formats `Vec<Tool>` as text for the classifier system prompt.
    - What's unclear: whether to include tool descriptions only, or also field schemas; optimal length for classification accuracy vs context budget.
-   - Recommendation (Claude's Discretion): include `tool.name` + `tool.description` + the `inputSchema` property names (not full types). Concise enough to fit in a system prompt without blowing the context window.
+   - RESOLVED: a text formatter over `render_exposed_tools` output emitting tool name + description + `inputSchema` property names (not full types), per 221-PATTERNS.md / plan 221-01. Concise enough to fit a system prompt without blowing the context window.
 
 3. **`FERRO_AI_LIVE_EVAL` cost announcement formula**
-   - Recommendation (Claude's Discretion): count the number of fixture turns to be called live, multiply by a per-call estimate derived from prompt length. Print before the first API call. Mirror the spirit of `feedback_isolate_live_eval_before_spending.md`.
+   - RESOLVED: per plan 221-03 Task 2, an `eprintln!` cost estimate is emitted before the first live provider call. Mirrors the spirit of `feedback_isolate_live_eval_before_spending.md`.
 
 ---
 
