@@ -41,7 +41,7 @@
 //! let confirmed = store.confirm("confirm-delete-42").await?;
 //! ```
 
-#[cfg(feature = "llm")]
+#[cfg(any(feature = "llm", feature = "classifier-trait"))]
 pub mod classifier;
 #[cfg(feature = "llm")]
 pub mod client;
@@ -65,9 +65,11 @@ pub mod pgvector;
 
 #[cfg(feature = "llm")]
 pub use classifier::anthropic::AnthropicProvider;
-#[cfg(feature = "llm")]
+// ClassificationProvider, ClassifierConfig, Classifier, and ClassificationResult are
+// reqwest-free; available under `classifier-trait` (replay/CI) or `llm` (live path).
+#[cfg(any(feature = "llm", feature = "classifier-trait"))]
 pub use classifier::provider::ClassificationProvider;
-#[cfg(feature = "llm")]
+#[cfg(any(feature = "llm", feature = "classifier-trait"))]
 pub use classifier::{ClassificationResult, Classifier, ClassifierConfig};
 #[cfg(feature = "llm")]
 pub use client::{

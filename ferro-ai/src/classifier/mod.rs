@@ -1,3 +1,4 @@
+#[cfg(feature = "llm")]
 pub mod anthropic;
 pub mod provider;
 

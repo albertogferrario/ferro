@@ -49,12 +49,18 @@ ferro-json-ui = { path = "../ferro-json-ui", version = "0.2", features = ["proje
 # can use `default-features = false, features = ["confirmation"]`.
 default = ["llm"]
 llm = [
+    "classifier-trait",
     "dep:reqwest",
     "dep:reqwest-eventsource",
     "dep:futures",
     "dep:async-stream",
     "dep:schemars",
 ]
+
+# Classifier trait + ClassifierConfig only — no HTTP client, no LLM deps.
+# Enables ClassificationProvider and ClassifierConfig without reqwest.
+# Used by ferro-mcp-server's `ai` feature for the replay/CI path.
+classifier-trait = []
 
 # Confirmation store only — no HTTP client, no LLM deps.
 # Safe to pull into ferro-mcp-server without reqwest in the graph.

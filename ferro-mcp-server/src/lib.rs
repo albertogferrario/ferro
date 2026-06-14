@@ -7,6 +7,8 @@ pub mod auth;
 pub mod config;
 pub mod dispatch;
 pub mod error;
+#[cfg(feature = "ai")]
+pub mod intent;
 pub mod jsonrpc;
 pub mod renderer;
 pub mod schema;
@@ -20,3 +22,5 @@ pub use ferro_mcp_oauth::BearerCheck;
 pub use jsonrpc::{handle_initialize, handle_tools_call, handle_tools_list};
 pub use renderer::{render_exposed_tools, McpContext, McpRenderer};
 pub use write_dispatch::{dispatch_write, handle_write_call, WriteDispatcher};
+#[cfg(feature = "ai")]
+pub use intent::{render_tool_descriptions, ToolSelection};
