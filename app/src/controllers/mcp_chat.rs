@@ -42,8 +42,10 @@ pub async fn handle_chat(req: Request) -> Response {
         .ok_or_else(|| HttpResponse::new().status(401))?;
 
     // Extract fields from principal BEFORE req.json() moves `req`.
-    // user_id validates the principal is well-formed; scope feeds McpContext.
-    let _user_id: i64 = principal["sub"]
+    // user_id validates the principal is well-formed and (under ai-live) loads the
+    // concrete User for the read-tool authorization gate; scope feeds McpContext.
+    #[cfg_attr(not(feature = "ai-live"), allow(unused_variables))]
+    let user_id: i64 = principal["sub"]
         .as_str()
         .and_then(|s| s.parse().ok())
         .ok_or_else(|| HttpResponse::new().status(400))?;
@@ -89,12 +91,29 @@ pub async fn handle_chat(req: Request) -> Response {
                 .map_err(|e| HttpResponse::json(json!({ "error": e.to_string() })))?,
         );
 
+        // Read-tool authorization gate (WR-01 / AMCP-11): mirror the direct /mcp path's
+        // Gate::authorize_for + mcp_ability fail-closed check. Load the concrete User
+        // (Pitfall 7: Gate::authorize_for takes an explicit user — the MCP bearer path
+        // has no session Auth::id()) and build a fail-closed predicate: a service with
+        // no declared mcp_ability (None) is denied; otherwise defer to the policy Gate.
+        let user = crate::models::users::User::find_by_id(user_id)
+            .await
+            .map_err(|e| HttpResponse::json(json!({ "error": e.to_string() })))?
+            .ok_or_else(|| HttpResponse::new().status(401))?;
+        let authorize_read = move |ability: Option<&str>| -> bool {
+            match ability {
+                None => false,
+                Some(a) => ferro::authorization::Gate::authorize_for(&user, a, None).is_ok(),
+            }
+        };
+
         ferro_mcp_server::intent::process_nl_turn(
             &nl_message,
             &services,
             db.inner(),
             tenant_id,
             &ctx,
+            &authorize_read,
             provider,
             ferro_ai::ClassifierConfig::default(),
             &dispatcher,

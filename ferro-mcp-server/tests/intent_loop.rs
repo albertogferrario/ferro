@@ -462,6 +462,7 @@ mod intent_loop {
             &db,
             Some(1),
             &ctx,
+            &|_| true,
             provider,
             config,
             &dispatcher,
@@ -488,6 +489,77 @@ mod intent_loop {
             exec_count.load(Ordering::SeqCst),
             0,
             "executor must NOT be invoked on the read path"
+        );
+    }
+
+    /// SC#1 read-authorization regression (WR-01): a read turn whose ability gate
+    /// DENIES must return an `access_denied` envelope and NOT dispatch. This proves
+    /// the NL surface enforces the same app-ability gate as the direct `/mcp` path —
+    /// a user denied a projection's `mcp_ability` cannot read it by phrasing the
+    /// request in natural language.
+    #[tokio::test]
+    async fn read_denied_by_ability_gate() {
+        let raw = include_str!("fixtures/intent_loop/transcripts/list-orders.json");
+        let fixture: IntentTurnFixture = serde_json::from_str(raw).expect("must parse");
+        assert_eq!(fixture.expected_tool, "list_order");
+
+        let db = setup_db().await;
+        let services = vec![test_service()];
+        let ctx = ferro_mcp_server::McpContext::default();
+        let exec_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
+                }
+            }),
+        };
+
+        let config = ClassifierConfig {
+            confidence_threshold: 0.7,
+            ..Default::default()
+        };
+        let provider = single_fixture_provider(&fixture);
+
+        // Deny-all authorization closure: the read must be blocked before dispatch.
+        let result = ferro_mcp_server::process_nl_turn(
+            &fixture.nl_message,
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &|_| false,
+            provider,
+            config,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &ferro_mcp_server::McpServerConfig::default(),
+        )
+        .await;
+
+        // No dispatch on a denied read.
+        assert_eq!(
+            exec_count.load(Ordering::SeqCst),
+            0,
+            "executor must NOT be invoked when the read ability gate denies; got: {result:?}"
+        );
+        // Deny envelope: isError:true, structuredContent.status == access_denied.
+        let result_inner = &result["result"];
+        assert_eq!(
+            result_inner["isError"].as_bool(),
+            Some(true),
+            "denied read must be isError:true; got: {result:?}"
+        );
+        assert_eq!(
+            result_inner["structuredContent"]["status"].as_str(),
+            Some("access_denied"),
+            "denied read must return access_denied status; got: {result:?}"
         );
     }
 
@@ -530,6 +602,7 @@ mod intent_loop {
             &db,
             Some(1),
             &ctx,
+            &|_| true,
             provider,
             config,
             &dispatcher,
@@ -593,6 +666,7 @@ mod intent_loop {
             &db,
             Some(1),
             &ctx,
+            &|_| true,
             provider,
             config,
             &dispatcher,
@@ -659,6 +733,7 @@ mod intent_loop {
             &db,
             Some(1),
             &ctx,
+            &|_| true,
             provider,
             config,
             &dispatcher,
@@ -734,6 +809,7 @@ mod intent_loop {
             &db,
             Some(1),
             &ctx,
+            &|_| true,
             provider,
             config,
             &dispatcher,
@@ -799,6 +875,7 @@ mod intent_loop {
                 &db,
                 Some(1),
                 &ctx,
+                &|_| true,
                 provider1,
                 config.clone(),
                 &make_dispatcher(),
@@ -816,6 +893,7 @@ mod intent_loop {
                 &db,
                 Some(1),
                 &ctx,
+                &|_| true,
                 provider2,
                 config.clone(),
                 &make_dispatcher(),

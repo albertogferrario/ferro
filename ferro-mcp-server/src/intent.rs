@@ -77,7 +77,8 @@ pub fn render_tool_descriptions(
 /// This is the conversational-turn core for AMCP-06. It composes existing entry
 /// points and adds zero new dispatch, guard, confirmation, or envelope logic:
 ///
-/// - `list_*` tool names route to the read path (`handle_tools_call`).
+/// - `list_*` tool names route to the read path (`handle_tools_call`), but only
+///   after the `authorize_read` policy gate passes (see below).
 /// - All other tool names route to `handle_write_call`, which owns scope check,
 ///   guard re-evaluation, idempotency, the D-08 confirmation seam, execute, and audit.
 /// - `Error::LowConfidence` maps to a `needs_clarification` structured response
@@ -87,6 +88,15 @@ pub fn render_tool_descriptions(
 /// surface). It enters the identical `tools/call` pipeline as any direct call — no
 /// trust shortcut (SC#1). `tenant_id` is derived from the authenticated principal
 /// param, never from the classified arguments (T-221-07).
+///
+/// `authorize_read` is the app-level ability gate for READ tools, mirroring the
+/// direct `/mcp` path's `Gate::authorize_for` + `mcp_ability` fail-closed check
+/// (AMCP-11). After classification resolves a `list_*` tool to its `ServiceDef`,
+/// the resolved `service.mcp_ability` (an `Option<&str>`) is passed to the closure;
+/// a `false` return denies the turn before any dispatch. The closure is expected to
+/// be fail-closed (a `None` ability denies). Writes are NOT gated here — the scope
+/// gate (Phase 217) + live-DB guard re-eval inside `handle_write_call` cover the
+/// write authorization surface, exactly as the direct path documents.
 #[cfg(feature = "ai")]
 #[allow(clippy::too_many_arguments)]
 pub async fn process_nl_turn(
@@ -95,6 +105,7 @@ pub async fn process_nl_turn(
     db: &DatabaseConnection,
     tenant_id: Option<i64>,
     ctx: &McpContext,
+    authorize_read: &(dyn Fn(Option<&str>) -> bool + Sync),
     provider: Arc<dyn ferro_ai::ClassificationProvider>,
     classifier_config: ferro_ai::ClassifierConfig,
     dispatcher: &WriteDispatcher,
@@ -171,8 +182,40 @@ pub async fn process_nl_turn(
                 "arguments": sel.arguments
             });
 
-            if sel.tool_name.starts_with("list_") {
-                // Read path (SC#1 read): handle_tools_call owns service lookup + dispatch.
+            if let Some(service_name) = sel.tool_name.strip_prefix("list_") {
+                // Read path (SC#1 read). Apply the SAME app-ability authorization the
+                // direct /mcp path enforces (WR-01 / AMCP-11): resolve the target service,
+                // then let the app-provided `authorize_read` closure decide. The classifier's
+                // tool_name is UNTRUSTED, so this gate runs BEFORE any dispatch. Fail-closed:
+                // a service with no declared mcp_ability is denied by the closure.
+                match services
+                    .iter()
+                    .find(|s| s.name == service_name && s.mcp_exposed)
+                {
+                    None => {
+                        // Unknown read tool — method not found (mirrors direct path -32601).
+                        return json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "method_not_found",
+                            "message": "Method not found"
+                        })) });
+                    }
+                    Some(service) => {
+                        if !authorize_read(service.mcp_ability.as_deref()) {
+                            // D-09: deny envelope discloses no rows, columns, or filters.
+                            return json!({
+                                "result": {
+                                    "content": [{
+                                        "type": "text",
+                                        "text": "Access denied. You do not have permission to view this resource."
+                                    }],
+                                    "isError": true,
+                                    "structuredContent": { "status": "access_denied" }
+                                }
+                            });
+                        }
+                    }
+                }
+                // Authorized — handle_tools_call owns service lookup + dispatch.
                 handle_tools_call(
                     call_params,
                     services,
