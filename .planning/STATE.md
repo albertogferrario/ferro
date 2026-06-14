@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: v15.0 milestone shipped.
+status: executing
 stopped_at: Phase 225 context gathered
-last_updated: "2026-06-14T15:06:23.815Z"
-last_activity: "2026-06-14 - Reconciled Phase 222 state: code already shipped (ferro-cache invalidator bridge, v0.2.59); verified 23 tests pass, marked complete in ROADMAP (SC#1 shipped closure-only, no CacheInvalidator trait)"
+last_updated: "2026-06-14T15:34:06.603Z"
+last_activity: 2026-06-14 -- Phase 225 planning complete
 progress:
   total_phases: 233
   completed_phases: 209
-  total_plans: 651
+  total_plans: 654
   completed_plans: 640
   percent: 98
 ---
@@ -30,11 +30,11 @@ Phase: 221 ✅ complete
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
-Status: v15.0 milestone shipped.
+Status: Ready to execute
 
 Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
 
-Last activity: 2026-06-14 - Reconciled Phase 222 state: code already shipped (ferro-cache invalidator bridge, v0.2.59); verified 23 tests pass, marked complete in ROADMAP (SC#1 shipped closure-only, no CacheInvalidator trait)
+Last activity: 2026-06-14 -- Phase 225 planning complete
 Workspace version: 0.2.59
 
 > **Operator actions pending (from v14.0 / prior milestones):**
