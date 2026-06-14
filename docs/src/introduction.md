@@ -10,7 +10,7 @@ There is no bundled agent UI. `ferro-mcp` is the introspection layer your agent 
 
 - **Service projections** — typed model→UI pipelines via `ferro-projections`
 - **JSON-UI** — server-rendered, server-driven UIs with 30+ components and a plugin system
-- **MCP introspection** — 80+ tools via `ferro-mcp` for agent-assisted development
+- **MCP introspection** — a full suite of tools via `ferro-mcp` for agent-assisted development
 - **Routing and middleware** — macro-based routes, typed extractors, middleware pipeline
 - **Database** — SeaORM-based models, migrations, and query builder
 - **Validation** — declarative rule sets with structured errors
@@ -56,7 +56,7 @@ pub fn routes() -> Router {
 
 ## Status
 
-Ferro is pre-1.0. Breaking changes are allowed between minor versions until 1.0. Current milestone work targets v12.0 spec-driven rendering.
+Ferro is pre-1.0. Breaking changes are allowed between minor versions until 1.0.
 
 ## Getting Started
 
