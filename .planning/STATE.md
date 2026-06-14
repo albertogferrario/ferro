@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v15.0
 milestone_name: Agent-Operable App (Consumer MCP)
 status: verifying
-stopped_at: Completed 220-02-PLAN.md
-last_updated: "2026-06-14T00:23:32.584Z"
+stopped_at: Phase 221 context gathered — ready to plan
+last_updated: "2026-06-14T00:32:53.058Z"
 last_activity: 2026-06-14
 progress:
-  total_phases: 101
+  total_phases: 102
   completed_phases: 93
   total_plans: 381
   completed_plans: 380
@@ -155,7 +155,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T00:14:47.537Z
-Stopped at: Completed 220-02-PLAN.md
-Resume file: None
+Last session: 2026-06-14T00:32:53.049Z
+Stopped at: Phase 221 context gathered — ready to plan
+Resume file: .planning/phases/221-inbound-nl-intent-loop/221-CONTEXT.md
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
