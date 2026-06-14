@@ -3066,10 +3066,10 @@ Plans:
 
 **Requirements**: TBD (capture in discuss-phase)
 **Depends on:** Phase 227 (align READMEs to the audited docs)
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 228-01-PLAN.md — README + scaffold-template + installer-script consistency sweep (brew-first, ferro db:migrate/ferro serve, MSRV 1.88+/Node 18+, neutral Status line) + tap-repo README draft
+- [x] 228-01-PLAN.md — README + scaffold-template + installer-script consistency sweep (brew-first, ferro db:migrate/ferro serve, MSRV 1.88+/Node 18+, neutral Status line) + tap-repo README draft
 
 ---
 
