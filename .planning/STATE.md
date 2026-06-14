@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 226-01-PLAN.md (formula template + bump script)
-last_updated: "2026-06-14T16:56:52.651Z"
+stopped_at: Completed 226-03-PLAN.md (brew install docs + README)
+last_updated: "2026-06-14T16:59:56.328Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 234
   completed_phases: 210
   total_plans: 658
-  completed_plans: 644
+  completed_plans: 645
   percent: 98
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
 Phase: 226 (Homebrew Tap Distribution for ferro-cli) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -122,6 +122,7 @@ Progress: [██████████] 100%
 | Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P02 | 3 | 1 tasks | 1 files |
 | Phase 225 P03 | 98 | 2 tasks | 1 files |
 | Phase 226-homebrew-tap-distribution-for-ferro-cli P01 | 2 | 2 tasks | 3 files |
+| Phase 226-homebrew-tap-distribution-for-ferro-cli P03 | 180 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -170,7 +171,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T16:56:52.641Z
-Stopped at: Completed 226-01-PLAN.md (formula template + bump script)
+Last session: 2026-06-14T16:59:56.314Z
+Stopped at: Completed 226-03-PLAN.md (brew install docs + README)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
