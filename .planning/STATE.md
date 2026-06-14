@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 225-01-PLAN.md (rustls TLS migration — Tasks 1/2/3 done)
-last_updated: "2026-06-14T15:55:13.074Z"
+stopped_at: Completed 225-02-PLAN.md (drop cross for aarch64; native build with ring CC env)
+last_updated: "2026-06-14T15:58:22.291Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 233
   completed_phases: 209
   total_plans: 654
-  completed_plans: 641
+  completed_plans: 642
   percent: 98
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
 Phase: 225 (release-workflow-rustls-migration-and-e2e-cli-from-release-t) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -118,6 +118,7 @@ Progress: [██████████] 100%
 | Phase 221 P02 | 12 | 2 tasks | 3 files |
 | Phase 221-inbound-nl-intent-loop P03 | 27 | 2 tasks | 7 files |
 | Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P01 | 31540193 | 3 tasks | 18 files |
+| Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P02 | 3 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -166,7 +167,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:55:13.063Z
-Stopped at: Completed 225-01-PLAN.md (rustls TLS migration — Tasks 1/2/3 done)
+Last session: 2026-06-14T15:58:22.275Z
+Stopped at: Completed 225-02-PLAN.md (drop cross for aarch64; native build with ring CC env)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
