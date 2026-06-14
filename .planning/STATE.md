@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: executing
-stopped_at: Completed 225-02-PLAN.md (drop cross for aarch64; native build with ring CC env)
-last_updated: "2026-06-14T15:58:22.291Z"
+status: verifying
+stopped_at: Completed 225-03-PLAN.md (e2e-tag + e2e-drift jobs; Phase 225 complete)
+last_updated: "2026-06-14T16:02:13.992Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 233
-  completed_phases: 209
+  completed_phases: 210
   total_plans: 654
-  completed_plans: 642
+  completed_plans: 643
   percent: 98
 ---
 
@@ -31,7 +31,7 @@ Plan: 3 of 3
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
 
@@ -119,6 +119,7 @@ Progress: [██████████] 100%
 | Phase 221-inbound-nl-intent-loop P03 | 27 | 2 tasks | 7 files |
 | Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P01 | 31540193 | 3 tasks | 18 files |
 | Phase 225-release-workflow-rustls-migration-and-e2e-cli-from-release-t P02 | 3 | 1 tasks | 1 files |
+| Phase 225 P03 | 98 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -167,7 +168,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:58:22.275Z
-Stopped at: Completed 225-02-PLAN.md (drop cross for aarch64; native build with ring CC env)
+Last session: 2026-06-14T16:02:13.982Z
+Stopped at: Completed 225-03-PLAN.md (e2e-tag + e2e-drift jobs; Phase 225 complete)
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
