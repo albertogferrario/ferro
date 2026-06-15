@@ -1,5 +1,9 @@
 //! Ferro RealWorld/Conduit backend — benchmark harness
 
+// Wave 1 scaffolds the JWT module, both middlewares, and the health handler.
+// Later waves (Plans 02-06) wire them into routes/controllers. Allow until then.
+#![allow(dead_code)]
+
 use clap::{Parser, Subcommand};
 use ferro::{Config, Server};
 use sea_orm_migration::prelude::*;
@@ -121,7 +125,7 @@ async fn show_migration_status() {
 }
 
 async fn rollback_migrations(steps: u32) {
-    println!("Rolling back {} migration(s)...", steps);
+    println!("Rolling back {steps} migration(s)...");
     let db = get_database_connection().await;
     Migrator::down(&db, Some(steps))
         .await
