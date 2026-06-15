@@ -5,6 +5,8 @@
 //! require auth and enforce author-ownership before mutating (T-230-12).
 //! All filter params are parameterized through SeaORM — no raw SQL (T-230-13).
 
+use std::collections::{HashMap, HashSet};
+
 use ferro::serde_json::json;
 use ferro::{handler, HttpResponse, Request, Response, DB};
 use sea_orm::{
@@ -129,6 +131,139 @@ async fn to_article_dto(
             following,
         },
     })
+}
+
+/// Assemble article envelopes for a *page* of articles with a fixed number of
+/// batched queries (no per-article N+1). For `n` articles this runs at most 5
+/// queries total — tag links, tag names, favorites counts, viewer favorites,
+/// author profiles, viewer follows — instead of ~6n. Output is byte-for-byte
+/// identical to mapping `to_article_dto` over each article.
+async fn to_article_dtos(
+    db: &DatabaseConnection,
+    articles: Vec<article::Model>,
+    viewer: Option<i64>,
+) -> Result<Vec<ArticleDto>, HttpResponse> {
+    let dberr =
+        |e: sea_orm::DbErr| -> HttpResponse { ferro::FrameworkError::database(e.to_string()).into() };
+
+    if articles.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let article_ids: Vec<i32> = articles.iter().map(|a| a.id).collect();
+    let author_ids: Vec<i32> = articles.iter().map(|a| a.author_id).collect();
+
+    // tagList: one junction query for all articles, then one query for the tag names.
+    let links = article_tag::Entity::find()
+        .filter(article_tag::Column::ArticleId.is_in(article_ids.clone()))
+        .all(db)
+        .await
+        .map_err(dberr)?;
+    let needed_tag_ids: HashSet<i32> = links.iter().map(|l| l.tag_id).collect();
+    let tag_names: HashMap<i32, String> = if needed_tag_ids.is_empty() {
+        HashMap::new()
+    } else {
+        tag::Entity::find()
+            .filter(tag::Column::Id.is_in(needed_tag_ids.into_iter().collect::<Vec<_>>()))
+            .all(db)
+            .await
+            .map_err(dberr)?
+            .into_iter()
+            .map(|t| (t.id, t.name))
+            .collect()
+    };
+    let mut tags_by_article: HashMap<i32, Vec<String>> = HashMap::new();
+    for l in links {
+        if let Some(name) = tag_names.get(&l.tag_id) {
+            tags_by_article
+                .entry(l.article_id)
+                .or_default()
+                .push(name.clone());
+        }
+    }
+    for list in tags_by_article.values_mut() {
+        list.sort();
+    }
+
+    // favoritesCount: one grouped query over all article favorites.
+    let mut favorites_count: HashMap<i32, i64> = HashMap::new();
+    for f in favorite::Entity::find()
+        .filter(favorite::Column::ArticleId.is_in(article_ids.clone()))
+        .all(db)
+        .await
+        .map_err(dberr)?
+    {
+        *favorites_count.entry(f.article_id).or_default() += 1;
+    }
+
+    // favorited: the viewer's favorites among this page (single filtered query).
+    let viewer_favorites: HashSet<i32> = match viewer {
+        Some(uid) => favorite::Entity::find()
+            .filter(favorite::Column::ArticleId.is_in(article_ids.clone()))
+            .filter(favorite::Column::UserId.eq(uid as i32))
+            .all(db)
+            .await
+            .map_err(dberr)?
+            .into_iter()
+            .map(|f| f.article_id)
+            .collect(),
+        None => HashSet::new(),
+    };
+
+    // author profiles: one query for all distinct authors.
+    let distinct_authors: Vec<i32> = author_ids
+        .iter()
+        .copied()
+        .collect::<HashSet<i32>>()
+        .into_iter()
+        .collect();
+    let authors: HashMap<i32, user::Model> = user::Entity::find()
+        .filter(user::Column::Id.is_in(distinct_authors.clone()))
+        .all(db)
+        .await
+        .map_err(dberr)?
+        .into_iter()
+        .map(|u| (u.id, u))
+        .collect();
+
+    // following: the viewer's followed authors among this page (single filtered query).
+    let viewer_following: HashSet<i32> = match viewer {
+        Some(uid) => follow::Entity::find()
+            .filter(follow::Column::FollowerId.eq(uid as i32))
+            .filter(follow::Column::FollowedId.is_in(distinct_authors))
+            .all(db)
+            .await
+            .map_err(dberr)?
+            .into_iter()
+            .map(|f| f.followed_id)
+            .collect(),
+        None => HashSet::new(),
+    };
+
+    let mut dtos = Vec::with_capacity(articles.len());
+    for a in articles {
+        let author = authors
+            .get(&a.author_id)
+            .ok_or_else(|| error_envelope(404, "author", &["not found"]))?;
+        dtos.push(ArticleDto {
+            slug: a.slug,
+            title: a.title,
+            description: a.description,
+            body: a.body,
+            tag_list: tags_by_article.remove(&a.id).unwrap_or_default(),
+            created_at: a.created_at.to_rfc3339(),
+            updated_at: a.updated_at.to_rfc3339(),
+            favorited: viewer_favorites.contains(&a.id),
+            favorites_count: *favorites_count.get(&a.id).unwrap_or(&0),
+            author: ProfileDto {
+                username: author.username.clone(),
+                bio: author.bio.clone(),
+                image: author.image.clone(),
+                following: viewer_following.contains(&author.id),
+            },
+        });
+    }
+    Ok(dtos)
 }
 
 /// Find an article by slug, or 404.
@@ -354,10 +489,7 @@ pub async fn index(req: Request) -> Response {
         .await
         .map_err(dberr)?;
 
-    let mut dtos = Vec::with_capacity(models.len());
-    for m in models {
-        dtos.push(to_article_dto(&db, m, viewer).await?);
-    }
+    let dtos = to_article_dtos(&db, models, viewer).await?;
 
     Ok(HttpResponse::json(json!({
         "articles": dtos,
@@ -445,10 +577,7 @@ pub async fn feed(req: Request) -> Response {
         .await
         .map_err(dberr)?;
 
-    let mut dtos = Vec::with_capacity(models.len());
-    for m in models {
-        dtos.push(to_article_dto(&db, m, Some(uid)).await?);
-    }
+    let dtos = to_article_dtos(&db, models, Some(uid)).await?;
 
     Ok(HttpResponse::json(json!({
         "articles": dtos,
