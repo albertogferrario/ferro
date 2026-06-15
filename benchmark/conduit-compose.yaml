@@ -1,0 +1,65 @@
+# Conduit (RealWorld) like-for-like benchmark stack.
+# Mirrors benchmark/compose.yaml (the micro stack) for the real-app workload:
+# a shared Postgres `conduit` DB serving the Ferro Conduit and the vendored
+# Laravel Conduit (php-fpm + Octane variants).
+#
+# Ports: ferro-conduit 3002, laravel-conduit (php-fpm) 8011, laravel-octane 8012.
+# All app services wait for Postgres to be healthy; each app migrates on boot.
+# Secrets here (JWT_SECRET / APP_KEY / DB creds) are benchmark-only throwaway values.
+services:
+  db:
+    image: postgres:16.4
+    environment:
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: conduit
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d conduit"]
+      interval: 2s
+      retries: 15
+    ports: ["5440:5432"]
+
+  ferro-conduit:
+    build: ./apps/ferro-conduit
+    environment:
+      DATABASE_URL: postgres://postgres:bench@db:5432/conduit
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "3000"
+      JWT_SECRET: benchmark-only-not-production-grade
+      APP_NAME: conduit
+      APP_URL: http://localhost:3002
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["3002:3000"]
+
+  laravel-conduit:
+    build: ./apps/laravel-conduit
+    environment:
+      APP_ENV: production
+      APP_KEY: "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      APP_URL: http://localhost:8011
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: conduit
+      DB_USERNAME: postgres
+      DB_PASSWORD: bench
+      JWT_SECRET: benchmark-only-not-production-grade
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8011:8000"]
+
+  laravel-octane:
+    build:
+      context: ./apps/laravel-conduit
+      dockerfile: Dockerfile.octane
+    environment:
+      APP_ENV: production
+      APP_KEY: "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      APP_URL: http://localhost:8012
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: conduit
+      DB_USERNAME: postgres
+      DB_PASSWORD: bench
+      JWT_SECRET: benchmark-only-not-production-grade
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8012:8080"]

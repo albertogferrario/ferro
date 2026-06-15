@@ -1,0 +1,53 @@
+# benchmark/apps/laravel-conduit/Dockerfile.octane
+# Vendored f1amy/laravel-realworld-example-app (Laravel 9) served with Laravel Octane
+# + RoadRunner (in-memory PHP, no fpm, no nginx). Mirrors laravel-micro's octane recipe.
+# Workers: 16 (static, comparable to fpm max_children=20 on an 8-core host).
+FROM php:8.3-cli-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev unzip \
+    && docker-php-ext-install pdo_pgsql opcache sockets pcntl \
+    && rm -rf /var/lib/apt/lists/*
+
+# opcache: standard production settings (same as fpm variant)
+RUN { \
+    echo "opcache.enable=1"; \
+    echo "opcache.memory_consumption=128"; \
+    echo "opcache.interned_strings_buffer=8"; \
+    echo "opcache.max_accelerated_files=10000"; \
+    echo "opcache.revalidate_freq=0"; \
+    echo "opcache.validate_timestamps=0"; \
+    echo "opcache.fast_shutdown=1"; \
+} > /usr/local/etc/php/conf.d/opcache.ini
+
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+COPY . .
+
+# Step 1: install the vendored app's locked deps (no-dev)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Step 2: add Octane (Laravel 9-compatible line) + RoadRunner CLI.
+# -W allows transitive upgrades needed by octane within the Laravel 9 constraint.
+RUN composer require "laravel/octane:^1.7" spiral/roadrunner-cli \
+        --optimize-autoloader --no-interaction -W
+
+# Step 3: download the rr binary via octane:install (fallback to rr get-binary)
+RUN php artisan octane:install --server=roadrunner --no-interaction 2>&1 || \
+    ./vendor/bin/rr get-binary --no-interaction 2>/dev/null || true
+
+# Verify rr exists and is executable
+RUN test -f /app/rr && chmod +x /app/rr && /app/rr --version
+
+RUN mkdir -p storage/logs storage/framework/cache \
+             storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+COPY docker/entrypoint.octane.sh /usr/local/bin/entrypoint.octane.sh
+RUN chmod +x /usr/local/bin/entrypoint.octane.sh
+
+ENV APP_ENV=production
+EXPOSE 8080
+
+CMD ["/usr/local/bin/entrypoint.octane.sh"]
