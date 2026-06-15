@@ -38,5 +38,48 @@ def run(app_dir: str) -> dict:
     summary["source_tokens"] = count_tokens(paths)
     return summary
 
+def count_code_lines(paths: list[str]) -> int:
+    """tokei code-line count over an explicit file list (carveout)."""
+    if not paths:
+        return 0
+    out = subprocess.run(
+        ["tokei", "--output", "json", *paths],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return summarize_tokei(out)["code_lines"]
+
+def run_with_carveout(app_dir: str, carveout_paths: list[str], label: str) -> dict:
+    """Total static count for `app_dir` plus a SEPARATE count for an explicit list of
+    "not framework-provided" files (`carveout_paths`, relative to app_dir).
+
+    The carved-out code is subtracted from a `framework_provided_code_lines` figure so
+    the framework-provided line count is never overstated (D-10 honesty). Used for the
+    hand-rolled JWT modules (src/jwt.rs + JWT middleware) that Ferro does not provide —
+    Ferro auth is session-based."""
+    import os
+    summary = run(app_dir)
+    abs_carveout = [os.path.join(app_dir, p) for p in carveout_paths]
+    present = [p for p in abs_carveout if os.path.exists(p)]
+    hand_rolled_lines = count_code_lines(present)
+    summary["hand_rolled"] = {
+        "files": carveout_paths,
+        "code_lines": hand_rolled_lines,
+        "label": label,
+    }
+    summary["framework_provided_code_lines"] = summary["code_lines"] - hand_rolled_lines
+    return summary
+
 if __name__ == "__main__":
-    print(json.dumps(run(sys.argv[1])))
+    # Usage:
+    #   count_static.py <app_dir>
+    #   count_static.py <app_dir> --carveout <rel_path>[,<rel_path>...] [--label "..."]
+    if "--carveout" in sys.argv:
+        i = sys.argv.index("--carveout")
+        app_dir = sys.argv[1]
+        carveout = sys.argv[i + 1].split(",")
+        label = "not framework-provided"
+        if "--label" in sys.argv:
+            label = sys.argv[sys.argv.index("--label") + 1]
+        print(json.dumps(run_with_carveout(app_dir, carveout, label)))
+    else:
+        print(json.dumps(run(sys.argv[1])))
