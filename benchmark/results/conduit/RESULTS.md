@@ -164,3 +164,7 @@ Raw data: `perf-ferro-conduit.json`, `perf-laravel-conduit.json`, `perf-laravel-
 > and status codes. The benchmark forbids modifying vendored app logic, and the honesty
 > rule (D-10 / T-230-22) prefers reporting the conformance gap to manufacturing a green.
 > The gap is fully characterized in §1.
+
+## Update — N+1 fix committed (perf re-measurement pending)
+
+Commit `ff249dfd` fixes the per-article N+1 in the article list/feed handlers (batched tags/favorites/authors/follows: ~6 fixed queries per page instead of ~6×N). The code compiles clean and preserves the 422/422 conformance by construction (DTO output unchanged). **The `/api/articles` perf number above (273 rps) predates this fix and has NOT been re-measured** — the re-run is blocked by a host disk-full (ENOSPC) condition (Docker build cache 12.7GB could not be pruned). Re-measure once host disk is freed; the loss on that endpoint is expected to close substantially.
