@@ -6,8 +6,9 @@ use ferro::{async_trait, HttpResponse, Middleware, Next, Request, Response};
 
 use super::extract_user_id;
 
-/// Rejects unauthenticated requests with `401 {"errors":{"body":["Unauthorized"]}}`.
-/// On a valid token, inserts `UserId` into the request extension map and proceeds.
+/// Rejects unauthenticated requests with `401 {"errors":{"token":["is missing"]}}`
+/// (Conduit "Error Cases - Auth" contract). On a valid token, inserts `UserId`
+/// into the request extension map and proceeds.
 pub struct JwtAuthMiddleware;
 
 #[async_trait]
@@ -18,7 +19,7 @@ impl Middleware for JwtAuthMiddleware {
                 request.insert(user_id);
                 next(request).await
             }
-            None => Err(HttpResponse::json(json!({"errors": {"body": ["Unauthorized"]}}))
+            None => Err(HttpResponse::json(json!({"errors": {"token": ["is missing"]}}))
                 .status(401)),
         }
     }

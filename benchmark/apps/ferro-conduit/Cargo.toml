@@ -29,3 +29,5 @@ jsonwebtoken = "9"
 slug = "0.1"
 
 [dev-dependencies]
+# Route-ordering test asserts against Router::match_route(&hyper::Method, path).
+hyper = "1"
