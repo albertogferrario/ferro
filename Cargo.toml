@@ -1,5 +1,11 @@
 [workspace]
 resolver = "2"
+# Standalone benchmark apps are their own packages, NOT workspace members.
+# Listed here defensively so a future glob member pattern cannot absorb them.
+exclude = [
+    "benchmark/apps/ferro-conduit",
+    "benchmark/apps/ferro-micro",
+]
 members = [
     "framework",
     "app",
