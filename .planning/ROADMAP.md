@@ -3087,13 +3087,19 @@ Plans:
 
 ### Phase 230: Framework Benchmark 1B — Ferro Conduit (RealWorld backend): implement the RealWorld/Conduit API spec (JWT auth, users/profiles, articles CRUD, comments, favorites, follows, tags, feeds, pagination) as a Ferro app under benchmark/apps/ferro-conduit, conforming to the published Conduit API contract; vendor a pinned community Laravel RealWorld backend (gothinkster/laravel-realworld-example-app) as the competitor; run the existing harness (static compression + perf via php-fpm/octane) on the real-app workload. Extends Phase 229 harness. Source design: docs/superpowers/specs/2026-06-15-ferro-framework-benchmark-design.md.
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** A Ferro implementation of the RealWorld/Conduit backend (benchmark/apps/ferro-conduit, OUTSIDE the root workspace) passes the full official RealWorld Newman conformance collection; a vendored, commit-pinned community Laravel Conduit backend passes the same collection (fair like-for-like baseline); and the Phase 229 harness reports the real-app static-compression (with the hand-rolled JWT counted separately and labeled "not framework-provided") and perf (Ferro vs php-fpm vs octane on shared Postgres) with honest caveats.
+**Requirements**: none mapped (benchmark phase — requirements: [] intentional)
 **Depends on:** Phase 229
-**Plans:** 0 plans
+**Plans:** 7 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 230 to break down)
+- [ ] 230-01-PLAN.md — Scaffold the isolated ferro-conduit app + hand-rolled JWT module + auth middleware (unit-tested)
+- [ ] 230-02-PLAN.md — Models + migrations + relations (users/articles/comments/tags + follows/favorites/article_tags junctions)
+- [ ] 230-03-PLAN.md — Vendor Newman collection + DTOs + auth endpoints + route-ordering test → Newman Auth green
+- [ ] 230-04-PLAN.md — Articles CRUD + slugs + list/filter/pagination (feed-first ordering) → Newman Articles green
+- [ ] 230-05-PLAN.md — Profiles + follow/unfollow → Newman Profiles green
+- [ ] 230-06-PLAN.md — Comments + favorites + tags + real feed → remaining Newman folders + full single-app green
+- [ ] 230-07-PLAN.md — Vendor + pin Laravel; full Newman against BOTH; harness static (JWT separate) + perf; honest RESULTS
 
 ---
 
