@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 230-07-PLAN.md (Phase 230 complete)
-last_updated: "2026-06-15T15:07:19.669Z"
+last_updated: "2026-06-15T15:08:38.420Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 238
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
-Phase: 230 (framework-benchmark-1b-ferro-conduit) — EXECUTING
-Plan: 7 of 7
+Phase: 230
+Plan: Not started
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -104,6 +104,7 @@ Progress: [██████████] 100%
 | 227 | 3 | - | - |
 | 228 | 1 | - | - |
 | 229 | 5 | - | - |
+| 230 | 7 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
