@@ -3071,6 +3071,16 @@ Plans:
 Plans:
 - [x] 228-01-PLAN.md — README + scaffold-template + installer-script consistency sweep (brew-first, ferro db:migrate/ferro serve, MSRV 1.88+/Node 18+, neutral Status line) + tap-repo README draft
 
+### Phase 229: Framework Benchmark — Harness Foundation (1A): build the reproducible benchmark/ harness (contracts + static-counter + perf-runner + reporting toolbox) and prove it end-to-end on four micro-endpoints in Ferro and a minimal Laravel app, producing the first committed perf + static results. Source spec: docs/superpowers/specs/2026-06-15-ferro-framework-benchmark-design.md; task plan: docs/superpowers/plans/2026-06-15-benchmark-1a-harness-foundation.md.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 228
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 229 to break down)
+
 ---
 
 ## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
