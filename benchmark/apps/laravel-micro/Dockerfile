@@ -8,5 +8,6 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 ENV APP_ENV=production
 EXPOSE 8000
+# Cache config at startup so DB_HOST from compose env is baked before artisan serve forks workers.
 # Note: stock artisan serve; Octane variant is a documented future addition (see benchmark/README.md)
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["sh", "-c", "php artisan config:cache && php artisan serve --host=0.0.0.0 --port=8000"]

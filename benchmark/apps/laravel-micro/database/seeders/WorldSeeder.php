@@ -11,7 +11,7 @@ class WorldSeeder extends Seeder
     {
         $rows = [];
         for ($i = 0; $i < 10000; $i++) {
-            $rows[] = ['randomNumber' => random_int(1, 10000)];
+            $rows[] = ['random_number' => random_int(1, 10000)];
         }
         DB::table('world')->insert($rows);
     }

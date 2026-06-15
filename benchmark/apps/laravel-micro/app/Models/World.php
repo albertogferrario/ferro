@@ -8,5 +8,6 @@ class World extends Model
 {
     protected $table = 'world';
     public $timestamps = false;
-    protected $fillable = ['randomNumber'];
+    // DB column is random_number (snake_case, created by the shared ferro migration).
+    protected $fillable = ['random_number'];
 }

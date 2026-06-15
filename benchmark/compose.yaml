@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16.4
+    environment:
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: bench
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      retries: 15
+  ferro-micro:
+    build: ./apps/ferro-micro
+    environment:
+      DATABASE_URL: postgres://postgres:bench@db:5432/bench
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["3001:3000"]
+  laravel-micro:
+    build: ./apps/laravel-micro
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: bench
+      DB_USERNAME: postgres
+      DB_PASSWORD: bench
+    depends_on: { db: { condition: service_healthy } }
+    ports: ["8001:8000"]

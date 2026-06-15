@@ -8,10 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('world', function (Blueprint $table) {
-            $table->integer('id')->autoIncrement()->primary();
-            $table->integer('randomNumber');
-        });
+        if (!Schema::hasTable('world')) {
+            Schema::create('world', function (Blueprint $table) {
+                $table->integer('id')->autoIncrement()->primary();
+                $table->integer('randomNumber');
+            });
+        }
     }
 
     public function down(): void
