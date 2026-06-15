@@ -11,9 +11,14 @@ services:
     image: postgres:16.4
     environment:
       POSTGRES_PASSWORD: bench
-      POSTGRES_DB: conduit
+      POSTGRES_DB: conduit_ferro
+    # Shared Postgres server, one logical DB per app (both own the same canonical
+    # Conduit schema, so they cannot share a single database). conduit_laravel is
+    # created by the init script; conduit_ferro by POSTGRES_DB.
+    volumes:
+      - ./apps/conduit-db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d conduit"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d conduit_ferro"]
       interval: 2s
       retries: 15
     ports: ["5440:5432"]
@@ -21,7 +26,7 @@ services:
   ferro-conduit:
     build: ./apps/ferro-conduit
     environment:
-      DATABASE_URL: postgres://postgres:bench@db:5432/conduit
+      DATABASE_URL: postgres://postgres:bench@db:5432/conduit_ferro
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: "3000"
       JWT_SECRET: benchmark-only-not-production-grade
@@ -39,7 +44,7 @@ services:
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
-      DB_DATABASE: conduit
+      DB_DATABASE: conduit_laravel
       DB_USERNAME: postgres
       DB_PASSWORD: bench
       JWT_SECRET: benchmark-only-not-production-grade
@@ -57,7 +62,7 @@ services:
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
-      DB_DATABASE: conduit
+      DB_DATABASE: conduit_laravel
       DB_USERNAME: postgres
       DB_PASSWORD: bench
       JWT_SECRET: benchmark-only-not-production-grade

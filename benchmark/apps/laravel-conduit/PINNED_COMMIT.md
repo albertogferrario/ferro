@@ -66,3 +66,20 @@ applied at the Docker layer (not by editing the vendored tree):
 
 No file under `app/`, `routes/`, `config/` (logic), or `database/migrations/` was
 edited. `config/*` values are overridden via environment, not by editing the files.
+
+### Two build-environment fixes (config-only, surfaced bringing the stack up)
+
+Both are environment/dependency fixes applied at the Docker layer; the vendored
+application tree is untouched.
+
+1. **PHP 8.2 (not 8.3)** + **`composer update nesbot/carbon` → 2.73.0**. The pinned
+   `composer.lock` carries `nesbot/carbon` 2.58.0, which is incompatible with modern
+   PHP's `DateTime::getLastErrors()` returning `false` (it raises
+   `Carbon::setLastErrors(): Argument #1 must be of type array, bool given` on every
+   request). Carbon 2.62.1+ handles this; we bump to 2.73.0 within the `^2` line. This
+   is a transitive-dependency patch, not an app-logic change.
+2. **Isolated logical database.** The Ferro and Laravel Conduits both own the same
+   canonical Conduit schema (`users`, `articles`, ...), so they cannot share one
+   database. They share the same Postgres **server/container** with one database each
+   (`conduit_ferro`, `conduit_laravel`) — created by `apps/conduit-db-init/`. This is
+   the standard like-for-like setup (same engine, same host resources, isolated schema).

@@ -2,7 +2,9 @@
 # Vendored f1amy/laravel-realworld-example-app (Laravel 9) served with Laravel Octane
 # + RoadRunner (in-memory PHP, no fpm, no nginx). Mirrors laravel-micro's octane recipe.
 # Workers: 16 (static, comparable to fpm max_children=20 on an 8-core host).
-FROM php:8.3-cli-bookworm
+# PHP 8.2 (not 8.3): the vendored app's pinned nesbot/carbon is incompatible with
+# PHP 8.3's DateTime::getLastErrors() returning false. 8.2 is within ^8.0.2.
+FROM php:8.2-cli-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev unzip \
@@ -27,6 +29,10 @@ COPY . .
 
 # Step 1: install the vendored app's locked deps (no-dev)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Config-only: bump nesbot/carbon off 2.58.0 (incompatible with modern PHP's
+# DateTime::getLastErrors() returning false). App logic unchanged.
+RUN composer update nesbot/carbon --with-all-dependencies --no-dev \
+        --optimize-autoloader --no-interaction
 
 # Step 2: add Octane (Laravel 9-compatible line) + RoadRunner CLI.
 # -W allows transitive upgrades needed by octane within the Laravel 9 constraint.
