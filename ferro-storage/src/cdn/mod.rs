@@ -78,12 +78,24 @@ impl std::fmt::Debug for DoSpacesCdnConfig {
 impl DoSpacesCdnConfig {
     /// Read config from environment.
     ///
-    /// - `DO_SPACES_CDN_ID` — optional. When absent, `purge()` is a logged no-op.
-    /// - `DIGITALOCEAN_ACCESS_TOKEN` — required when endpoint id is set; otherwise unused.
+    /// Reads the provider-agnostic Phase 205 names first, with fallback to the
+    /// legacy DO-specific names so existing deployments keep working without
+    /// re-keying their secrets:
+    /// - `CDN_PURGE_ZONE` (modern) → falls back to `DO_SPACES_CDN_ID` (legacy).
+    ///   Optional. When neither is set, `purge()` is a logged no-op.
+    /// - `CDN_PURGE_TOKEN` (modern) → falls back to `DIGITALOCEAN_ACCESS_TOKEN`
+    ///   (legacy). Required when endpoint id is set; otherwise unused.
     pub fn from_env() -> Self {
         Self {
-            endpoint_id: std::env::var("DO_SPACES_CDN_ID").ok(),
-            api_token: std::env::var("DIGITALOCEAN_ACCESS_TOKEN").unwrap_or_default(),
+            endpoint_id: crate::env_helpers::env_with_fallback(
+                "CDN_PURGE_ZONE",
+                &["DO_SPACES_CDN_ID"],
+            ),
+            api_token: crate::env_helpers::env_with_fallback(
+                "CDN_PURGE_TOKEN",
+                &["DIGITALOCEAN_ACCESS_TOKEN"],
+            )
+            .unwrap_or_default(),
             api_base: None,
         }
     }
