@@ -3073,13 +3073,17 @@ Plans:
 
 ### Phase 229: Framework Benchmark — Harness Foundation (1A): build the reproducible benchmark/ harness (contracts + static-counter + perf-runner + reporting toolbox) and prove it end-to-end on four micro-endpoints in Ferro and a minimal Laravel app, producing the first committed perf + static results. Source spec: docs/superpowers/specs/2026-06-15-ferro-framework-benchmark-design.md; task plan: docs/superpowers/plans/2026-06-15-benchmark-1a-harness-foundation.md.
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Build the reproducible `benchmark/` harness (contracts + static-counter + perf-runner + reporting toolbox) and prove it end-to-end on four micro-endpoints (`/json`, `/db`, `/queries`, `/updates`) implemented in Ferro and a minimal Laravel 11 app, producing the first committed perf + static results with recorded hardware.
+**Requirements**: none mapped (validation/tooling phase; gated by conformance + pytest units)
 **Depends on:** Phase 228
-**Plans:** 0 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 229 to break down)
+- [ ] 229-01-PLAN.md — Scaffold benchmark/ tree + shared micro-endpoints contract (Wave 1, light)
+- [ ] 229-02-PLAN.md — Harness TDD units: perf parser, static counter, report builder (Wave 1, light)
+- [ ] 229-03-PLAN.md — Pinned toolbox image (oha+tokei) + perf runner [HEAVY/THERMAL] (Wave 2)
+- [ ] 229-04-PLAN.md — Ferro + Laravel micro-endpoint apps [HEAVY/THERMAL] (Wave 2)
+- [ ] 229-05-PLAN.md — Conformance + compose + first results run + README [HEAVY/THERMAL] (Wave 2)
 
 ---
 
