@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 230-05-PLAN.md
-last_updated: "2026-06-15T14:11:07.761Z"
+stopped_at: Completed 230-06-PLAN.md
+last_updated: "2026-06-15T14:23:37.940Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 238
   completed_phases: 214
   total_plans: 674
-  completed_plans: 661
+  completed_plans: 662
   percent: 98
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
 Phase: 230 (framework-benchmark-1b-ferro-conduit) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -142,6 +142,7 @@ Progress: [██████████] 100%
 | Phase 230 P03 | 40 min | 3 tasks | 13 files |
 | Phase 230 P04 | 40 min | 2 tasks tasks | 4 files files |
 | Phase 230 P05 | 25m | 1 tasks | 3 files |
+| Phase 230 P06 | 35m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -190,7 +191,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-15T14:11:07.750Z
-Stopped at: Completed 230-05-PLAN.md
+Last session: 2026-06-15T14:23:30.893Z
+Stopped at: Completed 230-06-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
