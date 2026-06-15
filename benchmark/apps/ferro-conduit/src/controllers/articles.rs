@@ -289,7 +289,8 @@ pub async fn destroy(req: Request) -> Response {
         .exec(&*db)
         .await
         .map_err(|e| ferro::FrameworkError::database(e.to_string()))?;
-    Ok(HttpResponse::json(json!({})))
+    // 204 No Content — the Conduit collection asserts 204 on successful delete.
+    Ok(HttpResponse::new().status(204))
 }
 
 /// GET /api/articles — list articles with tag/author/favorited filters,
