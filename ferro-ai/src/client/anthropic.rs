@@ -43,12 +43,29 @@ impl AnthropicClient {
     /// useful for proxies and for hermetic integration tests that point the
     /// client at a local mock server (matching the `adk-anthropic` convention).
     pub fn new(api_key: String, model: Option<String>) -> Self {
+        Self::new_with_base_url(api_key, model, None)
+    }
+
+    /// Create a client with an explicit base-URL override.
+    ///
+    /// When `base_url` is `Some`, it is used verbatim. When `None`, the base URL is
+    /// resolved from the `ANTHROPIC_BASE_URL` environment variable, falling back to
+    /// [`DEFAULT_BASE_URL`]. The explicit override lets callers inject a mock-server URL
+    /// per call (e.g. hermetic integration tests under parallel execution) without
+    /// mutating the process-global `ANTHROPIC_BASE_URL`. `new(api_key, model)` delegates
+    /// here with `None` — zero behavior change for existing callers.
+    pub fn new_with_base_url(
+        api_key: String,
+        model: Option<String>,
+        base_url: Option<String>,
+    ) -> Self {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .expect("failed to build reqwest client");
-        let base_url =
-            std::env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
+        let base_url = base_url.unwrap_or_else(|| {
+            std::env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string())
+        });
         Self {
             client,
             api_key,

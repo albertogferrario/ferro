@@ -22,8 +22,17 @@ pub struct AnthropicProvider {
 impl AnthropicProvider {
     /// Create a new provider with an explicit API key.
     pub fn new(api_key: String) -> Self {
+        Self::with_base_url(api_key, None)
+    }
+
+    /// Create a provider with an explicit base-URL override (passed through to the
+    /// underlying [`AnthropicClient`]). `Some(url)` is used verbatim; `None` falls back
+    /// to `ANTHROPIC_BASE_URL` / the default endpoint. Lets a caller point the client at a
+    /// per-call mock server without mutating the process-global env var. `new(api_key)`
+    /// delegates here with `None`.
+    pub fn with_base_url(api_key: String, base_url: Option<String>) -> Self {
         Self {
-            client: Arc::new(AnthropicClient::new(api_key, None)),
+            client: Arc::new(AnthropicClient::new_with_base_url(api_key, None, base_url)),
         }
     }
 
