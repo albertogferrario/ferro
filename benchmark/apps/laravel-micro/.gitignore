@@ -23,3 +23,5 @@ yarn-error.log
 /.zed
 *.sqlite
 /storage/logs/
+# RoadRunner binary — downloaded at image build time, not committed
+/rr
