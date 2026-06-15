@@ -1,34 +1,58 @@
-# Run notes — 2026-06-15 (read before citing any number)
+# Run notes — 2026-06-15 (re-run with production Laravel server)
 
-This is the first end-to-end harness run (Phase 1A). Its primary purpose was to prove the
-pipeline works (build → containerize → conformance → load-test → static-count → report), and
-it does. Treat the numbers with the following honesty caveats.
+This directory holds two runs collapsed into one date:
+
+- **Run 1A** (initial): Laravel served by `php artisan serve` (single-process dev server).
+  Numbers were not representative — see the git history for those values.
+- **Run 1B** (this file): Laravel served by **php-fpm 8.3 + nginx** (supervisord).
+  Pool: `pm=static`, `pm.max_children=20`, `pm.max_requests=1000`, opcache on
+  (`validate_timestamps=0`). The single-worker bottleneck is resolved.
+
+All JSON, internal.md, and public.md in this directory reflect Run 1B only.
 
 ## Static compression — fair and citable
-Both apps satisfy the identical contract (conformance: 4/4 each). The line/file/token counts
-are a like-for-like comparison of idiomatic code and are a real result:
-Ferro 344 LoC / 14 files / 1158 tokens vs Laravel 1427 / 44 / 8874 (≈4× fewer lines,
-≈7.7× fewer tokens).
 
-## Raw performance — NOT a fair framework comparison in this run
-The Laravel app is served by stock `php artisan serve`, a single-process development server.
-The evidence it is the bottleneck, not the framework:
-- Laravel p99 latency is 5,142 ms (/json) and 7,849 ms (/db) at c=256 — requests are queuing
-  ~5–8 seconds behind a single worker, not being computed slowly.
-- 98 rps for a plaintext JSON response is far below any production Laravel stack; php-fpm/nginx
-  or Laravel Octane (Swoole/RoadRunner) routinely serve thousands of rps for the same endpoint.
+Both apps satisfy the identical contract (conformance: 4/4 each). The line/token counts
+are a like-for-like comparison of idiomatic code:
 
-Ferro, by contrast, is a multi-threaded tokio `--release` build. So the rps ratios
-(1517× /json, 225× /db, etc.) measure "release tokio server vs single-process PHP dev server,"
-which is a foregone conclusion and must not be cited as a Ferro-vs-Laravel performance result.
+Ferro 344 LoC / 1158 tokens vs Laravel 1448 / 8976
+(≈4.2× fewer lines, ≈7.7× fewer tokens).
 
-## Required before raw-perf is publishable (Phase 2)
-Re-run the Laravel side under a production-representative server — php-fpm + nginx, or Laravel
-Octane — at the same concurrency, and re-measure. The design already scopes the Octane variant
-to Phase 2. Until then, the raw-perf JSON in this directory is harness-validation evidence
-only, not a benchmark result.
+The Laravel Dockerfile is larger in 1B because it describes the nginx+fpm serving stack;
+this is an honest cost of the production configuration and is included symmetrically on
+both sides.
+
+## Raw performance — now a representative comparison
+
+With php-fpm + nginx:
+
+| Endpoint    | Laravel rps | Ferro rps  | p50 Laravel | p50 Ferro |
+|-------------|-------------|------------|-------------|-----------|
+| /json       | 620         | 211,704    | 395 ms      | 0.9 ms    |
+| /db         | 487         | 11,001     | 508 ms      | 12 ms     |
+| /queries    | 451         | 1,043      | 548 ms      | 202 ms    |
+| /updates    | 239         | 486        | 1,062 ms    | 525 ms    |
+
+The Rust/tokio vs PHP/fpm throughput gap is real. The remaining honest caveats:
+
+1. **Micro-endpoints only.** These four routes have no middleware stack, no session
+   handling, no auth — they isolate the raw framework dispatch and DB path. A real
+   application will narrow the gap on the CPU-bound dimension and widen it on the
+   I/O-bound dimension depending on workload.
+
+2. **Shared Postgres.** Both apps talk to the same container. Under `/db`-class load
+   the DB is the shared constraint; the ratio reflects framework overhead on top of
+   equal DB time.
+
+3. **Laravel Octane not tested.** Swoole or RoadRunner would push Laravel's numbers
+   materially higher on `/json` (no-DB). Octane is a documented Phase 3 addition.
+   The gap at `/queries` and `/updates` is DB-bound and Octane narrows it less.
+
+4. **pm.max_children=20.** A defensible choice for 8 cores under sustained c=256.
+   Higher values (e.g. 40) would increase Laravel's `/json` rps further at the cost of
+   more RAM per worker; we chose a standard, not a tuned-to-win, value.
 
 ## Tooling / environment
-oha 1.9.0 (bumped from the planned 1.4.7 — `--output-format json` was introduced in 1.9.0),
-tokei 12.1.2, PostgreSQL 16.4 shared by both apps. Apple M1 Pro, 8 cores, 16 GB, macOS
+
+oha 1.9.0, tokei 12.1.2, PostgreSQL 16.4. Apple M1 Pro, 8 cores, 16 GB, macOS
 Darwin 23.6.0. c=256, 30s timed run after 5s warmup. See `meta.json`.

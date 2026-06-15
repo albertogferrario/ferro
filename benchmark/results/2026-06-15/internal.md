@@ -2,15 +2,14 @@
 
 | Endpoint | laravel | ferro | ratio |
 |---|---|---|---|
-| /db | 74 | 16,571 | 225.28x |
-| /json | 98 | 148,852 | 1517.59x |
-| /queries | 66 | 658 | 9.96x |
-| /updates | 49 | 333 | 6.78x |
+| /db | 487 | 11,001 | 22.59x |
+| /json | 620 | 211,704 | 341.24x |
+| /queries | 451 | 1,043 | 2.31x |
+| /updates | 239 | 486 | 2.04x |
 
 ## Static compression
 
 | Metric | laravel | ferro |
 |---|---|---|
-| code_lines | 1427 | 344 |
-| files | 44 | 14 |
-| source_tokens | 8874 | 1158 |
+| code_lines | 1448 | 344 |
+| source_tokens | 8976 | 1158 |

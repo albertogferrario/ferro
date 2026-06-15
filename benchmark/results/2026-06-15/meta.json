@@ -15,5 +15,9 @@
     "duration": "30s",
     "concurrency": 256,
     "warmup": "5s"
+  },
+  "servers": {
+    "ferro": "tokio multi-threaded runtime, --release build",
+    "laravel": "php-fpm 8.3 + nginx (supervisord), pm=static, pm.max_children=20, pm.max_requests=1000, opcache enabled (validate_timestamps=0)"
   }
 }

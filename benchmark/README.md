@@ -5,8 +5,12 @@ Design: `docs/superpowers/specs/2026-06-15-ferro-framework-benchmark-design.md`.
 
 ## What 1A measures
 Four micro-endpoints (`/json`, `/db`, `/queries`, `/updates`) in Ferro and Laravel, on two
-axes: raw performance (requests/sec, p50/p99 latency, memory) and static compression (LoC,
-files, source tokens).
+axes: raw performance (requests/sec, p50/p99 latency) and static compression (LoC,
+source tokens).
+
+Laravel is served by **php-fpm 8.3 + nginx** (supervisord), pool `pm=static
+max_children=20`, opcache on — a production-representative stack.
+Ferro runs as a multi-threaded tokio `--release` build.
 
 ## Reproducibility
 - Apps and tooling run in pinned containers (`compose.yaml`, `harness/Dockerfile.toolbox`).
@@ -45,6 +49,7 @@ docker compose exec ferro-micro app db:migrate
 docker compose exec ferro-micro app db:seed
 
 # Laravel — migrations only (world table already seeded by Ferro above)
+# The laravel-micro container runs php-fpm + nginx via supervisord.
 docker compose exec laravel-micro php artisan migrate --force
 ```
 
