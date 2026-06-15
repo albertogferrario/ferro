@@ -36,7 +36,9 @@ RUN composer update nesbot/carbon --with-all-dependencies --no-dev \
 
 # Step 2: add Octane (Laravel 9-compatible line) + RoadRunner CLI.
 # -W allows transitive upgrades needed by octane within the Laravel 9 constraint.
-RUN composer require "laravel/octane:^1.7" spiral/roadrunner-cli \
+# Octane 1.x's roadrunner runtime check requires the spiral/roadrunner meta-package
+# (v2) by name, not only roadrunner-cli — require it explicitly.
+RUN composer require "laravel/octane:^1.7" "spiral/roadrunner:^2.0" spiral/roadrunner-cli \
         --optimize-autoloader --no-interaction -W
 
 # Step 3: download the rr binary via octane:install (fallback to rr get-binary)

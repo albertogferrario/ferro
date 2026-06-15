@@ -1,0 +1,43 @@
+{
+  "date": "2026-06-15",
+  "workload": "Conduit (RealWorld) real-app backend",
+  "hardware": {
+    "cpu_model": "Apple M1 Pro",
+    "physical_cores": 8,
+    "ram_gb": 16,
+    "os": "Darwin 23.6.0"
+  },
+  "tooling": {
+    "oha": "1.9.0",
+    "tokei": "12.1.2",
+    "postgres": "16.4",
+    "newman": "npx newman (latest)"
+  },
+  "load": {
+    "duration": "30s",
+    "concurrency": 256,
+    "warmup": "5s",
+    "endpoints": ["/api/tags", "/api/articles?limit=20", "/api/profiles/celeb"]
+  },
+  "apps": {
+    "ferro-conduit": {
+      "framework": "ferro-rs 0.2.65 (tokio multi-threaded, --release)",
+      "authored": "purpose-built to the frozen Conduit Postman collection (Plans 01-06)",
+      "jwt": "hand-rolled src/jwt.rs + 2 middleware (Ferro auth is session-based)",
+      "db": "conduit_ferro"
+    },
+    "laravel-conduit": {
+      "framework": "Laravel 9 (php-fpm 8.2 + nginx, supervisord)",
+      "vendored": "f1amy/laravel-realworld-example-app @ c14fb8370b71a42a3a74b8ea936a1f96b2af9d69 (MIT)",
+      "pool": "pm=static, pm.max_children=20, pm.max_requests=1000, opcache validate_timestamps=0",
+      "jwt": "hand-rolled app/Jwt + app/Auth/JwtGuard (not tymon/jwt-auth)",
+      "config_only_changes": ["PHP 8.2", "composer update nesbot/carbon -> 2.73.0"],
+      "db": "conduit_laravel"
+    },
+    "laravel-octane": {
+      "framework": "Laravel 9 + Octane 1.x + RoadRunner v2.12.3, workers=16",
+      "db": "conduit_laravel (shared with php-fpm)"
+    }
+  },
+  "shared_postgres_note": "Single Postgres 16.4 server/container; one logical database per app (both own the same canonical Conduit schema, so they cannot share one database). Same engine, same host resources, isolated schema."
+}

@@ -1,0 +1,1 @@
+{"code_lines": 1957, "files": 37, "source_tokens": 7448, "hand_rolled": {"files": ["src/jwt.rs", "src/middleware/jwt_auth.rs", "src/middleware/optional_jwt.rs"], "code_lines": 89, "label": "not framework-provided (JWT auth \u2014 Ferro is session-based)"}, "framework_provided_code_lines": 1868}

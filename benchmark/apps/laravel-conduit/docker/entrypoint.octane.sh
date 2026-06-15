@@ -8,6 +8,13 @@ until php -r "exit(@fsockopen(getenv('DB_HOST'), (int)getenv('DB_PORT')) ? 0 : 1
   sleep 1
 done
 
+# Ensure the octane config is published (octane:install during build can be a no-op
+# if the package class check ran before the rr binary was present). Idempotent.
+php artisan vendor:publish --provider="Laravel\\Octane\\OctaneServiceProvider" --tag=config --force 2>/dev/null || true
+
+# Make the rr binary discoverable on PATH for octane's roadrunner detection.
+[ -f /app/rr ] && ln -sf /app/rr /usr/local/bin/rr
+
 php artisan config:cache
 php artisan migrate --force
 
