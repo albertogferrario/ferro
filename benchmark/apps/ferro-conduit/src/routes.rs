@@ -41,4 +41,18 @@ routes! {
         put!("/articles/{slug}", controllers::articles::update),
         delete!("/articles/{slug}", controllers::articles::destroy),
     }).middleware(OptionalJwtMiddleware),
+
+    // Profile show is optional-auth (viewer-relative `following`). Follow/unfollow
+    // require auth: Ferro route middleware is PATH-keyed, so `/profiles/{username}`
+    // and `/profiles/{username}/follow` are distinct paths and CAN carry distinct
+    // middleware. Show runs as guest-capable; follow/unfollow additionally
+    // self-enforce `require_viewer()` (401 when no UserId).
+    group!("/api", {
+        get!("/profiles/{username}", controllers::profiles::show),
+    }).middleware(OptionalJwtMiddleware),
+
+    group!("/api", {
+        post!("/profiles/{username}/follow", controllers::profiles::follow),
+        delete!("/profiles/{username}/follow", controllers::profiles::unfollow),
+    }).middleware(JwtAuthMiddleware),
 }
