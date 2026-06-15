@@ -12,6 +12,7 @@ use std::path::Path;
 mod bootstrap;
 mod config;
 mod controllers;
+mod dto;
 mod jwt;
 mod middleware;
 mod migrations;
