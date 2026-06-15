@@ -1,0 +1,19 @@
+{
+  "date": "2026-06-15",
+  "hardware": {
+    "cpu_model": "Apple M1 Pro",
+    "physical_cores": 8,
+    "ram_gb": 16,
+    "os": "Darwin 23.6.0"
+  },
+  "tooling": {
+    "oha": "1.9.0",
+    "tokei": "12.1.2",
+    "postgres": "16.4"
+  },
+  "load": {
+    "duration": "30s",
+    "concurrency": 256,
+    "warmup": "5s"
+  }
+}

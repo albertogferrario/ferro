@@ -22,10 +22,13 @@ def load_results(date_dir: str) -> dict:
     data = {}
     for path in glob.glob(os.path.join(date_dir, "*.json")):
         name = os.path.basename(path)[:-5]  # strip .json
-        kind, fw = name.split("-", 1) if "-" in name else (name, name)
+        # Only process perf-<fw>.json and static-<fw>.json; skip meta.json etc.
+        if not name.startswith(("perf-", "static-")):
+            continue
+        kind, fw = name.split("-", 1)
         with open(path) as fh:
             payload = json.load(fh)
-        data.setdefault(fw, {})[ "perf" if kind == "perf" else "static"] = payload
+        data.setdefault(fw, {})["perf" if kind == "perf" else "static"] = payload
     return data
 
 if __name__ == "__main__":
