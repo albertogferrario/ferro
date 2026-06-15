@@ -15,6 +15,7 @@ mod controllers;
 mod jwt;
 mod middleware;
 mod migrations;
+mod models;
 mod routes;
 
 use migrations::Migrator;
