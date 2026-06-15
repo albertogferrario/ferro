@@ -1,0 +1,33 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "KanbanBoard",
+      "props": {
+        "card_description_key": "price",
+        "card_title_key": "name",
+        "columns": [
+          {
+            "count": 0,
+            "id": "draft",
+            "title": "Draft"
+          },
+          {
+            "count": 0,
+            "id": "active",
+            "title": "Active"
+          },
+          {
+            "count": 0,
+            "id": "discontinued",
+            "title": "Discontinued"
+          }
+        ],
+        "group_by": "status",
+        "items_path": "/data/product"
+      }
+    }
+  },
+  "title": "Product"
+}

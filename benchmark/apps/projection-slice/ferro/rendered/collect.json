@@ -1,0 +1,62 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "field_name": {
+      "type": "Input",
+      "props": {
+        "data_path": "/data/name",
+        "field": "name",
+        "input_type": "text",
+        "label": "Name",
+        "required": true
+      }
+    },
+    "field_price": {
+      "type": "Input",
+      "props": {
+        "data_path": "/data/price",
+        "field": "price",
+        "input_type": "number",
+        "label": "Price",
+        "required": true
+      }
+    },
+    "field_status": {
+      "type": "Select",
+      "props": {
+        "data_path": "/data/status",
+        "field": "status",
+        "label": "Status",
+        "options": [],
+        "required": true
+      }
+    },
+    "root": {
+      "type": "Form",
+      "props": {
+        "action": {
+          "handler": "/product",
+          "method": "POST"
+        }
+      },
+      "children": [
+        "field_name",
+        "field_price",
+        "field_stock",
+        "field_status"
+      ]
+    },
+    "field_stock": {
+      "type": "Input",
+      "props": {
+        "data_path": "/data/stock",
+        "field": "stock",
+        "input_type": "number",
+        "label": "Stock",
+        "required": true
+      }
+    }
+  },
+  "title": "Product"
+}

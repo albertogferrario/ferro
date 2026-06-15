@@ -1,0 +1,23 @@
+[package]
+name = "projection-slice"
+version = "0.1.0"
+edition = "2021"
+description = "Projection-compression benchmark slice: minimal ServiceDef -> data-bound UI render evidence"
+publish = false
+
+# Isolated from the root workspace (mirrors benchmark/apps/ferro-micro). This
+# crate pins the PUBLISHED ferro crates from crates.io so the measured authoring
+# surface is what a real consumer writes, not the in-tree path crates.
+[workspace]
+
+[[bin]]
+name = "render-evidence"
+path = "src/main.rs"
+
+[dependencies]
+# The two leaf crates a projection consumer actually touches:
+#   ferro-projections — ServiceDef authoring API + derive_intents
+#   ferro-json-ui     — JsonUiRenderer (Spec), data-binding HTML render
+ferro-projections = "0.2.64"
+ferro-json-ui = { version = "0.2.64", features = ["projections"] }
+serde_json = "1.0"
