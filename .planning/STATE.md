@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 229-05-PLAN.md (conformance + compose + first results run)
-last_updated: "2026-06-15T12:37:08.721Z"
-last_activity: 2026-06-15 -- Phase 230 planning complete
+stopped_at: Completed 230-01-PLAN.md
+last_updated: "2026-06-15T13:12:15.005Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 238
   completed_phases: 214
   total_plans: 674
-  completed_plans: 656
+  completed_plans: 657
   percent: 97
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 229 — framework-benchmark-harness-foundation-1a
+**Current focus:** Phase 230 — framework-benchmark-1b-ferro-conduit
 
 ## Current Position
 
 Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
 
-Phase: 229
-Plan: Not started
+Phase: 230 (framework-benchmark-1b-ferro-conduit) — EXECUTING
+Plan: 2 of 7
 Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
 Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
 
@@ -35,7 +35,7 @@ Status: Ready to execute
 
 Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
 
-Last activity: 2026-06-15 -- Phase 230 planning complete
+Last activity: 2026-06-15
 Workspace version: 0.2.59
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -137,6 +137,7 @@ Progress: [██████████] 100%
 | Phase 229-framework-benchmark-harness-foundation-1a-build-the-reproduc P03 | 21 | 2 tasks | 2 files |
 | Phase 229-framework-benchmark-harness-foundation-1a-build-the-reproduc P04 | 120 | 2 tasks | 34 files |
 | Phase 229 P05 | 25 | 2 tasks | 18 files |
+| Phase 230 P01 | 6m | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -185,7 +186,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-15T02:45:38.516Z
-Stopped at: Completed 229-05-PLAN.md (conformance + compose + first results run)
+Last session: 2026-06-15T13:12:14.996Z
+Stopped at: Completed 230-01-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
