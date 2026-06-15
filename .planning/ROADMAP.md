@@ -3090,14 +3090,14 @@ Plans:
 **Goal:** A Ferro implementation of the RealWorld/Conduit backend (benchmark/apps/ferro-conduit, OUTSIDE the root workspace) passes the full official RealWorld Newman conformance collection; a vendored, commit-pinned community Laravel Conduit backend passes the same collection (fair like-for-like baseline); and the Phase 229 harness reports the real-app static-compression (with the hand-rolled JWT counted separately and labeled "not framework-provided") and perf (Ferro vs php-fpm vs octane on shared Postgres) with honest caveats.
 **Requirements**: none mapped (benchmark phase — requirements: [] intentional)
 **Depends on:** Phase 229
-**Plans:** 4/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 - [x] 230-01-PLAN.md — Scaffold the isolated ferro-conduit app + hand-rolled JWT module + auth middleware (unit-tested)
 - [x] 230-02-PLAN.md — Models + migrations + relations (users/articles/comments/tags + follows/favorites/article_tags junctions)
 - [x] 230-03-PLAN.md — Vendor Newman collection + DTOs + auth endpoints + route-ordering test → Newman Auth green
 - [x] 230-04-PLAN.md — Articles CRUD + slugs + list/filter/pagination (feed-first ordering) → Newman Articles green
-- [ ] 230-05-PLAN.md — Profiles + follow/unfollow → Newman Profiles green
+- [x] 230-05-PLAN.md — Profiles + follow/unfollow → Newman Profiles green
 - [ ] 230-06-PLAN.md — Comments + favorites + tags + real feed → remaining Newman folders + full single-app green
 - [ ] 230-07-PLAN.md — Vendor + pin Laravel; full Newman against BOTH; harness static (JWT separate) + perf; honest RESULTS
 
