@@ -43,17 +43,21 @@ routes! {
         post!("/articles", controllers::articles::store),
         put!("/articles/{slug}", controllers::articles::update),
         delete!("/articles/{slug}", controllers::articles::destroy),
-        // Comment list is optional-auth (viewer-relative author `following`).
+        // Comments share the `/articles/{slug}/comments` path between a public GET
+        // (list) and an auth'd POST (add). Ferro route middleware is PATH-keyed, so
+        // the GET and POST on this path MUST sit under the same (optional) middleware
+        // — a required-auth POST here would force the public GET to 401. `store`
+        // self-enforces `require_viewer()` (401 when no UserId), mirroring the
+        // article mutation handlers. `destroy` likewise self-enforces.
         get!("/articles/{slug}/comments", controllers::comments::index),
-    }).middleware(OptionalJwtMiddleware),
-
-    // Comment add/delete and favorite/unfavorite are required-auth. These paths
-    // (`/articles/{slug}/comments`, `.../comments/{id}`, `.../favorite`) are
-    // distinct from the optional-auth article paths, so they carry their own
-    // JwtAuthMiddleware; the handlers also self-enforce `require_viewer()`.
-    group!("/api", {
         post!("/articles/{slug}/comments", controllers::comments::store),
         delete!("/articles/{slug}/comments/{id}", controllers::comments::destroy),
+    }).middleware(OptionalJwtMiddleware),
+
+    // Favorite/unfavorite are required-auth. Their paths (`/articles/{slug}/favorite`)
+    // are distinct from any public article path, so they carry JwtAuthMiddleware
+    // directly; the handlers also self-enforce `require_viewer()`.
+    group!("/api", {
         post!("/articles/{slug}/favorite", controllers::articles::favorite),
         delete!("/articles/{slug}/favorite", controllers::articles::unfavorite),
     }).middleware(JwtAuthMiddleware),

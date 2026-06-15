@@ -106,7 +106,7 @@ pub async fn store(req: Request) -> Response {
         .ok_or_else(|| error_envelope(404, "author", &["not found"]))?;
 
     let dto = to_comment_dto(&db, created, author, Some(uid)).await?;
-    Ok(HttpResponse::json(json!({ "comment": dto })))
+    Ok(HttpResponse::json(json!({ "comment": dto })).status(201))
 }
 
 /// GET /api/articles/{slug}/comments — list comments (optional auth), oldest first.
@@ -140,17 +140,24 @@ pub async fn index(req: Request) -> Response {
 }
 
 /// DELETE /api/articles/{slug}/comments/{id} — delete a comment (required auth,
-/// author-only). Asserts `comment.author_id == uid` (403 otherwise; T-230-17).
+/// author-only). Resolves the article by slug first (404 `article` when missing),
+/// then the comment (404 `comment`), then asserts `comment.author_id == uid`
+/// (403 otherwise; T-230-17). Returns 204 on success.
 #[handler]
 pub async fn destroy(req: Request) -> Response {
     let uid = require_viewer(&req)?;
+    let slug = req.param("slug")?.to_string();
     let id: i64 = req.param_as("id")?;
     let db = DB::get()?;
+
+    // Article-scope first: an unknown slug is a 404 with the `article` key.
+    let art = find_by_slug(&db, &slug).await?;
 
     let c = comment::Entity::find_by_id(id as i32)
         .one(&*db)
         .await
         .map_err(|e| -> HttpResponse { ferro::FrameworkError::database(e.to_string()).into() })?
+        .filter(|c| c.article_id == art.id)
         .ok_or_else(|| error_envelope(404, "comment", &["not found"]))?;
 
     if c.author_id != uid as i32 {
@@ -162,5 +169,5 @@ pub async fn destroy(req: Request) -> Response {
         .await
         .map_err(|e| ferro::FrameworkError::database(e.to_string()))?;
 
-    Ok(HttpResponse::new().status(200))
+    Ok(HttpResponse::new().status(204))
 }

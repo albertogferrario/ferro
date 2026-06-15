@@ -184,6 +184,20 @@ pub async fn store(req: Request) -> Response {
 
     let db = DB::get()?;
 
+    // Title uniqueness (Conduit contract): a duplicate title is a 409 with
+    // `errors.title = ["has already been taken"]`. The reference Conduit derives
+    // the slug from the title and treats the title as unique; we enforce that
+    // invariant explicitly here (the slug itself keeps a random suffix to avoid
+    // collisions between genuinely distinct titles that slugify the same).
+    let existing_title = article::Entity::find()
+        .filter(article::Column::Title.eq(&r.title))
+        .count(&*db)
+        .await
+        .map_err(|e| ferro::FrameworkError::database(e.to_string()))?;
+    if existing_title > 0 {
+        return Err(error_envelope(409, "title", &["has already been taken"]));
+    }
+
     // Insert with slug; retry on UNIQUE conflict with a fresh random suffix.
     let mut inserted: Option<article::Model> = None;
     for _ in 0..3 {
