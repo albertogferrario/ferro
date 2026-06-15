@@ -3085,6 +3085,16 @@ Plans:
 - [x] 229-04-PLAN.md — Ferro + Laravel micro-endpoint apps [HEAVY/THERMAL] (Wave 2)
 - [x] 229-05-PLAN.md — Conformance + compose + first results run + README [HEAVY/THERMAL] (Wave 2)
 
+### Phase 230: Framework Benchmark 1B — Ferro Conduit (RealWorld backend): implement the RealWorld/Conduit API spec (JWT auth, users/profiles, articles CRUD, comments, favorites, follows, tags, feeds, pagination) as a Ferro app under benchmark/apps/ferro-conduit, conforming to the published Conduit API contract; vendor a pinned community Laravel RealWorld backend (gothinkster/laravel-realworld-example-app) as the competitor; run the existing harness (static compression + perf via php-fpm/octane) on the real-app workload. Extends Phase 229 harness. Source design: docs/superpowers/specs/2026-06-15-ferro-framework-benchmark-design.md.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 229
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 230 to break down)
+
 ---
 
 ## v13.5 Cache Invalidation Completeness (Phases 223–224, scoped 2026-06-13)
