@@ -18,6 +18,9 @@ routes! {
     post!("/api/users", controllers::auth::register),
     post!("/api/users/login", controllers::auth::login),
 
+    // Public tags (no auth).
+    get!("/api/tags", controllers::tags::index),
+
     // Required-auth user routes (no optional-auth sibling on the same path).
     group!("/api", {
         get!("/user", controllers::auth::current_user),
@@ -34,13 +37,26 @@ routes! {
     // `/articles/feed` (literal) is declared BEFORE `/articles/{slug}` so feed is
     // never shadowed (RESEARCH Pitfall 2; guarded by tests/route_ordering.rs).
     group!("/api", {
-        get!("/articles/feed", controllers::articles::feed_placeholder),
+        get!("/articles/feed", controllers::articles::feed),
         get!("/articles", controllers::articles::index),
         get!("/articles/{slug}", controllers::articles::show),
         post!("/articles", controllers::articles::store),
         put!("/articles/{slug}", controllers::articles::update),
         delete!("/articles/{slug}", controllers::articles::destroy),
+        // Comment list is optional-auth (viewer-relative author `following`).
+        get!("/articles/{slug}/comments", controllers::comments::index),
     }).middleware(OptionalJwtMiddleware),
+
+    // Comment add/delete and favorite/unfavorite are required-auth. These paths
+    // (`/articles/{slug}/comments`, `.../comments/{id}`, `.../favorite`) are
+    // distinct from the optional-auth article paths, so they carry their own
+    // JwtAuthMiddleware; the handlers also self-enforce `require_viewer()`.
+    group!("/api", {
+        post!("/articles/{slug}/comments", controllers::comments::store),
+        delete!("/articles/{slug}/comments/{id}", controllers::comments::destroy),
+        post!("/articles/{slug}/favorite", controllers::articles::favorite),
+        delete!("/articles/{slug}/favorite", controllers::articles::unfavorite),
+    }).middleware(JwtAuthMiddleware),
 
     // Profile show is optional-auth (viewer-relative `following`). Follow/unfollow
     // require auth: Ferro route middleware is PATH-keyed, so `/profiles/{username}`

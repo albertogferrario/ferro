@@ -351,17 +351,94 @@ pub async fn index(req: Request) -> Response {
     })))
 }
 
-/// GET /api/articles/feed — placeholder until Plan 06 implements the real feed.
+/// POST /api/articles/{slug}/favorite — favorite an article (required auth).
 ///
-/// Returns the empty multiple-articles envelope so the route resolves and shape
-/// assertions pass minimally. PLAN 06 MUST REPLACE THIS with the followed-author feed.
+/// Inserts a `favorites` row (user_id = viewer, article_id). The composite PK
+/// makes a repeat favorite a no-op (T-230-18), so a unique-violation insert error
+/// is swallowed (idempotent). Returns the article with `favorited = true` and the
+/// recomputed `favoritesCount`.
 #[handler]
-pub async fn feed_placeholder(req: Request) -> Response {
-    // Required auth: a missing token is a 401, matching the real feed contract.
-    let _ = require_viewer(&req)?;
+pub async fn favorite(req: Request) -> Response {
+    let uid = require_viewer(&req)?;
+    let slug = req.param("slug")?.to_string();
+    let db = DB::get()?;
+    let model = find_by_slug(&db, &slug).await?;
+
+    // Idempotent: ignore the unique-violation on a duplicate (favorites composite PK).
+    let _ = (favorite::ActiveModel {
+        user_id: Set(uid as i32),
+        article_id: Set(model.id),
+    })
+    .insert(&*db)
+    .await;
+
+    let dto = to_article_dto(&db, model, Some(uid)).await?;
+    Ok(HttpResponse::json(json!({ "article": dto })))
+}
+
+/// DELETE /api/articles/{slug}/favorite — unfavorite (required auth).
+///
+/// Deletes the `favorites` row if present (a no-op when absent). Returns the
+/// article with `favorited = false` and the recomputed `favoritesCount`.
+#[handler]
+pub async fn unfavorite(req: Request) -> Response {
+    let uid = require_viewer(&req)?;
+    let slug = req.param("slug")?.to_string();
+    let db = DB::get()?;
+    let model = find_by_slug(&db, &slug).await?;
+
+    favorite::Entity::delete_by_id((uid as i32, model.id))
+        .exec(&*db)
+        .await
+        .map_err(|e| ferro::FrameworkError::database(e.to_string()))?;
+
+    let dto = to_article_dto(&db, model, Some(uid)).await?;
+    Ok(HttpResponse::json(json!({ "article": dto })))
+}
+
+/// GET /api/articles/feed — articles by authors the viewer follows (required auth).
+///
+/// `followed_ids` come from the `follows` junction (`follower_id = viewer`); the
+/// query filters `article.author_id IN followed_ids`, computes `articlesCount`
+/// before pagination, then orders by `created_at` desc with limit/offset.
+#[handler]
+pub async fn feed(req: Request) -> Response {
+    let uid = require_viewer(&req)?;
+    let db = DB::get()?;
+    let dberr = |e: sea_orm::DbErr| ferro::FrameworkError::database(e.to_string());
+
+    let limit = req.query_as_or("limit", 20u64).min(MAX_LIMIT);
+    let offset = req.query_as_or("offset", 0u64);
+
+    let followed_ids: Vec<i32> = follow::Entity::find()
+        .filter(follow::Column::FollowerId.eq(uid as i32))
+        .all(&*db)
+        .await
+        .map_err(dberr)?
+        .into_iter()
+        .map(|f| f.followed_id)
+        .collect();
+
+    let query = article::Entity::find().filter(article::Column::AuthorId.is_in(followed_ids));
+
+    let articles_count = query.clone().count(&*db).await.map_err(dberr)? as i64;
+
+    let models = query
+        .order_by_desc(article::Column::CreatedAt)
+        .limit(limit)
+        .offset(offset)
+        .all(&*db)
+        .await
+        .map_err(dberr)?;
+
+    let mut dtos = Vec::with_capacity(models.len());
+    for m in models {
+        dtos.push(to_article_dto(&db, m, Some(uid)).await?);
+    }
+
     Ok(HttpResponse::json(json!({
-        "articles": [],
-        "articlesCount": 0,
+        "articles": dtos,
+        "articlesCount": articles_count,
     })))
 }
 
