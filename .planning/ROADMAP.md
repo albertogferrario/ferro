@@ -3076,14 +3076,14 @@ Plans:
 **Goal:** Build the reproducible `benchmark/` harness (contracts + static-counter + perf-runner + reporting toolbox) and prove it end-to-end on four micro-endpoints (`/json`, `/db`, `/queries`, `/updates`) implemented in Ferro and a minimal Laravel 11 app, producing the first committed perf + static results with recorded hardware.
 **Requirements**: none mapped (validation/tooling phase; gated by conformance + pytest units)
 **Depends on:** Phase 228
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 229-01-PLAN.md — Scaffold benchmark/ tree + shared micro-endpoints contract (Wave 1, light)
 - [x] 229-02-PLAN.md — Harness TDD units: perf parser, static counter, report builder (Wave 1, light)
 - [x] 229-03-PLAN.md — Pinned toolbox image (oha+tokei) + perf runner [HEAVY/THERMAL] (Wave 2)
 - [x] 229-04-PLAN.md — Ferro + Laravel micro-endpoint apps [HEAVY/THERMAL] (Wave 2)
-- [ ] 229-05-PLAN.md — Conformance + compose + first results run + README [HEAVY/THERMAL] (Wave 2)
+- [x] 229-05-PLAN.md — Conformance + compose + first results run + README [HEAVY/THERMAL] (Wave 2)
 
 ---
 
