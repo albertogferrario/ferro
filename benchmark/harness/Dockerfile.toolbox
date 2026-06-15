@@ -1,0 +1,14 @@
+# Dockerfile.toolbox — pinned load-gen + static-count tooling
+FROM rust:1.88.0-slim-bookworm AS build
+# oha 1.4.7 depends on jemalloc-sys which requires make (not present in slim)
+RUN apt-get update && apt-get install -y --no-install-recommends make \
+ && rm -rf /var/lib/apt/lists/*
+RUN cargo install oha --version 1.9.0 --locked \
+ && cargo install tokei --version 12.1.2 --locked
+
+FROM debian:bookworm-slim
+COPY --from=build /usr/local/cargo/bin/oha /usr/local/bin/oha
+COPY --from=build /usr/local/cargo/bin/tokei /usr/local/bin/tokei
+RUN apt-get update && apt-get install -y --no-install-recommends python3 jq curl \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
