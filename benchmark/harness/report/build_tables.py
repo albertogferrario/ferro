@@ -13,7 +13,7 @@ def render_markdown(data: dict) -> str:
         lines.append("| " + ep + " | " + " | ".join(f"{r:,.0f}" for r in rps) + f" | {ratio} |")
     lines += ["", "## Static compression", "",
               "| Metric | " + " | ".join(fw) + " |", "|" + "---|" * (len(fw) + 1)]
-    for metric in ("code_lines", "files", "source_tokens"):
+    for metric in ("code_lines", "source_tokens"):
         vals = [str(data[f]["static"][metric]) for f in fw]
         lines.append(f"| {metric} | " + " | ".join(vals) + " |")
     return "\n".join(lines) + "\n"

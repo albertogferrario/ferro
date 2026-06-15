@@ -18,3 +18,9 @@ def test_render_marks_winner_per_metric():
     md = render_markdown(DATA)
     # ferro wins rps; the table notes the ratio honestly
     assert "22.2x" in md or "22.22x" in md
+
+def test_static_table_omits_files():
+    md = render_markdown(DATA)
+    lines = [l for l in md.splitlines() if "files" in l.lower()]
+    # the word "files" must not appear as a metric row in the static table
+    assert not any(l.startswith("| files") for l in lines)
