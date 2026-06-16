@@ -81,7 +81,7 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                 };
 
                 let id: i64 = id_val
-                    .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
+                    .ok_or_else(|| ferro::write::WriteError::Validation("missing id".into()))?;
 
                 // find_for_tenant: filter by both id AND tenant_id — None → cross-tenant denial (D-03).
                 // Uses the explicit `db` arg (not the global connection) so tests work with in-memory DBs.
@@ -89,9 +89,9 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                     .filter(Column::TenantId.eq(tenant_id))
                     .one(&db)
                     .await
-                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?
+                    .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?
                     .ok_or_else(|| {
-                        ferro_mcp_server::Error::Validation(
+                        ferro::write::WriteError::Validation(
                             "not found or cross-tenant access denied".into(),
                         )
                     })?;
@@ -104,9 +104,9 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                 let svc = services
                     .iter()
                     .find(|s| s.actions.iter().any(|a| a.name == action_name))
-                    .ok_or_else(|| ferro_mcp_server::Error::ActionNotFound(action_name.clone()))?;
+                    .ok_or_else(|| ferro::write::WriteError::ActionNotFound(action_name.clone()))?;
                 let plan = ferro::derive_transition_plan(svc, &action_name)
-                    .map_err(|e| ferro_mcp_server::Error::Validation(e.to_string()))?;
+                    .map_err(|e| ferro::write::WriteError::Validation(e.to_string()))?;
                 let new_status = plan.to_state;
 
                 // Apply the state transition via SeaORM ActiveModel.
@@ -115,7 +115,7 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                 let updated = active
                     .update(&db)
                     .await
-                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?;
+                    .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?;
 
                 Ok(json!({ "id": updated.id, "status": updated.status }))
             })
@@ -132,7 +132,7 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                     // An ActionDef referencing an unknown guard name is a configuration error;
                     // allowing it would invert the fail-closed invariant and create a silent
                     // privilege escalation path for future actions.
-                    _ => Err(ferro_mcp_server::Error::GuardFailed(format!(
+                    _ => Err(ferro::write::WriteError::GuardFailed(format!(
                         "unknown guard '{guard_name}': no evaluator registered"
                     ))),
                 }

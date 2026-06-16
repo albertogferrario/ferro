@@ -45,6 +45,10 @@ pub mod testing;
 pub mod theme;
 pub mod validation;
 mod websocket;
+/// Channel-agnostic transition-execution kernel (guard re-eval, idempotency,
+/// confirm seam, persist, audit, override). Shared by every write channel.
+#[cfg(feature = "projections")]
+pub mod write;
 
 pub use api::api_key::{
     generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
@@ -266,6 +270,12 @@ pub use ferro_json_ui::{JsonUiRenderer, RenderMode, VisualContext};
 // Re-export text renderer from ferro-text
 #[cfg(feature = "projections")]
 pub use ferro_text::TextRenderer;
+// Re-export the shared transition-execution kernel surface
+#[cfg(feature = "projections")]
+pub use write::{
+    dispatch_write, ExecutorFn, GuardEvaluatorFn, OverrideFn, WriteDispatcher, WriteError,
+    WriteResult,
+};
 
 // Re-export async_trait for middleware implementations
 pub use async_trait::async_trait;
