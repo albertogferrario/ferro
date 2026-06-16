@@ -12,7 +12,7 @@
 
 ### Executor Derivation
 
-- [ ] **EXEC-01**: A developer declares a state-transition write solely by naming a `StateMachine` transition on the `ActionDef` (`transition_trigger`), and the framework derives the default executor — state read → guard re-evaluation → transition → persist — from the `StateMachine` declaration alone. No hand-written `WriteDispatcher` `match` arm is required for the common path.
+- [x] **EXEC-01**: A developer declares a state-transition write solely by naming a `StateMachine` transition on the `ActionDef` (`transition_trigger`), and the framework derives the default executor — state read → guard re-evaluation → transition → persist — from the `StateMachine` declaration alone. No hand-written `WriteDispatcher` `match` arm is required for the common path.
 - [ ] **EXEC-02**: The derived executor re-evaluates the transition's guard server-side at execution time (reusing the `evaluated_guards` surface), and rejects a transition whose guard does not hold — an agent or caller cannot drive an illegal transition through the derived path.
 
 ### Override Hook
@@ -21,7 +21,7 @@
 
 ### Sync-by-Construction
 
-- [ ] **EXEC-04**: Executor/StateMachine drift is structurally prevented — an `ActionDef` or override that references a transition the `StateMachine` does not declare is rejected at build or registration time, not at runtime. The "declared twice, fell out of sync" bug class is eliminated by construction.
+- [x] **EXEC-04**: Executor/StateMachine drift is structurally prevented — an `ActionDef` or override that references a transition the `StateMachine` does not declare is rejected at build or registration time, not at runtime. The "declared twice, fell out of sync" bug class is eliminated by construction.
 
 ### Single Source Across Write Surfaces
 
@@ -50,10 +50,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXEC-01 | Phase 231 | Pending |
+| EXEC-01 | Phase 231 | Complete |
 | EXEC-02 | Phase 231 | Pending |
 | EXEC-03 | Phase 231 | Pending |
-| EXEC-04 | Phase 231 | Pending |
+| EXEC-04 | Phase 231 | Complete |
 | EXEC-05 | Phase 232 | Pending |
 
 *Phase assignments filled by the roadmapper. EXEC-01..04 (derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections`) map to Phase 231; EXEC-05 (wiring the derived executor across the MCP + visual/form write surfaces, retiring the hand-written `WriteDispatcher`) maps to Phase 232. Every v16.0 requirement maps to exactly one phase — 5/5 covered, no orphans.*

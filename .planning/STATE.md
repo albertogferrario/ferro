@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v16.0
 milestone_name: Write-Boundary AX — StateMachine-Derived Executor
-status: roadmapped
-stopped_at: Milestone v16.0 roadmapped (2 phases: 231 derivation+guard+override+sync, 232 single-source write surfaces); ready to plan phase 231
-last_updated: "2026-06-16T01:00:00.000Z"
+status: executing
+stopped_at: Completed 231-01-PLAN.md
+last_updated: "2026-06-16T02:04:53.922Z"
 last_activity: 2026-06-16
 progress:
-  total_phases: 240
-  completed_phases: 215
-  total_plans: 674
-  completed_plans: 663
-  percent: 98
+  total_phases: 107
+  completed_phases: 95
+  total_plans: 393
+  completed_plans: 391
+  percent: 99
 ---
 
 # Project State
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v16.0 Write-Boundary AX — StateMachine-Derived Executor (roadmapped — ready to plan phase 231)
+**Current focus:** Phase 231 — StateMachine-Derived Executor
 
 ## Current Position
 
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: Not started — roadmapped into 2 phases (231, 232)
-Plan: —
+Phase: 231 (StateMachine-Derived Executor) — EXECUTING
+Plan: 2 of 2
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Roadmapped — Milestone v16.0 ready to plan (phase 231 next)
+Status: Ready to execute
 
 Last activity: 2026-06-16
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
@@ -143,6 +143,7 @@ Progress: [██████████] 100%
 | Phase 230 P05 | 25m | 1 tasks | 3 files |
 | Phase 230 P06 | 35m | 2 tasks | 5 files |
 | Phase 230 P07 | 75m | 3 tasks | 18 files |
+| Phase 231 P01 | 12m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.0 Phase 231] EXEC-01/04 derivation core shipped in `ferro-projections` (Plan 01): `TransitionPlan` + pure `derive_transition_plan()` source `to_state` only from `Transition.to` (fan-out is a hard `AmbiguousTransition` error, never a silent first-pick); `ServiceDef::validate()` round-trips against the derivation so executor/StateMachine drift is impossible by construction. Schema-only — no sea-orm/tokio/closures. Re-exported via the `ferro::` facade for Phase 232.
 - [v15.0 roadmap] `McpContext` must embed `BaseContext` (`tenant_id` + `evaluated_guards`) before any write-path work can proceed — universal prerequisite. Phase 217 is the hard gate.
 - [v15.0 roadmap] Per-tenant API key carries an explicit scope field (`read` / `read_write`) at issuance — not retrofittable; must be in the key model from Phase 217.
 - [v15.0 roadmap] Write tools derived purely from `ActionDef` — no hand-authored tool definitions in `McpRenderer` (per `feedback_no_duplicate_control_surface`).
@@ -191,7 +193,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-15T15:07:11.695Z
-Stopped at: Completed 230-07-PLAN.md (Phase 230 complete)
+Last session: 2026-06-16T02:04:44.877Z
+Stopped at: Completed 231-01-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
