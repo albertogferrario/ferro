@@ -104,6 +104,25 @@ routes! {
             .on_failure(TenantFailureMode::Allow),
     ),
 
+    // Visual/form transition-write surface (Phase 232, EXEC-05).
+    // Receives the projection-emitted POST /{service}/{action} action-button URL
+    // and drives the SAME framework::write kernel as /mcp, with audit channel "web".
+    //
+    // Tenant-scoped: SessionUserTenantResolver populates current_tenant() from the
+    // browser session so the handler authenticates the tenant from auth context
+    // (never the form body, T-232-07). Registered AFTER the explicit named routes;
+    // the router prefers literal segments, so this {service}/{action} pattern is the
+    // catch-all transition surface and does not shadow /auth/*, /mcp, /token, etc.
+    // Failure mode: Forbidden — a request without a resolvable tenant is denied, not
+    // silently allowed onto the write path.
+    group!("/", {
+        post!("/{service}/{action}", controllers::visual_action::handle).name("projection.visual.action"),
+    }).middleware(
+        TenantMiddleware::new()
+            .resolver(SessionUserTenantResolver::new())
+            .on_failure(TenantFailureMode::Forbidden),
+    ),
+
     // API CRUD routes - protected by API key middleware
     api_routes(),
 

@@ -368,4 +368,75 @@ mod tests {
             order.status
         );
     }
+
+    // ── Route registration: visual route resolves; no literal shadowing ──────
+
+    /// The `POST /{service}/{action}` catch-all coexists with the explicit
+    /// two-segment literal routes it shares the router with: matchit prefers
+    /// literal segments over params, so `/auth/login` resolves to its own handler
+    /// while `/order/submit` falls through to the visual transition pattern. This
+    /// guards against the param route silently shadowing — or being silently
+    /// dropped (`.ok()` insert) by a conflict with — the explicit routes.
+    ///
+    /// Built on a minimal `Router` (not the full `routes::register()`, which wires
+    /// bootstrap-dependent tenant middleware) so the test exercises only the
+    /// matchit precedence that the route ordering relies on.
+    #[test]
+    fn visual_route_registered_without_shadowing() {
+        async fn h(_req: ferro::Request) -> ferro::Response {
+            Ok(ferro::HttpResponse::new())
+        }
+
+        // Mirror the relevant POST surface: explicit two-segment + single-segment
+        // literals registered alongside the visual catch-all, in routes.rs order
+        // (literals first, the param pattern last).
+        let router = ferro::Router::new()
+            .post("/auth/login", h)
+            .post("/auth/register", h)
+            .post("/mcp", h)
+            .post("/mcp/chat", h)
+            .post("/token", h)
+            .post("/{service}/{action}", h)
+            .name("projection.visual.action");
+
+        // The visual catch-all resolves and binds {service}/{action}.
+        let matched = router.match_route(&hyper::Method::POST, "/order/submit");
+        assert!(
+            matched.is_some(),
+            "POST /{{service}}/{{action}} must resolve for /order/submit"
+        );
+        let (_, params, pattern) = matched.unwrap();
+        assert_eq!(
+            pattern, "/{service}/{action}",
+            "must match the visual transition pattern, not a literal route"
+        );
+        assert_eq!(params.get("service").map(String::as_str), Some("order"));
+        assert_eq!(params.get("action").map(String::as_str), Some("submit"));
+
+        // Literal two-segment routes are NOT shadowed by the param pattern.
+        assert_eq!(
+            router
+                .match_route(&hyper::Method::POST, "/auth/login")
+                .map(|(_, _, p)| p),
+            Some("/auth/login".to_string()),
+            "literal /auth/login must win over {{service}}/{{action}}"
+        );
+        assert_eq!(
+            router
+                .match_route(&hyper::Method::POST, "/mcp/chat")
+                .map(|(_, _, p)| p),
+            Some("/mcp/chat".to_string()),
+            "literal /mcp/chat must win over {{service}}/{{action}}"
+        );
+
+        // Single-segment literal routes are untouched.
+        assert!(
+            router.match_route(&hyper::Method::POST, "/mcp").is_some(),
+            "POST /mcp must still resolve"
+        );
+        assert!(
+            router.match_route(&hyper::Method::POST, "/token").is_some(),
+            "POST /token must still resolve"
+        );
+    }
 }
