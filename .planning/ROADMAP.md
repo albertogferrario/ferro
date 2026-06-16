@@ -3179,7 +3179,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 231. StateMachine-Derived Executor (derivation + guard + override + sync) | 2/2 | Complete   | 2026-06-16 |
-| 232. Single-Source Write Surfaces (wire executor, retire WriteDispatcher) | 1/3 | In Progress|  |
+| 232. Single-Source Write Surfaces (wire executor, retire WriteDispatcher) | 2/3 | In Progress|  |
 
 #### Phase Details
 
@@ -3220,8 +3220,8 @@ Plans:
 
 **UI hint**: no
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [x] 232-01-PLAN.md — Relocate the write kernel to framework::write (channel-parameterized audit); MCP framing calls into it; verify SC1
-- [ ] 232-02-PLAN.md — Build the visual POST /{service}/{action} handler calling the same shared kernel (SC2)
+- [x] 232-02-PLAN.md — Build the visual POST /{service}/{action} handler calling the same shared kernel (SC2)
 - [ ] 232-03-PLAN.md — Both-channels single-source proof (SC3) + SC4 grep-clean + full workspace gate
 

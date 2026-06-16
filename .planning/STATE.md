@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.0
 milestone_name: Write-Boundary AX — StateMachine-Derived Executor
 status: executing
-stopped_at: Completed 232-01-PLAN.md
-last_updated: "2026-06-16T03:47:31.047Z"
+stopped_at: Completed 232-02-PLAN.md
+last_updated: "2026-06-16T03:58:55.047Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 108
   completed_phases: 96
   total_plans: 396
-  completed_plans: 393
+  completed_plans: 394
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
 Phase: 232 (Single-Source Write Surfaces) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
@@ -146,6 +146,7 @@ Progress: [██████████] 100%
 | Phase 231 P01 | 12m | 2 tasks | 5 files |
 | Phase 231 P02 | 28m | 3 tasks | 9 files |
 | Phase 232 P01 | 16m | 3 tasks | 12 files |
+| Phase 232 P02 | 25m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -197,7 +198,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-16T03:47:24.475Z
-Stopped at: Completed 232-01-PLAN.md
+Last session: 2026-06-16T03:58:48.793Z
+Stopped at: Completed 232-02-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
