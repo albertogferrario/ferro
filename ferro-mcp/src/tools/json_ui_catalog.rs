@@ -285,10 +285,14 @@ mod tests {
     #[test]
     fn test_all_components_present() {
         let catalog = execute(None);
+        // Cross-crate mirror of the builtin count. The canonical source-of-truth
+        // tripwire is ferro_json_ui::catalog::tests::builtin_types_count_drift_guard;
+        // bump this in step with it when the builtin set changes (BUILTIN_TYPES is
+        // pub(crate) in ferro-json-ui, so this side can't assert it relationally).
         assert_eq!(
             catalog.components.len(),
-            45,
-            "Catalog should contain all 45 built-in components (incl. CheckboxList, CheckboxGroup, RawHtml, DetailPage, MediaCardGrid, StreamText), got {}",
+            47,
+            "Catalog should contain all 47 built-in components (incl. SegmentedControl, SidebarLayout), got {}",
             catalog.components.len()
         );
 
@@ -512,6 +516,9 @@ mod tests {
                 "StreamText",
                 // D-13a: columns is now #[serde(default)] — data_path can be the sole source.
                 "KanbanBoard",
+                // items and data_path are both #[serde(default)] — either is a valid
+                // sole source (same pattern as KanbanBoard); no single prop is required.
+                "SegmentedControl",
             ];
             if !no_required.contains(&component.name.as_str()) {
                 assert!(

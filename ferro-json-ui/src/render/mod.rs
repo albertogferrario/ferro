@@ -33,7 +33,7 @@ pub struct RenderResult {
     pub scripts: String,
 }
 
-/// Single source of truth for the 45 built-in element type names recognized
+/// Single source of truth for the built-in element type names recognized
 /// by the renderer. Plugins cannot register a type name that shadows an entry
 /// here — if `type_name` matches an entry, the dispatch match arm wins
 /// regardless of plugin registry contents.
