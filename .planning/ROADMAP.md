@@ -3157,6 +3157,37 @@ Plans:
 
 **Plans:** TBD.
 
+### Phase 233: ferro-payments-crate-polymorphic-billable [CONSUMER-PAIRED]
+
+**Goal:** Ship a new `ferro-payments` workspace crate providing a polymorphic
+`PaymentIntent` entity and `Billable` trait so consumer apps can take Stripe
+payments for any first-class entity (orders, bookings, paid file shares, …)
+without re-implementing the wiring. Integrates with the existing
+`ferro-stripe::SyncDispatcher` + `ProcessedEventLog`. Ships `PaymentService`
+orchestrator, three typed-event handlers wired via `wire_dispatcher`,
+`ReleaseExpiredPaymentIntents` + `ReconcileRefundsInFlight` reapers, and a SeaORM
+migration `m20260617_create_payment_intents` portable across Postgres + SQLite +
+MySQL.
+
+**Requirements**: PAY-POLY-01..N (to be enumerated during /gsd-plan-phase)
+
+**Depends on:** Phase 232. No new ferro-stripe surface required (uses existing
+typed events + dispatcher + builder).
+
+**Spec:** `docs/superpowers/specs/2026-06-17-ferro-payments-crate-design.md`.
+Companion consumer spec at
+`gestiscilo-it/app:docs/superpowers/specs/2026-06-17-tenant-booking-upfront-payment-design.md`.
+
+**Consumer side:** gestiscilo Phase 218 [FERRO-PAIRED] is the first consumer.
+Its plan is blocked on this phase publishing `ferro-payments 0.1.0` alongside a
+ferro version bump. After publish: gestiscilo bumps `Cargo.toml`, removes any
+local `[patch.crates-io]`, then runs `/gsd-plan-phase 218`.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 233 to break down)
+
 ---
 
 ## ✅ v16.0 Write-Boundary AX — StateMachine-Derived Executor — Shipped 2026-06-16

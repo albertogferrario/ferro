@@ -196,6 +196,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ### Roadmap Evolution
 
+- Phase 233 added (2026-06-17): ferro-payments-crate-polymorphic-billable [CONSUMER-PAIRED] — new workspace crate `ferro-payments` shipping a polymorphic `PaymentIntent` entity, `Billable` trait, `BillableLoader`, `PaymentService` orchestrator, three typed-event handlers wired via `wire_dispatcher`, `ReleaseExpiredPaymentIntents` + `ReconcileRefundsInFlight` reapers, and SeaORM migration `m20260617_create_payment_intents` (portable Postgres/SQLite/MySQL). Reuses existing `ferro-stripe::SyncDispatcher` + `ProcessedEventLog` + `CheckoutBuilder` + Connect destination-charge support — no new ferro-stripe surface. First consumer: gestiscilo Phase 218 (tenant booking upfront payment), blocked on this phase publishing `ferro-payments 0.1.0`. Spec: `docs/superpowers/specs/2026-06-17-ferro-payments-crate-design.md`. Next: `/gsd-plan-phase 233`.
 - v15.0 roadmap created 2026-06-13: Phases 217-221. Phase numbering continues from v14.0 (last phase 216). AMCP-01..06 mapped: 217 (AMCP-01, AMCP-02), 218 (AMCP-03), 219 (AMCP-04), 220 (AMCP-05), 221 (AMCP-06). All 6 requirements covered.
 
 ## Session Continuity
