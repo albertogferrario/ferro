@@ -3220,5 +3220,8 @@ Plans:
 
 **UI hint**: no
 
-**Plans:** TBD
+**Plans:** 3 plans
+- [ ] 232-01-PLAN.md — Relocate the write kernel to framework::write (channel-parameterized audit); MCP framing calls into it; verify SC1
+- [ ] 232-02-PLAN.md — Build the visual POST /{service}/{action} handler calling the same shared kernel (SC2)
+- [ ] 232-03-PLAN.md — Both-channels single-source proof (SC3) + SC4 grep-clean + full workspace gate
 
