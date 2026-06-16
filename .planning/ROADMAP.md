@@ -3157,36 +3157,102 @@ Plans:
 
 **Plans:** TBD.
 
-### Phase 233: ferro-payments-crate-polymorphic-billable [CONSUMER-PAIRED]
+## v16.1 ferro-payments — Polymorphic Billable Layer (Phases 233–236) [CONSUMER-PAIRED with gestiscilo Phases 218–223]
 
-**Goal:** Ship a new `ferro-payments` workspace crate providing a polymorphic
-`PaymentIntent` entity and `Billable` trait so consumer apps can take Stripe
-payments for any first-class entity (orders, bookings, paid file shares, …)
-without re-implementing the wiring. Integrates with the existing
-`ferro-stripe::SyncDispatcher` + `ProcessedEventLog`. Ships `PaymentService`
-orchestrator, three typed-event handlers wired via `wire_dispatcher`,
-`ReleaseExpiredPaymentIntents` + `ReconcileRefundsInFlight` reapers, and a SeaORM
-migration `m20260617_create_payment_intents` portable across Postgres + SQLite +
-MySQL.
+**Source spec:** `docs/superpowers/specs/2026-06-17-ferro-payments-crate-design.md`.
+**Consumer companion:** `gestiscilo-it/app:docs/superpowers/specs/2026-06-17-tenant-booking-upfront-payment-design.md`.
 
-**Requirements**: PAY-POLY-01..N (to be enumerated during /gsd-plan-phase)
+Four ferro phases that together ship a new workspace crate `ferro-payments`,
+providing a polymorphic `PaymentIntent` entity and `Billable` trait so consumer
+apps can take Stripe payments for any first-class entity without re-implementing
+the wiring. Reuses the existing `ferro-stripe::SyncDispatcher`,
+`ProcessedEventLog`, `CheckoutBuilder`, and Connect destination-charge support —
+no new ferro-stripe surface required.
 
-**Depends on:** Phase 232. No new ferro-stripe surface required (uses existing
-typed events + dispatcher + builder).
+First consumer: gestiscilo Phases 218–223 (tenant booking upfront payment),
+blocked on Phase 236 publishing `ferro-payments 0.1.0` alongside a ferro version
+bump.
 
-**Spec:** `docs/superpowers/specs/2026-06-17-ferro-payments-crate-design.md`.
-Companion consumer spec at
-`gestiscilo-it/app:docs/superpowers/specs/2026-06-17-tenant-booking-upfront-payment-design.md`.
+### Phase 233: crate scaffold + PaymentIntent entity + migration
 
-**Consumer side:** gestiscilo Phase 218 [FERRO-PAIRED] is the first consumer.
-Its plan is blocked on this phase publishing `ferro-payments 0.1.0` alongside a
-ferro version bump. After publish: gestiscilo bumps `Cargo.toml`, removes any
-local `[patch.crates-io]`, then runs `/gsd-plan-phase 218`.
+**Goal:** Create new workspace member `ferro-payments` parallel to `ferro-stripe`.
+Implement `BillableKind`, `PaymentIntentStatus` enums, the SeaORM `Entity` for
+`payment_intents`, and the lifecycle methods on the model (`create_reserved`,
+`mark_paid`, `mark_released`, `mark_refunded`, `find_active_for`,
+`find_by_stripe_session`). Ship migration
+`m20260617_create_payment_intents` portable across Postgres + SQLite + MySQL with
+partial unique index `(billable_kind, billable_id) WHERE status IN ('reserved',
+'paid')` and the supporting indexes. Unit tests cover state transitions and
+partial-unique enforcement against in-memory SQLite. No service layer yet.
+
+**Requirements**: PAY-POLY-DM-01..04.
+
+**Depends on:** Phase 232.
 
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 233 to break down)
+- [ ] TBD (run /gsd-plan-phase 233)
+
+### Phase 234: Billable trait + Loader + PaymentService core
+
+**Goal:** Implement the `Billable` trait and `BillableLoader` trait per the spec.
+Implement `PaymentService<L: BillableLoader>` with `start_checkout` (mints a
+Stripe Checkout session via `ferro_stripe::CheckoutBuilder`, snapshots
+`application_fee_cents`, attaches the session id) and `request_refund` (calls
+Stripe refund API, snapshots `refund_amount_cents`). Implement `PaymentError`
+enum. Unit tests use mocked `ferro_stripe::Client`, mocked `BillableLoader`, and
+mocked `ProcessedEventLog`. No webhook integration yet — that's Phase 235.
+
+**Requirements**: PAY-POLY-SVC-01..05.
+
+**Depends on:** Phase 233.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 234)
+
+### Phase 235: webhook SyncDispatcher integration + auto-refund fallback
+
+**Goal:** Implement `wire_dispatcher` helper that registers three typed-event
+handlers (`OnCheckoutCompleted`, `OnCheckoutExpired`, `OnChargeRefunded`) on the
+caller's `SyncDispatcher`. Implement `PaymentService::handle_session_completed`
+/ `handle_session_expired` / `handle_charge_refunded` with idempotency via
+`ProcessedEventLog`, transactional dispatch to `Billable::on_paid` /
+`on_released` / `on_refunded`, and auto-refund fallback for the "loader returns
+None" and "billable already in side state" cases. Race-condition tests: webhook
++ reaper interleaved, webhook replay, loader-not-found.
+
+**Requirements**: PAY-POLY-WH-01..06.
+
+**Depends on:** Phase 234.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 235)
+
+### Phase 236: reapers + workspace test bin + publish 0.1.0
+
+**Goal:** Implement `ReleaseExpiredPaymentIntents` (single SQL pass over
+`payment_intents WHERE status = 'reserved' AND expires_at < now()`, dispatches
+`on_released` per row in a transaction) and `ReconcileRefundsInFlight` (polls
+Stripe for intents in `refund_requested` state > 1 hour). Both as
+ferro-queue–compatible job structs that consumers schedule via cron expression.
+Add a tiny example `Billable` in a workspace test bin to drive end-to-end against
+ferro-stripe test mode. Version-bump ferro workspace + publish `ferro-payments
+0.1.0` to crates.io. After publication: gestiscilo Phase 218 plan can be
+written.
+
+**Requirements**: PAY-POLY-REAP-01..04.
+
+**Depends on:** Phase 235.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 236)
 
 ---
 
