@@ -417,6 +417,19 @@ impl ServiceDef {
             }
         }
 
+        // 5b. Sync-by-construction gate: every transition-triggering action must
+        // produce a TransitionPlan via the same derivation the runtime uses. This
+        // round-trip guarantees `validate()` accepting an action implies the
+        // derivation can build a plan for it — drift between the two is structurally
+        // impossible (EXEC-04). Surfaces AmbiguousTransition at registration too.
+        if self.state_machine.is_some() {
+            for action in &self.actions {
+                if action.transition_trigger.is_some() {
+                    crate::executor::derive_transition_plan(self, &action.name)?;
+                }
+            }
+        }
+
         // 6. Warn about declared guards never referenced
         let mut referenced_guards: HashSet<&str> = HashSet::new();
         for action in &self.actions {
@@ -1014,6 +1027,98 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("nonexistent_event"));
+    }
+
+    /// A well-formed order service mirroring the EXEC-01 reference fixture,
+    /// used by the EXEC-04 sync-by-construction tests below.
+    fn well_formed_order_service() -> ServiceDef {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("submitted"))
+            .state(StateDef::new("approved"))
+            .state(StateDef::new("cancelled").final_state())
+            .state(StateDef::new("shipped"))
+            .state(StateDef::new("delivered").final_state())
+            .transition(Transition::new("draft", "submit", "submitted"))
+            .transition(Transition::new("submitted", "approve", "approved").guard("is_manager"))
+            .transition(Transition::new("approved", "ship", "shipped"))
+            .transition(Transition::new("draft", "cancel", "cancelled"))
+            .transition(Transition::new("submitted", "cancel", "cancelled"));
+
+        ServiceDef::new("order")
+            .guard(GuardDef::new("is_manager"))
+            .state_machine(machine)
+            .action(ActionDef::new("submit").transition_trigger("submit"))
+            .action(
+                ActionDef::new("approve")
+                    .transition_trigger("approve")
+                    .precondition("is_manager"),
+            )
+            .action(ActionDef::new("ship").transition_trigger("ship"))
+            .action(ActionDef::new("cancel").transition_trigger("cancel"))
+    }
+
+    #[test]
+    fn validate_rejects_undeclared_trigger() {
+        let machine = StateMachine::new("lifecycle")
+            .initial("draft")
+            .state(StateDef::new("draft"))
+            .state(StateDef::new("done").final_state())
+            .transition(Transition::new("draft", "finish", "done"));
+
+        let service = ServiceDef::new("order")
+            .state_machine(machine)
+            .action(ActionDef::new("submit").transition_trigger("typo_event"));
+
+        let err = service.validate().unwrap_err();
+        // Step 5 produces a Validation error naming the bad trigger; the
+        // round-trip in step 5b is consistent with it (same fact).
+        assert!(err.to_string().contains("typo_event"));
+    }
+
+    #[test]
+    fn validate_accepts_well_formed_order_service() {
+        let service = well_formed_order_service();
+        assert!(service.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_round_trips_derivation() {
+        let service = well_formed_order_service();
+        // validate() accepts it...
+        assert!(service.validate().is_ok());
+        // ...and every transition-triggering action yields a plan, so the two
+        // checks cannot diverge.
+        for action in &service.actions {
+            if action.transition_trigger.is_some() {
+                assert!(
+                    crate::executor::derive_transition_plan(&service, &action.name).is_ok(),
+                    "derivation must succeed for action '{}'",
+                    action.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn validate_rejects_ambiguous_fan_out_at_registration() {
+        // A fan-out event now fails registration (step 5b), not first call.
+        let machine = StateMachine::new("lifecycle")
+            .initial("a")
+            .state(StateDef::new("a"))
+            .state(StateDef::new("b"))
+            .state(StateDef::new("c"))
+            .state(StateDef::new("d"))
+            .transition(Transition::new("a", "split", "b"))
+            .transition(Transition::new("c", "split", "d"));
+
+        let service = ServiceDef::new("order")
+            .state_machine(machine)
+            .action(ActionDef::new("split").transition_trigger("split"));
+
+        let err = service.validate().unwrap_err();
+        assert!(matches!(err, crate::Error::AmbiguousTransition { ref event } if event == "split"));
     }
 
     #[test]
