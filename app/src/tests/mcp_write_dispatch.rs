@@ -160,8 +160,8 @@ mod tests {
     fn make_test_write_dispatcher(db: DatabaseConnection) -> WriteDispatcher {
         let db_exec = db.clone();
         let db_guard = db.clone();
-        WriteDispatcher {
-            executor: Box::new(move |action_name, inputs, tenant_id, _db_arg| {
+        WriteDispatcher::new(
+            Box::new(move |action_name, inputs, tenant_id, _db_arg| {
                 use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};
                 let action_name = action_name.to_string();
                 let id_val = inputs["id"].as_i64();
@@ -182,15 +182,20 @@ mod tests {
                             )
                         })?;
 
-                    let new_status = match action_name.as_str() {
-                        "submit" => "submitted",
-                        "approve" => "approved",
-                        "ship" => "shipped",
-                        _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
-                    };
+                    // Derive new_status from the declared StateMachine (no match).
+                    let services = crate::controllers::mcp::exposed_services();
+                    let svc = services
+                        .iter()
+                        .find(|s| s.actions.iter().any(|a| a.name == action_name))
+                        .ok_or_else(|| {
+                            ferro_mcp_server::Error::ActionNotFound(action_name.clone())
+                        })?;
+                    let plan = ferro::derive_transition_plan(svc, &action_name)
+                        .map_err(|e| ferro_mcp_server::Error::Validation(e.to_string()))?;
+                    let new_status = plan.to_state;
 
                     let mut active: OrderActive = order.into();
-                    active.status = Set(new_status.to_string());
+                    active.status = Set(new_status);
                     let updated = active
                         .update(&db)
                         .await
@@ -199,7 +204,7 @@ mod tests {
                     Ok(json!({ "id": updated.id, "status": updated.status }))
                 })
             }),
-            guard_evaluator: Box::new(move |guard_name, tenant_id, _inputs, _db_arg| {
+            Box::new(move |guard_name, tenant_id, _inputs, _db_arg| {
                 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, Value};
                 let guard_name = guard_name.to_string();
                 let db = db_guard.clone();
@@ -237,7 +242,7 @@ mod tests {
                     }
                 })
             }),
-        }
+        )
     }
 
     #[cfg(feature = "confirmation")]
@@ -278,6 +283,50 @@ mod tests {
             &test_config(),
         )
         .await
+    }
+
+    // ── EXEC-01 (end-to-end): derived to_state, no hand-written match ─────────
+
+    /// A `submit` write persists the DERIVED target state `"submitted"` —
+    /// sourced from `derive_transition_plan(...).to_state` (Transition.to), with
+    /// no `match action_name` anywhere in the path. Seeds the order as `"draft"`
+    /// so the transition is observable (draft → submit → submitted).
+    ///
+    /// Gated feature-off: `submit` is destructive, so feature-on requires the
+    /// two-step confirm flow (covered by the ferro-mcp-server confirmation tests).
+    #[cfg(not(feature = "confirmation"))]
+    #[tokio::test]
+    async fn submit_persists_derived_to_state() {
+        let db = setup_db().await;
+        seed_two_tenants(&db).await;
+
+        // Move order 1 (tenant 1) to the "draft" source state.
+        {
+            use crate::models::entities::orders::ActiveModel as OrderActive;
+            let mut active: OrderActive = load_order(1, &db).await.into();
+            active.status = Set("draft".into());
+            active
+                .update(&db)
+                .await
+                .expect("seed: set order 1 to draft");
+        }
+
+        let dispatcher = make_test_write_dispatcher(db.clone());
+        let result = call_write_tool("submit", json!({"id": 1}), Some(1), &db, &dispatcher).await;
+
+        assert_ne!(
+            result["result"]["isError"], true,
+            "submit for owned order must succeed; got: {result}"
+        );
+
+        // The persisted status is the derived Transition.to ("submitted"), not a
+        // hand-written value.
+        let order = load_order(1, &db).await;
+        assert_eq!(
+            order.status, "submitted",
+            "submit must persist the derived to_state 'submitted'; got: {}",
+            order.status
+        );
     }
 
     // ── SC#2: Cross-tenant write denied (T-219-01) ───────────────────────────
@@ -396,8 +445,8 @@ mod tests {
         let counter = exec_count.clone();
 
         // Dispatcher with a counting executor.
-        let dispatcher = WriteDispatcher {
-            executor: Box::new(move |action_name, inputs, tenant_id, _db_arg| {
+        let dispatcher = WriteDispatcher::new(
+            Box::new(move |action_name, inputs, tenant_id, _db_arg| {
                 use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};
                 let action_name = action_name.to_string();
                 let id_val = inputs["id"].as_i64();
@@ -420,15 +469,20 @@ mod tests {
                             )
                         })?;
 
-                    let new_status = match action_name.as_str() {
-                        "submit" => "submitted",
-                        "approve" => "approved",
-                        "ship" => "shipped",
-                        _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
-                    };
+                    // Derive new_status from the declared StateMachine (no match).
+                    let services = crate::controllers::mcp::exposed_services();
+                    let svc = services
+                        .iter()
+                        .find(|s| s.actions.iter().any(|a| a.name == action_name))
+                        .ok_or_else(|| {
+                            ferro_mcp_server::Error::ActionNotFound(action_name.clone())
+                        })?;
+                    let plan = ferro::derive_transition_plan(svc, &action_name)
+                        .map_err(|e| ferro_mcp_server::Error::Validation(e.to_string()))?;
+                    let new_status = plan.to_state;
 
                     let mut active: OrderActive = order.into();
-                    active.status = Set(new_status.to_string());
+                    active.status = Set(new_status);
                     let updated = active
                         .update(&db)
                         .await
@@ -437,8 +491,8 @@ mod tests {
                     Ok(json!({ "id": updated.id, "status": updated.status }))
                 })
             }),
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-        };
+            Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        );
 
         let args = json!({ "id": 2, "idempotency_key": "e2e-idem-key-001" });
 

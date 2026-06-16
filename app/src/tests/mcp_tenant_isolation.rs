@@ -19,10 +19,10 @@ mod tests {
     use ferro_mcp_server::{handle_tools_call, McpContext, WriteDispatcher};
 
     fn noop_dispatcher() -> WriteDispatcher {
-        WriteDispatcher {
-            executor: Box::new(|_, _, _, _| Box::pin(async { Ok(ferro::serde_json::json!({})) })),
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-        }
+        WriteDispatcher::new(
+            Box::new(|_, _, _, _| Box::pin(async { Ok(ferro::serde_json::json!({})) })),
+            Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        )
     }
     use sea_orm::{ActiveModelTrait, ActiveValue::Set, Database, DatabaseConnection};
     use sea_orm_migration::prelude::*;

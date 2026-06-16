@@ -66,8 +66,10 @@ pub(crate) async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConne
 /// The closures capture no external state; `db` and `tenant_id` are passed as args
 /// to avoid the 'static borrow trap (PITFALLS §4).
 pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
-    WriteDispatcher {
-        executor: Box::new(|action_name, inputs, tenant_id, db| {
+    // Common path: no override registered (declaration-only). The override seam
+    // is proven by the ferro-mcp-server tests; the app stays override-free.
+    WriteDispatcher::new(
+        Box::new(|action_name, inputs, tenant_id, db| {
             // Convert borrowed args to owned values so the async block can move them.
             let action_name = action_name.to_string();
             let id_val = inputs["id"].as_i64();
@@ -94,16 +96,22 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                         )
                     })?;
 
-                let new_status = match action_name.as_str() {
-                    "submit" => "submitted",
-                    "approve" => "approved",
-                    "ship" => "shipped",
-                    _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
-                };
+                // Derive the transition target from the declared StateMachine —
+                // single source of truth (Transition.to). No hand-written match.
+                // exposed_services() is owned + cheap (schema-only); build it here
+                // rather than capturing a borrow across the async boundary.
+                let services = exposed_services();
+                let svc = services
+                    .iter()
+                    .find(|s| s.actions.iter().any(|a| a.name == action_name))
+                    .ok_or_else(|| ferro_mcp_server::Error::ActionNotFound(action_name.clone()))?;
+                let plan = ferro::derive_transition_plan(svc, &action_name)
+                    .map_err(|e| ferro_mcp_server::Error::Validation(e.to_string()))?;
+                let new_status = plan.to_state;
 
                 // Apply the state transition via SeaORM ActiveModel.
                 let mut active: OrderActive = order.into();
-                active.status = Set(new_status.to_string());
+                active.status = Set(new_status);
                 let updated = active
                     .update(&db)
                     .await
@@ -112,7 +120,7 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                 Ok(json!({ "id": updated.id, "status": updated.status }))
             })
         }),
-        guard_evaluator: Box::new(|guard_name, tenant_id, _inputs, db| {
+        Box::new(|guard_name, tenant_id, _inputs, db| {
             // Convert borrowed args to owned values so the async block can move them.
             let guard_name = guard_name.to_string();
             let db = db.clone();
@@ -130,7 +138,7 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
                 }
             })
         }),
-    }
+    )
 }
 
 /// Build the RFC 9728 / RFC 6750 unauthenticated challenge response.
