@@ -50,7 +50,7 @@ impl AnthropicClient {
     ///
     /// When `base_url` is `Some`, it is used verbatim. When `None`, the base URL is
     /// resolved from the `ANTHROPIC_BASE_URL` environment variable, falling back to
-    /// [`DEFAULT_BASE_URL`]. The explicit override lets callers inject a mock-server URL
+    /// the `DEFAULT_BASE_URL` constant. The explicit override lets callers inject a mock-server URL
     /// per call (e.g. hermetic integration tests under parallel execution) without
     /// mutating the process-global `ANTHROPIC_BASE_URL`. `new(api_key, model)` delegates
     /// here with `None` — zero behavior change for existing callers.
