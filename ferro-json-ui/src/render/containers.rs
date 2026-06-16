@@ -14,8 +14,8 @@ use serde_json::Value;
 use crate::component::{
     ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, DetailPageProps, FormMaxWidth,
     FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps,
-    PageHeaderProps, SegmentedControlProps, SegmentedItem, SidebarLayoutItem,
-    SidebarLayoutProps, Size, TabsProps,
+    PageHeaderProps, SegmentedControlProps, SegmentedItem, SidebarLayoutItem, SidebarLayoutProps,
+    Size, TabsProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -1023,7 +1023,9 @@ pub(crate) fn render_segmented_control(
         Size::Lg => "px-4 py-2 text-base",
     };
 
-    let mut group = String::from("<div class=\"inline-flex rounded-md border border-input bg-background overflow-hidden\"");
+    let mut group = String::from(
+        "<div class=\"inline-flex rounded-md border border-input bg-background overflow-hidden\"",
+    );
     if let Some(label) = props.aria_label.as_deref() {
         group.push_str(" role=\"tablist\" aria-label=\"");
         group.push_str(&html_escape(label));
@@ -1160,10 +1162,8 @@ pub(crate) fn render_sidebar_layout(
     format!(
         "<div class=\"flex flex-col gap-6 md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6\">\
           <aside class=\"md:sticky md:top-4 md:self-start min-w-0\">{nav}</aside>\
-          <main class=\"min-w-0 flex flex-col gap-4\">{main}</main>\
+          <main class=\"min-w-0 flex flex-col gap-4\">{main_content}</main>\
         </div>",
-        nav = nav,
-        main = main_content,
     )
 }
 
@@ -2182,7 +2182,10 @@ mod tests {
         let spec = build_spec(vec![("root", Element::new("SegmentedControl"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_segmented_control(el, &spec, &json!({}), 1);
-        assert!(html.is_empty(), "empty segmented control should emit nothing: {html}");
+        assert!(
+            html.is_empty(),
+            "empty segmented control should emit nothing: {html}"
+        );
     }
 
     #[test]
@@ -2205,7 +2208,10 @@ mod tests {
         ]);
         let el = spec.elements.get("root").unwrap();
         let html = render_sidebar_layout(el, &spec, &json!({}), 1);
-        assert!(html.contains("MAIN-BODY"), "main slot child missing: {html}");
+        assert!(
+            html.contains("MAIN-BODY"),
+            "main slot child missing: {html}"
+        );
         assert!(html.contains("Generale"), "inactive item missing: {html}");
         assert!(html.contains("Servizi"), "active item missing: {html}");
         assert!(
@@ -2236,32 +2242,26 @@ mod tests {
                 .prop("items", items)
                 .prop("active", "b"),
         )]);
-        let html_a = render_sidebar_layout(
-            spec_a.elements.get("root").unwrap(),
-            &spec_a,
-            &json!({}),
-            1,
-        );
-        let html_b = render_sidebar_layout(
-            spec_b.elements.get("root").unwrap(),
-            &spec_b,
-            &json!({}),
-            1,
-        );
+        let html_a =
+            render_sidebar_layout(spec_a.elements.get("root").unwrap(), &spec_a, &json!({}), 1);
+        let html_b =
+            render_sidebar_layout(spec_b.elements.get("root").unwrap(), &spec_b, &json!({}), 1);
         // Active item carries aria-current="page"; inactive does not. We check
         // that the marker lands on the right text in each spec.
         let active_a_idx = html_a.find("aria-current=\"page\"").unwrap();
         let active_b_idx = html_b.find("aria-current=\"page\"").unwrap();
         // The substring after the marker up to the next "</a>" must contain
         // the active label.
-        let tail_a = &html_a[active_a_idx..html_a[active_a_idx..]
-            .find("</a>")
-            .map(|p| active_a_idx + p)
-            .unwrap_or(html_a.len())];
-        let tail_b = &html_b[active_b_idx..html_b[active_b_idx..]
-            .find("</a>")
-            .map(|p| active_b_idx + p)
-            .unwrap_or(html_b.len())];
+        let tail_a = &html_a[active_a_idx
+            ..html_a[active_a_idx..]
+                .find("</a>")
+                .map(|p| active_a_idx + p)
+                .unwrap_or(html_a.len())];
+        let tail_b = &html_b[active_b_idx
+            ..html_b[active_b_idx..]
+                .find("</a>")
+                .map(|p| active_b_idx + p)
+                .unwrap_or(html_b.len())];
         assert!(
             tail_a.ends_with('A'),
             "active=a should highlight A; tail_a={tail_a}"
