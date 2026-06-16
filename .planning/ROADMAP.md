@@ -3200,7 +3200,9 @@ Plans:
 
 **UI hint**: no
 
-**Plans:** TBD
+**Plans:** 2 plans
+- [ ] 231-01-PLAN.md — TransitionPlan + derive_transition_plan() + hardened validate() gate in ferro-projections (EXEC-01, EXEC-04)
+- [ ] 231-02-PLAN.md — wire derived to_state into the write-dispatch path: transition-guard union/dedup, post-persist override hook, delete the hand-written match (EXEC-01, EXEC-02, EXEC-03)
 
 ### Phase 232: Single-Source Write Surfaces — Wire the Derived Executor, Retire the Hand-Written WriteDispatcher
 
