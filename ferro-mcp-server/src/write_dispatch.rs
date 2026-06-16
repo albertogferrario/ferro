@@ -616,7 +616,7 @@ pub async fn handle_request_confirm(
         }
     };
 
-    let (_svc, action) = match find_action(services, action_name) {
+    let (svc, action) = match find_action(services, action_name) {
         Some(pair) => pair,
         None => {
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
@@ -635,8 +635,16 @@ pub async fn handle_request_confirm(
         })) });
     }
 
+    // Derive the transition-level guard so the token-issuance pre-check evaluates
+    // the SAME merged_guards union as handle_write_call / dispatch_write (WR-02).
+    // `.ok()`: a non-transition action has no plan, so the union equals
+    // action.preconditions exactly (back-compatible).
+    let plan = derive_transition_plan(svc, &action.name).ok();
+    let transition_guard = plan.as_ref().and_then(|p| p.guard.as_deref());
+    let guards = merged_guards(&action.preconditions, transition_guard);
+
     // Re-evaluate guards before issuing token (fail fast — Pitfall 4).
-    for guard_name in &action.preconditions {
+    for guard_name in &guards {
         let passes = match (dispatcher.guard_evaluator)(guard_name, tid, &args, db).await {
             Ok(p) => p,
             Err(e) => {
@@ -796,7 +804,10 @@ pub async fn handle_confirm(
     let transition_guard = plan.as_ref().and_then(|p| p.guard.as_deref());
 
     // Re-evaluate guards at confirm time (live DB state — T-220-03).
-    for guard_name in &action.preconditions {
+    // Use the SAME merged_guards union as dispatch_write (WR-02) so the confirm
+    // pre-check matches the guard set the actual write enforces below.
+    let guards = merged_guards(&action.preconditions, transition_guard);
+    for guard_name in &guards {
         let passes = match (dispatcher.guard_evaluator)(guard_name, tid, stored_inputs, db).await {
             Ok(p) => p,
             Err(_) => {
