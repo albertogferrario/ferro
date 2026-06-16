@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v16.0
 milestone_name: Write-Boundary AX — StateMachine-Derived Executor
-status: executing
-stopped_at: Completed 232-02-PLAN.md
-last_updated: "2026-06-16T03:58:55.047Z"
+status: verifying
+stopped_at: Completed 232-03-PLAN.md — Phase 232 / EXEC-05 done
+last_updated: "2026-06-16T04:32:20.509Z"
 last_activity: 2026-06-16
 progress:
   total_phases: 108
-  completed_phases: 96
+  completed_phases: 97
   total_plans: 396
-  completed_plans: 394
-  percent: 99
+  completed_plans: 395
+  percent: 100
 ---
 
 # Project State
@@ -31,7 +31,7 @@ Plan: 3 of 3
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Last activity: 2026-06-16
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
@@ -147,6 +147,7 @@ Progress: [██████████] 100%
 | Phase 231 P02 | 28m | 3 tasks | 9 files |
 | Phase 232 P01 | 16m | 3 tasks | 12 files |
 | Phase 232 P02 | 25m | 2 tasks | 5 files |
+| Phase 232 P03 | 30m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.0 Phase 232 Plan 03] Single-source PROVEN (EXEC-05 / Phase 232 complete): `single_source_both_channels` drives ONE declared `submit` transition through BOTH the MCP framing (`handle_tools_call` → `dispatch_write(.., "mcp")`) and the visual handler (`dispatch_write(.., "web")`) and asserts the IDENTICAL persisted derived `to_state`, with the audit channel (`mcp.action.submit` vs `web.action.submit`) the ONLY divergence; `single_source_guard_rejects_both` proves the guard re-eval is the same kernel gate on both channels. SC4 structural grep confirms exactly one `dispatch_write` definition (`framework/src/write/mod.rs`) and no `match action_name`/transition-target match on the write path (the `match find_action`/`match action.execute` hits are action resolution / `Result` matching, not transition re-encoding). The WriteDispatcher envelope is intact (relocated, not deleted). Full workspace gate green (fmt + clippy `--all --all-targets -D warnings` + test `--all-features`, exit 0). v16.0 write-boundary milestone closed.
 - [v16.0 Phase 232 Plan 01] The transition-execution kernel now lives in exactly ONE location: `framework::write` (relocated from `ferro-mcp-server`, behavior identical — guard re-eval, idempotency, confirm seam, persist, audit, override; envelope `WriteDispatcher`/`ExecutorFn`/`GuardEvaluatorFn`/`OverrideFn` preserved). The kernel owns a self-contained `WriteError`/`WriteResult` (facade-re-exported as `ferro::write::WriteError`); each channel maps it via `From` at the framing boundary. The audit prefix is parameterized: `format!("{channel}.action.{name}")` — MCP framing passes the literal `"mcp"` at every call site so `mcp.action.{name}` stays regression-pinned. `ferro-mcp-server` is now framing that depends on `ferro-rs` (acyclic) and calls into the kernel. The app `make_write_dispatcher()` closure constructs `ferro::write::WriteError`. framework `confirmation` is a pure feature flag (no ferro-ai). This is the EXEC-05 foundation; Wave 2 (Plans 02/03) builds the visual write surface on it.
 - [v16.0 Phase 231] EXEC-02/03 wired into the consumer write path (Plan 02): `dispatch_write` re-evaluates `preconditions ∪ transition-guard` deduped-by-name through the single live `GuardEvaluatorFn` loop (never `ctx.evaluated_guards`); `WriteDispatcher` carries a post-persist `OverrideFn` registry (`new()`/`with_override()`) that cannot suppress the base guard/transition. EXEC-01 end-to-end: the app executor derives `to_state` from `ferro::derive_transition_plan(...).to_state` (facade only) and the hand-written `match action_name => new_status` is deleted across `app/src`. EXEC-05 (cross-surface wiring, retire the WriteDispatcher) remains Phase 232.
 - [v16.0 Phase 231] EXEC-01/04 derivation core shipped in `ferro-projections` (Plan 01): `TransitionPlan` + pure `derive_transition_plan()` source `to_state` only from `Transition.to` (fan-out is a hard `AmbiguousTransition` error, never a silent first-pick); `ServiceDef::validate()` round-trips against the derivation so executor/StateMachine drift is impossible by construction. Schema-only — no sea-orm/tokio/closures. Re-exported via the `ferro::` facade for Phase 232.
@@ -198,7 +200,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-16T03:58:48.793Z
-Stopped at: Completed 232-02-PLAN.md
+Last session: 2026-06-16T04:32:20.501Z
+Stopped at: Completed 232-03-PLAN.md — Phase 232 / EXEC-05 done
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
