@@ -13,11 +13,11 @@
 ### Executor Derivation
 
 - [x] **EXEC-01**: A developer declares a state-transition write solely by naming a `StateMachine` transition on the `ActionDef` (`transition_trigger`), and the framework derives the default executor — state read → guard re-evaluation → transition → persist — from the `StateMachine` declaration alone. No hand-written `WriteDispatcher` `match` arm is required for the common path.
-- [ ] **EXEC-02**: The derived executor re-evaluates the transition's guard server-side at execution time (reusing the `evaluated_guards` surface), and rejects a transition whose guard does not hold — an agent or caller cannot drive an illegal transition through the derived path.
+- [x] **EXEC-02**: The derived executor re-evaluates the transition's guard server-side at execution time (reusing the `evaluated_guards` surface), and rejects a transition whose guard does not hold — an agent or caller cannot drive an illegal transition through the derived path.
 
 ### Override Hook
 
-- [ ] **EXEC-03**: A developer attaches app-specific side effects (related-record writes, notifications, custom post-transition logic) to a derived executor through an override hook, without replacing the base transition dispatch or re-declaring the transition. The common path stays declaration-only; only the 20% writes code.
+- [x] **EXEC-03**: A developer attaches app-specific side effects (related-record writes, notifications, custom post-transition logic) to a derived executor through an override hook, without replacing the base transition dispatch or re-declaring the transition. The common path stays declaration-only; only the 20% writes code.
 
 ### Sync-by-Construction
 
@@ -51,8 +51,8 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EXEC-01 | Phase 231 | Complete |
-| EXEC-02 | Phase 231 | Pending |
-| EXEC-03 | Phase 231 | Pending |
+| EXEC-02 | Phase 231 | Complete |
+| EXEC-03 | Phase 231 | Complete |
 | EXEC-04 | Phase 231 | Complete |
 | EXEC-05 | Phase 232 | Pending |
 

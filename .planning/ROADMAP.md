@@ -3173,12 +3173,12 @@ Plans:
 
 #### Phases
 
-- [ ] **Phase 231: StateMachine-Derived Executor — Derivation, Guard Re-Eval, Override Hook, Sync-by-Construction** — in `ferro-projections`: derive a default write executor from a `ServiceDef`'s `StateMachine` + `ActionDef.transition_trigger` (state read → guard re-evaluation via the `evaluated_guards` surface → transition → persist), reject a guard-failing transition, attach app-specific side effects through an override hook without replacing the base dispatch, and reject (at build/registration time, not runtime) any `ActionDef`/override referencing a transition the `StateMachine` does not declare. Covers EXEC-01, EXEC-02, EXEC-03, EXEC-04.
+- [x] **Phase 231: StateMachine-Derived Executor — Derivation, Guard Re-Eval, Override Hook, Sync-by-Construction** — in `ferro-projections`: derive a default write executor from a `ServiceDef`'s `StateMachine` + `ActionDef.transition_trigger` (state read → guard re-evaluation via the `evaluated_guards` surface → transition → persist), reject a guard-failing transition, attach app-specific side effects through an override hook without replacing the base dispatch, and reject (at build/registration time, not runtime) any `ActionDef`/override referencing a transition the `StateMachine` does not declare. Covers EXEC-01, EXEC-02, EXEC-03, EXEC-04. (completed 2026-06-16)
 - [ ] **Phase 232: Single-Source Write Surfaces — Wire the Derived Executor, Retire the Hand-Written WriteDispatcher** — route both existing write surfaces through the Phase 231 derived executor: replace the hand-written `WriteDispatcher` `match` in the v15.0 MCP write path (`AMCP-04`) and wire the visual/form write path to the same derived executor, so one `ServiceDef` declaration backs writes in every modality with no per-channel executor. Covers EXEC-05.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 231. StateMachine-Derived Executor (derivation + guard + override + sync) | 1/2 | In Progress|  |
+| 231. StateMachine-Derived Executor (derivation + guard + override + sync) | 2/2 | Complete   | 2026-06-16 |
 | 232. Single-Source Write Surfaces (wire executor, retire WriteDispatcher) | 0/? | Not started | - |
 
 #### Phase Details
@@ -3200,9 +3200,9 @@ Plans:
 
 **UI hint**: no
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 - [x] 231-01-PLAN.md — TransitionPlan + derive_transition_plan() + hardened validate() gate in ferro-projections (EXEC-01, EXEC-04)
-- [ ] 231-02-PLAN.md — wire derived to_state into the write-dispatch path: transition-guard union/dedup, post-persist override hook, delete the hand-written match (EXEC-01, EXEC-02, EXEC-03)
+- [x] 231-02-PLAN.md — wire derived to_state into the write-dispatch path: transition-guard union/dedup, post-persist override hook, delete the hand-written match (EXEC-01, EXEC-02, EXEC-03)
 
 ### Phase 232: Single-Source Write Surfaces — Wire the Derived Executor, Retire the Hand-Written WriteDispatcher
 
