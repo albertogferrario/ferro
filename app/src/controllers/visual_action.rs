@@ -20,7 +20,8 @@
 //! There is no `match action_name`, no second executor, and no second guard loop.
 
 use ferro::serde_json::{json, Value};
-use ferro::{handler, HttpResponse, Request, Response};
+use ferro::write::{WriteError, WriteResult};
+use ferro::{handler, ActionDef, HttpResponse, Request, Response, ServiceDef};
 
 /// POST /{service}/{action} — drive a declared StateMachine transition through
 /// the shared `framework::write` kernel with the `"web"` audit channel.
@@ -44,14 +45,7 @@ pub async fn handle(req: Request) -> Response {
     // 3. Resolve (ServiceDef, ActionDef) from the single service registry the
     //    MCP path uses. Unknown service/action → 404 (no panic, no write).
     let services = crate::controllers::mcp::exposed_services();
-    let svc = services
-        .iter()
-        .find(|s| s.name == service_name)
-        .ok_or_else(|| HttpResponse::new().status(404))?;
-    let action = svc
-        .actions
-        .iter()
-        .find(|a| a.name == action_name)
+    let (svc, action) = resolve_action(&services, &service_name, &action_name)
         .ok_or_else(|| HttpResponse::new().status(404))?;
 
     // 4. Derive the transition guard from the StateMachine — IDENTICAL to the
@@ -87,29 +81,50 @@ pub async fn handle(req: Request) -> Response {
     )
     .await;
 
-    // 9. Map the outcome. Errors are redacted — no SQL/table/column disclosure
-    //    (T-232-09). A guard rejection is a 4xx, never a 500.
+    // 9. Map the outcome to the redacted HTTP response (status + error_kind).
+    outcome_to_response(&action.name, outcome)
+}
+
+/// Resolve `(ServiceDef, ActionDef)` for `service_name` / `action_name` from the
+/// exposed service registry — the SAME registry the MCP path resolves against.
+/// Returns `None` when either the service or the action is unknown; the handler
+/// maps that to a 404 (no panic, no write).
+pub(crate) fn resolve_action<'a>(
+    services: &'a [ServiceDef],
+    service_name: &str,
+    action_name: &str,
+) -> Option<(&'a ServiceDef, &'a ActionDef)> {
+    let svc = services.iter().find(|s| s.name == service_name)?;
+    let action = svc.actions.iter().find(|a| a.name == action_name)?;
+    Some((svc, action))
+}
+
+/// Map the shared kernel's [`WriteResult`] to the redacted HTTP response the
+/// visual surface returns. Error responses disclose no SQL/table/column names
+/// (T-232-09): every variant collapses to a fixed `error_kind` + generic message,
+/// and a guard rejection is a 4xx, never a 500.
+pub(crate) fn outcome_to_response(action_name: &str, outcome: WriteResult<Value>) -> Response {
     match outcome {
         Ok(result) => Ok(HttpResponse::json(json!({
             "status": "ok",
-            "action": action.name,
+            "action": action_name,
             "result": result,
         }))),
-        Err(ferro::write::WriteError::GuardFailed(_)) => Ok(HttpResponse::json(json!({
+        Err(WriteError::GuardFailed(_)) => Ok(HttpResponse::json(json!({
             "status": "error",
             "error_kind": "guard_denied",
             "message": "precondition not met",
         }))
         .status(403)),
-        Err(ferro::write::WriteError::Validation(_)) => Ok(HttpResponse::json(json!({
+        Err(WriteError::Validation(_)) => Ok(HttpResponse::json(json!({
             "status": "error",
             "error_kind": "invalid_request",
             "message": "request could not be processed",
         }))
         .status(422)),
-        Err(ferro::write::WriteError::ActionNotFound(_)) => Err(HttpResponse::new().status(404)),
+        Err(WriteError::ActionNotFound(_)) => Err(HttpResponse::new().status(404)),
         #[cfg(feature = "confirmation")]
-        Err(ferro::write::WriteError::ConfirmationRequired(_)) => Ok(HttpResponse::json(json!({
+        Err(WriteError::ConfirmationRequired(_)) => Ok(HttpResponse::json(json!({
             "status": "error",
             "error_kind": "confirmation_required",
             "message": "this action requires confirmation",

@@ -495,3 +495,133 @@ mod tests {
         );
     }
 }
+
+// ── Handler framing: outcome→HTTP mapping + service/action resolution ─────────
+//
+// The kernel-driving tests above prove the WRITE semantics (derived to_state,
+// live guard re-eval, audit channel, cross-tenant denial). These prove the part
+// `handle` owns on top of the kernel: turning a `WriteResult` into the right
+// REDACTED HTTP response, and resolving `(service, action)` from the registry.
+// They drive the EXACT functions `handle` delegates to — closing the gap that
+// the kernel-fixture tests left, where `handle`'s framing branches were never
+// exercised. Ungated on `confirmation`: every arm asserted here exists in both
+// feature configurations (the confirmation-only 409 arm is covered by the
+// ferro-mcp-server confirmation suite).
+#[cfg(test)]
+mod framing_tests {
+    use crate::controllers::visual_action::{outcome_to_response, resolve_action};
+    use ferro::serde_json::{json, Value};
+    use ferro::write::WriteError;
+    use ferro::HttpResponse;
+
+    /// Collapse either arm of `Response` (`Result<HttpResponse, HttpResponse>`)
+    /// to the underlying `HttpResponse`. Both arms render to the client, so for
+    /// status/body assertions the Ok/Err split is not what these tests measure.
+    fn into_response(r: ferro::Response) -> HttpResponse {
+        match r {
+            Ok(resp) | Err(resp) => resp,
+        }
+    }
+
+    fn body_json(resp: &HttpResponse) -> Value {
+        ferro::serde_json::from_str(resp.body()).expect("response body must be JSON")
+    }
+
+    #[test]
+    fn ok_outcome_is_200_echoing_action_and_result() {
+        let result = json!({ "id": 7, "status": "submitted" });
+        let resp = into_response(outcome_to_response("submit", Ok(result.clone())));
+
+        assert_eq!(resp.status_code(), 200);
+        let body = body_json(&resp);
+        assert_eq!(body["status"], "ok");
+        assert_eq!(body["action"], "submit");
+        assert_eq!(body["result"], result);
+    }
+
+    #[test]
+    fn guard_failed_is_403_guard_denied() {
+        let resp = into_response(outcome_to_response(
+            "approve",
+            Err(WriteError::GuardFailed(
+                "is_manager false for tenant 3".into(),
+            )),
+        ));
+
+        assert_eq!(
+            resp.status_code(),
+            403,
+            "a guard rejection must be a 403, never a 500"
+        );
+        assert_eq!(body_json(&resp)["error_kind"], "guard_denied");
+    }
+
+    #[test]
+    fn validation_is_422_invalid_request() {
+        let resp = into_response(outcome_to_response(
+            "submit",
+            Err(WriteError::Validation("missing id".into())),
+        ));
+
+        assert_eq!(resp.status_code(), 422);
+        assert_eq!(body_json(&resp)["error_kind"], "invalid_request");
+    }
+
+    #[test]
+    fn action_not_found_is_404() {
+        let resp = into_response(outcome_to_response(
+            "frobnicate",
+            Err(WriteError::ActionNotFound("frobnicate".into())),
+        ));
+
+        assert_eq!(resp.status_code(), 404);
+    }
+
+    /// A `WriteError::Database` may carry SQL fragments / table or column names.
+    /// The visual surface MUST collapse it to a generic 500 with no disclosure —
+    /// the redaction contract (T-232-09).
+    #[test]
+    fn database_error_is_redacted_500() {
+        let leaky = "SELECT secret_column FROM orders WHERE tenant_id = 3";
+        let resp = into_response(outcome_to_response(
+            "submit",
+            Err(WriteError::Database(leaky.into())),
+        ));
+
+        assert_eq!(resp.status_code(), 500);
+        assert_eq!(body_json(&resp)["error_kind"], "execution_error");
+
+        let body = resp.body();
+        for leaked in ["secret_column", "SELECT", "orders", "tenant_id"] {
+            assert!(
+                !body.contains(leaked),
+                "redacted response must not disclose '{leaked}'; body was: {body}"
+            );
+        }
+    }
+
+    #[test]
+    fn resolve_action_finds_declared_service_action() {
+        let services = crate::controllers::mcp::exposed_services();
+        let (svc, action) = resolve_action(&services, "order", "submit")
+            .expect("order/submit is a declared action");
+
+        assert_eq!(svc.name, "order");
+        assert_eq!(action.name, "submit");
+    }
+
+    #[test]
+    fn resolve_action_unknown_service_is_none() {
+        let services = crate::controllers::mcp::exposed_services();
+        assert!(resolve_action(&services, "nonexistent", "submit").is_none());
+    }
+
+    #[test]
+    fn resolve_action_unknown_action_is_none() {
+        let services = crate::controllers::mcp::exposed_services();
+        assert!(
+            resolve_action(&services, "order", "frobnicate").is_none(),
+            "an undeclared action on a known service must not resolve"
+        );
+    }
+}
