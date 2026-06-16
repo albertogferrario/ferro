@@ -11,7 +11,10 @@
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
 use ferro_projections::{derive_transition_plan, ActionDef, ServiceDef};
-use ferro_rs::write::{dispatch_write, merged_guards, WriteDispatcher, WriteError};
+use ferro_rs::write::{dispatch_write, WriteDispatcher, WriteError};
+// merged_guards is only consulted by the confirmation handlers' pre-check loop.
+#[cfg(feature = "confirmation")]
+use ferro_rs::write::merged_guards;
 use rmcp::model::CallToolResult;
 use sea_orm::DatabaseConnection;
 use serde_json::{json, Value};
