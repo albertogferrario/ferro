@@ -64,13 +64,23 @@ pub type GuardEvaluatorFn = Box<
 
 /// App-registered post-persist override hook (EXEC-03).
 ///
-/// Runs AFTER the derived/base persist, inside [`dispatch_write`], reusing the
-/// audit/idempotency envelope. Receives the action name, validated inputs, the
-/// authenticated tenant id, a DB connection, and the base persist result — so it
-/// can chain related-record writes keyed off the just-persisted state.
+/// Runs AFTER the derived/base persist, inside [`dispatch_write`]. Receives the
+/// action name, validated inputs, the authenticated tenant id, a DB connection,
+/// and the base persist result — so it can chain related-record writes keyed off
+/// the just-persisted state.
 ///
 /// Because it runs strictly after the guarded base persist, an override cannot
 /// suppress the base guard or transition (threat T-231-05, mitigated).
+///
+/// # Ordering vs. audit/idempotency (WR-01)
+///
+/// The override runs AFTER the base persist's idempotency key and audit entry
+/// are sealed (steps 5–6 in [`dispatch_write`]). There is no surrounding
+/// transaction, so an override that returns `Err` does NOT roll back the base
+/// persist — and the base persist's audit entry and idempotency key remain
+/// committed. An override author must therefore treat the base transition as
+/// already durable when the hook fires: a failing override surfaces its error to
+/// the caller, but the base write stays applied (and audited).
 pub type OverrideFn = Box<
     dyn Fn(
             &str,   // action_name
@@ -310,6 +320,14 @@ fn generate_confirmation_token() -> String {
 /// 4. Execute callback (D-01).
 /// 5. Store idempotency result (D-04).
 /// 6. Audit via ferro-audit (D-05).
+/// 7. Post-persist override hook (EXEC-03).
+///
+/// WR-01: steps 5–6 (idempotency-store + audit of the base persist) run BEFORE
+/// the override hook (step 7). There is no surrounding transaction, so the base
+/// persist (step 4) has already committed by the time the override runs; sealing
+/// its idempotency key and audit entry first guarantees a committed base
+/// transition is always recorded and never re-executable, even if the
+/// app-specific override side effect later fails.
 ///
 /// The `is_confirmed` parameter (confirmation feature only) signals that this
 /// call came from `handle_confirm` after token validation — the D-08 seam is
@@ -391,22 +409,29 @@ pub async fn dispatch_write(
     //    returning None is the cross-tenant denial primitive.
     let result = (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?;
 
-    // 4b. Post-persist override hook (EXEC-03).
-    //     Runs AFTER the guarded base persist, inside the same audited window —
-    //     it cannot suppress the base guard or transition (T-231-05). Absent key
-    //     = common path (declaration-only); the override adds nothing.
-    if let Some(hook) = dispatcher.overrides.get(&action.name) {
-        (hook)(&action.name, inputs, tenant_id, db, &result).await?;
-    }
-
     // 5. Store idempotency result (D-04).
     //    INSERT OR IGNORE / ON CONFLICT DO NOTHING for concurrency safety.
+    //
+    //    WR-01: sealed BEFORE the override hook. There is no surrounding
+    //    transaction, so the executor's base persist has already committed by
+    //    this point. If the override (an app-specific side effect) ran first and
+    //    failed, its `?` would short-circuit BEFORE the key is stored, leaving a
+    //    committed base transition re-executable on retry (no stored key). Storing
+    //    the key here guarantees a committed base persist is never re-executed,
+    //    even when a later override fails.
     if let Some(key) = idempotency_key {
         store_idempotency(tenant_id, key, &result, db).await?;
     }
 
-    // 6. Audit (D-05, SC#4) — record after every successful execution.
+    // 6. Audit (D-05, SC#4) — record after every successful base persist.
     //    Denial audit (guard-failed path) is recorded in handle_write_call.
+    //
+    //    WR-01: sealed BEFORE the override hook for the same reason. The base
+    //    persist committed at step 4; the "every successful execution is audited"
+    //    invariant must hold regardless of whether the app-specific override side
+    //    effect later succeeds. An override failure does NOT roll back the base
+    //    persist (no transaction), so the base persist is audited here
+    //    unconditionally — the audit entry never overstates what persisted.
     let record_id = inputs.get("id").map(|v| v.to_string()).unwrap_or_default();
     AuditEntry::record(format!("mcp.action.{}", &action.name))
         .tenant(tenant_id.to_string())
@@ -417,6 +442,17 @@ pub async fn dispatch_write(
         .write(db)
         .await
         .map_err(|e| crate::Error::Database(e.to_string()))?;
+
+    // 7. Post-persist override hook (EXEC-03).
+    //    Runs AFTER the base persist is durable, idempotency-keyed, and audited
+    //    (steps 4–6) — it cannot suppress the base guard or transition
+    //    (T-231-05). An override `Err` propagates via `?` WITHOUT erasing the
+    //    base persist's idempotency key or audit entry: those are already
+    //    committed above. Absent key = common path (declaration-only); the
+    //    override adds nothing.
+    if let Some(hook) = dispatcher.overrides.get(&action.name) {
+        (hook)(&action.name, inputs, tenant_id, db, &result).await?;
+    }
 
     Ok(result)
 }
@@ -1221,9 +1257,14 @@ mod tests {
     }
 
     /// An override returning `Err` causes `dispatch_write` to return `Err` — the
-    /// error propagates. The base write's audit already happened (the override
-    /// runs after persist + audit-of-base is recorded inside the executor's
-    /// envelope); the error surfaces without panicking.
+    /// error propagates without panicking.
+    ///
+    /// WR-01: the base persist's idempotency key AND audit entry are sealed
+    /// BEFORE the override runs (steps 5–6 precede step 7). Because there is no
+    /// surrounding transaction, the committed base persist must remain recorded
+    /// even though the override failed. This test asserts BOTH the audit entry
+    /// and the idempotency key exist after the override errors — the base write
+    /// is never left unaudited or re-executable.
     #[tokio::test]
     async fn override_error_surfaces() {
         let db = setup_db().await;
@@ -1244,7 +1285,7 @@ mod tests {
 
         let result = dispatch_write(
             &submit_action(),
-            &json!({"id": 1}),
+            &json!({"id": 1, "idempotency_key": "ovr-fail-1"}),
             1,
             &db,
             &dispatcher,
@@ -1257,6 +1298,35 @@ mod tests {
         assert!(
             matches!(result, Err(crate::Error::Validation(ref m)) if m == "override failed"),
             "override error must propagate, got: {result:?}"
+        );
+
+        // WR-01: the base persist's audit entry must exist despite the override
+        // failure — the "every successful execution is audited" invariant holds.
+        let audit_count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM audit_log WHERE action = 'mcp.action.submit'"
+                    .to_string(),
+            ))
+            .await
+            .expect("audit query must succeed")
+            .expect("audit count row must exist")
+            .try_get::<i64>("", "c")
+            .expect("audit count column");
+        assert_eq!(
+            audit_count, 1,
+            "base persist must be audited even when the override fails (WR-01)"
+        );
+
+        // WR-01: the idempotency key must be stored despite the override failure —
+        // a retry must not re-execute the already-committed base transition.
+        let stored = lookup_idempotency(1, "ovr-fail-1", &db)
+            .await
+            .expect("idempotency lookup must succeed");
+        assert_eq!(
+            stored,
+            Some(json!({ "status": "submitted" })),
+            "base persist's idempotency key must be stored even when the override fails (WR-01)"
         );
     }
 
