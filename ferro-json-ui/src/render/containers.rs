@@ -1119,7 +1119,7 @@ pub(crate) fn render_sidebar_layout(
 
     // Build the sidebar nav HTML.
     let mut nav = String::from(
-        "<nav class=\"flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal -mx-4 px-4 md:mx-0 md:px-0\"",
+        "<nav class=\"flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal\"",
     );
     if let Some(label) = props.aria_label.as_deref() {
         nav.push_str(" aria-label=\"");
@@ -1158,7 +1158,7 @@ pub(crate) fn render_sidebar_layout(
         .collect();
 
     format!(
-        "<div class=\"md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6\">\
+        "<div class=\"flex flex-col gap-6 md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6\">\
           <aside class=\"md:sticky md:top-4 md:self-start min-w-0\">{nav}</aside>\
           <main class=\"min-w-0 flex flex-col gap-4\">{main}</main>\
         </div>",
