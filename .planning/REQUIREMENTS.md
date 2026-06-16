@@ -25,7 +25,7 @@
 
 ### Single Source Across Write Surfaces
 
-- [ ] **EXEC-05**: The derived executor drives writes from the single `ServiceDef` across the existing write surfaces — the v15.0 MCP write dispatch (`AMCP-04`) and the visual/form write path — so one declaration backs writes in every modality with no per-channel executor.
+- [x] **EXEC-05**: The derived executor drives writes from the single `ServiceDef` across the existing write surfaces — the v15.0 MCP write dispatch (`AMCP-04`) and the visual/form write path — so one declaration backs writes in every modality with no per-channel executor.
 
 ---
 
@@ -54,6 +54,6 @@
 | EXEC-02 | Phase 231 | Complete |
 | EXEC-03 | Phase 231 | Complete |
 | EXEC-04 | Phase 231 | Complete |
-| EXEC-05 | Phase 232 | Pending |
+| EXEC-05 | Phase 232 | Complete |
 
 *Phase assignments filled by the roadmapper. EXEC-01..04 (derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections`) map to Phase 231; EXEC-05 (wiring the derived executor across the MCP + visual/form write surfaces, retiring the hand-written `WriteDispatcher`) maps to Phase 232. Every v16.0 requirement maps to exactly one phase — 5/5 covered, no orphans.*
