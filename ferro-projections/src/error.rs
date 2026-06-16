@@ -15,6 +15,21 @@ pub enum Error {
     /// defined here so non-visual renderers can consume it. (D-08)
     #[error("cannot render service with no intents")]
     NoIntents,
+    /// An action selected for transition derivation declares no
+    /// `transition_trigger`, so no event-to-target mapping exists.
+    #[error("action '{0}' has no transition_trigger")]
+    NoTransitionTrigger(String),
+    /// Transition derivation was requested for a service with no state machine.
+    #[error("service '{0}' has no state machine")]
+    NoStateMachine(String),
+    /// An action's `transition_trigger` names an event that no declared
+    /// transition carries — the EXEC-04 drift condition, by construction.
+    #[error("action '{action}' transition_trigger '{event}' matches no declared transition")]
+    UndeclaredTransition { action: String, event: String },
+    /// A single event fans out to more than one target state across its
+    /// transitions; a `TransitionPlan` cannot pick one unambiguously.
+    #[error("event '{event}' fans out to multiple target states — ambiguous transition plan")]
+    AmbiguousTransition { event: String },
 }
 
 #[cfg(test)]

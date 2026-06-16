@@ -3,6 +3,7 @@
 mod action;
 mod derive;
 mod error;
+mod executor;
 mod field;
 mod intent;
 mod relationship;
@@ -13,6 +14,7 @@ mod state;
 pub use action::{ActionDef, GuardDef, InputDef};
 pub use derive::derive_intents;
 pub use error::Error;
+pub use executor::{derive_transition_plan, TransitionPlan};
 pub use field::{infer_meaning, DataType, FieldDef, FieldMeaning, RenderHint};
 pub use intent::{Intent, IntentHint, IntentScore};
 pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
