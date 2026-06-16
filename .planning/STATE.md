@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v16.0
 milestone_name: Write-Boundary AX — StateMachine-Derived Executor
-status: defining-requirements
-stopped_at: Milestone v16.0 started (defining requirements)
+status: roadmapped
+stopped_at: Milestone v16.0 roadmapped (2 phases: 231 derivation+guard+override+sync, 232 single-source write surfaces); ready to plan phase 231
 last_updated: "2026-06-16T01:00:00.000Z"
 last_activity: 2026-06-16
 progress:
-  total_phases: 238
+  total_phases: 240
   completed_phases: 215
   total_plans: 674
   completed_plans: 663
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v16.0 Write-Boundary AX — StateMachine-Derived Executor (defining requirements)
+**Current focus:** v16.0 Write-Boundary AX — StateMachine-Derived Executor (roadmapped — ready to plan phase 231)
 
 ## Current Position
 
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: Not started (defining requirements)
+Phase: Not started — roadmapped into 2 phases (231, 232)
 Plan: —
-Next: define REQUIREMENTS.md, then `/gsd-plan-phase` the first phase. Phases continue from 230 (next is 231).
+Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Defining requirements — Milestone v16.0 started
+Status: Roadmapped — Milestone v16.0 ready to plan (phase 231 next)
 
 Last activity: 2026-06-16
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)

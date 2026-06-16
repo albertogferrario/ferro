@@ -50,10 +50,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXEC-01 | TBD | Pending |
-| EXEC-02 | TBD | Pending |
-| EXEC-03 | TBD | Pending |
-| EXEC-04 | TBD | Pending |
-| EXEC-05 | TBD | Pending |
+| EXEC-01 | Phase 231 | Pending |
+| EXEC-02 | Phase 231 | Pending |
+| EXEC-03 | Phase 231 | Pending |
+| EXEC-04 | Phase 231 | Pending |
+| EXEC-05 | Phase 232 | Pending |
 
-*Phase assignments filled by the roadmapper.*
+*Phase assignments filled by the roadmapper. EXEC-01..04 (derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections`) map to Phase 231; EXEC-05 (wiring the derived executor across the MCP + visual/form write surfaces, retiring the hand-written `WriteDispatcher`) maps to Phase 232. Every v16.0 requirement maps to exactly one phase — 5/5 covered, no orphans.*
