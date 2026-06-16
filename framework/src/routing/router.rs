@@ -34,6 +34,34 @@ pub struct RouteInfo {
     pub mcp_hidden: bool,
 }
 
+/// Insert a route into a matchit tree, surfacing conflicts instead of silently
+/// dropping them (WR-02).
+///
+/// matchit rejects a second route that conflicts at the same tree position
+/// (e.g. two distinct all-param patterns sharing a slot, like `/{a}/{b}` and
+/// `/{c}/{d}`). The previous `.insert(...).ok()` discarded that rejection, so a
+/// conflicting registration produced no route and no diagnostic at boot — a
+/// fail-open-shaped surprise for a security-relevant write surface (the route
+/// vanishes rather than denying).
+///
+/// This keeps the success path byte-for-byte identical (the route is inserted)
+/// and only makes a CONFLICT loud: a `tracing::error!` naming the dropped path
+/// and method. It does not panic, so legitimate idempotent re-registration of
+/// the same pattern (which matchit reports as a conflict) stays non-fatal while
+/// still being visible in logs.
+fn insert_route<V>(router: &mut MatchitRouter<V>, method: &str, path: &str, value: V) {
+    if let Err(err) = router.insert(path, value) {
+        tracing::error!(
+            method = %method,
+            path = %path,
+            error = %err,
+            "route registration conflict: matchit rejected this route; \
+             it will NOT be reachable. A conflicting pattern is already \
+             registered at the same tree position."
+        );
+    }
+}
+
 /// Register a route for introspection
 fn register_route(method: &str, path: &str) {
     let registry = REGISTERED_ROUTES.get_or_init(|| RwLock::new(Vec::new()));
@@ -228,41 +256,56 @@ impl Router {
 
     /// Insert a GET route with a pre-boxed handler (internal use for groups)
     pub(crate) fn insert_get(&mut self, path: &str, handler: Arc<BoxedHandler>) {
-        self.get_routes
-            .insert(path, (handler, path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.get_routes,
+            "GET",
+            path,
+            (handler, path.to_string()),
+        );
         register_route("GET", path);
     }
 
     /// Insert a POST route with a pre-boxed handler (internal use for groups)
     pub(crate) fn insert_post(&mut self, path: &str, handler: Arc<BoxedHandler>) {
-        self.post_routes
-            .insert(path, (handler, path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.post_routes,
+            "POST",
+            path,
+            (handler, path.to_string()),
+        );
         register_route("POST", path);
     }
 
     /// Insert a PUT route with a pre-boxed handler (internal use for groups)
     pub(crate) fn insert_put(&mut self, path: &str, handler: Arc<BoxedHandler>) {
-        self.put_routes
-            .insert(path, (handler, path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.put_routes,
+            "PUT",
+            path,
+            (handler, path.to_string()),
+        );
         register_route("PUT", path);
     }
 
     /// Insert a PATCH route with a pre-boxed handler (internal use for groups)
     pub(crate) fn insert_patch(&mut self, path: &str, handler: Arc<BoxedHandler>) {
-        self.patch_routes
-            .insert(path, (handler, path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.patch_routes,
+            "PATCH",
+            path,
+            (handler, path.to_string()),
+        );
         register_route("PATCH", path);
     }
 
     /// Insert a DELETE route with a pre-boxed handler (internal use for groups)
     pub(crate) fn insert_delete(&mut self, path: &str, handler: Arc<BoxedHandler>) {
-        self.delete_routes
-            .insert(path, (handler, path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.delete_routes,
+            "DELETE",
+            path,
+            (handler, path.to_string()),
+        );
         register_route("DELETE", path);
     }
 
@@ -342,9 +385,12 @@ impl Router {
         Fut: Future<Output = Response> + Send + 'static,
     {
         let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
-        self.get_routes
-            .insert(path, (Arc::new(handler), path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.get_routes,
+            "GET",
+            path,
+            (Arc::new(handler), path.to_string()),
+        );
         register_route("GET", path);
         RouteBuilder {
             router: self,
@@ -360,9 +406,12 @@ impl Router {
         Fut: Future<Output = Response> + Send + 'static,
     {
         let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
-        self.post_routes
-            .insert(path, (Arc::new(handler), path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.post_routes,
+            "POST",
+            path,
+            (Arc::new(handler), path.to_string()),
+        );
         register_route("POST", path);
         RouteBuilder {
             router: self,
@@ -378,9 +427,12 @@ impl Router {
         Fut: Future<Output = Response> + Send + 'static,
     {
         let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
-        self.put_routes
-            .insert(path, (Arc::new(handler), path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.put_routes,
+            "PUT",
+            path,
+            (Arc::new(handler), path.to_string()),
+        );
         register_route("PUT", path);
         RouteBuilder {
             router: self,
@@ -396,9 +448,12 @@ impl Router {
         Fut: Future<Output = Response> + Send + 'static,
     {
         let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
-        self.patch_routes
-            .insert(path, (Arc::new(handler), path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.patch_routes,
+            "PATCH",
+            path,
+            (Arc::new(handler), path.to_string()),
+        );
         register_route("PATCH", path);
         RouteBuilder {
             router: self,
@@ -414,9 +469,12 @@ impl Router {
         Fut: Future<Output = Response> + Send + 'static,
     {
         let handler: BoxedHandler = Box::new(move |req| Box::pin(handler(req)));
-        self.delete_routes
-            .insert(path, (Arc::new(handler), path.to_string()))
-            .ok();
+        insert_route(
+            &mut self.delete_routes,
+            "DELETE",
+            path,
+            (Arc::new(handler), path.to_string()),
+        );
         register_route("DELETE", path);
         RouteBuilder {
             router: self,
