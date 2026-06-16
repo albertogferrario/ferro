@@ -1090,21 +1090,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn builtin_types_count_is_39() {
-        // Drift guard — if this fails, Phase 116's BUILTIN_TYPES changed
-        // without a corresponding catalog update. See Plan 02.
-        // Updated to 40 in Phase 162 Plan 01 (CheckboxList added).
-        // Updated to 42 when DetailPage was added.
-        // Updated to 43 in Phase 175 Plan 04 (CheckboxGroup alias added).
-        // Updated to 44 when MediaCardGrid was added.
-        // Updated to 45 in Phase 169 Plan 02 (StreamText added).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 45);
+    fn builtin_types_count_drift_guard() {
+        // SINGLE source of truth for the absolute builtin-component count. When
+        // BUILTIN_TYPES changes, update the number HERE and nowhere else — every
+        // other test asserts its invariant relationally (against
+        // BUILTIN_TYPES.len()), so a component addition breaks only this test.
+        // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
+        // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 47);
     }
 
     #[test]
     fn builtin_specs_len_matches_dispatch() {
+        // Relational: every builtin type must have exactly one catalog spec.
+        // The absolute count is pinned once, in builtin_types_count_drift_guard.
         assert_eq!(BUILTIN_SPECS.len(), crate::render::BUILTIN_TYPES.len());
-        assert_eq!(BUILTIN_SPECS.len(), 45);
     }
 
     #[test]

@@ -2254,7 +2254,6 @@ mod tests {
     #[test]
     fn builtin_types_includes_raw_html() {
         assert!(crate::render::BUILTIN_TYPES.contains(&"RawHtml"));
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 45);
     }
 
     // ── StreamText (D-04 / AISSE-02 SC#1, SC#2a, SC#2b) ──────────────────────

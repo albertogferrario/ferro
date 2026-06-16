@@ -625,12 +625,17 @@ mod tests {
     }
 
     #[test]
-    fn builtin_types_count_matches_dispatch() {
-        // Defense-in-depth check: BUILTIN_TYPES must be 45 entries.
-        // The dispatch match in `render_element` has one arm per entry plus a
-        // default arm. A compile-time mismatch would be caught by rustc; this
-        // runtime check pins the invariant for future edits.
-        assert_eq!(BUILTIN_TYPES.len(), 45);
+    fn builtin_types_have_no_duplicates() {
+        // The dispatch match in `render_element` has one arm per BUILTIN_TYPES
+        // entry (arm coverage is compile-enforced by rustc). The remaining
+        // runtime risk is a DUPLICATE entry — a shadowed dispatch arm or a
+        // double catalog spec — which this guards relationally (no magic count;
+        // the absolute count is pinned once in
+        // catalog::tests::builtin_types_count_drift_guard).
+        let mut seen = std::collections::HashSet::new();
+        for ty in BUILTIN_TYPES {
+            assert!(seen.insert(ty), "duplicate BUILTIN_TYPES entry: {ty}");
+        }
     }
 
     #[test]
