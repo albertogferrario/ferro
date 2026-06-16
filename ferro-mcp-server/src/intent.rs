@@ -19,7 +19,7 @@ use crate::write_dispatch::handle_write_call;
 #[cfg(feature = "ai")]
 use crate::write_dispatch::write_tool_error_result;
 #[cfg(feature = "ai")]
-use crate::write_dispatch::WriteDispatcher;
+use crate::WriteDispatcher;
 #[cfg(feature = "ai")]
 use sea_orm::DatabaseConnection;
 #[cfg(feature = "ai")]

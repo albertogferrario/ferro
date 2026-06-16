@@ -40,3 +40,22 @@ pub enum Error {
     #[error("confirmation required for action: {0}")]
     ConfirmationRequired(String),
 }
+
+/// Map the channel-agnostic kernel error ([`ferro_rs::write::WriteError`]) into
+/// the MCP crate error at the framing boundary, variant-for-variant. This
+/// preserves the JSON-RPC error-code mapping and `isError:true` semantics: no
+/// variant is silently downgraded to success (threat T-232-03).
+impl From<ferro_rs::write::WriteError> for Error {
+    fn from(e: ferro_rs::write::WriteError) -> Self {
+        use ferro_rs::write::WriteError as W;
+        match e {
+            W::Database(m) => Error::Database(m),
+            W::Serialization(e) => Error::Serialization(e),
+            W::GuardFailed(m) => Error::GuardFailed(m),
+            W::Validation(m) => Error::Validation(m),
+            W::ActionNotFound(m) => Error::ActionNotFound(m),
+            #[cfg(feature = "confirmation")]
+            W::ConfirmationRequired(m) => Error::ConfirmationRequired(m),
+        }
+    }
+}

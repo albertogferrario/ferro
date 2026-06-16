@@ -11,6 +11,10 @@ keywords = ["mcp", "ferro", "projections", "server-driven"]
 categories = ["web-programming", "web-programming::http-server"]
 
 [dependencies]
+# The transition-execution kernel (dispatch_write + WriteDispatcher + WriteError)
+# lives in framework::write; this crate is framing that calls into it. No cycle:
+# `ferro-rs` (framework) does not depend on `ferro-mcp-server`.
+ferro-rs = { path = "../framework", version = "0.2", default-features = false, features = ["projections"] }
 ferro-projections = { path = "../ferro-projections", version = "0.2" }
 ferro-mcp-oauth = { path = "../ferro-mcp-oauth", version = "0.2" }
 ferro-audit = { path = "../ferro-audit", version = "0.2" }
@@ -32,7 +36,7 @@ sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtim
 [features]
 # Enables confirmation gating for destructive actions.
 # Pulls in ferro-ai (confirmation module only — no reqwest, no LLM deps).
-confirmation = ["dep:ferro-ai", "dep:rand"]
+confirmation = ["dep:ferro-ai", "dep:rand", "ferro-rs/confirmation"]
 # Enables the NL intent loop module (ToolSelection, render_tool_descriptions).
 # Pulls in ferro-ai with classifier-trait only — no reqwest in the graph (D-06).
 ai = ["dep:ferro-ai"]

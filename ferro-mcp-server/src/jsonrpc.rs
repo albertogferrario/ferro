@@ -5,8 +5,8 @@
 //! from the request onto the returned object before writing the response.
 
 use crate::config::McpServerConfig;
-use crate::write_dispatch::{handle_write_call, WriteDispatcher};
-use crate::{dispatch, render_exposed_tools, McpContext};
+use crate::write_dispatch::handle_write_call;
+use crate::{dispatch, render_exposed_tools, McpContext, WriteDispatcher};
 use ferro_projections::ServiceDef;
 use rmcp::model::CallToolResult;
 use serde_json::{json, Value};
@@ -221,7 +221,7 @@ mod tests {
         });
 
         // No-op dispatcher: read-path test uses list_ tool, write path is not reached.
-        let noop_dispatcher = crate::write_dispatch::WriteDispatcher::new(
+        let noop_dispatcher = crate::WriteDispatcher::new(
             Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
             Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
         );

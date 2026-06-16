@@ -3,8 +3,7 @@ mod common;
 use common::{item_service, setup_db};
 use ferro_mcp_server::config::McpServerConfig;
 use ferro_mcp_server::jsonrpc::{handle_initialize, handle_tools_call, handle_tools_list};
-use ferro_mcp_server::write_dispatch::WriteDispatcher;
-use ferro_mcp_server::McpContext;
+use ferro_mcp_server::{McpContext, WriteDispatcher};
 use ferro_projections::{DataType, FieldMeaning, ServiceDef};
 use serde_json::json;
 

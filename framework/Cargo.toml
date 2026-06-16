@@ -16,8 +16,8 @@ ai = ["dep:ferro-ai"]
 inertia = ["dep:ferro-inertia"]
 json-ui = ["dep:ferro-json-ui"]
 projections = ["dep:ferro-projections", "dep:ferro-json-ui", "ferro-json-ui/projections", "dep:ferro-text", "dep:ferro-audit"]
-# Enables the confirmation seam in the framework::write kernel (mirrors
-# ferro-mcp-server's confirmation feature). Pure feature flag: the kernel's
+# Enables the confirmation seam in the framework::write kernel (mirrors the
+# MCP channel's confirmation feature). Pure feature flag: the kernel's
 # D-08 seam uses only `action.transition_trigger.is_some()` + an `is_confirmed`
 # bool and a self-contained `WriteError::ConfirmationRequired` variant — no
 # ferro-ai types reach the kernel (the confirmation store stays in the MCP

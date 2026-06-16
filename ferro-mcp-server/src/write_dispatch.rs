@@ -1,148 +1,20 @@
-//! Write tool dispatch for the MCP endpoint.
+//! Write tool dispatch framing for the MCP endpoint.
 //!
-//! Defines [`WriteDispatcher`], [`ExecutorFn`], and [`GuardEvaluatorFn`] — the
-//! app-registered callback pair that makes write tools callable. The actual
-//! execution logic lives in the consumer app; `ferro-mcp-server` owns the
-//! security envelope: scope check (Phase 217), guard re-evaluation against live
-//! DB state (D-02), idempotency replay (D-04), audit (D-05), and a
-//! spec-compliant [`rmcp::model::CallToolResult`] result (D-06).
+//! The transition-execution kernel ([`WriteDispatcher`], [`ExecutorFn`],
+//! [`GuardEvaluatorFn`], [`OverrideFn`], `dispatch_write`) lives in
+//! [`ferro_rs::write`]; this module is the MCP/JSON-RPC framing that calls into
+//! it. `ferro-mcp-server` owns the channel-specific surface: scope check
+//! (Phase 217), action lookup across mcp-exposed services, the confirmation
+//! token seam (Phase 220), JSON-RPC error envelopes, and a spec-compliant
+//! [`rmcp::model::CallToolResult`] result (D-06). It passes the literal channel
+//! `"mcp"` into the kernel so the success-path audit reads `mcp.action.{name}`.
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
 use ferro_projections::{derive_transition_plan, ActionDef, ServiceDef};
+use ferro_rs::write::{dispatch_write, merged_guards, WriteDispatcher, WriteError};
 use rmcp::model::CallToolResult;
-use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
+use sea_orm::DatabaseConnection;
 use serde_json::{json, Value};
-use std::future::Future;
-use std::pin::Pin;
-
-// ── Boxed-future callback types (no async-trait dep) ─────────────────────────
-
-/// App-registered write executor.
-///
-/// Called by `dispatch_write` after guards pass and idempotency is checked.
-/// Receives the action name, validated inputs, the authenticated tenant id
-/// (never from the call payload), and a DB connection.
-/// Returns a JSON `Value` that becomes the `result` payload in the structured
-/// MCP response.
-///
-/// # Audit contract
-///
-/// The returned `Value` is stored **verbatim** in the append-only `audit_log`
-/// table via [`ferro_audit::AuditEntry`]. It MUST NOT contain secrets,
-/// credentials, PII, or any field that should not appear in a forensic log
-/// readable by audit reviewers. Executors are responsible for returning only
-/// audit-safe fields (typically identifiers and status values, e.g.
-/// `{"id": 42, "status": "approved"}`). A full PII scrub at the
-/// `dispatch_write` call site is not performed; the executor is the enforcement
-/// point.
-pub type ExecutorFn = Box<
-    dyn Fn(
-            &str,   // action_name
-            &Value, // validated inputs
-            i64,    // tenant_id (from auth, never from payload)
-            &DatabaseConnection,
-        ) -> Pin<Box<dyn Future<Output = crate::Result<Value>> + Send>>
-        + Send
-        + Sync,
->;
-
-/// App-registered guard evaluator.
-///
-/// Called once per precondition name in `action.preconditions` BEFORE the
-/// executor runs. Must read LIVE DB state — never `ctx.evaluated_guards`.
-/// Returns `Ok(true)` to allow, `Ok(false)` or `Err(_)` to deny.
-pub type GuardEvaluatorFn = Box<
-    dyn Fn(
-            &str,   // guard_name
-            i64,    // tenant_id
-            &Value, // validated inputs (for record-scoped guards)
-            &DatabaseConnection,
-        ) -> Pin<Box<dyn Future<Output = crate::Result<bool>> + Send>>
-        + Send
-        + Sync,
->;
-
-/// App-registered post-persist override hook (EXEC-03).
-///
-/// Runs AFTER the derived/base persist, inside [`dispatch_write`]. Receives the
-/// action name, validated inputs, the authenticated tenant id, a DB connection,
-/// and the base persist result — so it can chain related-record writes keyed off
-/// the just-persisted state.
-///
-/// Because it runs strictly after the guarded base persist, an override cannot
-/// suppress the base guard or transition (threat T-231-05, mitigated).
-///
-/// # Ordering vs. audit/idempotency (WR-01)
-///
-/// The override runs AFTER the base persist's idempotency key and audit entry
-/// are sealed (steps 5–6 in [`dispatch_write`]). There is no surrounding
-/// transaction, so an override that returns `Err` does NOT roll back the base
-/// persist — and the base persist's audit entry and idempotency key remain
-/// committed. An override author must therefore treat the base transition as
-/// already durable when the hook fires: a failing override surfaces its error to
-/// the caller, but the base write stays applied (and audited).
-pub type OverrideFn = Box<
-    dyn Fn(
-            &str,   // action_name
-            &Value, // validated inputs
-            i64,    // tenant_id (from auth, never from payload)
-            &DatabaseConnection,
-            &Value, // base persist result
-        ) -> Pin<Box<dyn Future<Output = crate::Result<()>> + Send>>
-        + Send
-        + Sync,
->;
-
-/// Holds the app-registered write callback, guard evaluator, and optional
-/// post-persist override hooks.
-///
-/// Constructed by the consumer app and passed to [`handle_write_call`].
-/// Not stored in [`crate::McpServerConfig`] — threaded at call-site parallel
-/// to `db` and `tenant_id`.
-pub struct WriteDispatcher {
-    pub executor: ExecutorFn,
-    pub guard_evaluator: GuardEvaluatorFn,
-    /// Optional app-specific post-persist side effects, keyed by action name.
-    /// An absent key is the common path (declaration-only) — the override seam
-    /// adds nothing to a write whose action has no registered hook.
-    pub overrides: std::collections::HashMap<String, OverrideFn>,
-}
-
-impl WriteDispatcher {
-    /// Construct a dispatcher with an empty override registry.
-    pub fn new(executor: ExecutorFn, guard_evaluator: GuardEvaluatorFn) -> Self {
-        Self {
-            executor,
-            guard_evaluator,
-            overrides: std::collections::HashMap::new(),
-        }
-    }
-
-    /// Register a post-persist override hook for `action` (consuming builder).
-    pub fn with_override(mut self, action: impl Into<String>, hook: OverrideFn) -> Self {
-        self.overrides.insert(action.into(), hook);
-        self
-    }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/// Build the live guard set for a write: `preconditions` followed by the
-/// transition-level guard (if any), deduplicated by name with order preserved.
-///
-/// A guard appearing on BOTH the action precondition and the transition guard
-/// — as `is_manager` does on the order projection — is evaluated exactly once
-/// (EXEC-02). The common case (no transition guard) returns `preconditions`
-/// unchanged, keeping the non-transition path back-compatible.
-fn merged_guards(preconditions: &[String], transition_guard: Option<&str>) -> Vec<String> {
-    let mut guards: Vec<String> = preconditions.to_vec();
-    if let Some(g) = transition_guard {
-        if !guards.iter().any(|existing| existing == g) {
-            guards.push(g.to_string());
-        }
-    }
-    guards
-}
 
 /// Locate an [`ActionDef`] by tool name across all mcp-exposed services.
 ///
@@ -194,97 +66,6 @@ pub fn write_tool_error_result(payload: Value) -> Value {
     })
 }
 
-/// Look up a stored idempotency result scoped by BOTH tenant_id AND idempotency_key.
-///
-/// Cross-tenant replay is prevented at the SQL level: the WHERE clause requires
-/// BOTH columns, matching the UNIQUE index on `(tenant_id, idempotency_key)`.
-async fn lookup_idempotency(
-    tenant_id: i64,
-    key: &str,
-    db: &DatabaseConnection,
-) -> crate::Result<Option<Value>> {
-    let backend = db.get_database_backend();
-    let (sql, values) = match backend {
-        DatabaseBackend::Postgres => (
-            "SELECT result FROM mcp_idempotency_keys WHERE tenant_id = $1 AND idempotency_key = $2"
-                .to_string(),
-            vec![
-                sea_orm::Value::BigInt(Some(tenant_id)),
-                sea_orm::Value::String(Some(Box::new(key.to_string()))),
-            ],
-        ),
-        _ => (
-            "SELECT result FROM mcp_idempotency_keys WHERE tenant_id = ? AND idempotency_key = ?"
-                .to_string(),
-            vec![
-                sea_orm::Value::BigInt(Some(tenant_id)),
-                sea_orm::Value::String(Some(Box::new(key.to_string()))),
-            ],
-        ),
-    };
-    let stmt = Statement::from_sql_and_values(backend, &sql, values);
-    match db
-        .query_one(stmt)
-        .await
-        .map_err(|e| crate::Error::Database(e.to_string()))?
-    {
-        None => Ok(None),
-        Some(row) => {
-            let json_text: String = row
-                .try_get("", "result")
-                .map_err(|e| crate::Error::Database(e.to_string()))?;
-            let value: Value = serde_json::from_str(&json_text)
-                .map_err(|e| crate::Error::Database(e.to_string()))?;
-            Ok(Some(value))
-        }
-    }
-}
-
-/// Store an idempotency result scoped by (tenant_id, idempotency_key).
-///
-/// Uses INSERT OR IGNORE (SQLite) / ON CONFLICT DO NOTHING (Postgres) for
-/// concurrency safety — a second concurrent identical request will not cause
-/// a UNIQUE constraint error (PITFALLS §5).
-async fn store_idempotency(
-    tenant_id: i64,
-    key: &str,
-    result: &Value,
-    db: &DatabaseConnection,
-) -> crate::Result<()> {
-    let backend = db.get_database_backend();
-    let json_text = serde_json::to_string(result).map_err(crate::Error::Serialization)?;
-
-    let (sql, values) = match backend {
-        DatabaseBackend::Postgres => (
-            "INSERT INTO mcp_idempotency_keys (tenant_id, idempotency_key, result, created_at) \
-             VALUES ($1, $2, $3, NOW()) ON CONFLICT (tenant_id, idempotency_key) DO NOTHING"
-                .to_string(),
-            vec![
-                sea_orm::Value::BigInt(Some(tenant_id)),
-                sea_orm::Value::String(Some(Box::new(key.to_string()))),
-                sea_orm::Value::String(Some(Box::new(json_text))),
-            ],
-        ),
-        _ => (
-            "INSERT OR IGNORE INTO mcp_idempotency_keys \
-             (tenant_id, idempotency_key, result) VALUES (?, ?, ?)"
-                .to_string(),
-            vec![
-                sea_orm::Value::BigInt(Some(tenant_id)),
-                sea_orm::Value::String(Some(Box::new(key.to_string()))),
-                sea_orm::Value::String(Some(Box::new(json_text))),
-            ],
-        ),
-    };
-    let stmt = Statement::from_sql_and_values(backend, &sql, values);
-    db.execute(stmt)
-        .await
-        .map_err(|e| crate::Error::Database(e.to_string()))?;
-    Ok(())
-}
-
-// ── Core pipeline ─────────────────────────────────────────────────────────────
-
 // ── Token generator (confirmation feature only) ───────────────────────────────
 
 /// Generate a server-side CSPRNG confirmation token.
@@ -305,156 +86,6 @@ fn generate_confirmation_token() -> String {
         })
         .collect();
     format!("cfm_{random}")
-}
-
-// ── Core pipeline ─────────────────────────────────────────────────────────────
-
-/// Execute a write action with guard re-evaluation, idempotency, and audit.
-///
-/// Pipeline order (D-07):
-/// 1. Guard re-evaluation (D-02) — LIVE state via `dispatcher.guard_evaluator`.
-///    CRITICAL: `ctx.evaluated_guards` is the 218 list-time visibility cache and
-///    is NEVER consulted here. Authorization at call time must use live DB state.
-/// 2. Idempotency check (D-04) — replay stored result without re-executing.
-/// 3. D-08 confirmation seam — gate for destructive actions (Phase 220).
-/// 4. Execute callback (D-01).
-/// 5. Store idempotency result (D-04).
-/// 6. Audit via ferro-audit (D-05).
-/// 7. Post-persist override hook (EXEC-03).
-///
-/// WR-01: steps 5–6 (idempotency-store + audit of the base persist) run BEFORE
-/// the override hook (step 7). There is no surrounding transaction, so the base
-/// persist (step 4) has already committed by the time the override runs; sealing
-/// its idempotency key and audit entry first guarantees a committed base
-/// transition is always recorded and never re-executable, even if the
-/// app-specific override side effect later fails.
-///
-/// The `is_confirmed` parameter (confirmation feature only) signals that this
-/// call came from `handle_confirm` after token validation — the D-08 seam is
-/// bypassed when `true`. Bare callers always pass `false` (or omit when feature
-/// is off).
-pub async fn dispatch_write(
-    action: &ActionDef,
-    inputs: &Value,
-    tenant_id: i64,
-    db: &DatabaseConnection,
-    dispatcher: &WriteDispatcher,
-    transition_guard: Option<&str>,
-    #[cfg(feature = "confirmation")] is_confirmed: bool,
-) -> crate::Result<Value> {
-    // 1. Guard re-evaluation (D-02, T-219-02 — load-bearing security gate).
-    //
-    // Calls the app-registered GuardEvaluatorFn for EVERY guard in the UNION of
-    // action.preconditions and the transition-level guard (EXEC-02), deduped by
-    // name, against LIVE DB state. Fail-closed: a guard returning Ok(false) OR
-    // any Err immediately returns Err(GuardFailed).
-    //
-    // IMPORTANT: ctx.evaluated_guards (the 218 list-time visibility cache) is
-    // intentionally NOT consulted here. An agent may bypass tools/list entirely
-    // and call tools/call directly — only this live re-evaluation prevents the
-    // guard-bypass privilege-escalation class (PITFALLS §2 / T-219-02).
-    let guards = merged_guards(&action.preconditions, transition_guard);
-    for guard_name in &guards {
-        let passes = (dispatcher.guard_evaluator)(guard_name, tenant_id, inputs, db)
-            .await
-            .map_err(|e| crate::Error::GuardFailed(format!("{guard_name}: {e}")))?;
-        if !passes {
-            return Err(crate::Error::GuardFailed(format!(
-                "precondition '{guard_name}' not met"
-            )));
-        }
-    }
-
-    // 2. Idempotency check (D-04).
-    //
-    // Lookup is scoped by BOTH tenant_id AND idempotency_key to prevent
-    // cross-tenant replay (T-219-01). Absent key = no guard (key is optional).
-    //
-    // Length cap: idempotency_key is not declared in ActionDef.inputs so
-    // validate_action_inputs() never sees it. Reject keys longer than 128
-    // characters to prevent unbounded TEXT storage (storage DoS surface).
-    if let Some(key) = inputs.get("idempotency_key").and_then(|v| v.as_str()) {
-        if key.len() > 128 {
-            return Err(crate::Error::Validation(
-                "idempotency_key must not exceed 128 characters".into(),
-            ));
-        }
-    }
-    let idempotency_key = inputs.get("idempotency_key").and_then(|v| v.as_str());
-    if let Some(key) = idempotency_key {
-        if let Some(stored_result) = lookup_idempotency(tenant_id, key, db).await? {
-            // Replay: return stored result without re-executing or re-auditing.
-            // The original call was already audited; replaying does not add a new entry.
-            return Ok(stored_result);
-        }
-    }
-
-    // 3. D-08 SEAM (Phase 220): confirmation gate for destructive actions.
-    //
-    // When the `confirmation` feature is on, a bare call to a destructive action
-    // (transition_trigger.is_some()) without a valid confirmation context returns
-    // Err(ConfirmationRequired) — the executor never fires. `handle_confirm` sets
-    // is_confirmed=true to bypass this seam after token validation.
-    //
-    // Feature-off: fall through to executor (Phase 219 behavior preserved).
-    #[cfg(feature = "confirmation")]
-    if action.transition_trigger.is_some() && !is_confirmed {
-        return Err(crate::Error::ConfirmationRequired(action.name.clone()));
-    }
-    #[cfg(not(feature = "confirmation"))]
-    let _ = &action.transition_trigger;
-
-    // 4. Execute callback (D-01).
-    //    The executor owns TenantScoped enforcement (D-03): find_for_tenant(id, tenant_id)
-    //    returning None is the cross-tenant denial primitive.
-    let result = (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?;
-
-    // 5. Store idempotency result (D-04).
-    //    INSERT OR IGNORE / ON CONFLICT DO NOTHING for concurrency safety.
-    //
-    //    WR-01: sealed BEFORE the override hook. There is no surrounding
-    //    transaction, so the executor's base persist has already committed by
-    //    this point. If the override (an app-specific side effect) ran first and
-    //    failed, its `?` would short-circuit BEFORE the key is stored, leaving a
-    //    committed base transition re-executable on retry (no stored key). Storing
-    //    the key here guarantees a committed base persist is never re-executed,
-    //    even when a later override fails.
-    if let Some(key) = idempotency_key {
-        store_idempotency(tenant_id, key, &result, db).await?;
-    }
-
-    // 6. Audit (D-05, SC#4) — record after every successful base persist.
-    //    Denial audit (guard-failed path) is recorded in handle_write_call.
-    //
-    //    WR-01: sealed BEFORE the override hook for the same reason. The base
-    //    persist committed at step 4; the "every successful execution is audited"
-    //    invariant must hold regardless of whether the app-specific override side
-    //    effect later succeeds. An override failure does NOT roll back the base
-    //    persist (no transaction), so the base persist is audited here
-    //    unconditionally — the audit entry never overstates what persisted.
-    let record_id = inputs.get("id").map(|v| v.to_string()).unwrap_or_default();
-    AuditEntry::record(format!("mcp.action.{}", &action.name))
-        .tenant(tenant_id.to_string())
-        .actor(AuditActor::User(tenant_id.to_string()))
-        .target(AuditTarget::new(&action.name, record_id))
-        .after(result.clone())
-        .reason(&action.name)
-        .write(db)
-        .await
-        .map_err(|e| crate::Error::Database(e.to_string()))?;
-
-    // 7. Post-persist override hook (EXEC-03).
-    //    Runs AFTER the base persist is durable, idempotency-keyed, and audited
-    //    (steps 4–6) — it cannot suppress the base guard or transition
-    //    (T-231-05). An override `Err` propagates via `?` WITHOUT erasing the
-    //    base persist's idempotency key or audit entry: those are already
-    //    committed above. Absent key = common path (declaration-only); the
-    //    override adds nothing.
-    if let Some(hook) = dispatcher.overrides.get(&action.name) {
-        (hook)(&action.name, inputs, tenant_id, db, &result).await?;
-    }
-
-    Ok(result)
 }
 
 /// Route a non-`list_` tool call to the write dispatch path.
@@ -555,6 +186,7 @@ pub async fn handle_write_call(
     }
 
     // Dispatch: guard re-eval → idempotency → seam → execute → store → audit.
+    // The literal channel "mcp" makes the success-path audit `mcp.action.{name}`.
     match dispatch_write(
         action,
         &args,
@@ -562,6 +194,7 @@ pub async fn handle_write_call(
         db,
         dispatcher,
         transition_guard,
+        "mcp",
         #[cfg(feature = "confirmation")]
         false,
     )
@@ -576,8 +209,11 @@ pub async fn handle_write_call(
             let tool_result = CallToolResult::structured(payload);
             json!({ "result": tool_result })
         }
-        Err(crate::Error::GuardFailed(ref msg)) => {
+        Err(WriteError::GuardFailed(ref msg)) => {
             // Audit the denial for forensic trail (PITFALLS §2 / D-05).
+            // This denial audit lives in the MCP framing (not the kernel), so the
+            // literal `mcp.action.{name}` is pinned here — the `:1308` regression
+            // asserts the exact string. Do NOT parameterize this site.
             let record_id = args.get("id").map(|v| v.to_string()).unwrap_or_default();
             let _ = AuditEntry::record(format!("mcp.action.{}", action.name))
                 .tenant(tid.to_string())
@@ -594,7 +230,7 @@ pub async fn handle_write_call(
         }
         // Confirmation required: agent must use request_confirm_<action> first.
         #[cfg(feature = "confirmation")]
-        Err(crate::Error::ConfirmationRequired(ref action_name)) => {
+        Err(WriteError::ConfirmationRequired(ref action_name)) => {
             json!({ "result": write_tool_error_result(json!({
                 "error_kind": "confirmation_required",
                 "message": format!("use request_confirm_{action_name} first"),
@@ -602,7 +238,7 @@ pub async fn handle_write_call(
             })) })
         }
         // Agent-safe variants: pass message through (no internal state in these strings).
-        Err(ref e @ crate::Error::Validation(_)) | Err(ref e @ crate::Error::ActionNotFound(_)) => {
+        Err(ref e @ WriteError::Validation(_)) | Err(ref e @ WriteError::ActionNotFound(_)) => {
             json!({ "result": write_tool_error_result(json!({
                 "error_kind": "execution_error",
                 "message": e.to_string()
@@ -862,6 +498,7 @@ pub async fn handle_confirm(
     }
 
     // Execute via dispatch_write with is_confirmed=true (bypasses D-08 seam).
+    // Literal channel "mcp" → success-path audit `mcp.action.{name}`.
     match dispatch_write(
         action,
         stored_inputs,
@@ -869,6 +506,7 @@ pub async fn handle_confirm(
         db,
         dispatcher,
         transition_guard,
+        "mcp",
         true,
     )
     .await
@@ -882,7 +520,7 @@ pub async fn handle_confirm(
             let tool_result = CallToolResult::structured(payload);
             json!({ "result": tool_result })
         }
-        Err(crate::Error::GuardFailed(ref msg)) => {
+        Err(WriteError::GuardFailed(ref msg)) => {
             json!({ "result": write_tool_error_result(json!({
                 "error_kind": "guard_denied",
                 "message": msg
@@ -905,8 +543,6 @@ mod tests {
     use rmcp::model::CallToolResult;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
     use serde_json::json;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
 
     // ── Test DB setup ─────────────────────────────────────────────────────────
 
@@ -996,402 +632,6 @@ mod tests {
             .action(approve_action())
             .action(submit_action())
             .action(update_action())
-    }
-
-    // ── SC#1 — T-219-02 ──────────────────────────────────────────────────────
-
-    /// SC#1 (T-219-02): A guard evaluator returning `Ok(false)` must cause
-    /// `dispatch_write` to return `Err(GuardFailed(_))` WITHOUT invoking the
-    /// executor. Validates that guard re-evaluation happens BEFORE execution and
-    /// reads the `GuardEvaluatorFn`, never `ctx.evaluated_guards`.
-    #[tokio::test]
-    async fn guard_denied_at_call_time() {
-        let db = setup_db().await;
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(false) })),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { panic!("executor must not run when guard fails") })
-            }),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        let result = dispatch_write(
-            &approve_action(),
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            false,
-        )
-        .await;
-
-        assert!(
-            matches!(result, Err(crate::Error::GuardFailed(_))),
-            "expected Err(GuardFailed(_)), got: {result:?}"
-        );
-    }
-
-    // ── EXEC-02 — transition-guard union + dedup in the live loop ─────────────
-
-    /// A guard_evaluator returning `Ok(false)` for a transition that carries a
-    /// `Transition.guard` causes `dispatch_write` to return `Err(GuardFailed(_))`
-    /// and the executor never runs (state unchanged). The transition guard is
-    /// passed explicitly here (as handle_write_call derives it from the plan).
-    #[tokio::test]
-    async fn guard_rejects_illegal_transition() {
-        let db = setup_db().await;
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(false) })),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { panic!("executor must not run when transition guard fails") })
-            }),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        let result = dispatch_write(
-            &submit_action(), // no action.preconditions
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            Some("is_manager"), // transition-level guard only
-            #[cfg(feature = "confirmation")]
-            false,
-        )
-        .await;
-
-        assert!(
-            matches!(result, Err(crate::Error::GuardFailed(_))),
-            "expected Err(GuardFailed(_)) from the transition guard, got: {result:?}"
-        );
-    }
-
-    /// A transition-level guard present on the PLAN but absent from
-    /// `action.preconditions` is still evaluated — proves `Transition.guard` is
-    /// enforced, not just `action.preconditions`. The evaluator records every
-    /// guard name it sees; we assert `is_manager` was among them.
-    #[tokio::test]
-    async fn transition_guard_evaluated_at_call_time() {
-        let db = setup_db().await;
-        let saw_transition_guard = Arc::new(std::sync::atomic::AtomicBool::new(false));
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new({
-                let flag = saw_transition_guard.clone();
-                move |name: &str, _, _, _| {
-                    if name == "is_manager" {
-                        flag.store(true, Ordering::SeqCst);
-                    }
-                    Box::pin(async { Ok(true) })
-                }
-            }),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { Ok(json!({ "status": "submitted" })) })
-            }),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        // submit_action has NO preconditions; the guard comes only from the plan.
-        let result = dispatch_write(
-            &submit_action(),
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            Some("is_manager"),
-            #[cfg(feature = "confirmation")]
-            true, // bypass the D-08 confirmation seam for this transition action
-        )
-        .await;
-
-        assert!(
-            result.is_ok(),
-            "guard returns true, write must succeed: {result:?}"
-        );
-        assert!(
-            saw_transition_guard.load(Ordering::SeqCst),
-            "the transition-level guard 'is_manager' must be evaluated live"
-        );
-    }
-
-    /// A guard name present on BOTH the transition AND the action precondition
-    /// (`is_manager` on `approve`) fires the evaluator exactly ONCE (deduped by
-    /// name).
-    #[tokio::test]
-    async fn guard_deduped_when_on_both() {
-        let db = setup_db().await;
-        let call_count = Arc::new(AtomicUsize::new(0));
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new({
-                let count = call_count.clone();
-                move |name: &str, _, _, _| {
-                    if name == "is_manager" {
-                        count.fetch_add(1, Ordering::SeqCst);
-                    }
-                    Box::pin(async { Ok(true) })
-                }
-            }),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { Ok(json!({ "status": "approved" })) })
-            }),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        // approve_action has precondition("is_manager"); transition guard is also
-        // "is_manager" — the union must dedup to a single evaluation.
-        let result = dispatch_write(
-            &approve_action(),
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            Some("is_manager"),
-            #[cfg(feature = "confirmation")]
-            true,
-        )
-        .await;
-
-        assert!(
-            result.is_ok(),
-            "both guards pass; write must succeed: {result:?}"
-        );
-        assert_eq!(
-            call_count.load(Ordering::SeqCst),
-            1,
-            "is_manager must be evaluated exactly once (deduped), not twice"
-        );
-    }
-
-    // ── EXEC-03 — post-persist override hook registry ─────────────────────────
-
-    /// An override registered for an action runs AFTER the base persist (observed
-    /// via a counter the override increments). The base transition result is
-    /// returned unchanged.
-    #[tokio::test]
-    async fn override_hook_runs_post_persist() {
-        let db = setup_db().await;
-        let order = Arc::new(std::sync::Mutex::new(Vec::<&'static str>::new()));
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-            executor: Box::new({
-                let order = order.clone();
-                move |_, _, _, _| {
-                    order.lock().unwrap().push("persist");
-                    Box::pin(async { Ok(json!({ "status": "submitted" })) })
-                }
-            }),
-            overrides: std::collections::HashMap::new(),
-        }
-        .with_override(
-            "submit",
-            Box::new({
-                let order = order.clone();
-                move |_action, _inputs, _tenant, _db, base_result: &Value| {
-                    // The override sees the base persist result.
-                    assert_eq!(base_result["status"], "submitted");
-                    order.lock().unwrap().push("override");
-                    Box::pin(async { Ok(()) })
-                }
-            }),
-        );
-
-        let result = dispatch_write(
-            &submit_action(),
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            true,
-        )
-        .await;
-
-        assert!(result.is_ok(), "write must succeed: {result:?}");
-        assert_eq!(
-            result.unwrap(),
-            json!({ "status": "submitted" }),
-            "base result must be returned unchanged by the override"
-        );
-        assert_eq!(
-            *order.lock().unwrap(),
-            vec!["persist", "override"],
-            "override must run AFTER the base persist"
-        );
-    }
-
-    /// With NO override registered, `dispatch_write` behaves exactly as before —
-    /// the common path is declaration-only and untouched.
-    #[tokio::test]
-    async fn no_override_is_declaration_only() {
-        let db = setup_db().await;
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { Ok(json!({ "status": "submitted" })) })
-            }),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        let result = dispatch_write(
-            &submit_action(),
-            &json!({"id": 1}),
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            true,
-        )
-        .await;
-
-        assert!(result.is_ok(), "no-override path must succeed: {result:?}");
-        assert_eq!(result.unwrap(), json!({ "status": "submitted" }));
-    }
-
-    /// An override returning `Err` causes `dispatch_write` to return `Err` — the
-    /// error propagates without panicking.
-    ///
-    /// WR-01: the base persist's idempotency key AND audit entry are sealed
-    /// BEFORE the override runs (steps 5–6 precede step 7). Because there is no
-    /// surrounding transaction, the committed base persist must remain recorded
-    /// even though the override failed. This test asserts BOTH the audit entry
-    /// and the idempotency key exist after the override errors — the base write
-    /// is never left unaudited or re-executable.
-    #[tokio::test]
-    async fn override_error_surfaces() {
-        let db = setup_db().await;
-
-        let dispatcher = WriteDispatcher {
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-            executor: Box::new(|_, _, _, _| {
-                Box::pin(async { Ok(json!({ "status": "submitted" })) })
-            }),
-            overrides: std::collections::HashMap::new(),
-        }
-        .with_override(
-            "submit",
-            Box::new(|_action, _inputs, _tenant, _db, _base| {
-                Box::pin(async { Err(crate::Error::Validation("override failed".into())) })
-            }),
-        );
-
-        let result = dispatch_write(
-            &submit_action(),
-            &json!({"id": 1, "idempotency_key": "ovr-fail-1"}),
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            true,
-        )
-        .await;
-
-        assert!(
-            matches!(result, Err(crate::Error::Validation(ref m)) if m == "override failed"),
-            "override error must propagate, got: {result:?}"
-        );
-
-        // WR-01: the base persist's audit entry must exist despite the override
-        // failure — the "every successful execution is audited" invariant holds.
-        let audit_count: i64 = db
-            .query_one(Statement::from_string(
-                DatabaseBackend::Sqlite,
-                "SELECT COUNT(*) AS c FROM audit_log WHERE action = 'mcp.action.submit'"
-                    .to_string(),
-            ))
-            .await
-            .expect("audit query must succeed")
-            .expect("audit count row must exist")
-            .try_get::<i64>("", "c")
-            .expect("audit count column");
-        assert_eq!(
-            audit_count, 1,
-            "base persist must be audited even when the override fails (WR-01)"
-        );
-
-        // WR-01: the idempotency key must be stored despite the override failure —
-        // a retry must not re-execute the already-committed base transition.
-        let stored = lookup_idempotency(1, "ovr-fail-1", &db)
-            .await
-            .expect("idempotency lookup must succeed");
-        assert_eq!(
-            stored,
-            Some(json!({ "status": "submitted" })),
-            "base persist's idempotency key must be stored even when the override fails (WR-01)"
-        );
-    }
-
-    // ── SC#3 — T-219-03 ──────────────────────────────────────────────────────
-
-    /// SC#3 (T-219-03): Two identical `dispatch_write` calls with the same
-    /// `idempotency_key` must produce equal results and fire the executor
-    /// exactly once. Validates that the idempotency table prevents re-execution.
-    #[tokio::test]
-    async fn idempotent_replay_does_not_re_execute() {
-        let db = setup_db().await;
-        let exec_count = Arc::new(AtomicUsize::new(0));
-
-        let dispatcher = WriteDispatcher {
-            executor: Box::new({
-                let count = exec_count.clone();
-                move |_, _, _, _| {
-                    count.fetch_add(1, Ordering::SeqCst);
-                    Box::pin(async { Ok(json!({ "status": "submitted" })) })
-                }
-            }),
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-            overrides: std::collections::HashMap::new(),
-        };
-
-        let args = json!({ "id": 1, "idempotency_key": "k-abc" });
-
-        let result1 = dispatch_write(
-            &update_action(),
-            &args,
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            false,
-        )
-        .await;
-        let result2 = dispatch_write(
-            &update_action(),
-            &args,
-            1,
-            &db,
-            &dispatcher,
-            None,
-            #[cfg(feature = "confirmation")]
-            false,
-        )
-        .await;
-
-        assert!(result1.is_ok(), "first call must succeed; got: {result1:?}");
-        assert!(
-            result2.is_ok(),
-            "second call must succeed (replay); got: {result2:?}"
-        );
-        assert_eq!(
-            result1.unwrap(),
-            result2.unwrap(),
-            "idempotent replay must return the same result"
-        );
-        assert_eq!(
-            exec_count.load(Ordering::SeqCst),
-            1,
-            "executor must fire exactly once despite two identical calls"
-        );
     }
 
     // ── SC#5 ─────────────────────────────────────────────────────────────────
@@ -1674,12 +914,13 @@ mod confirmation_tests {
             &db,
             &dispatcher,
             None,
+            "mcp",
             false, // is_confirmed = false → triggers seam
         )
         .await;
 
         assert!(
-            matches!(result, Err(crate::Error::ConfirmationRequired(_))),
+            matches!(result, Err(WriteError::ConfirmationRequired(_))),
             "expected Err(ConfirmationRequired(_)), got: {result:?}"
         );
         assert_eq!(
