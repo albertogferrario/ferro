@@ -1,5 +1,7 @@
 {
   "date": "2026-06-15",
+  "perf_remeasured_date": "2026-06-16",
+  "perf_remeasure_note": "Perf section (RESULTS.md §3) re-measured 2026-06-16 after the article-list N+1 fix (commit edf71f9c); all four apps re-run back-to-back in one fresh host state (post Docker restart, freed disk). Conformance (§1) and static (§2) unchanged from 2026-06-15. Absolute throughput is not comparable across the 2026-06-15/2026-06-16 host-state change; compare only within the 2026-06-16 table.",
   "workload": "Conduit (RealWorld) real-app backend",
   "hardware": {
     "cpu_model": "Apple M1 Pro",
