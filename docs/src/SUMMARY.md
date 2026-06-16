@@ -50,6 +50,8 @@
 - [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
 - [Service Projections](features/projections.md)
+- [Transition Planning](features/transition-planning.md)
+- [Write Kernel](features/write-kernel.md)
 - [Live Read-Models](features/live-read-models.md)
 - [AI & Confirmation](features/ai.md)
 - [Deployments](features/deployments.md)

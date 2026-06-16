@@ -239,3 +239,16 @@ GET actions render as links. Use `"method": "GET"` on any element to make it a n
   }
 }
 ```
+
+## Projection Action Buttons
+
+Action buttons emitted by the [Service Projections](../features/projections.md) renderer use a route-name-free convention: a page-level action button targets `POST /{service}/{action}`, and a DataTable row action targets `POST /{service}/{row_key}/{action}`. These URLs are synthesized from the service and action names rather than resolved from a handler name.
+
+The consumer application provides a handler at that route. The handler must:
+
+- resolve the `(ServiceDef, ActionDef)` for the path parameters (unknown service/action → 404),
+- read the tenant from the authenticated principal, never from the request body,
+- derive the target state and transition guard from `derive_transition_plan` — never read `to_state`/`status` from the body,
+- call `dispatch_write` to run guard re-evaluation, idempotency, audit, and any override.
+
+See the [Write Kernel](../features/write-kernel.md) for the `dispatch_write` pipeline and [Transition Planning](../features/transition-planning.md) for deriving the target state from the state machine.

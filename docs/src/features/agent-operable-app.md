@@ -109,52 +109,62 @@ mutation tenant-scoped, and a **guard evaluator** that re-checks preconditions a
 live database. The framework never trusts the agent's view of guards — the evaluator runs at
 call time and is **fail-closed** (an unknown guard name is denied, not allowed).
 
+`WriteDispatcher`, the callback types, and the `dispatch_write` pipeline live on the
+`ferro::write` facade. See the [Write Kernel](write-kernel.md) for the full pipeline and the
+[Transition Planning](transition-planning.md) page for how the target state is derived from the
+state machine — the same single kernel backs both this MCP path and the visual write path.
+
 ```rust
+use ferro::write::{WriteDispatcher, WriteError};
+use ferro::derive_transition_plan;
+
 pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
-    WriteDispatcher {
-        executor: Box::new(|action_name, inputs, tenant_id, db| {
+    WriteDispatcher::new(
+        // executor: perform the tenant-scoped mutation
+        Box::new(|action_name, inputs, tenant_id, db| {
             let action_name = action_name.to_string();
             let id_val = inputs["id"].as_i64();
             let db = db.clone();
             Box::pin(async move {
                 let id = id_val
-                    .ok_or_else(|| ferro_mcp_server::Error::Validation("missing id".into()))?;
+                    .ok_or_else(|| WriteError::Validation("missing id".into()))?;
 
                 // find_for_tenant: filter by id AND tenant_id — None => cross-tenant denial.
                 let order = Entity::find_by_id(id as i32)
                     .filter(Column::TenantId.eq(tenant_id))
                     .one(&db).await
-                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?
-                    .ok_or_else(|| ferro_mcp_server::Error::Validation(
+                    .map_err(|e| WriteError::Database(e.to_string()))?
+                    .ok_or_else(|| WriteError::Validation(
                         "not found or cross-tenant access denied".into()))?;
 
-                let new_status = match action_name.as_str() {
-                    "submit" => "submitted",
-                    "approve" => "approved",
-                    "ship" => "shipped",
-                    _ => return Err(ferro_mcp_server::Error::ActionNotFound(action_name)),
-                };
+                // The target state is DERIVED from the StateMachine, not a hand-written
+                // `match action_name => status`. derive_transition_plan reads Transition.to —
+                // the single source of truth — so the executor and the state machine cannot drift.
+                let svc = crate::projections::order::service_def();
+                let plan = derive_transition_plan(&svc, &action_name)
+                    .map_err(|e| WriteError::Validation(e.to_string()))?;
 
                 let mut active: OrderActive = order.into();
-                active.status = Set(new_status.to_string());
+                active.status = Set(plan.to_state.clone());
                 let updated = active.update(&db).await
-                    .map_err(|e| ferro_mcp_server::Error::Database(e.to_string()))?;
+                    .map_err(|e| WriteError::Database(e.to_string()))?;
                 Ok(json!({ "id": updated.id, "status": updated.status }))
             })
         }),
-        guard_evaluator: Box::new(|guard_name, tenant_id, _inputs, db| {
+        // guard_evaluator: re-check preconditions against LIVE DB state, fail-closed
+        Box::new(|guard_name, tenant_id, _inputs, db| {
             let guard_name = guard_name.to_string();
             let db = db.clone();
             Box::pin(async move {
                 match guard_name.as_str() {
                     "is_manager" => Ok(check_is_manager(tenant_id, &db).await), // live DB check
                     // Fail-closed: an unrecognized guard is denied, never silently allowed.
-                    _ => Err(ferro_mcp_server::Error::GuardFailed(format!(
+                    _ => Err(WriteError::GuardFailed(format!(
                         "unknown guard '{guard_name}': no evaluator registered"))),
                 }
             })
         }),
-    }
+    )
 }
 
 pub(crate) fn exposed_services() -> Vec<ServiceDef> {
@@ -164,7 +174,9 @@ pub(crate) fn exposed_services() -> Vec<ServiceDef> {
 
 The executor's `find_by_id(id).filter(tenant_id)` pattern is what makes cross-tenant writes
 structurally impossible: a row owned by another tenant resolves to `None` and the call fails
-before any mutation.
+before any mutation. The target state comes from `derive_transition_plan` rather than a
+hand-written status map, so the executor cannot drift from the declared state machine — the
+same dispatcher is reused unchanged by the visual write path.
 
 ## Step 4 — Confirmation gating for destructive actions
 
@@ -288,4 +300,6 @@ message) claims:
 
 - [MCP OAuth Authorization Server](mcp-oauth.md) — the browser authorization-code and device flows.
 - [MCP Per-Tenant API-Key Auth](mcp-api-key-auth.md) — the `ferro_` key path for headless agents.
+- [Write Kernel](write-kernel.md) — the channel-agnostic `dispatch_write` pipeline this page's writes run through.
+- [Transition Planning](transition-planning.md) — deriving the write target from the state machine.
 - [Multi-Tenancy](multi-tenancy.md) — the tenant context the dispatch paths read.

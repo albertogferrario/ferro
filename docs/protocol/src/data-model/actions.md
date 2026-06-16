@@ -26,7 +26,7 @@ A business operation schema describing what an action does and what it needs.
 
 1. The `name` field MUST be a non-empty string.
 2. Each string in `preconditions` MUST reference the `name` of a [`GuardDef`](#guarddef) in the parent [`ServiceDef.guards`](service-def.md) array. Undefined guard references are validation errors.
-3. `transition_trigger`, when present, SHOULD reference an event name used in the parent [`ServiceDef.state_machine`](state-machine.md) transitions. An action with `transition_trigger` set but no state machine on the `ServiceDef` SHOULD produce a warning.
+3. `transition_trigger`, when present, MUST reference an event name carried by a transition in the parent [`ServiceDef.state_machine`](state-machine.md). A trigger naming an undeclared transition is a validation error at registration (`ServiceDef::validate()` returns `Err`), preventing executor/state-machine drift (EXEC-04). The event MUST resolve to a single target state: an event that fans out to more than one `Transition.to` is an ambiguous-transition validation error. An action with `transition_trigger` set but no state machine on the `ServiceDef` SHOULD produce a warning.
 4. `effects` are descriptive string references for documentation and introspection. They are not executable.
 5. `display_name`, `description`, `inputs` (when empty), `preconditions` (when empty), `effects` (when empty), and `transition_trigger` are omitted from JSON output when not set or empty.
 

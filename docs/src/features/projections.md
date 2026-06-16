@@ -578,6 +578,35 @@ The renderer picks the first `Money` or `Quantity` readable field as the primary
 
 The `value_path` field is resolved at render time via the same JSON-pointer mechanism as `data_path` on other components (see [Data Binding](../json-ui/data-binding.md)). The static `value` string in the spec is the fallback when `value_path` is absent or fails to resolve.
 
+## Write Contracts
+
+The renderer emits action affordances; executing them is the consumer application's responsibility. Two pages cover the write path:
+
+- [Transition Planning](transition-planning.md) — derive a write's target state and guard from the declared `StateMachine`, so the target is declared once and never hand-written.
+- [Write Kernel](write-kernel.md) — the channel-agnostic `dispatch_write` pipeline: server-side guard re-evaluation, idempotency, audit, and post-persist override. One kernel backs both the MCP and the visual write paths.
+
+A page-level action button emits `POST /{service}/{action}`. The handler at that route resolves the `(ServiceDef, ActionDef)`, reads the tenant from auth, derives the transition guard from the plan, and calls `dispatch_write` — it never reads the target state from the request body:
+
+```rust
+use ferro::{derive_transition_plan, write::dispatch_write};
+
+let plan = derive_transition_plan(svc, &action.name).ok();
+let transition_guard = plan.as_ref().and_then(|p| p.guard.as_deref());
+
+let outcome = dispatch_write(
+    action,
+    &inputs,
+    tenant_id,         // from auth, never the body
+    db,
+    &dispatcher,
+    transition_guard,  // derived from the StateMachine
+    "web",             // audit channel
+    #[cfg(feature = "confirmation")]
+    false,
+)
+.await;
+```
+
 ---
 
 ## MCP Tools
