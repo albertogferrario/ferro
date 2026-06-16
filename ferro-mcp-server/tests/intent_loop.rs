@@ -447,6 +447,7 @@ mod intent_loop {
                     Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         // Threshold 0.7 < confidence 0.95: classifier succeeds.
@@ -517,6 +518,7 @@ mod intent_loop {
                     Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         let config = ClassifierConfig {
@@ -587,6 +589,7 @@ mod intent_loop {
                     Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         // Threshold 0.7 < confidence 0.92: classifier succeeds.
@@ -651,6 +654,7 @@ mod intent_loop {
                     Box::pin(async { Ok(serde_json::json!({ "status": "submitted" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         // Threshold 0.7 < confidence 0.9: classifier succeeds.
@@ -721,6 +725,7 @@ mod intent_loop {
                     Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         // Default threshold 0.7 > fixture confidence 0.3 → LowConfidence.
@@ -795,6 +800,7 @@ mod intent_loop {
             executor: Box::new(|_, _, _, _| {
                 Box::pin(async { Ok(serde_json::json!({ "status": "ok" })) })
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         let config = ClassifierConfig {
@@ -881,6 +887,7 @@ mod intent_loop {
                         Box::pin(async { Ok(serde_json::json!({ "status": "approved" })) })
                     }
                 }),
+                overrides: std::collections::HashMap::new(),
             };
 
             let config = ClassifierConfig {

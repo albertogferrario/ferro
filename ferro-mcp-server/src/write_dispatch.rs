@@ -8,7 +8,7 @@
 //! spec-compliant [`rmcp::model::CallToolResult`] result (D-06).
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
-use ferro_projections::{ActionDef, ServiceDef};
+use ferro_projections::{derive_transition_plan, ActionDef, ServiceDef};
 use rmcp::model::CallToolResult;
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use serde_json::{json, Value};
@@ -62,7 +62,29 @@ pub type GuardEvaluatorFn = Box<
         + Sync,
 >;
 
-/// Holds the app-registered write callback and guard evaluator.
+/// App-registered post-persist override hook (EXEC-03).
+///
+/// Runs AFTER the derived/base persist, inside [`dispatch_write`], reusing the
+/// audit/idempotency envelope. Receives the action name, validated inputs, the
+/// authenticated tenant id, a DB connection, and the base persist result — so it
+/// can chain related-record writes keyed off the just-persisted state.
+///
+/// Because it runs strictly after the guarded base persist, an override cannot
+/// suppress the base guard or transition (threat T-231-05, mitigated).
+pub type OverrideFn = Box<
+    dyn Fn(
+            &str,   // action_name
+            &Value, // validated inputs
+            i64,    // tenant_id (from auth, never from payload)
+            &DatabaseConnection,
+            &Value, // base persist result
+        ) -> Pin<Box<dyn Future<Output = crate::Result<()>> + Send>>
+        + Send
+        + Sync,
+>;
+
+/// Holds the app-registered write callback, guard evaluator, and optional
+/// post-persist override hooks.
 ///
 /// Constructed by the consumer app and passed to [`handle_write_call`].
 /// Not stored in [`crate::McpServerConfig`] — threaded at call-site parallel
@@ -70,9 +92,47 @@ pub type GuardEvaluatorFn = Box<
 pub struct WriteDispatcher {
     pub executor: ExecutorFn,
     pub guard_evaluator: GuardEvaluatorFn,
+    /// Optional app-specific post-persist side effects, keyed by action name.
+    /// An absent key is the common path (declaration-only) — the override seam
+    /// adds nothing to a write whose action has no registered hook.
+    pub overrides: std::collections::HashMap<String, OverrideFn>,
+}
+
+impl WriteDispatcher {
+    /// Construct a dispatcher with an empty override registry.
+    pub fn new(executor: ExecutorFn, guard_evaluator: GuardEvaluatorFn) -> Self {
+        Self {
+            executor,
+            guard_evaluator,
+            overrides: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Register a post-persist override hook for `action` (consuming builder).
+    pub fn with_override(mut self, action: impl Into<String>, hook: OverrideFn) -> Self {
+        self.overrides.insert(action.into(), hook);
+        self
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Build the live guard set for a write: `preconditions` followed by the
+/// transition-level guard (if any), deduplicated by name with order preserved.
+///
+/// A guard appearing on BOTH the action precondition and the transition guard
+/// — as `is_manager` does on the order projection — is evaluated exactly once
+/// (EXEC-02). The common case (no transition guard) returns `preconditions`
+/// unchanged, keeping the non-transition path back-compatible.
+fn merged_guards(preconditions: &[String], transition_guard: Option<&str>) -> Vec<String> {
+    let mut guards: Vec<String> = preconditions.to_vec();
+    if let Some(g) = transition_guard {
+        if !guards.iter().any(|existing| existing == g) {
+            guards.push(g.to_string());
+        }
+    }
+    guards
+}
 
 /// Locate an [`ActionDef`] by tool name across all mcp-exposed services.
 ///
@@ -261,19 +321,22 @@ pub async fn dispatch_write(
     tenant_id: i64,
     db: &DatabaseConnection,
     dispatcher: &WriteDispatcher,
+    transition_guard: Option<&str>,
     #[cfg(feature = "confirmation")] is_confirmed: bool,
 ) -> crate::Result<Value> {
     // 1. Guard re-evaluation (D-02, T-219-02 — load-bearing security gate).
     //
-    // Calls the app-registered GuardEvaluatorFn for EVERY precondition in
-    // action.preconditions against LIVE DB state. Fail-closed: a guard returning
-    // Ok(false) OR any Err immediately returns Err(GuardFailed).
+    // Calls the app-registered GuardEvaluatorFn for EVERY guard in the UNION of
+    // action.preconditions and the transition-level guard (EXEC-02), deduped by
+    // name, against LIVE DB state. Fail-closed: a guard returning Ok(false) OR
+    // any Err immediately returns Err(GuardFailed).
     //
     // IMPORTANT: ctx.evaluated_guards (the 218 list-time visibility cache) is
     // intentionally NOT consulted here. An agent may bypass tools/list entirely
     // and call tools/call directly — only this live re-evaluation prevents the
     // guard-bypass privilege-escalation class (PITFALLS §2 / T-219-02).
-    for guard_name in &action.preconditions {
+    let guards = merged_guards(&action.preconditions, transition_guard);
+    for guard_name in &guards {
         let passes = (dispatcher.guard_evaluator)(guard_name, tenant_id, inputs, db)
             .await
             .map_err(|e| crate::Error::GuardFailed(format!("{guard_name}: {e}")))?;
@@ -327,6 +390,14 @@ pub async fn dispatch_write(
     //    The executor owns TenantScoped enforcement (D-03): find_for_tenant(id, tenant_id)
     //    returning None is the cross-tenant denial primitive.
     let result = (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?;
+
+    // 4b. Post-persist override hook (EXEC-03).
+    //     Runs AFTER the guarded base persist, inside the same audited window —
+    //     it cannot suppress the base guard or transition (T-231-05). Absent key
+    //     = common path (declaration-only); the override adds nothing.
+    if let Some(hook) = dispatcher.overrides.get(&action.name) {
+        (hook)(&action.name, inputs, tenant_id, db, &result).await?;
+    }
 
     // 5. Store idempotency result (D-04).
     //    INSERT OR IGNORE / ON CONFLICT DO NOTHING for concurrency safety.
@@ -421,12 +492,18 @@ pub async fn handle_write_call(
     };
 
     // Resolve the ActionDef by tool name across mcp-exposed services.
-    let (_svc, action) = match find_action(services, &tool_name) {
+    let (svc, action) = match find_action(services, &tool_name) {
         Some(pair) => pair,
         None => {
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
         }
     };
+
+    // Derive the transition-level guard from the declared StateMachine (EXEC-02).
+    // `.ok()` (not `?`): a non-transition action legitimately has no plan, so the
+    // guard union then equals action.preconditions exactly (back-compatible).
+    let plan = derive_transition_plan(svc, &action.name).ok();
+    let transition_guard = plan.as_ref().and_then(|p| p.guard.as_deref());
 
     let args = call_params
         .get("arguments")
@@ -448,6 +525,7 @@ pub async fn handle_write_call(
         tid,
         db,
         dispatcher,
+        transition_guard,
         #[cfg(feature = "confirmation")]
         false,
     )
@@ -705,12 +783,17 @@ pub async fn handle_confirm(
     let stored_inputs = &stored_payload["inputs"];
 
     // Find action for guard re-evaluation.
-    let (_svc, action) = match find_action(services, action_name) {
+    let (svc, action) = match find_action(services, action_name) {
         Some(pair) => pair,
         None => {
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
         }
     };
+
+    // Derive the transition-level guard for the union guard set (EXEC-02),
+    // mirroring handle_write_call.
+    let plan = derive_transition_plan(svc, &action.name).ok();
+    let transition_guard = plan.as_ref().and_then(|p| p.guard.as_deref());
 
     // Re-evaluate guards at confirm time (live DB state — T-220-03).
     for guard_name in &action.preconditions {
@@ -732,7 +815,17 @@ pub async fn handle_confirm(
     }
 
     // Execute via dispatch_write with is_confirmed=true (bypasses D-08 seam).
-    match dispatch_write(action, stored_inputs, tid, db, dispatcher, true).await {
+    match dispatch_write(
+        action,
+        stored_inputs,
+        tid,
+        db,
+        dispatcher,
+        transition_guard,
+        true,
+    )
+    .await
+    {
         Ok(result) => {
             let payload = json!({
                 "status": "ok",
@@ -835,12 +928,24 @@ mod tests {
     }
 
     /// Build a minimal [`ServiceDef`] exposing all actions (including non-destructive `update`).
+    ///
+    /// Carries a state machine so `derive_transition_plan` yields the transition
+    /// guard for `approve` (`submitted -> approve -> approved guard("is_manager")`).
     fn order_service_with_actions() -> ServiceDef {
-        use ferro_projections::{DataType, FieldMeaning};
+        use ferro_projections::{DataType, FieldMeaning, StateMachine, Transition};
         ServiceDef::new("order")
             .mcp_exposed(true)
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("status", DataType::String, FieldMeaning::Status)
+            .state_machine(
+                StateMachine::new("order_lifecycle")
+                    .initial("draft")
+                    .transition(Transition::new("draft", "submit", "submitted"))
+                    .transition(
+                        Transition::new("submitted", "approve", "approved").guard("is_manager"),
+                    )
+                    .transition(Transition::new("approved", "ship", "shipped")),
+            )
             .action(approve_action())
             .action(submit_action())
             .action(update_action())
@@ -861,6 +966,7 @@ mod tests {
             executor: Box::new(|_, _, _, _| {
                 Box::pin(async { panic!("executor must not run when guard fails") })
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         let result = dispatch_write(
@@ -869,6 +975,7 @@ mod tests {
             1,
             &db,
             &dispatcher,
+            None,
             #[cfg(feature = "confirmation")]
             false,
         )
@@ -877,6 +984,268 @@ mod tests {
         assert!(
             matches!(result, Err(crate::Error::GuardFailed(_))),
             "expected Err(GuardFailed(_)), got: {result:?}"
+        );
+    }
+
+    // ── EXEC-02 — transition-guard union + dedup in the live loop ─────────────
+
+    /// A guard_evaluator returning `Ok(false)` for a transition that carries a
+    /// `Transition.guard` causes `dispatch_write` to return `Err(GuardFailed(_))`
+    /// and the executor never runs (state unchanged). The transition guard is
+    /// passed explicitly here (as handle_write_call derives it from the plan).
+    #[tokio::test]
+    async fn guard_rejects_illegal_transition() {
+        let db = setup_db().await;
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(false) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { panic!("executor must not run when transition guard fails") })
+            }),
+            overrides: std::collections::HashMap::new(),
+        };
+
+        let result = dispatch_write(
+            &submit_action(), // no action.preconditions
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            Some("is_manager"), // transition-level guard only
+            #[cfg(feature = "confirmation")]
+            false,
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(crate::Error::GuardFailed(_))),
+            "expected Err(GuardFailed(_)) from the transition guard, got: {result:?}"
+        );
+    }
+
+    /// A transition-level guard present on the PLAN but absent from
+    /// `action.preconditions` is still evaluated — proves `Transition.guard` is
+    /// enforced, not just `action.preconditions`. The evaluator records every
+    /// guard name it sees; we assert `is_manager` was among them.
+    #[tokio::test]
+    async fn transition_guard_evaluated_at_call_time() {
+        let db = setup_db().await;
+        let saw_transition_guard = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new({
+                let flag = saw_transition_guard.clone();
+                move |name: &str, _, _, _| {
+                    if name == "is_manager" {
+                        flag.store(true, Ordering::SeqCst);
+                    }
+                    Box::pin(async { Ok(true) })
+                }
+            }),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { Ok(json!({ "status": "submitted" })) })
+            }),
+            overrides: std::collections::HashMap::new(),
+        };
+
+        // submit_action has NO preconditions; the guard comes only from the plan.
+        let result = dispatch_write(
+            &submit_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            Some("is_manager"),
+            #[cfg(feature = "confirmation")]
+            true, // bypass the D-08 confirmation seam for this transition action
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "guard returns true, write must succeed: {result:?}"
+        );
+        assert!(
+            saw_transition_guard.load(Ordering::SeqCst),
+            "the transition-level guard 'is_manager' must be evaluated live"
+        );
+    }
+
+    /// A guard name present on BOTH the transition AND the action precondition
+    /// (`is_manager` on `approve`) fires the evaluator exactly ONCE (deduped by
+    /// name).
+    #[tokio::test]
+    async fn guard_deduped_when_on_both() {
+        let db = setup_db().await;
+        let call_count = Arc::new(AtomicUsize::new(0));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new({
+                let count = call_count.clone();
+                move |name: &str, _, _, _| {
+                    if name == "is_manager" {
+                        count.fetch_add(1, Ordering::SeqCst);
+                    }
+                    Box::pin(async { Ok(true) })
+                }
+            }),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { Ok(json!({ "status": "approved" })) })
+            }),
+            overrides: std::collections::HashMap::new(),
+        };
+
+        // approve_action has precondition("is_manager"); transition guard is also
+        // "is_manager" — the union must dedup to a single evaluation.
+        let result = dispatch_write(
+            &approve_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            Some("is_manager"),
+            #[cfg(feature = "confirmation")]
+            true,
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "both guards pass; write must succeed: {result:?}"
+        );
+        assert_eq!(
+            call_count.load(Ordering::SeqCst),
+            1,
+            "is_manager must be evaluated exactly once (deduped), not twice"
+        );
+    }
+
+    // ── EXEC-03 — post-persist override hook registry ─────────────────────────
+
+    /// An override registered for an action runs AFTER the base persist (observed
+    /// via a counter the override increments). The base transition result is
+    /// returned unchanged.
+    #[tokio::test]
+    async fn override_hook_runs_post_persist() {
+        let db = setup_db().await;
+        let order = Arc::new(std::sync::Mutex::new(Vec::<&'static str>::new()));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let order = order.clone();
+                move |_, _, _, _| {
+                    order.lock().unwrap().push("persist");
+                    Box::pin(async { Ok(json!({ "status": "submitted" })) })
+                }
+            }),
+            overrides: std::collections::HashMap::new(),
+        }
+        .with_override(
+            "submit",
+            Box::new({
+                let order = order.clone();
+                move |_action, _inputs, _tenant, _db, base_result: &Value| {
+                    // The override sees the base persist result.
+                    assert_eq!(base_result["status"], "submitted");
+                    order.lock().unwrap().push("override");
+                    Box::pin(async { Ok(()) })
+                }
+            }),
+        );
+
+        let result = dispatch_write(
+            &submit_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            None,
+            #[cfg(feature = "confirmation")]
+            true,
+        )
+        .await;
+
+        assert!(result.is_ok(), "write must succeed: {result:?}");
+        assert_eq!(
+            result.unwrap(),
+            json!({ "status": "submitted" }),
+            "base result must be returned unchanged by the override"
+        );
+        assert_eq!(
+            *order.lock().unwrap(),
+            vec!["persist", "override"],
+            "override must run AFTER the base persist"
+        );
+    }
+
+    /// With NO override registered, `dispatch_write` behaves exactly as before —
+    /// the common path is declaration-only and untouched.
+    #[tokio::test]
+    async fn no_override_is_declaration_only() {
+        let db = setup_db().await;
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { Ok(json!({ "status": "submitted" })) })
+            }),
+            overrides: std::collections::HashMap::new(),
+        };
+
+        let result = dispatch_write(
+            &submit_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            None,
+            #[cfg(feature = "confirmation")]
+            true,
+        )
+        .await;
+
+        assert!(result.is_ok(), "no-override path must succeed: {result:?}");
+        assert_eq!(result.unwrap(), json!({ "status": "submitted" }));
+    }
+
+    /// An override returning `Err` causes `dispatch_write` to return `Err` — the
+    /// error propagates. The base write's audit already happened (the override
+    /// runs after persist + audit-of-base is recorded inside the executor's
+    /// envelope); the error surfaces without panicking.
+    #[tokio::test]
+    async fn override_error_surfaces() {
+        let db = setup_db().await;
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { Ok(json!({ "status": "submitted" })) })
+            }),
+            overrides: std::collections::HashMap::new(),
+        }
+        .with_override(
+            "submit",
+            Box::new(|_action, _inputs, _tenant, _db, _base| {
+                Box::pin(async { Err(crate::Error::Validation("override failed".into())) })
+            }),
+        );
+
+        let result = dispatch_write(
+            &submit_action(),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &dispatcher,
+            None,
+            #[cfg(feature = "confirmation")]
+            true,
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(crate::Error::Validation(ref m)) if m == "override failed"),
+            "override error must propagate, got: {result:?}"
         );
     }
 
@@ -899,6 +1268,7 @@ mod tests {
                 }
             }),
             guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            overrides: std::collections::HashMap::new(),
         };
 
         let args = json!({ "id": 1, "idempotency_key": "k-abc" });
@@ -909,6 +1279,7 @@ mod tests {
             1,
             &db,
             &dispatcher,
+            None,
             #[cfg(feature = "confirmation")]
             false,
         )
@@ -919,6 +1290,7 @@ mod tests {
             1,
             &db,
             &dispatcher,
+            None,
             #[cfg(feature = "confirmation")]
             false,
         )
@@ -961,6 +1333,7 @@ mod tests {
             executor: Box::new(|_, _, _, _| {
                 Box::pin(async { Ok(json!({ "status": "submitted" })) })
             }),
+            overrides: std::collections::HashMap::new(),
         };
         // Use non-destructive "update" action — confirmation seam does not fire for it.
         let success_params = json!({ "name": "update", "arguments": { "id": 1 } });
@@ -1004,6 +1377,7 @@ mod tests {
             executor: Box::new(|_, _, _, _| {
                 Box::pin(async { panic!("executor must not run when guard fails") })
             }),
+            overrides: std::collections::HashMap::new(),
         };
         let deny_params = json!({ "name": "approve", "arguments": { "id": 1 } });
         let deny_response = handle_write_call(
@@ -1161,11 +1535,19 @@ mod confirmation_tests {
     }
 
     fn order_service() -> ServiceDef {
-        use ferro_projections::{DataType, FieldMeaning};
+        use ferro_projections::{DataType, FieldMeaning, StateMachine, Transition};
         ServiceDef::new("order")
             .mcp_exposed(true)
             .field("id", DataType::Integer, FieldMeaning::Identifier)
             .field("status", DataType::String, FieldMeaning::Status)
+            .state_machine(
+                StateMachine::new("order_lifecycle")
+                    .initial("draft")
+                    .transition(Transition::new("draft", "submit", "submitted"))
+                    .transition(
+                        Transition::new("submitted", "approve", "approved").guard("is_manager"),
+                    ),
+            )
             .action(approve_action())
             .action(submit_action())
     }
@@ -1177,6 +1559,7 @@ mod confirmation_tests {
                 exec_count.fetch_add(1, Ordering::SeqCst);
                 Box::pin(async { Ok(json!({ "status": "approved" })) })
             }),
+            overrides: std::collections::HashMap::new(),
         }
     }
 
@@ -1186,6 +1569,7 @@ mod confirmation_tests {
             executor: Box::new(|_, _, _, _| {
                 Box::pin(async { panic!("executor must not run when guard fails") })
             }),
+            overrides: std::collections::HashMap::new(),
         }
     }
 
@@ -1208,6 +1592,7 @@ mod confirmation_tests {
             1,
             &db,
             &dispatcher,
+            None,
             false, // is_confirmed = false → triggers seam
         )
         .await;
@@ -1531,6 +1916,7 @@ mod confirmation_tests {
                     Box::pin(async { Ok(json!({ "status": "approved" })) })
                 }
             }),
+            overrides: std::collections::HashMap::new(),
         };
 
         let req_response = handle_request_confirm(

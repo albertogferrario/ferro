@@ -23,4 +23,4 @@ pub use ferro_mcp_oauth::BearerCheck;
 pub use intent::{process_nl_turn, render_tool_descriptions, ToolSelection};
 pub use jsonrpc::{handle_initialize, handle_tools_call, handle_tools_list};
 pub use renderer::{render_exposed_tools, McpContext, McpRenderer};
-pub use write_dispatch::{dispatch_write, handle_write_call, WriteDispatcher};
+pub use write_dispatch::{dispatch_write, handle_write_call, OverrideFn, WriteDispatcher};

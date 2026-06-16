@@ -10,10 +10,10 @@ use serde_json::json;
 
 /// Build a no-op WriteDispatcher for tests that exercise read-path tools only.
 fn noop_dispatcher() -> WriteDispatcher {
-    WriteDispatcher {
-        executor: Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
-        guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-    }
+    WriteDispatcher::new(
+        Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+        Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+    )
 }
 
 fn test_config() -> McpServerConfig {

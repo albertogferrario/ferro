@@ -221,10 +221,10 @@ mod tests {
         });
 
         // No-op dispatcher: read-path test uses list_ tool, write path is not reached.
-        let noop_dispatcher = crate::write_dispatch::WriteDispatcher {
-            executor: Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
-            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
-        };
+        let noop_dispatcher = crate::write_dispatch::WriteDispatcher::new(
+            Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+            Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        );
         let response = handle_tools_call(
             call_params,
             &services,
