@@ -32,9 +32,9 @@ use crate::component::{
     CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps, DropdownMenuProps,
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
     KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
-    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SelectProps, SeparatorProps,
-    SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps, TableProps,
-    TabsProps, TextProps, ToastProps,
+    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
+    SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
+    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -332,6 +332,18 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "ButtonGroup",
         "Horizontal button row with configurable gap.",
         || to_value(schema_for!(ButtonGroupProps)).unwrap(),
+        &[],
+    ),
+    (
+        "SegmentedControl",
+        "Connected button cluster — date scrollers, view toggles, mode pickers. Items via literal or data_path.",
+        || to_value(schema_for!(SegmentedControlProps)).unwrap(),
+        &[],
+    ),
+    (
+        "SidebarLayout",
+        "Two-column layout with sticky vertical nav (left) and main content slot (right). Mobile-collapsing.",
+        || to_value(schema_for!(SidebarLayoutProps)).unwrap(),
         &[],
     ),
     // === Form controls (form.rs) ===

@@ -935,6 +935,99 @@ pub struct ButtonGroupProps {
     pub gap: GapSize,
 }
 
+/// Props for SegmentedControl — a tightly-packed cluster of toggle/nav links
+/// rendered as a single bordered group with no gap between segments.
+///
+/// Items come either as a literal `items` array or from runtime data via
+/// `data_path` (controller-built). At least one of the two must be supplied;
+/// `items` wins when both are present.
+///
+/// Visual model: rounded outer container with a single border, internal
+/// dividers between segments, one segment marked `active=true` and styled
+/// distinctly. The label can be the literal segment text (e.g. "Oggi") or a
+/// glyph (e.g. "←", "→"). Each segment carries an optional `aria_label`
+/// override for accessibility on glyph-only segments.
+///
+/// Use cases captured by this primitive: date scroll clusters (prev/today/next),
+/// view toggles (Day/Month, List/Grid), pagination steppers, mode switchers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
+pub struct SegmentedControlProps {
+    /// Literal items list. Skipped when empty; `data_path` is the fallback.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub items: Vec<SegmentedItem>,
+    /// JSON Pointer into runtime data resolving to an array of `SegmentedItem`s.
+    /// Used when items shape depends on per-request data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    /// Visual size — defaults to `default`.
+    #[serde(default)]
+    pub size: Size,
+    /// Accessible label for the group (`<div role="tablist" aria-label="...">`).
+    /// Omit when the surrounding context already announces purpose.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aria_label: Option<String>,
+}
+
+/// One segment of a `SegmentedControl`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
+pub struct SegmentedItem {
+    /// Visible label or glyph.
+    pub label: String,
+    /// Destination URL — segments render as `<a href>` so they work without JS.
+    pub href: String,
+    /// Active segment (one per group, typically). Highlighted, `aria-selected=true`.
+    #[serde(default)]
+    pub active: bool,
+    /// Optional accessible label override — useful when `label` is a glyph
+    /// like "←" or "→" that screen readers cannot pronounce.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aria_label: Option<String>,
+}
+
+/// Props for SidebarLayout — a two-column layout with a sticky vertical nav
+/// on the left and a main content slot on the right. Replaces the common
+/// pattern of opener/closer `RawHtml` blocks faking asymmetric grids.
+///
+/// The element's `children` IDs render inside the main slot. Each child is
+/// expected to carry its own `visible` rule keyed against `active` (typically
+/// `{ path: "/active_tab", operator: "eq", value: "<slug>" }`) so only the
+/// matching section is in the DOM at a time.
+///
+/// On mobile (below `md`), the sidebar collapses into a horizontally
+/// scrollable strip above the main content, and the asymmetric grid layout
+/// flattens to a single column.
+///
+/// Use cases: settings pages with many sections, account dashboards,
+/// onboarding wizards with persistent navigation, admin consoles.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
+pub struct SidebarLayoutProps {
+    /// Literal sidebar items. Skipped when empty; `data_path` is the fallback.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub items: Vec<SidebarLayoutItem>,
+    /// JSON Pointer into runtime data resolving to an array of `SidebarLayoutItem`s.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_path: Option<String>,
+    /// Slug of the currently-active item. Matched against `SidebarLayoutItem.slug`.
+    /// Typically bound via `{ "$data": "/active_tab" }`.
+    pub active: String,
+    /// Accessible label for the nav (`<nav aria-label="...">`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aria_label: Option<String>,
+}
+
+/// One sidebar nav item in a `SidebarLayout`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Default)]
+pub struct SidebarLayoutItem {
+    /// Item identifier — matched against `SidebarLayoutProps.active` to determine
+    /// which item is highlighted.
+    pub slug: String,
+    /// Visible label.
+    pub label: String,
+    /// Destination URL. Typically `"?tab={slug}"` for query-driven routing,
+    /// but can be any absolute or relative URL.
+    pub url: String,
+}
+
 /// Props for DetailPage component -- opinionated resource-detail skeleton.
 ///
 /// Renders a PageHeader (title + breadcrumb + actions), an info Card

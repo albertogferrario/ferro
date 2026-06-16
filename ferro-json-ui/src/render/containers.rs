@@ -14,7 +14,8 @@ use serde_json::Value;
 use crate::component::{
     ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, DetailPageProps, FormMaxWidth,
     FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps,
-    PageHeaderProps, TabsProps,
+    PageHeaderProps, SegmentedControlProps, SegmentedItem, SidebarLayoutItem,
+    SidebarLayoutProps, Size, TabsProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -962,6 +963,210 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
     format!("<div class=\"flex items-center gap-2 flex-wrap\">{body}</div>")
 }
 
+/// Renders a `SegmentedControl` — a connected button cluster used for date
+/// scrollers, view toggles, and other "pick one of N" navigation primitives.
+///
+/// Items come from `props.items` (literal) or from `props.data_path` resolved
+/// against `data`. Literal wins when both are present. Each item becomes an
+/// `<a href>` so the control works without JS; the active item carries
+/// `aria-selected="true"` and is styled distinctly. The outer container
+/// emits `role="tablist"` when an `aria_label` is supplied.
+pub(crate) fn render_segmented_control(
+    el: &Element,
+    _spec: &Spec,
+    data: &Value,
+    _depth: usize,
+) -> String {
+    let props: SegmentedControlProps = if el.props.is_null() {
+        SegmentedControlProps::default()
+    } else {
+        match serde_json::from_value(el.props.clone()) {
+            Ok(p) => p,
+            Err(e) => {
+                return format!(
+                    "<!-- ferro-json-ui: failed to decode SegmentedControl props: {} -->",
+                    html_escape(&e.to_string())
+                );
+            }
+        }
+    };
+
+    let items: Vec<SegmentedItem> = if !props.items.is_empty() {
+        props.items
+    } else if let Some(path) = props.data_path.as_deref() {
+        match resolve_path(data, path) {
+            Some(v) => match serde_json::from_value::<Vec<SegmentedItem>>(v.clone()) {
+                Ok(list) => list,
+                Err(e) => {
+                    return format!(
+                        "<!-- ferro-json-ui: SegmentedControl data_path '{}' did not resolve to Vec<SegmentedItem>: {} -->",
+                        html_escape(path),
+                        html_escape(&e.to_string())
+                    );
+                }
+            },
+            None => Vec::new(),
+        }
+    } else {
+        Vec::new()
+    };
+
+    if items.is_empty() {
+        return String::new();
+    }
+
+    // Size-driven padding/text classes. Keep typography compact across sizes —
+    // segmented controls are nav chrome, not primary CTAs.
+    let segment_pad = match props.size {
+        Size::Xs | Size::Sm => "px-2.5 py-1 text-xs",
+        Size::Default => "px-3 py-1.5 text-sm",
+        Size::Lg => "px-4 py-2 text-base",
+    };
+
+    let mut group = String::from("<div class=\"inline-flex rounded-md border border-input bg-background overflow-hidden\"");
+    if let Some(label) = props.aria_label.as_deref() {
+        group.push_str(" role=\"tablist\" aria-label=\"");
+        group.push_str(&html_escape(label));
+        group.push('"');
+    }
+    group.push('>');
+
+    let last_idx = items.len().saturating_sub(1);
+    for (idx, item) in items.iter().enumerate() {
+        let border_cls = if idx < last_idx {
+            "border-r border-input"
+        } else {
+            ""
+        };
+        let state_cls = if item.active {
+            "bg-surface text-text font-semibold"
+        } else {
+            "text-text-muted hover:bg-surface hover:text-text font-medium"
+        };
+        let aria_label_attr = item
+            .aria_label
+            .as_deref()
+            .map(|l| format!(" aria-label=\"{}\"", html_escape(l)))
+            .unwrap_or_default();
+        let role_attr = if props.aria_label.is_some() {
+            format!(
+                " role=\"tab\" aria-selected=\"{}\"",
+                if item.active { "true" } else { "false" }
+            )
+        } else {
+            String::new()
+        };
+        group.push_str(&format!(
+            "<a href=\"{href}\"{aria_label_attr}{role_attr} class=\"{pad} {state} {border} transition-colors\">{label}</a>",
+            href = html_escape(&item.href),
+            aria_label_attr = aria_label_attr,
+            role_attr = role_attr,
+            pad = segment_pad,
+            state = state_cls,
+            border = border_cls,
+            label = html_escape(&item.label),
+        ));
+    }
+    group.push_str("</div>");
+    group
+}
+
+/// Renders a `SidebarLayout` — a two-column page layout with a sticky vertical
+/// nav (left) and a main content slot (right). Children render inside the
+/// main slot; each child is expected to manage its own `visible` rule against
+/// `props.active` so only the matching section is in the DOM.
+///
+/// On mobile the layout collapses to a single column: the sidebar becomes a
+/// horizontally scrollable strip above the main content.
+///
+/// Replaces the opener/closer `RawHtml` pattern previously used by consumers
+/// to fake an asymmetric grid.
+pub(crate) fn render_sidebar_layout(
+    el: &Element,
+    spec: &Spec,
+    data: &Value,
+    depth: usize,
+) -> String {
+    let props: SidebarLayoutProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode SidebarLayout props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let items: Vec<SidebarLayoutItem> = if !props.items.is_empty() {
+        props.items
+    } else if let Some(path) = props.data_path.as_deref() {
+        match resolve_path(data, path) {
+            Some(v) => match serde_json::from_value::<Vec<SidebarLayoutItem>>(v.clone()) {
+                Ok(list) => list,
+                Err(e) => {
+                    return format!(
+                        "<!-- ferro-json-ui: SidebarLayout data_path '{}' did not resolve to Vec<SidebarLayoutItem>: {} -->",
+                        html_escape(path),
+                        html_escape(&e.to_string())
+                    );
+                }
+            },
+            None => Vec::new(),
+        }
+    } else {
+        Vec::new()
+    };
+
+    // Build the sidebar nav HTML.
+    let mut nav = String::from(
+        "<nav class=\"flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible whitespace-nowrap md:whitespace-normal -mx-4 px-4 md:mx-0 md:px-0\"",
+    );
+    if let Some(label) = props.aria_label.as_deref() {
+        nav.push_str(" aria-label=\"");
+        nav.push_str(&html_escape(label));
+        nav.push('"');
+    }
+    nav.push('>');
+    for item in &items {
+        let is_active = item.slug == props.active;
+        let cls = if is_active {
+            "block px-3 py-2 text-sm font-semibold rounded-md bg-surface text-text"
+        } else {
+            "block px-3 py-2 text-sm font-medium rounded-md text-text-muted hover:bg-surface hover:text-text transition-colors"
+        };
+        let aria = if is_active {
+            " aria-current=\"page\""
+        } else {
+            ""
+        };
+        nav.push_str(&format!(
+            "<a href=\"{}\"{} class=\"{}\">{}</a>",
+            html_escape(&item.url),
+            aria,
+            cls,
+            html_escape(&item.label),
+        ));
+    }
+    nav.push_str("</nav>");
+
+    // Main content — children render in DOM order; each child controls its own
+    // visibility via `visible` so only the active section materialises.
+    let main_content: String = el
+        .children
+        .iter()
+        .map(|cid| render_element(cid, spec, data, depth + 1))
+        .collect();
+
+    format!(
+        "<div class=\"md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6\">\
+          <aside class=\"md:sticky md:top-4 md:self-start min-w-0\">{nav}</aside>\
+          <main class=\"min-w-0 flex flex-col gap-4\">{main}</main>\
+        </div>",
+        nav = nav,
+        main = main_content,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1883,6 +2088,187 @@ mod tests {
         assert!(
             html.contains("/orders/7"),
             "row_key interpolation missing: {html}"
+        );
+    }
+
+    #[test]
+    fn segmented_control_literal_items_render_with_active_highlight() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SegmentedControl").prop(
+                "items",
+                json!([
+                    {"label": "Giorno", "href": "?view=day", "active": true},
+                    {"label": "Mese", "href": "?view=month", "active": false}
+                ]),
+            ),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_segmented_control(el, &spec, &json!({}), 1);
+        assert!(html.contains("Giorno"), "label missing: {html}");
+        assert!(html.contains("Mese"), "second label missing: {html}");
+        assert!(html.contains("?view=day"), "href missing: {html}");
+        assert!(
+            html.contains("inline-flex rounded-md border"),
+            "outer container missing: {html}"
+        );
+        assert!(
+            html.contains("bg-surface text-text font-semibold"),
+            "active styling missing: {html}"
+        );
+    }
+
+    #[test]
+    fn segmented_control_aria_label_adds_tablist_role() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SegmentedControl")
+                .prop("aria_label", "Vista calendario")
+                .prop(
+                    "items",
+                    json!([
+                        {"label": "G", "href": "?d", "active": true},
+                        {"label": "M", "href": "?m", "active": false}
+                    ]),
+                ),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_segmented_control(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("role=\"tablist\""),
+            "tablist role missing: {html}"
+        );
+        assert!(
+            html.contains("aria-label=\"Vista calendario\""),
+            "aria-label missing: {html}"
+        );
+        assert!(
+            html.contains("aria-selected=\"true\""),
+            "active aria-selected missing: {html}"
+        );
+        assert!(
+            html.contains("aria-selected=\"false\""),
+            "inactive aria-selected missing: {html}"
+        );
+    }
+
+    #[test]
+    fn segmented_control_data_path_resolves_items() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SegmentedControl").prop("data_path", "/nav/items"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({
+            "nav": {
+                "items": [
+                    {"label": "←", "href": "?prev", "active": false, "aria_label": "Precedente"},
+                    {"label": "Oggi", "href": "?today", "active": false},
+                    {"label": "→", "href": "?next", "active": false, "aria_label": "Successivo"}
+                ]
+            }
+        });
+        let html = render_segmented_control(el, &spec, &data, 1);
+        assert!(html.contains("?prev"), "prev href missing: {html}");
+        assert!(html.contains("?next"), "next href missing: {html}");
+        assert!(
+            html.contains("aria-label=\"Precedente\""),
+            "per-item aria_label missing: {html}"
+        );
+    }
+
+    #[test]
+    fn segmented_control_empty_renders_nothing() {
+        let spec = build_spec(vec![("root", Element::new("SegmentedControl"))]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_segmented_control(el, &spec, &json!({}), 1);
+        assert!(html.is_empty(), "empty segmented control should emit nothing: {html}");
+    }
+
+    #[test]
+    fn sidebar_layout_renders_nav_and_main_with_active_highlight() {
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("SidebarLayout")
+                    .prop(
+                        "items",
+                        json!([
+                            {"slug": "generale", "label": "Generale", "url": "?tab=generale"},
+                            {"slug": "servizi", "label": "Servizi", "url": "?tab=servizi"}
+                        ]),
+                    )
+                    .prop("active", "servizi")
+                    .child("body"),
+            ),
+            ("body", Element::new("Text").prop("content", "MAIN-BODY")),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_sidebar_layout(el, &spec, &json!({}), 1);
+        assert!(html.contains("MAIN-BODY"), "main slot child missing: {html}");
+        assert!(html.contains("Generale"), "inactive item missing: {html}");
+        assert!(html.contains("Servizi"), "active item missing: {html}");
+        assert!(
+            html.contains("md:grid md:grid-cols-[220px"),
+            "asymmetric grid layout missing: {html}"
+        );
+        assert!(
+            html.contains("aria-current=\"page\""),
+            "active aria-current missing: {html}"
+        );
+    }
+
+    #[test]
+    fn sidebar_layout_active_swaps_highlight() {
+        let items = json!([
+            {"slug": "a", "label": "A", "url": "?tab=a"},
+            {"slug": "b", "label": "B", "url": "?tab=b"}
+        ]);
+        let spec_a = build_spec(vec![(
+            "root",
+            Element::new("SidebarLayout")
+                .prop("items", items.clone())
+                .prop("active", "a"),
+        )]);
+        let spec_b = build_spec(vec![(
+            "root",
+            Element::new("SidebarLayout")
+                .prop("items", items)
+                .prop("active", "b"),
+        )]);
+        let html_a = render_sidebar_layout(
+            spec_a.elements.get("root").unwrap(),
+            &spec_a,
+            &json!({}),
+            1,
+        );
+        let html_b = render_sidebar_layout(
+            spec_b.elements.get("root").unwrap(),
+            &spec_b,
+            &json!({}),
+            1,
+        );
+        // Active item carries aria-current="page"; inactive does not. We check
+        // that the marker lands on the right text in each spec.
+        let active_a_idx = html_a.find("aria-current=\"page\"").unwrap();
+        let active_b_idx = html_b.find("aria-current=\"page\"").unwrap();
+        // The substring after the marker up to the next "</a>" must contain
+        // the active label.
+        let tail_a = &html_a[active_a_idx..html_a[active_a_idx..]
+            .find("</a>")
+            .map(|p| active_a_idx + p)
+            .unwrap_or(html_a.len())];
+        let tail_b = &html_b[active_b_idx..html_b[active_b_idx..]
+            .find("</a>")
+            .map(|p| active_b_idx + p)
+            .unwrap_or(html_b.len())];
+        assert!(
+            tail_a.ends_with('A'),
+            "active=a should highlight A; tail_a={tail_a}"
+        );
+        assert!(
+            tail_b.ends_with('B'),
+            "active=b should highlight B; tail_b={tail_b}"
         );
     }
 }

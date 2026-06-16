@@ -78,6 +78,8 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "Collapsible",
     "FormSection",
     "ButtonGroup",
+    "SegmentedControl",
+    "SidebarLayout",
     // Form controls (form.rs)
     "Form",
     "Input",
@@ -209,6 +211,8 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "Collapsible" => containers::render_collapsible(el, spec, data, depth),
         "FormSection" => containers::render_form_section(el, spec, data, depth),
         "ButtonGroup" => containers::render_button_group(el, spec, data, depth),
+        "SegmentedControl" => containers::render_segmented_control(el, spec, data, depth),
+        "SidebarLayout" => containers::render_sidebar_layout(el, spec, data, depth),
         // Form controls
         "Form" => form::render_form(el, spec, data, depth),
         "Input" => form::render_input(el, spec, data, depth),

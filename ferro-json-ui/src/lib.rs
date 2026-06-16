@@ -55,8 +55,9 @@ pub use component::{
     FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps,
     InputProps, InputType, KanbanBoardProps, KanbanColumnProps, ModalProps,
     NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
-    ProductTileProps, ProgressProps, RawHtmlProps, RichTextEditorProps, SelectOption, SelectProps,
-    SeparatorProps, SidebarGroup, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection,
+    ProductTileProps, ProgressProps, RawHtmlProps, RichTextEditorProps, SegmentedControlProps,
+    SegmentedItem, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarLayoutItem,
+    SidebarLayoutProps, SidebarNavItem, SidebarProps, Size, SkeletonProps, SortDirection,
     StatCardProps, SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps,
     ToastVariant,
 };
