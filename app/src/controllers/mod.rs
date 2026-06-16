@@ -6,3 +6,4 @@ pub mod mcp_chat;
 pub mod pagamenti;
 pub mod todo;
 pub mod user;
+pub mod visual_action;
