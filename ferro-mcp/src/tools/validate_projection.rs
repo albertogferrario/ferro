@@ -218,6 +218,62 @@ pub fn broken_service() -> ServiceDef {
         );
     }
 
+    /// EXEC-04 transition_trigger drift must surface through `validate_projection`,
+    /// not only at boot. An action whose `transition_trigger` names an event no
+    /// declared transition carries is a hard validation error: `validate()` rejects
+    /// it (step 5 / the 5b derive round-trip), and the tool must report `valid:
+    /// false` with an actionable message.
+    ///
+    /// This also guards the reconstruction path: the drift is only detectable if
+    /// `reconstruct_service_def` rebuilt BOTH the action's `transition_trigger` and
+    /// the StateMachine transitions from source. If either were silently dropped,
+    /// the check would falsely pass — so a green assert here proves the full
+    /// MCP-introspection chain, not just `ServiceDef::validate()` in isolation.
+    #[test]
+    fn test_validate_surfaces_transition_trigger_drift() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj_dir = tmp.path().join("src/projections");
+        std::fs::create_dir_all(&proj_dir).unwrap();
+
+        // The state machine declares only the `publish` event, but the `submit`
+        // action triggers a `submit` event that no transition carries → drift.
+        let content = r#"
+use ferro::{ServiceDef, DataType, FieldMeaning, StateMachine, StateDef, Transition, ActionDef};
+
+pub fn drifted_service() -> ServiceDef {
+    ServiceDef::new("drifted")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        .state_machine(
+            StateMachine::new("lifecycle")
+                .initial("draft")
+                .state(StateDef::new("draft"))
+                .state(StateDef::new("published").final_state())
+                .transition(Transition::new("draft", "publish", "published"))
+        )
+        .action(ActionDef::new("submit").transition_trigger("submit"))
+}
+        "#;
+        std::fs::write(proj_dir.join("drifted.rs"), content).unwrap();
+
+        let result = execute_single(tmp.path(), "drifted_service");
+        assert!(result.is_ok(), "tool call itself must not fail");
+        let vr = result.unwrap();
+
+        assert!(
+            !vr.valid,
+            "a drifted transition_trigger must make the projection invalid; got valid=true"
+        );
+        assert!(
+            !vr.errors.is_empty(),
+            "drift must produce an error, not a warning"
+        );
+        let joined = vr.errors.join(" ");
+        assert!(
+            joined.contains("submit") && joined.contains("transition_trigger"),
+            "the drift error must name the offending action/trigger; got: {joined}"
+        );
+    }
+
     #[test]
     fn test_validate_all_projections() {
         let tmp = tempfile::tempdir().unwrap();
