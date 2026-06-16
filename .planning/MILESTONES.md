@@ -1,5 +1,20 @@
 # Project Milestones: Ferro Framework
 
+## v16.0 Write-Boundary AX (Shipped: 2026-06-16)
+
+**Phases completed:** 2 phases (231-232), 5 plans
+
+**Delivered:** The projection/intent killer feature's WRITE path now derives from the `StateMachine` declaration across every modality — no hand-written transition logic, one execution kernel behind MCP and visual writes.
+
+**Key accomplishments:**
+
+- **EXEC-01 — StateMachine-derived executor** (Phase 231): `TransitionPlan` + pure `derive_transition_plan()` in `ferro-projections` (schema-only, zero new deps). A state-transition write is declared solely by `ActionDef.transition_trigger`; the target state is derived from `Transition.to`. The hand-written `match action_name` that re-encoded transitions is deleted — "declare twice" eliminated.
+- **EXEC-02 / EXEC-04 — guard re-eval + drift gate** (Phase 231): the derived executor re-evaluates the transition guard server-side at execution (fail-closed); `ServiceDef::validate()` rejects any `transition_trigger` naming an undeclared transition at registration/boot time, so executor/StateMachine drift is structurally impossible.
+- **EXEC-03 — post-persist override hook** (Phase 231): app-specific side effects attach via an override seam that runs after the base transition commits (audit + idempotency sealed first); the no-override common path stays declaration-only.
+- **EXEC-05 — single-source write surfaces** (Phase 232): the write-execution kernel was relocated to a channel-agnostic `framework::write` (parameterized audit channel); the v15.0 MCP write path calls into it, and a new visual `POST /{service}/{action}` handler (the path that did not previously exist) calls the same kernel with channel `web`. Proven by `single_source_both_channels` — one `submit` transition driven through both surfaces persists the identical derived `to_state`, audit channel the only divergence — and SC4 grep confirms exactly one `dispatch_write` kernel with no transition `match` on the write path. The `WriteDispatcher` security envelope was relocated and shared, not deleted.
+
+**Verification & review:** Phase 231 verified 5/5, Phase 232 verified 4/4 (both goal-backward, tests re-run). Both phases code-reviewed and review-fixed — 231 WR-01 (seal audit + idempotency before the override hook); 232 WR-01 (coerce form-urlencoded string ids so browser-form writes succeed) + WR-02 (surface route-registration conflicts instead of silently dropping). Full `--all-features` gate green at each phase close.
+
 ## v15.0 Agent-Operable App (Consumer MCP) (Shipped: 2026-06-14)
 
 **Phases completed:** 5 phases (217-221), 16 plans

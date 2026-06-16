@@ -53,7 +53,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v13.1 CRUD Handler Proc Macros complete (Phase 212, CRUD-01–06): `#[resource_get]` / `#[resource_post]` fold the tenant-scoped CRUD prelude (typed param + `current_tenant()` + tenant-scoped lookup + 404/303-on-miss) into one route attribute while keeping tenant + resource as real typed params; they inline the handler/action boilerplate (no nested attribute). Backed by a `TenantScoped` trait (cross-tenant reads impossible by construction) and `Validator::validate_or_redirect(url)`. trybuild suite (pass + compile-fail fixtures), facade exports, 0.2.56 bump. With this, the v13.x batch scoped so far (v13.0/v13.1/v13.2/v13.3) is complete; nothing in v13.x is published yet beyond v13.2's 0.2.55.
 - v14.0 Channel Projection complete (Phases 215–216, CHAN-01–04): the first production non-visual `Renderer` ships. Phase 215 extended the renderer-free surface (`BaseContext.evaluated_guards` + `verbosity`, `Intent::label()`, `Error::NoIntents`); Phase 216 added `FieldDef.render_hint` (`AltText`/`Skip`, additive, serde-backward-compatible) and a new `ferro-text` output crate whose `TextRenderer` projects the *same* `ServiceDef` to deterministic conversational text — per-intent strategies for Browse/Collect/Process/Summarize/Track, guard-filtered (absent key renders, explicit `false` hides), verbosity-aware, with a defined Focus/Analyze fallback. Re-exported via the `ferro` facade behind the `projections` feature; registered in publish.yml Wave 1b; `insta` snapshots over the COMP-05 `approval_workflow` anchor pin both guard states. The projection/intent abstraction is now validated against a non-screen modality. ~27 workspace crates.
 
-## Current Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor
+## Shipped Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor (shipped 2026-06-16)
 
 **Goal:** Eliminate the "declare twice" duplication on the projection write path — derive a default write executor from the `ServiceDef` StateMachine the framework already knows, with an override hook for the app-specific 20% (side effects, related-record writes, custom guards).
 
@@ -106,6 +106,13 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - ✓ WebSocket broadcasting support — existing
 - ✓ File storage abstraction (local, S3) — existing
 - ✓ Tag-based caching — existing
+
+**v16.0 Write-Boundary AX / StateMachine-Derived Executor (shipped 2026-06-16):**
+- ✓ Default write executor derived from the `ServiceDef` StateMachine — `TransitionPlan` + `derive_transition_plan`, no hand-written `match` (EXEC-01) — v16.0
+- ✓ Server-side guard re-evaluation at execution, fail-closed (EXEC-02) — v16.0
+- ✓ Post-persist override hook for app-specific side effects; common path declaration-only (EXEC-03) — v16.0
+- ✓ Registration/boot-time drift gate — `validate()` rejects undeclared-transition references (EXEC-04) — v16.0
+- ✓ Single-source write surfaces — one `framework::write` kernel backs MCP + the new visual `POST /{service}/{action}` write path (EXEC-05) — v16.0
 
 **v15.0 Agent-Operable App / Consumer MCP (shipped 2026-06-14):**
 - ✓ Per-tenant API-key auth + tenant/guard context on the MCP endpoint (AMCP-01/02) — v15.0
