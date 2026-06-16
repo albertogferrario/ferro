@@ -72,7 +72,13 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
         Box::new(|action_name, inputs, tenant_id, db| {
             // Convert borrowed args to owned values so the async block can move them.
             let action_name = action_name.to_string();
-            let id_val = inputs["id"].as_i64();
+            // Accept both JSON integer ids (MCP path: `{"id": 1}`) and
+            // string-encoded ids (visual/form path: form-urlencoded bodies carry
+            // no type info, so `id=1` decodes to `{"id": "1"}` — WR-01). Coercing
+            // string→i64 in the shared extraction keeps BOTH channels correct.
+            let id_val = inputs["id"]
+                .as_i64()
+                .or_else(|| inputs["id"].as_str().and_then(|s| s.parse::<i64>().ok()));
             let db = db.clone();
             Box::pin(async move {
                 use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};

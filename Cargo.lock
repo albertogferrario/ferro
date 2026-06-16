@@ -195,6 +195,7 @@ dependencies = [
  "sea-orm",
  "sea-orm-migration",
  "serde",
+ "serde_urlencoded",
  "tokio",
  "tracing",
 ]

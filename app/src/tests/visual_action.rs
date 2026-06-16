@@ -154,7 +154,12 @@ mod tests {
             Box::new(move |action_name, inputs, tenant_id, _db_arg| {
                 use crate::models::entities::orders::{ActiveModel as OrderActive, Column, Entity};
                 let action_name = action_name.to_string();
-                let id_val = inputs["id"].as_i64();
+                // Mirror make_write_dispatcher: accept JSON-int ids (MCP) AND
+                // string-encoded ids (form-urlencoded bodies decode `id=1` to
+                // `{"id": "1"}` — WR-01).
+                let id_val = inputs["id"]
+                    .as_i64()
+                    .or_else(|| inputs["id"].as_str().and_then(|s| s.parse::<i64>().ok()));
                 let db = db_exec.clone();
                 Box::pin(async move {
                     let id = id_val.ok_or_else(|| WriteError::Validation("missing id".into()))?;
@@ -365,6 +370,56 @@ mod tests {
         assert_eq!(
             order.status, "submitted",
             "form-supplied to_state must be IGNORED; persisted must be derived 'submitted'; got: {}",
+            order.status
+        );
+    }
+
+    // ── WR-01: form-urlencoded bodies carry string-valued ids ────────────────
+
+    /// `serde_urlencoded` (the decoder `req.input::<Value>()` uses for
+    /// `application/x-www-form-urlencoded` bodies) carries no type information,
+    /// so a browser form submitting `id=1` decodes to the JSON **string**
+    /// `{"id": "1"}`, not the integer `{"id": 1}`. This locks the premise WR-01
+    /// rests on: the visual path receives string-valued ids.
+    #[test]
+    fn form_urlencoded_id_decodes_as_string() {
+        let decoded: ferro::serde_json::Value = serde_urlencoded::from_str("id=1&status=delivered")
+            .expect("urlencoded decode must succeed");
+        assert_eq!(
+            decoded["id"],
+            json!("1"),
+            "form id=1 must decode to the JSON string \"1\", not integer 1"
+        );
+        assert!(
+            decoded["id"].as_i64().is_none(),
+            "the string id must NOT be readable via as_i64() — this is the WR-01 trap"
+        );
+    }
+
+    /// WR-01 regression: the visual handler's body is form-urlencoded, so the
+    /// reused executor receives `id` as a JSON string. Before the fix,
+    /// `inputs["id"].as_i64()` returned `None` → `Validation("missing id")` →
+    /// 422 on the endpoint's PRIMARY (HTML form) path. This drives the shared
+    /// kernel with the form-shaped body (string id) and asserts the transition
+    /// succeeds and persists the derived to_state.
+    #[tokio::test]
+    async fn visual_action_accepts_form_string_id() {
+        let db = setup_db().await;
+        seed(&db).await;
+
+        // Exactly the shape `req.input::<Value>()` yields for `id=1` (string id),
+        // as proven by `form_urlencoded_id_decodes_as_string`.
+        let body = json!({ "id": "1" });
+        let result = visual_dispatch("submit", body, 1, &db).await;
+        assert!(
+            result.is_ok(),
+            "visual submit with form-encoded (string) id must succeed; got: {result:?}"
+        );
+
+        let order = load_order(1, &db).await;
+        assert_eq!(
+            order.status, "submitted",
+            "form string-id path must persist the derived to_state 'submitted'; got: {}",
             order.status
         );
     }

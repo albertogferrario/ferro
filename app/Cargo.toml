@@ -41,3 +41,6 @@ hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
 bytes = "1"
 http-body-util = "0.1"
+# Drives the real form-urlencoded decode path (`req.input::<Value>()`) in the
+# WR-01 regression test, matching `framework::http::body::parse_form`.
+serde_urlencoded = "0.7"
