@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
-status: verifying
-stopped_at: Completed 230-07-PLAN.md (Phase 230 complete)
-last_updated: "2026-06-15T15:08:38.420Z"
-last_activity: 2026-06-15
+milestone: v16.0
+milestone_name: Write-Boundary AX — StateMachine-Derived Executor
+status: defining-requirements
+stopped_at: Milestone v16.0 started (defining requirements)
+last_updated: "2026-06-16T01:00:00.000Z"
+last_activity: 2026-06-16
 progress:
   total_phases: 238
   completed_phases: 215
@@ -20,23 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 230 — framework-benchmark-1b-ferro-conduit
+**Current focus:** v16.0 Write-Boundary AX — StateMachine-Derived Executor (defining requirements)
 
 ## Current Position
 
-Milestone: v15.0 Agent-Operable App (Consumer MCP) — ✅ SHIPPED 2026-06-14 (tag `v15.0`). Per-tenant API-key auth (217), `ActionDef`-derived write tools (218), server-side guard-enforced write dispatch (219), confirmation gating for destructive actions (220), inbound NL intent loop — CI-testable without live-LLM spend (221). All 5 phases complete; AMCP-01..06 validated. All work landed in `ferro-mcp-server` with `ferro-ai` behind feature flags.
+Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: 230
-Plan: Not started
-Next: start the next milestone (v13.4 Cache-Events Bridge / Phase 222 is already scaffolded in ROADMAP), or `/gsd-new-milestone`. Consumer (gestiscilo) adoption of the per-tenant MCP endpoint + `/mcp/chat` is a separate consumer-repo effort being set up now.
-Prior: v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Foundation: v12.6 consumer-MCP OAuth endpoint + `McpRenderer` read tools; v14.0 `BaseContext.evaluated_guards`; `ferro-ai`; v13.1 `TenantScoped` isolation.
+Phase: Not started (defining requirements)
+Plan: —
+Next: define REQUIREMENTS.md, then `/gsd-plan-phase` the first phase. Phases continue from 230 (next is 231).
+Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Phase complete — ready for verification
+Status: Defining requirements — Milestone v16.0 started
 
-Progress: v15.0 — 5/5 phases ✅. v14.0 ✅ shipped (215–216). v13.4 Phase 222 (Cache-Events Bridge) ✅ shipped v0.2.59.
-
-Last activity: 2026-06-15
-Workspace version: 0.2.59
+Last activity: 2026-06-16
+Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.

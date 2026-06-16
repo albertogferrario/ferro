@@ -53,7 +53,22 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v13.1 CRUD Handler Proc Macros complete (Phase 212, CRUD-01–06): `#[resource_get]` / `#[resource_post]` fold the tenant-scoped CRUD prelude (typed param + `current_tenant()` + tenant-scoped lookup + 404/303-on-miss) into one route attribute while keeping tenant + resource as real typed params; they inline the handler/action boilerplate (no nested attribute). Backed by a `TenantScoped` trait (cross-tenant reads impossible by construction) and `Validator::validate_or_redirect(url)`. trybuild suite (pass + compile-fail fixtures), facade exports, 0.2.56 bump. With this, the v13.x batch scoped so far (v13.0/v13.1/v13.2/v13.3) is complete; nothing in v13.x is published yet beyond v13.2's 0.2.55.
 - v14.0 Channel Projection complete (Phases 215–216, CHAN-01–04): the first production non-visual `Renderer` ships. Phase 215 extended the renderer-free surface (`BaseContext.evaluated_guards` + `verbosity`, `Intent::label()`, `Error::NoIntents`); Phase 216 added `FieldDef.render_hint` (`AltText`/`Skip`, additive, serde-backward-compatible) and a new `ferro-text` output crate whose `TextRenderer` projects the *same* `ServiceDef` to deterministic conversational text — per-intent strategies for Browse/Collect/Process/Summarize/Track, guard-filtered (absent key renders, explicit `false` hides), verbosity-aware, with a defined Focus/Analyze fallback. Re-exported via the `ferro` facade behind the `projections` feature; registered in publish.yml Wave 1b; `insta` snapshots over the COMP-05 `approval_workflow` anchor pin both guard states. The projection/intent abstraction is now validated against a non-screen modality. ~27 workspace crates.
 
-## Current Milestone: v15.0 Agent-Operable App (Consumer MCP)
+## Current Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor
+
+**Goal:** Eliminate the "declare twice" duplication on the projection write path — derive a default write executor from the `ServiceDef` StateMachine the framework already knows, with an override hook for the app-specific 20% (side effects, related-record writes, custom guards).
+
+**Target features:**
+- **StateMachine-derived default executor** — a write whose `ActionDef.transition_trigger` names a StateMachine transition dispatches through a framework-generated executor (state read → guard check → transition → persist) with no hand-written `match` re-encoding the transition facts.
+- **Override hook for the 20%** — app-specific side effects (related records, notifications, custom guards) attach to the derived executor without replacing it, so the common path stays declaration-only.
+- **Sync-by-construction** — the executor and the StateMachine cannot drift, because the executor is generated from the StateMachine; this removes the class of "declared twice, fell out of sync" bugs.
+
+**Why this milestone:** the projection/intent killer feature's READ path is complete (visual, text, and MCP renderers) and Phase 213 closed the render-content gaps; the WRITE path still re-imports the imperative surface projection was meant to eliminate (verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65 — the hand-written `WriteDispatcher` re-encodes StateMachine transitions in a `match`). This is the last load-bearing gap in the write path.
+
+**Coherence constraint:** the derived executor must read FROM the existing StateMachine / `ActionDef` declarations — it does not introduce a parallel imperative control surface. Projection/intent stays the single source of truth.
+
+**Out of scope:** the operating-AX side (NL description quality ≡ classification accuracy), gated on a funded COMP-03 live run; the optional projection `body` slot (free-form rich content); consumer-app adoption (gestiscilo), a separate consumer-repo effort.
+
+## Shipped Milestone: v15.0 Agent-Operable App (Consumer MCP)
 
 **Goal:** A tenant can operate a live ferro application through a per-tenant MCP endpoint whose tools are derived from the app's projections — reading and acting on real data through an agent rather than the dashboard. Extends the projection/intent abstraction to a fourth `Renderer` target (`ServiceDef → MCP tools`) and adds the inbound message → action loop. Validated against gestiscilo.
 
