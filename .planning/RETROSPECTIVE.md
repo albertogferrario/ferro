@@ -195,6 +195,36 @@ A tenant operates a live ferro app through a per-tenant MCP endpoint whose tools
 
 ---
 
+## Milestone: v16.0 — Write-Boundary AX (StateMachine-Derived Executor)
+
+**Shipped:** 2026-06-16
+**Phases:** 2 (231-232) | **Plans:** 5
+
+### What Was Built
+The projection/intent killer feature's WRITE path closed itself from the StateMachine. Phase 231: `TransitionPlan` + pure `derive_transition_plan()` in schema-only `ferro-projections`, server-side guard re-eval (fail-closed), post-persist override hook, registration-time `validate()` drift gate. Phase 232: relocated the write-execution kernel to a channel-agnostic `framework::write`, built the previously-missing visual `POST /{service}/{action}` handler, and proved single-source (one transition through MCP + visual persists the identical derived `to_state`).
+
+### What Worked
+- **Research-before-plan caught two mis-scopes.** 232's research revealed the MCP half was already done by 231 and the "visual write path" didn't exist — turning a vague "wire two paths" into the honest "share the kernel + build the visual surface." Planning on the wrong premise was avoided.
+- **Plan-checker earned its place both phases.** It found a real cross-crate blocker each time (231: app closure error-type break; 232: same, on the kernel relocation) that a happy-path plan would have hit at execution.
+- **Code review caught real bugs verification missed** — both were override/edge-path bugs the goal-backward verifier's happy-path tests didn't exercise (231 WR-01 audit ordering; 232 WR-01 form-urlencoded id decode — the visual endpoint literally didn't work for browser forms until fixed).
+
+### What Was Inefficient
+- **Resume-vs-fresh for the re-verification checker.** A SendMessage-resumed plan-checker replayed its stale verdict instead of re-reading the revised plan; had to verify the fix by direct grep + a fresh run. Lesson: spawn fresh checkers for re-verification, don't resume.
+- **Disk pressure throughout.** The host sat at 99% full; the `--all-features` gate survived only on APFS purgeable space. `df` not reflecting freed space (purgeable) caused repeated second-guessing.
+
+### Patterns Established
+- Derivation lives in the schema-only core crate (data, no runtime); the runtime envelope that interprets it lives in `framework`/consumer — keeps `ferro-projections` dependency-free while the write kernel is shared single-source.
+- Audit channel as a parameter (`{channel}.action.{name}`) so one kernel serves multiple surfaces without per-channel forks.
+
+### Key Lessons
+- "Wire existing paths" roadmap language can hide "build a new capability" — research must reality-check phase scope against code before planning.
+- A goal-backward verifier proving success criteria is necessary but not sufficient; an adversarial code review on the error/edge paths catches the bugs the happy path hides.
+
+### Cost Observations
+- Model mix: planning opus, executors/reviewers/verifiers sonnet.
+- Notable: each phase's one plan-checker revision cycle was cheap insurance against an execution-time cross-crate compile break.
+
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
