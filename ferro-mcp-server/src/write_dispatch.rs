@@ -1,7 +1,7 @@
 //! Write tool dispatch framing for the MCP endpoint.
 //!
-//! The transition-execution kernel ([`WriteDispatcher`], [`ExecutorFn`],
-//! [`GuardEvaluatorFn`], [`OverrideFn`], `dispatch_write`) lives in
+//! The transition-execution kernel (`WriteDispatcher`, `ExecutorFn`,
+//! `GuardEvaluatorFn`, `OverrideFn`, `dispatch_write`) lives in
 //! [`ferro_rs::write`]; this module is the MCP/JSON-RPC framing that calls into
 //! it. `ferro-mcp-server` owns the channel-specific surface: scope check
 //! (Phase 217), action lookup across mcp-exposed services, the confirmation
