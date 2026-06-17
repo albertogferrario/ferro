@@ -3,7 +3,7 @@
 //! Consumers include the migration returned by
 //! [`migration_create_payment_intents`] in their own `Migrator`.
 
-mod m20260617_create_payment_intents;
+pub(crate) mod m20260617_create_payment_intents;
 
 pub use m20260617_create_payment_intents::Migration as CreatePaymentIntentsTable;
 

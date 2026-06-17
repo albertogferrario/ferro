@@ -6,6 +6,10 @@ pub mod migration;
 
 pub use error::PaymentError;
 pub use intent::entity::{ActiveModel, Column, Entity as PaymentIntentEntity, Model};
+pub use intent::lifecycle::{
+    create_reserved, find_active_for, find_by_stripe_session, mark_paid, mark_refunded,
+    mark_released,
+};
 pub use intent::status::PaymentIntentStatus;
 pub use migration::CreatePaymentIntentsTable;
 
