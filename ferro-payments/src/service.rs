@@ -172,7 +172,9 @@ impl StripeGateway for StripeClientGateway {
 pub struct PaymentService<L: BillableLoader> {
     db: DatabaseConnection,
     stripe: Arc<dyn StripeGateway>,
-    #[allow(dead_code)] // wired by handle_* in phase 235
+    #[allow(dead_code)] // read by handle_* in webhook.rs (plan 05)
+    processed_log: Arc<dyn ferro_stripe::ProcessedEventLog>,
+    #[allow(dead_code)] // read by handle_* in webhook.rs (plan 05)
     loader: L,
     #[allow(clippy::type_complexity)]
     return_url_builder: Arc<dyn Fn(&dyn Billable) -> ReturnUrls + Send + Sync>,
@@ -183,11 +185,13 @@ impl<L: BillableLoader> PaymentService<L> {
         db: DatabaseConnection,
         stripe: Arc<dyn StripeGateway>,
         loader: L,
+        processed_log: Arc<dyn ferro_stripe::ProcessedEventLog>,
         return_url_builder: impl Fn(&dyn Billable) -> ReturnUrls + Send + Sync + 'static,
     ) -> Self {
         Self {
             db,
             stripe,
+            processed_log,
             loader,
             return_url_builder: Arc::new(return_url_builder),
         }
@@ -601,10 +605,16 @@ mod tests {
         // Preset a fee response for the Connect case.
         *mock.canned_checkout.lock().unwrap() = Some(Ok(fake_checkout_response(Some(250))));
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         let url = svc
             .start_checkout(&ConnectBillable, chrono::Duration::hours(24))
@@ -631,10 +641,16 @@ mod tests {
         // Default mock returns fee = None for non-Connect.
         let mock = Arc::new(MockStripeGateway::default());
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         svc.start_checkout(&DirectBillable, chrono::Duration::hours(24))
             .await
@@ -659,10 +675,16 @@ mod tests {
         let mock = Arc::new(MockStripeGateway::default());
         let intent_id = seed_paid_with_charge(&db, 101, Some("ch_test_abc")).await;
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         svc.request_refund(intent_id, 5000)
             .await
@@ -701,10 +723,16 @@ mod tests {
         // Seed a paid row without charge_id — different billable_id.
         let no_charge_id = seed_paid_with_charge(&db, 202, None).await;
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         // Non-paid → StatusPrecondition
         let err = svc
@@ -741,10 +769,16 @@ mod tests {
         let mock = Arc::new(MockStripeGateway::default());
         let intent_id = seed_paid_with_charge(&db, 301, Some("ch_dedup_test")).await;
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         // First call succeeds.
         svc.request_refund(intent_id, 5000)
@@ -771,10 +805,16 @@ mod tests {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         svc.start_checkout(&ConnectBillable, chrono::Duration::hours(24))
             .await
@@ -841,10 +881,16 @@ mod tests {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
 
-        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
-            success_url: "https://example.com/success".to_string(),
-            cancel_url: "https://example.com/cancel".to_string(),
-        });
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        );
 
         let err = svc
             .start_checkout(&ZeroAmountBillable, chrono::Duration::hours(24))
