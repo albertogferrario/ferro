@@ -3213,11 +3213,11 @@ that's Phase 235.
 
 **Depends on:** Phase 233.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 234-01-PLAN.md — ferro-stripe dep + extended PaymentError/AutoRefundReason + publish.yml Wave 1c
-- [ ] 234-02-PLAN.md — Billable + BillableLoader traits + lifecycle::attach_session
+- [x] 234-02-PLAN.md — Billable + BillableLoader traits + lifecycle::attach_session
 - [ ] 234-03-PLAN.md — StripeGateway seam + PaymentService (start_checkout/request_refund) + unit tests + lib re-exports
 
 ### Phase 235: webhook SyncDispatcher integration + auto-refund fallback
