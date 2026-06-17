@@ -657,7 +657,7 @@ mod tests {
     #[derive(Default)]
     struct MockStripeGateway {
         checkout_calls: Mutex<Vec<CheckoutRequest>>,
-        checkout_result: Mutex<Option<Result<ferro_stripe::CheckoutIntent, ferro_stripe::Error>>>,
+        checkout_result: Mutex<Option<Result<CheckoutResponse, ferro_stripe::Error>>>,
         refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         refund_result: Mutex<Option<Result<(), ferro_stripe::Error>>>,
     }
@@ -667,10 +667,14 @@ mod tests {
         async fn create_checkout_session(
             &self,
             req: CheckoutRequest,
-        ) -> Result<ferro_stripe::CheckoutIntent, ferro_stripe::Error> {
+        ) -> Result<CheckoutResponse, ferro_stripe::Error> {
             self.checkout_calls.lock().unwrap().push(req);
             self.checkout_result.lock().unwrap().take()
-                .unwrap_or_else(|| Ok(fake_checkout_intent()))
+                // Test controls application_fee_cents here — fully offline (no Stripe::config()).
+                .unwrap_or_else(|| Ok(CheckoutResponse {
+                    intent: fake_checkout_intent(),
+                    application_fee_cents: None,
+                }))
         }
         async fn create_refund(
             &self,
