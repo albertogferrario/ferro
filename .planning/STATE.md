@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
-status: verifying
+status: executing
 stopped_at: Phase 235 context gathered
-last_updated: "2026-06-17T04:10:35.061Z"
-last_activity: 2026-06-17
+last_updated: "2026-06-17T04:38:52.992Z"
+last_activity: 2026-06-17 -- Phase 235 planning complete
 progress:
   total_phases: 244
   completed_phases: 219
-  total_plans: 685
+  total_plans: 690
   completed_plans: 674
   percent: 98
 ---
@@ -31,9 +31,9 @@ Plan: Not started
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
-Last activity: 2026-06-17
+Last activity: 2026-06-17 -- Phase 235 planning complete
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
 
 > **Operator actions pending (from v14.0 / prior milestones):**
