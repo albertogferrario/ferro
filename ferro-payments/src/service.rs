@@ -30,6 +30,7 @@ pub struct ReturnUrls {
 }
 
 /// The hosted Stripe Checkout URL returned by `start_checkout`.
+#[derive(Debug)]
 pub struct CheckoutUrl(pub String);
 
 // ---------------------------------------------------------------------------
@@ -75,6 +76,13 @@ pub trait StripeGateway: Send + Sync {
     async fn create_refund(
         &self,
         charge_id: &str,
+        amount_cents: Option<i64>,
+        idempotency_key: &str,
+    ) -> Result<(), ferro_stripe::Error>;
+
+    async fn create_refund_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
         amount_cents: Option<i64>,
         idempotency_key: &str,
     ) -> Result<(), ferro_stripe::Error>;
@@ -133,6 +141,22 @@ impl StripeGateway for StripeClientGateway {
         idempotency_key: &str,
     ) -> Result<(), ferro_stripe::Error> {
         ferro_stripe::refund::create(charge_id, amount_cents, idempotency_key, None).await?;
+        Ok(())
+    }
+
+    async fn create_refund_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
+        amount_cents: Option<i64>,
+        idempotency_key: &str,
+    ) -> Result<(), ferro_stripe::Error> {
+        ferro_stripe::refund::create_for_payment_intent(
+            payment_intent_id,
+            amount_cents,
+            idempotency_key,
+            None,
+        )
+        .await?;
         Ok(())
     }
 }
@@ -194,6 +218,11 @@ impl<L: BillableLoader> PaymentService<L> {
         billable: &dyn Billable,
         ttl: chrono::Duration,
     ) -> Result<CheckoutUrl, PaymentError> {
+        if billable.amount_cents() <= 0 {
+            return Err(PaymentError::StatusPrecondition(
+                "amount_cents must be positive to start checkout".to_string(),
+            ));
+        }
         let expires_at = Utc::now() + ttl;
         let row = lifecycle::create_reserved(
             billable.tenant_id(),
@@ -345,6 +374,8 @@ mod tests {
         canned_checkout: Mutex<Option<Result<CheckoutResponse, ferro_stripe::Error>>>,
         refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         canned_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
+        pi_refund_calls: Mutex<Vec<(String, Option<i64>)>>,
+        canned_pi_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
     }
 
     impl MockStripeGateway {
@@ -353,6 +384,10 @@ mod tests {
         }
         fn refund_call_count(&self) -> usize {
             self.refund_calls.lock().unwrap().len()
+        }
+        #[allow(dead_code)] // used by handle_* tests in plan 05
+        fn pi_refund_calls(&self) -> Vec<(String, Option<i64>)> {
+            self.pi_refund_calls.lock().unwrap().clone()
         }
     }
 
@@ -381,6 +416,19 @@ mod tests {
                 .unwrap()
                 .push((charge_id.to_string(), amount_cents));
             self.canned_refund.lock().unwrap().take().unwrap_or(Ok(()))
+        }
+
+        async fn create_refund_for_payment_intent(
+            &self,
+            payment_intent_id: &str,
+            amount_cents: Option<i64>,
+            _key: &str,
+        ) -> Result<(), ferro_stripe::Error> {
+            self.pi_refund_calls
+                .lock()
+                .unwrap()
+                .push((payment_intent_id.to_string(), amount_cents));
+            self.canned_pi_refund.lock().unwrap().take().unwrap_or(Ok(()))
         }
     }
 
@@ -742,5 +790,85 @@ mod tests {
             "idempotency key must be deterministic"
         );
         assert_eq!(captured.connect_account_id.as_deref(), Some("acct_test"));
+    }
+
+    /// WR-03 (D-12): start_checkout rejects amount_cents <= 0 before any DB write.
+    #[tokio::test]
+    async fn start_checkout_rejects_nonpositive_amount() {
+        struct ZeroAmountBillable;
+
+        #[async_trait::async_trait]
+        impl Billable for ZeroAmountBillable {
+            fn kind(&self) -> BillableKind {
+                BillableKind::new("booking")
+            }
+            fn id(&self) -> i64 {
+                99
+            }
+            fn tenant_id(&self) -> i64 {
+                1
+            }
+            fn amount_cents(&self) -> i64 {
+                0
+            }
+            fn currency(&self) -> &str {
+                "EUR"
+            }
+            fn checkout_line_description(&self) -> String {
+                "Zero amount".to_string()
+            }
+            async fn on_paid(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_released(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_refunded(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+                _amount_cents: i64,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+        }
+
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+
+        let svc = PaymentService::new(db.clone(), mock.clone(), MockLoader, |_b| ReturnUrls {
+            success_url: "https://example.com/success".to_string(),
+            cancel_url: "https://example.com/cancel".to_string(),
+        });
+
+        let err = svc
+            .start_checkout(&ZeroAmountBillable, chrono::Duration::hours(24))
+            .await
+            .expect_err("should reject zero amount");
+
+        assert!(
+            matches!(err, PaymentError::StatusPrecondition(_)),
+            "expected StatusPrecondition, got: {err:?}"
+        );
+
+        // No reserved row inserted.
+        use sea_orm::PaginatorTrait;
+        let count = Entity::find()
+            .count(&db)
+            .await
+            .expect("count query");
+        assert_eq!(count, 0, "no DB row must be inserted for zero amount");
+
+        // No Stripe call made.
+        assert_eq!(
+            mock.checkout_call_count(),
+            0,
+            "Stripe must NOT be called for zero amount"
+        );
     }
 }
