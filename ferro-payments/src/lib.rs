@@ -4,6 +4,7 @@ mod error;
 pub mod intent;
 
 pub use error::PaymentError;
+pub use intent::entity::{ActiveModel, Column, Entity as PaymentIntentEntity, Model};
 pub use intent::status::PaymentIntentStatus;
 
 /// Open-set kind discriminator for a billable entity. Consumers declare their own
