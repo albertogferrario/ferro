@@ -210,6 +210,12 @@ ferro-payments/src/
 
 **When to use:** All Stripe calls inside `PaymentService` go through this trait — never call `ferro_stripe::CheckoutBuilder` or `ferro_stripe::refund::create` directly from service code.
 
+> **Pattern updated per Open Question 1 resolution — the fee is returned via
+> `CheckoutResponse`, NOT carried on `CheckoutRequest`. Authoritative shape:
+> `234-PATTERNS.md` service.rs section.** The production gateway computes the fee
+> internally (`Stripe::config().application_fee_for`) so `PaymentService` never calls
+> `Stripe::config()` (which panics in tests), and returns it for snapshotting.
+
 ```rust
 // Source: derived from ferro-stripe/src/checkout.rs + refund.rs (verified)
 
@@ -223,7 +229,13 @@ pub struct CheckoutRequest {
     pub idempotency_key: String,
     /// Some = Connect destination charge; None = direct charge.
     pub connect_account_id: Option<String>,
-    /// Pre-computed fee from StripeConfig::application_fee_for (None when no Connect).
+}
+
+/// Gateway return: the Stripe-minted session plus the fee the gateway computed,
+/// so `PaymentService` can snapshot `application_fee_cents` without touching
+/// `Stripe::config()`.
+pub struct CheckoutResponse {
+    pub intent: ferro_stripe::CheckoutIntent,
     pub application_fee_cents: Option<i64>,
 }
 
@@ -232,7 +244,7 @@ pub trait StripeGateway: Send + Sync {
     async fn create_checkout_session(
         &self,
         req: CheckoutRequest,
-    ) -> Result<ferro_stripe::CheckoutIntent, ferro_stripe::Error>;
+    ) -> Result<CheckoutResponse, ferro_stripe::Error>;
 
     async fn create_refund(
         &self,
@@ -254,7 +266,12 @@ impl StripeGateway for StripeClientGateway {
     async fn create_checkout_session(
         &self,
         req: CheckoutRequest,
-    ) -> Result<ferro_stripe::CheckoutIntent, ferro_stripe::Error> {
+    ) -> Result<CheckoutResponse, ferro_stripe::Error> {
+        // Fee computed internally — PaymentService never calls Stripe::config().
+        let application_fee_cents = req
+            .connect_account_id
+            .as_ref()
+            .and_then(|_| ferro_stripe::Stripe::config().application_fee_for(req.amount_cents));
         let mut builder = ferro_stripe::CheckoutBuilder::new(ferro_stripe::Mode::Payment)
             .line_item(ferro_stripe::LineItem {
                 name: req.line_description.clone(),
@@ -267,9 +284,10 @@ impl StripeGateway for StripeClientGateway {
             .cancel_url(&req.cancel_url)
             .idempotency_key(&req.idempotency_key);
         if let Some(account_id) = &req.connect_account_id {
-            builder = builder.destination(account_id, req.application_fee_cents);
+            builder = builder.destination(account_id, application_fee_cents);
         }
-        builder.create().await
+        let intent = builder.create().await?;
+        Ok(CheckoutResponse { intent, application_fee_cents })
     }
 
     async fn create_refund(
@@ -803,17 +821,24 @@ This is a greenfield phase (new code added to an existing crate, no renames or d
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Fee computation in `PaymentService` without calling `Stripe::config()` directly**
    - What we know: `CheckoutIntent` does not carry `application_fee_cents`. `Stripe::config()` panics in tests. Fee must be snapshotted.
    - What's unclear: Whether `StripeGateway::create_checkout_session` should return `CheckoutResponse { intent, application_fee_cents }` or whether `PaymentService` should accept a fee-computation injection separately.
-   - Recommendation: Extend gateway return to `CheckoutResponse`. Planner decides final shape. [ASSUMED for exact solution — multiple valid approaches exist]
+   - **RESOLVED:** `StripeGateway::create_checkout_session` returns
+     `CheckoutResponse { intent, application_fee_cents }`; the production
+     `StripeClientGateway` computes the fee internally via `Stripe::config().application_fee_for`
+     and returns it, so `PaymentService` never calls `Stripe::config()`. `application_fee_cents`
+     is NOT a field on `CheckoutRequest`. See Plan 03 Task 1 and `234-PATTERNS.md` service.rs
+     (authoritative shape).
 
 2. **`attach_session` as lifecycle fn vs. inline `ActiveModel` update**
    - What we know: No `attach_session` function exists in lifecycle.rs. The pattern for `GuardedUpdate` on a single row is established.
    - What's unclear: Whether to add `attach_session` to `lifecycle.rs` (consistent with the layer) or inline the update in `service.rs` (simpler, fewer files).
-   - Recommendation: Add `attach_session` to lifecycle.rs — keeps the layer boundary clean and makes the operation testable independently.
+   - **RESOLVED:** Add `attach_session` to `lifecycle.rs` (Plan 02 Task 3), guarded by
+     `Column::StripeSessionId.is_null()` — keeps the layer boundary clean and makes the
+     operation independently testable.
 
 ---
 
