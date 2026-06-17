@@ -1,5 +1,7 @@
 //! ferro-payments — polymorphic payment intent data layer for the Ferro framework.
 
+use std::borrow::Cow;
+
 pub mod billable;
 mod error;
 pub mod intent;
@@ -26,14 +28,22 @@ pub use service::{
 /// Open-set kind discriminator for a billable entity. Consumers declare their own
 /// constants (e.g. `BillableKind::new("order")`); the crate never enumerates kinds.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BillableKind(&'static str);
+pub struct BillableKind(Cow<'static, str>);
 
 impl BillableKind {
+    /// Construct from a compile-time string literal (e.g. `BillableKind::new("order")`).
     pub const fn new(s: &'static str) -> Self {
-        Self(s)
+        Self(Cow::Borrowed(s))
     }
 
-    pub fn as_str(&self) -> &'static str {
-        self.0
+    /// Construct from a runtime `String` (e.g. the value read from
+    /// `payment_intents.billable_kind` by the webhook handlers).
+    pub fn from_string(s: String) -> Self {
+        Self(Cow::Owned(s))
+    }
+
+    /// Borrow the kind as a string slice. Lifetime is tied to `&self`.
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
