@@ -515,9 +515,12 @@ mod tests {
     // -----------------------------------------------------------------------
 
     /// Seed a `paid` row with an optional `charge_id` via raw SQL (bypasses
-    /// lifecycle guards). Returns the inserted row id.
+    /// lifecycle guards). `billable_id` is varied per call to avoid the partial
+    /// unique index on `(billable_kind, billable_id) WHERE status IN (...)`.
+    /// Returns the inserted row id.
     async fn seed_paid_with_charge(
         conn: &sea_orm::DatabaseConnection,
+        billable_id: i64,
         charge: Option<&str>,
     ) -> i64 {
         let charge_sql = match charge {
@@ -528,7 +531,7 @@ mod tests {
             "INSERT INTO payment_intents \
              (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
               charge_id,expires_at,reserved_at) \
-             VALUES (1,'booking',99,5000,'EUR','paid',\
+             VALUES (1,'booking',{billable_id},5000,'EUR','paid',\
              {charge_sql},\
              '2030-01-01T00:00:00Z','2026-06-17T00:00:00Z')"
         ))
@@ -625,7 +628,7 @@ mod tests {
     async fn request_refund() {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
-        let intent_id = seed_paid_with_charge(&db, Some("ch_test_abc")).await;
+        let intent_id = seed_paid_with_charge(&db, 101, Some("ch_test_abc")).await;
 
         let svc = PaymentService::new(
             db.clone(),
@@ -658,8 +661,8 @@ mod tests {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
 
-        // Seed a reserved row (not paid).
-        let reserved_id = seed_paid_with_charge(&db, None).await;
+        // Seed a reserved row (not paid) — use unique billable_id to avoid unique index.
+        let reserved_id = seed_paid_with_charge(&db, 201, None).await;
         // Patch the status to reserved via raw SQL.
         db.execute_unprepared(&format!(
             "UPDATE payment_intents SET status='reserved' WHERE id={reserved_id}"
@@ -667,8 +670,8 @@ mod tests {
         .await
         .expect("patch to reserved");
 
-        // Seed a paid row without charge_id.
-        let no_charge_id = seed_paid_with_charge(&db, None).await;
+        // Seed a paid row without charge_id — different billable_id.
+        let no_charge_id = seed_paid_with_charge(&db, 202, None).await;
 
         let svc = PaymentService::new(
             db.clone(),
@@ -713,7 +716,7 @@ mod tests {
     async fn request_refund_dedup() {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
-        let intent_id = seed_paid_with_charge(&db, Some("ch_dedup_test")).await;
+        let intent_id = seed_paid_with_charge(&db, 301, Some("ch_dedup_test")).await;
 
         let svc = PaymentService::new(
             db.clone(),
