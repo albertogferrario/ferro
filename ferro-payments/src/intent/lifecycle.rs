@@ -126,6 +126,37 @@ pub async fn mark_refunded<C: ConnectionTrait>(id: i64, conn: &C) -> Result<bool
         .map_err(|e| PaymentError::Db(sea_orm::DbErr::Custom(e.to_string())))
 }
 
+/// Attach `stripe_session_id` and snapshot `application_fee_cents` onto a reserved
+/// row after a successful Stripe Checkout session creation.
+///
+/// Guard: `WHERE stripe_session_id IS NULL` — idempotent for retries. Returns
+/// `Ok(true)` when the session was attached, `Ok(false)` when a session was already
+/// attached (the guard excluded the row — do not overwrite).
+pub async fn attach_session<C: ConnectionTrait>(
+    id: i64,
+    stripe_session_id: &str,
+    application_fee_cents: Option<i64>,
+    conn: &C,
+) -> Result<bool, PaymentError> {
+    GuardedUpdate::new(Entity)
+        .filter(Column::Id.eq(id))
+        .filter(Column::StripeSessionId.is_null())
+        .set_value(
+            Column::StripeSessionId,
+            Value::String(Some(Box::new(stripe_session_id.to_string()))),
+        )
+        .set_value(
+            Column::ApplicationFeeCents,
+            match application_fee_cents {
+                Some(f) => Value::BigInt(Some(f)),
+                None => Value::BigInt(None),
+            },
+        )
+        .exec_at_most_one(conn)
+        .await
+        .map_err(|e| PaymentError::Db(sea_orm::DbErr::Custom(e.to_string())))
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -348,6 +379,54 @@ mod tests {
             "reserved row must be returned by find_active_for"
         );
         assert_eq!(some.unwrap().id, model.id);
+    }
+
+    #[tokio::test]
+    async fn attach_session_sets_session_and_fee() {
+        let conn = fresh_db().await;
+        let model = seed_reserved(&conn).await;
+
+        let ok = attach_session(model.id, "cs_test", Some(50), &conn)
+            .await
+            .expect("attach_session");
+        assert!(ok, "attach_session on a reserved row must return Ok(true)");
+
+        let reloaded = Entity::find_by_id(model.id)
+            .one(&conn)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(reloaded.stripe_session_id, Some("cs_test".to_string()));
+        assert_eq!(reloaded.application_fee_cents, Some(50));
+    }
+
+    #[tokio::test]
+    async fn attach_session_idempotent_second_call_noops() {
+        let conn = fresh_db().await;
+        let model = seed_reserved(&conn).await;
+
+        // First attach succeeds
+        attach_session(model.id, "cs_first", Some(100), &conn)
+            .await
+            .expect("first attach_session");
+
+        // Second attach is a no-op (StripeSessionId IS NULL guard excludes the row)
+        let noop = attach_session(model.id, "cs_other", None, &conn)
+            .await
+            .expect("second attach_session must not err");
+        assert!(
+            !noop,
+            "attach_session on a row with session already attached must return Ok(false)"
+        );
+
+        // Original session_id must not have been overwritten
+        let reloaded = Entity::find_by_id(model.id)
+            .one(&conn)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(reloaded.stripe_session_id, Some("cs_first".to_string()));
+        assert_eq!(reloaded.application_fee_cents, Some(100));
     }
 
     #[tokio::test]
