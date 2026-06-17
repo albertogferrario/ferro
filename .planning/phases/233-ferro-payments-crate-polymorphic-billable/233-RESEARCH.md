@@ -582,7 +582,11 @@ Phase 233 is a pure data-layer crate with no HTTP surface, no authentication, an
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Both questions below are resolved by the recommendations, which the plans adopt
+verbatim (explicit `CAST(... AS CHAR)` in the MySQL generated-column expression;
+manual `impl MigrationName` for date-keyed explicitness).
 
 1. **MySQL generated column expression exact form**
    - What we know: STORED generated columns need a deterministic expression; `CONCAT` + `CASE` pattern confirmed to work
