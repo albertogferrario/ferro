@@ -3203,17 +3203,22 @@ Implement `PaymentService<L: BillableLoader>` with `start_checkout` (mints a
 Stripe Checkout session via `ferro_stripe::CheckoutBuilder`, snapshots
 `application_fee_cents`, attaches the session id) and `request_refund` (calls
 Stripe refund API, snapshots `refund_amount_cents`). Implement `PaymentError`
-enum. Unit tests use mocked `ferro_stripe::Client`, mocked `BillableLoader`, and
-mocked `ProcessedEventLog`. No webhook integration yet — that's Phase 235.
+enum (extended with `Stripe`/`Loader`/`AutoRefundTriggered`). Stripe is abstracted
+behind a local `StripeGateway` trait seam (ferro-stripe exposes no injectable
+client — it is a static facade), so unit tests inject a `MockStripeGateway` and
+a mocked `BillableLoader` with no `Stripe::init`. No webhook integration yet —
+that's Phase 235.
 
 **Requirements**: PAY-POLY-SVC-01..05.
 
 **Depends on:** Phase 233.
 
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 234)
+- [ ] 234-01-PLAN.md — ferro-stripe dep + extended PaymentError/AutoRefundReason + publish.yml Wave 1c
+- [ ] 234-02-PLAN.md — Billable + BillableLoader traits + lifecycle::attach_session
+- [ ] 234-03-PLAN.md — StripeGateway seam + PaymentService (start_checkout/request_refund) + unit tests + lib re-exports
 
 ### Phase 235: webhook SyncDispatcher integration + auto-refund fallback
 
