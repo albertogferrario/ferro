@@ -90,6 +90,13 @@ fn payment_to_stripe_error(e: PaymentError) -> ferro_stripe::Error {
     }
 }
 
+/// Returns `true` for transient infrastructure errors that warrant Stripe
+/// retrying the webhook. Returns `false` for permanent / business-state errors
+/// that should be absorbed (return `Ok(())`) to stop the retry loop.
+fn is_transient(e: &PaymentError) -> bool {
+    matches!(e, PaymentError::Db(_) | PaymentError::Stripe(_))
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -169,8 +176,14 @@ impl<L: BillableLoader> PaymentService<L> {
                     txn.commit().await.map_err(PaymentError::Db)?;
                     Ok(())
                 }
-                Err(_) => {
+                Err(e) => {
                     txn.rollback().await.ok();
+                    if is_transient(&e) {
+                        // Transient infrastructure error — propagate so Stripe retries.
+                        // mark_paid already ran and is idempotent on retry via guards.
+                        return Err(e);
+                    }
+                    // Permanent business-state conflict — auto-refund.
                     self.trigger_auto_refund(
                         &event.payment_intent_id,
                         event.amount_total_cents,
@@ -217,7 +230,11 @@ impl<L: BillableLoader> PaymentService<L> {
                 Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
                 Err(e) => {
                     txn.rollback().await.ok();
-                    return Err(e);
+                    if is_transient(&e) {
+                        // Transient — propagate so Stripe retries.
+                        return Err(e);
+                    }
+                    // Terminal business-state error — absorb; no retry loop.
                 }
             },
             _ => {
@@ -274,7 +291,11 @@ impl<L: BillableLoader> PaymentService<L> {
                     Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
                     Err(e) => {
                         txn.rollback().await.ok();
-                        return Err(e);
+                        if is_transient(&e) {
+                            // Transient — propagate so Stripe retries.
+                            return Err(e);
+                        }
+                        // Terminal business-state error — absorb; no retry loop.
                     }
                 }
             }
