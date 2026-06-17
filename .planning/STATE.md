@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
-stopped_at: Completed 235-05-PLAN.md
-last_updated: "2026-06-17T05:20:33.199Z"
+stopped_at: Phase 236 context gathered
+last_updated: "2026-06-17T11:49:59.536Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 244
@@ -215,7 +215,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-17T05:08:46.624Z
-Stopped at: Completed 235-05-PLAN.md
-Resume file: None
+Last session: 2026-06-17T11:49:59.519Z
+Stopped at: Phase 236 context gathered
+Resume file: .planning/phases/236-ferro-payments-reapers-and-publish-0-1-0/236-CONTEXT.md
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
