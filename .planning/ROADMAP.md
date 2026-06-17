@@ -3235,13 +3235,13 @@ None" and "billable already in side state" cases. Race-condition tests: webhook
 
 **Depends on:** Phase 234.
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 235-01-PLAN.md — BillableKind → Cow<'static, str> + from_string (WR-04 fix-first)
 - [x] 235-02-PLAN.md — ferro-stripe refund::create_for_payment_intent primitive (D-08)
 - [x] 235-03-PLAN.md — lifecycle find_by_payment_intent / find_by_charge_id / attach_payment_intent
-- [ ] 235-04-PLAN.md — StripeGateway pi-refund method + PaymentService processed_log + WR-03 guard
+- [x] 235-04-PLAN.md — StripeGateway pi-refund method + PaymentService processed_log + WR-03 guard
 - [ ] 235-05-PLAN.md — webhook.rs wire_dispatcher + 3 handlers + auto-refund + 12 race/replay tests
 
 ### Phase 236: reapers + workspace test bin + publish 0.1.0
