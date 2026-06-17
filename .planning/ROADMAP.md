@@ -3189,12 +3189,12 @@ partial-unique enforcement against in-memory SQLite. No service layer yet.
 
 **Depends on:** Phase 232.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 233-01-PLAN.md — Crate scaffold: Cargo.toml + workspace members + publish.yml Wave 1b + lib.rs/error.rs + PaymentIntentStatus enum (PAY-POLY-DM-02)
 - [x] 233-02-PLAN.md — PaymentIntent entity + cross-backend migration with partial unique index + supporting indexes (PAY-POLY-DM-01, PAY-POLY-DM-04)
-- [ ] 233-03-PLAN.md — Lifecycle methods (create_reserved / mark_* / find_*) via GuardedUpdate no-op semantics + tests (PAY-POLY-DM-03)
+- [x] 233-03-PLAN.md — Lifecycle methods (create_reserved / mark_* / find_*) via GuardedUpdate no-op semantics + tests (PAY-POLY-DM-03)
 
 ### Phase 234: Billable trait + Loader + PaymentService core
 
