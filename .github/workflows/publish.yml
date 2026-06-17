@@ -244,7 +244,8 @@ jobs:
           # ferro-stripe        -> ferro-events, ferro-queue
           # ferro-whatsapp      -> ferro-events, ferro-queue
           # ferro-notifications -> ferro-whatsapp, ferro-broadcast (Phase 149 / ARCH-FINDING-05)
-          WAVE1B_CRATES="ferro-projections ferro-text ferro-ai ferro-stripe ferro-whatsapp ferro-notifications ferro-reservation ferro-payments ferro-projection ferro-deployments"
+          # ferro-payments moved to Wave 1c (depends on ferro-stripe from Wave 1b)
+          WAVE1B_CRATES="ferro-projections ferro-text ferro-ai ferro-stripe ferro-whatsapp ferro-notifications ferro-reservation ferro-projection ferro-deployments"
 
           for crate in $WAVE1B_CRATES; do
             echo "Publishing $crate..."
@@ -265,6 +266,31 @@ jobs:
       - name: Wait for crates.io index update (Wave 1b)
         run: |
           echo "Waiting for crates.io to index Wave 1b crates..."
+          sleep 30
+
+      - name: Publish Wave 1c (depends on Wave 1b only)
+        run: |
+          echo "Publishing Wave 1c crates..."
+          WAVE1C_CRATES="ferro-payments"
+          for crate in $WAVE1C_CRATES; do
+            echo "Publishing $crate..."
+            if OUTPUT=$(cargo publish -p $crate --no-verify 2>&1); then
+              echo "$crate published successfully"
+            else
+              if echo "$OUTPUT" | grep -q "already exists\|already uploaded"; then
+                echo "$crate already published, skipping"
+              else
+                echo "Failed to publish $crate"
+                echo "$OUTPUT"
+                exit 1
+              fi
+            fi
+            sleep 5
+          done
+
+      - name: Wait for crates.io index update (Wave 1c)
+        run: |
+          echo "Waiting for crates.io to index Wave 1c crates..."
           sleep 30
 
       - name: Publish Wave 2 (framework + mcp)
