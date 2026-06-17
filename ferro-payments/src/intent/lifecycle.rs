@@ -190,6 +190,59 @@ pub async fn find_by_stripe_session<C: ConnectionTrait>(
         .map_err(PaymentError::Db)
 }
 
+/// Return the `payment_intents` row whose `payment_intent_id` matches,
+/// or `None` if absent.
+///
+/// Primary lookup for `handle_charge_refunded` — the refund event carries
+/// no `session_id`.
+pub async fn find_by_payment_intent<C: ConnectionTrait>(
+    payment_intent_id: &str,
+    conn: &C,
+) -> Result<Option<entity::Model>, PaymentError> {
+    Entity::find()
+        .filter(Column::PaymentIntentId.eq(payment_intent_id))
+        .one(conn)
+        .await
+        .map_err(PaymentError::Db)
+}
+
+/// Return the `payment_intents` row whose `charge_id` matches,
+/// or `None` if absent.
+///
+/// Fallback lookup for `handle_charge_refunded` when `payment_intent_id`
+/// is absent from the event.
+pub async fn find_by_charge_id<C: ConnectionTrait>(
+    charge_id: &str,
+    conn: &C,
+) -> Result<Option<entity::Model>, PaymentError> {
+    Entity::find()
+        .filter(Column::ChargeId.eq(charge_id))
+        .one(conn)
+        .await
+        .map_err(PaymentError::Db)
+}
+
+/// Persist `payment_intent_id` onto the row after marking paid.
+/// Guard: `WHERE payment_intent_id IS NULL` — idempotent for Stripe retries.
+///
+/// Returns `Ok(true)` when written, `Ok(false)` when already set (no-op).
+pub async fn attach_payment_intent<C: ConnectionTrait>(
+    id: i64,
+    payment_intent_id: &str,
+    conn: &C,
+) -> Result<bool, PaymentError> {
+    GuardedUpdate::new(Entity)
+        .filter(Column::Id.eq(id))
+        .filter(Column::PaymentIntentId.is_null())
+        .set_value(
+            Column::PaymentIntentId,
+            Value::String(Some(Box::new(payment_intent_id.to_string()))),
+        )
+        .exec_at_most_one(conn)
+        .await
+        .map_err(|e| PaymentError::Db(sea_orm::DbErr::Custom(e.to_string())))
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -427,6 +480,105 @@ mod tests {
             .expect("row still exists");
         assert_eq!(reloaded.stripe_session_id, Some("cs_first".to_string()));
         assert_eq!(reloaded.application_fee_cents, Some(100));
+    }
+
+    #[tokio::test]
+    async fn find_by_payment_intent_matches() {
+        let conn = fresh_db().await;
+        let row = seed_reserved(&conn).await;
+        mark_paid(row.id, &conn).await.unwrap();
+        assert!(
+            attach_payment_intent(row.id, "pi_abc", &conn)
+                .await
+                .unwrap(),
+            "first attach must return Ok(true)"
+        );
+
+        let found = find_by_payment_intent("pi_abc", &conn)
+            .await
+            .expect("find_by_payment_intent");
+        assert_eq!(
+            found.map(|r| r.id),
+            Some(row.id),
+            "must find the row by payment_intent_id"
+        );
+
+        let miss = find_by_payment_intent("pi_missing", &conn)
+            .await
+            .expect("find_by_payment_intent miss");
+        assert!(miss.is_none(), "non-matching id must return None");
+    }
+
+    #[tokio::test]
+    async fn find_by_charge_id_matches() {
+        let conn = fresh_db().await;
+        let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let now = Utc::now();
+        // Insert a row with a charge_id set directly.
+        let inserted = entity::ActiveModel {
+            tenant_id: Set(1),
+            billable_kind: Set("order".to_string()),
+            billable_id: Set(55),
+            amount_cents: Set(500),
+            currency: Set("EUR".to_string()),
+            status: Set(PaymentIntentStatus::Paid),
+            stripe_session_id: Set(None),
+            payment_intent_id: Set(None),
+            charge_id: Set(Some("ch_testcharge".to_string())),
+            application_fee_cents: Set(None),
+            expires_at: Set(expires_at),
+            reserved_at: Set(now),
+            paid_at: Set(Some(now)),
+            released_at: Set(None),
+            refunded_at: Set(None),
+            refund_amount_cents: Set(None),
+            metadata: Set(None),
+            ..Default::default()
+        }
+        .insert(&conn)
+        .await
+        .expect("insert with charge_id");
+
+        let found = find_by_charge_id("ch_testcharge", &conn)
+            .await
+            .expect("find_by_charge_id");
+        assert!(found.is_some(), "must find row by charge_id");
+        assert_eq!(found.unwrap().id, inserted.id);
+
+        let miss = find_by_charge_id("ch_notexist", &conn)
+            .await
+            .expect("find_by_charge_id miss");
+        assert!(miss.is_none(), "non-matching charge_id must return None");
+    }
+
+    #[tokio::test]
+    async fn attach_payment_intent_idempotent_second_call_noops() {
+        let conn = fresh_db().await;
+        let row = seed_reserved(&conn).await;
+        mark_paid(row.id, &conn).await.unwrap();
+
+        // First call: written.
+        assert!(
+            attach_payment_intent(row.id, "pi_x", &conn).await.unwrap(),
+            "first attach_payment_intent must return Ok(true)"
+        );
+
+        // Second call: IS NULL guard → no-op.
+        assert!(
+            !attach_payment_intent(row.id, "pi_y", &conn).await.unwrap(),
+            "second attach_payment_intent must return Ok(false) (IS NULL guard)"
+        );
+
+        // The first value must still be present.
+        let found = find_by_payment_intent("pi_x", &conn)
+            .await
+            .expect("find after idempotent double attach");
+        assert!(
+            found.is_some(),
+            "original payment_intent_id must not be overwritten"
+        );
     }
 
     #[tokio::test]
