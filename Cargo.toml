@@ -34,6 +34,7 @@ members = [
     "ferro-audit",
     "ferro-migration",
     "ferro-reservation",
+    "ferro-payments",
     "ferro-projection",
     "ferro-bundle",
     "ferro-deployments",

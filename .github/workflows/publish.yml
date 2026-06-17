@@ -244,7 +244,7 @@ jobs:
           # ferro-stripe        -> ferro-events, ferro-queue
           # ferro-whatsapp      -> ferro-events, ferro-queue
           # ferro-notifications -> ferro-whatsapp, ferro-broadcast (Phase 149 / ARCH-FINDING-05)
-          WAVE1B_CRATES="ferro-projections ferro-text ferro-ai ferro-stripe ferro-whatsapp ferro-notifications ferro-reservation ferro-projection ferro-deployments"
+          WAVE1B_CRATES="ferro-projections ferro-text ferro-ai ferro-stripe ferro-whatsapp ferro-notifications ferro-reservation ferro-payments ferro-projection ferro-deployments"
 
           for crate in $WAVE1B_CRATES; do
             echo "Publishing $crate..."
