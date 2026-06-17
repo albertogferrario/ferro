@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v16.0
-milestone_name: Write-Boundary AX — StateMachine-Derived Executor
+milestone: v11.0
+milestone_name: Framework Consolidation Audit
 status: verifying
-stopped_at: Completed 232-03-PLAN.md — Phase 232 / EXEC-05 done
-last_updated: "2026-06-16T15:35:33.480Z"
+stopped_at: Phase 233 context gathered
+last_updated: "2026-06-17T01:48:53.594Z"
 last_activity: 2026-06-16
 progress:
-  total_phases: 108
-  completed_phases: 97
-  total_plans: 396
-  completed_plans: 395
+  total_phases: 110
+  completed_phases: 95
+  total_plans: 391
+  completed_plans: 390
   percent: 100
 ---
 
@@ -201,7 +201,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-16T04:32:20.501Z
-Stopped at: Completed 232-03-PLAN.md — Phase 232 / EXEC-05 done
-Resume file: None
+Last session: 2026-06-17T01:48:53.518Z
+Stopped at: Phase 233 context gathered
+Resume file: .planning/phases/233-ferro-payments-crate-polymorphic-billable/233-CONTEXT.md
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
