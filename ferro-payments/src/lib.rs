@@ -3,6 +3,7 @@
 mod error;
 pub mod billable;
 pub mod intent;
+pub mod loader;
 pub mod migration;
 
 pub use error::PaymentError;
