@@ -255,13 +255,19 @@ impl<L: BillableLoader> PaymentService<L> {
             .map_err(PaymentError::Stripe)?;
 
         // On attach failure the reserved row persists — phase-236 reaper cleans it.
-        lifecycle::attach_session(
+        let attached = lifecycle::attach_session(
             row.id,
             &resp.intent.session_id,
             resp.application_fee_cents,
             &self.db,
         )
         .await?;
+        if !attached {
+            tracing::warn!(
+                row_id = row.id,
+                "attach_session no-op: session already attached"
+            );
+        }
 
         Ok(CheckoutUrl(resp.intent.url))
     }
@@ -324,7 +330,16 @@ impl<L: BillableLoader> PaymentService<L> {
         self.stripe
             .create_refund(&charge_id, Some(amount_cents), &idempotency_key)
             .await
-            .map_err(PaymentError::Stripe)
+            .map_err(|e| {
+                tracing::error!(
+                    intent_id,
+                    %charge_id,
+                    err = %e,
+                    "request_refund Stripe call failed; row is refund-in-flight \
+                     (refund_amount_cents set, refunded_at NULL) — phase-236 reaper recovers"
+                );
+                PaymentError::Stripe(e)
+            })
     }
 }
 
