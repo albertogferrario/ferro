@@ -2647,6 +2647,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-payments"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "ferro-orm",
+ "sea-orm",
+ "sea-orm-migration",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+]
+
+[[package]]
 name = "ferro-projection"
 version = "0.2.69"
 dependencies = [
