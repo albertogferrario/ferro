@@ -4,7 +4,7 @@ milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: verifying
 stopped_at: Completed 234-03-PLAN.md (PaymentService orchestrator + StripeGateway seam)
-last_updated: "2026-06-17T03:58:36.567Z"
+last_updated: "2026-06-17T04:05:17.599Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 244
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: 234 (ferro-payments-billable-trait-loader-and-payment-service-cor) — EXECUTING
-Plan: 3 of 3
+Phase: 235
+Plan: Not started
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
@@ -104,6 +104,7 @@ Progress: [██████████] 100%
 | 229 | 5 | - | - |
 | 230 | 7 | - | - |
 | 233 | 3 | - | - |
+| 234 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
