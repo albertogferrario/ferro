@@ -1,6 +1,7 @@
 //! ferro-payments — polymorphic payment intent data layer for the Ferro framework.
 
 mod error;
+pub mod billable;
 pub mod intent;
 pub mod migration;
 
