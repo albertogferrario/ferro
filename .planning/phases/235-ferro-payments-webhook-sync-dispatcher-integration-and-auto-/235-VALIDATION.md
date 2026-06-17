@@ -1,8 +1,8 @@
 ---
 phase: 235
 slug: ferro-payments-webhook-sync-dispatcher-integration-and-auto
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-17
 ---
@@ -46,6 +46,7 @@ created: 2026-06-17
 | 235-xx | tbd | 2 | PAY-POLY-WH-03 | — | session_expired: mark_released + on_released | unit | `cargo test -p ferro-payments handle_session_expired` | ❌ W0 | ⬜ pending |
 | 235-xx | tbd | 2 | PAY-POLY-WH-03 | — | session_expired already-released → no-op | unit | `cargo test -p ferro-payments handle_session_expired_noop` | ❌ W0 | ⬜ pending |
 | 235-xx | tbd | 2 | PAY-POLY-WH-04 | — | charge_refunded: find_by_payment_intent + mark_refunded + on_refunded | unit | `cargo test -p ferro-payments handle_charge_refunded` | ❌ W0 | ⬜ pending |
+| 235-xx | tbd | 2 | PAY-POLY-WH-04 | — | charge_refunded fallback: payment_intent_id None → find_by_charge_id resolves row | unit | `cargo test -p ferro-payments handle_charge_refunded_charge_id_fallback` | ❌ W0 | ⬜ pending |
 | 235-xx | tbd | 2 | PAY-POLY-WH-05 | T-235 lost-money | loader None → auto-refund called exactly once | unit | `cargo test -p ferro-payments auto_refund_billable_vanished` | ❌ W0 | ⬜ pending |
 | 235-xx | tbd | 2 | PAY-POLY-WH-05 | T-235 lost-money | loader Err → auto-refund called exactly once | unit | `cargo test -p ferro-payments auto_refund_loader_error` | ❌ W0 | ⬜ pending |
 | 235-xx | tbd | 2 | PAY-POLY-WH-06 | T-235 double-honor | webhook+reaper interleaved → exactly one side-effect (guarded updates) | unit (race sim) | `cargo test -p ferro-payments webhook_reaper_race` | ❌ W0 | ⬜ pending |

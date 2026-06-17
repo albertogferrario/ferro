@@ -519,21 +519,21 @@ Spec's 5-row race table mapped to concrete `handle_session_completed` branches:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `attach_payment_intent` also store `charge_id`?**
    - What we know: `charge_id` is a column in the entity; it is populated elsewhere (the spec says "Set on success"). `StripeCheckoutCompleted` has NO `charge_id` field. The `charge.refunded` event has `charge_id`.
    - What's unclear: When does `charge_id` get written? The spec data model says "Set on success" but the session.completed event doesn't have it.
-   - Recommendation: `attach_payment_intent` stores only `payment_intent_id`. `charge_id` is populated by a separate path (possibly in `handle_charge_refunded` or left for the reaper). The critical field for `request_refund` is already gated on `charge_id IS NOT NULL` — so `charge_id` can stay NULL until a future phase populates it, as long as the auto-refund path uses `payment_intent_id`.
+   - **RESOLVED:** `attach_payment_intent` stores ONLY `payment_intent_id`. `charge_id` stays NULL until `charge.refunded` (or a future-phase path) supplies it; the session.completed auto-refund uses `payment_intent_id` (via `create_refund_for_payment_intent`), so a NULL `charge_id` does not block the happy or fallback paths. (Plan 03 `attach_payment_intent`, Plan 05 handlers.)
 
 2. **Does `mark_paid` need to also set `payment_intent_id` atomically?**
    - What we know: `mark_paid` is a `GuardedUpdate` on `status`. It does not set `payment_intent_id`.
    - What's unclear: Is a separate `attach_payment_intent` call (after `mark_paid` succeeds) safe in the face of a reaper running concurrently?
-   - Recommendation: The reaper (phase 236) runs on `status='reserved'` rows. After `mark_paid` sets `status='paid'`, the reaper's `reserved` filter excludes the row. The separate `attach_payment_intent` call is safe.
+   - **RESOLVED:** A SEPARATE `attach_payment_intent` call after `mark_paid` is safe. The reaper (236) filters `status='reserved'`; once `mark_paid` sets `status='paid'` the row is excluded, so no concurrent reaper write races the attach. No atomic combination needed. (Plan 05 handle_session_completed.)
 
 3. **`handle_charge_refunded` fallback: charge_id lookup**
    - D-07 says "fallback charge_id". `StripeChargeRefunded.charge_id` is `String` (not Optional — always present). `payment_intent_id` is `Option<String>`.
-   - Recommendation: Try `find_by_payment_intent` first (if `payment_intent_id` is `Some`). If `None` or not found, try `find_by_charge_id`. A `find_by_charge_id` helper mirrors `find_by_payment_intent`. Add both in the same Wave 0 task.
+   - **RESOLVED:** `handle_charge_refunded` tries `find_by_payment_intent` when `payment_intent_id` is `Some`, then falls back to `find_by_charge_id` (always-present `charge_id`). Both helpers added in Plan 03; the fallback branch is covered by the named test `handle_charge_refunded_charge_id_fallback` (Plan 05).
 
 ---
 
