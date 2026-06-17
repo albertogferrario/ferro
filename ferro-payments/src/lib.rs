@@ -8,15 +8,18 @@ pub mod intent;
 pub mod loader;
 pub mod migration;
 pub mod service;
+mod webhook;
 
 pub use error::{AutoRefundReason, PaymentError};
 pub use intent::entity::{ActiveModel, Column, Entity as PaymentIntentEntity, Model};
+pub use intent::lifecycle::{attach_payment_intent, find_by_charge_id, find_by_payment_intent};
 pub use intent::lifecycle::{
     attach_session, create_reserved, find_active_for, find_by_stripe_session, mark_paid,
     mark_refunded, mark_released,
 };
 pub use intent::status::PaymentIntentStatus;
 pub use migration::CreatePaymentIntentsTable;
+pub use webhook::wire_dispatcher;
 
 pub use billable::Billable;
 pub use loader::BillableLoader;

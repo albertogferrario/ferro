@@ -170,12 +170,10 @@ impl StripeGateway for StripeClientGateway {
 /// `L` is the consumer's `BillableLoader` implementation. All Stripe calls
 /// route through the injected `Arc<dyn StripeGateway>` seam.
 pub struct PaymentService<L: BillableLoader> {
-    db: DatabaseConnection,
-    stripe: Arc<dyn StripeGateway>,
-    #[allow(dead_code)] // read by handle_* in webhook.rs (plan 05)
-    processed_log: Arc<dyn ferro_stripe::ProcessedEventLog>,
-    #[allow(dead_code)] // read by handle_* in webhook.rs (plan 05)
-    loader: L,
+    pub(crate) db: DatabaseConnection,
+    pub(crate) stripe: Arc<dyn StripeGateway>,
+    pub(crate) processed_log: Arc<dyn ferro_stripe::ProcessedEventLog>,
+    pub(crate) loader: L,
     #[allow(clippy::type_complexity)]
     return_url_builder: Arc<dyn Fn(&dyn Billable) -> ReturnUrls + Send + Sync>,
 }
@@ -432,7 +430,11 @@ mod tests {
                 .lock()
                 .unwrap()
                 .push((payment_intent_id.to_string(), amount_cents));
-            self.canned_pi_refund.lock().unwrap().take().unwrap_or(Ok(()))
+            self.canned_pi_refund
+                .lock()
+                .unwrap()
+                .take()
+                .unwrap_or(Ok(()))
         }
     }
 
@@ -904,10 +906,7 @@ mod tests {
 
         // No reserved row inserted.
         use sea_orm::PaginatorTrait;
-        let count = Entity::find()
-            .count(&db)
-            .await
-            .expect("count query");
+        let count = Entity::find().count(&db).await.expect("count query");
         assert_eq!(count, 0, "no DB row must be inserted for zero amount");
 
         // No Stripe call made.
