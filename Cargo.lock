@@ -2653,6 +2653,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "ferro-orm",
+ "ferro-stripe",
  "sea-orm",
  "sea-orm-migration",
  "serde",
