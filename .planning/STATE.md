@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Phase 234 context gathered
-last_updated: "2026-06-17T03:15:34.083Z"
-last_activity: 2026-06-17 -- Phase 234 planning complete
+stopped_at: Completed 234-01-PLAN.md (ferro-payments dep wiring + error model + publish wave fix)
+last_updated: "2026-06-17T03:25:42.728Z"
+last_activity: 2026-06-17
 progress:
   total_phases: 244
   completed_phases: 218
   total_plans: 685
-  completed_plans: 671
+  completed_plans: 672
   percent: 98
 ---
 
@@ -20,20 +20,20 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 233 — ferro-payments-crate-polymorphic-billable
+**Current focus:** Phase 234 — ferro-payments-billable-trait-loader-and-payment-service-cor
 
 ## Current Position
 
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: 234
-Plan: Not started
+Phase: 234 (ferro-payments-billable-trait-loader-and-payment-service-cor) — EXECUTING
+Plan: 2 of 3
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
 Status: Ready to execute
 
-Last activity: 2026-06-17 -- Phase 234 planning complete
+Last activity: 2026-06-17
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -152,6 +152,7 @@ Progress: [██████████] 100%
 | Phase 233 P01 | 2 | 2 tasks | 8 files |
 | Phase 233 P02 | 4 | 2 tasks | 6 files |
 | Phase 233 P03 | 8 | 1 tasks | 4 files |
+| Phase 234-ferro-payments-billable-trait-loader-and-payment-service-cor P01 | 7 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -205,7 +206,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-17T02:49:57.552Z
-Stopped at: Phase 234 context gathered
-Resume file: .planning/phases/234-ferro-payments-billable-trait-loader-and-payment-service-cor/234-CONTEXT.md
+Last session: 2026-06-17T03:25:42.708Z
+Stopped at: Completed 234-01-PLAN.md (ferro-payments dep wiring + error model + publish wave fix)
+Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
