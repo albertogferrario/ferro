@@ -192,8 +192,7 @@ impl StripeGateway for StripeClientGateway {
         &self,
         payment_intent_id: &str,
     ) -> Result<RefundStatus, ferro_stripe::Error> {
-        let refunds =
-            ferro_stripe::refund::list_for_payment_intent(payment_intent_id).await?;
+        let refunds = ferro_stripe::refund::list_for_payment_intent(payment_intent_id).await?;
 
         // Take the most recent refund. Stripe returns refunds newest-first with
         // limit=10, so `.first()` is the latest. An empty list means Stripe has
@@ -594,7 +593,8 @@ impl<L: BillableLoader> PaymentService<L> {
     /// intents and resolves succeeded refunds. Per-intent transaction; returns the
     /// count resolved.
     pub async fn reconcile_refunds_in_flight(&self) -> Result<usize, PaymentError> {
-        self.reconcile_refunds_in_flight_at(chrono::Utc::now()).await
+        self.reconcile_refunds_in_flight_at(chrono::Utc::now())
+            .await
     }
 }
 
@@ -1295,10 +1295,7 @@ mod tests {
         fn checkout_line_description(&self) -> String {
             "Test booking".to_string()
         }
-        async fn on_paid(
-            &self,
-            _txn: &sea_orm::DatabaseTransaction,
-        ) -> Result<(), PaymentError> {
+        async fn on_paid(&self, _txn: &sea_orm::DatabaseTransaction) -> Result<(), PaymentError> {
             Ok(())
         }
         async fn on_released(
@@ -1329,10 +1326,7 @@ mod tests {
 
     /// Seed a `reserved` row with `expires_at` in the past (already expired).
     /// Returns the inserted row id.
-    async fn seed_expired_reserved(
-        conn: &sea_orm::DatabaseConnection,
-        billable_id: i64,
-    ) -> i64 {
+    async fn seed_expired_reserved(conn: &sea_orm::DatabaseConnection, billable_id: i64) -> i64 {
         conn.execute_unprepared(&format!(
             "INSERT INTO payment_intents \
              (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
@@ -1609,8 +1603,14 @@ mod tests {
 
         // The failing on_released error is logged and the loop continues.
         // The ok row (4002) is counted; the fail row (4001) is logged + not counted.
-        assert!(did_fail.load(Ordering::SeqCst), "on_released error must have been triggered");
-        assert_eq!(count, 1, "only the row with successful on_released should be counted");
+        assert!(
+            did_fail.load(Ordering::SeqCst),
+            "on_released error must have been triggered"
+        );
+        assert_eq!(
+            count, 1,
+            "only the row with successful on_released should be counted"
+        );
     }
 
     // -----------------------------------------------------------------------

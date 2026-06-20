@@ -7,8 +7,8 @@ mod error;
 pub mod intent;
 pub mod loader;
 pub mod migration;
-pub mod service;
 mod reaper;
+pub mod service;
 mod webhook;
 
 pub use error::{AutoRefundReason, PaymentError};

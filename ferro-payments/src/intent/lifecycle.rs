@@ -658,7 +658,10 @@ mod tests {
             .unwrap()
             .with_timezone(&Utc);
         let expired = find_expired(now, &conn).await.expect("find_expired");
-        assert!(expired.is_empty(), "future-expires row must not be returned");
+        assert!(
+            expired.is_empty(),
+            "future-expires row must not be returned"
+        );
     }
 
     #[tokio::test]
@@ -688,7 +691,8 @@ mod tests {
     // ---------------------------------------------------------------------------
 
     #[tokio::test]
-    async fn find_refunds_in_flight_returns_paid_intent_with_refund_snapshot_and_null_refunded_at() {
+    async fn find_refunds_in_flight_returns_paid_intent_with_refund_snapshot_and_null_refunded_at()
+    {
         let conn = fresh_db().await;
         // Seed a paid row with refund_amount_cents set and refunded_at NULL.
         let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")

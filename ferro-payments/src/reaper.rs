@@ -66,10 +66,14 @@ impl<L: BillableLoader + 'static> ReleaseExpiredPaymentIntents<L> {
 #[ferro_queue::async_trait]
 impl<L: BillableLoader + 'static> ferro_queue::Job for ReleaseExpiredPaymentIntents<L> {
     async fn handle(&self) -> Result<(), ferro_queue::Error> {
-        let svc = self.service.as_ref().ok_or_else(|| ferro_queue::Error::JobFailed {
-            job: "ReleaseExpiredPaymentIntents".to_string(),
-            message: "service not injected — use ReleaseExpiredPaymentIntents::new()".to_string(),
-        })?;
+        let svc = self
+            .service
+            .as_ref()
+            .ok_or_else(|| ferro_queue::Error::JobFailed {
+                job: "ReleaseExpiredPaymentIntents".to_string(),
+                message: "service not injected — use ReleaseExpiredPaymentIntents::new()"
+                    .to_string(),
+            })?;
         svc.release_expired()
             .await
             .map(|_| ())
@@ -128,10 +132,13 @@ impl<L: BillableLoader + 'static> ReconcileRefundsInFlight<L> {
 #[ferro_queue::async_trait]
 impl<L: BillableLoader + 'static> ferro_queue::Job for ReconcileRefundsInFlight<L> {
     async fn handle(&self) -> Result<(), ferro_queue::Error> {
-        let svc = self.service.as_ref().ok_or_else(|| ferro_queue::Error::JobFailed {
-            job: "ReconcileRefundsInFlight".to_string(),
-            message: "service not injected — use ReconcileRefundsInFlight::new()".to_string(),
-        })?;
+        let svc = self
+            .service
+            .as_ref()
+            .ok_or_else(|| ferro_queue::Error::JobFailed {
+                job: "ReconcileRefundsInFlight".to_string(),
+                message: "service not injected — use ReconcileRefundsInFlight::new()".to_string(),
+            })?;
         svc.reconcile_refunds_in_flight()
             .await
             .map(|_| ())
@@ -330,8 +337,7 @@ mod tests {
     /// (T-236-05).
     #[tokio::test]
     async fn job_no_service_injected() {
-        let job: ReconcileRefundsInFlight<MockLoader> =
-            ReconcileRefundsInFlight { service: None };
+        let job: ReconcileRefundsInFlight<MockLoader> = ReconcileRefundsInFlight { service: None };
         use ferro_queue::Job;
         let result = job.handle().await;
         match result {
@@ -374,7 +380,10 @@ mod tests {
         use ferro_queue::Job;
         // No expired rows in the DB — expects Ok(()) with count = 0.
         let result = job.handle().await;
-        assert!(result.is_ok(), "handle should succeed on empty DB: {result:?}");
+        assert!(
+            result.is_ok(),
+            "handle should succeed on empty DB: {result:?}"
+        );
     }
 
     /// handle() with an injected service calls reconcile_refunds_in_flight
@@ -387,6 +396,9 @@ mod tests {
         use ferro_queue::Job;
         // No refund-in-flight rows — expects Ok(()) with count = 0.
         let result = job.handle().await;
-        assert!(result.is_ok(), "handle should succeed on empty DB: {result:?}");
+        assert!(
+            result.is_ok(),
+            "handle should succeed on empty DB: {result:?}"
+        );
     }
 }
