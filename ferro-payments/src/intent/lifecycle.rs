@@ -206,6 +206,45 @@ pub async fn find_by_payment_intent<C: ConnectionTrait>(
         .map_err(PaymentError::Db)
 }
 
+/// Reserved intents whose hold has expired as of `now`.
+///
+/// The release reaper's source query (PAY-POLY-REAP-01).
+/// Selects only `status = 'reserved'` rows — a paid or released row can
+/// never enter the release path (T-236-01 mitigation).
+pub async fn find_expired<C: ConnectionTrait>(
+    now: chrono::DateTime<chrono::Utc>,
+    conn: &C,
+) -> Result<Vec<entity::Model>, PaymentError> {
+    Entity::find()
+        .filter(Column::Status.eq(PaymentIntentStatus::Reserved))
+        .filter(Column::ExpiresAt.lt(now))
+        .all(conn)
+        .await
+        .map_err(PaymentError::Db)
+}
+
+/// Paid intents with a refund snapshot that has not yet landed.
+///
+/// Predicate: `status = 'paid'` AND `refund_amount_cents IS NOT NULL`
+/// AND `refunded_at IS NULL` AND `paid_at < older_than`.
+///
+/// The reconcile reaper's source query (PAY-POLY-REAP-02).
+/// `paid_at` is the age anchor — always set for paid rows (lifecycle invariant).
+/// A row already refunded is excluded by `refunded_at IS NULL` (T-236-01b mitigation).
+pub async fn find_refunds_in_flight<C: ConnectionTrait>(
+    older_than: chrono::DateTime<chrono::Utc>,
+    conn: &C,
+) -> Result<Vec<entity::Model>, PaymentError> {
+    Entity::find()
+        .filter(Column::Status.eq(PaymentIntentStatus::Paid))
+        .filter(Column::RefundAmountCents.is_not_null())
+        .filter(Column::RefundedAt.is_null())
+        .filter(Column::PaidAt.lt(older_than))
+        .all(conn)
+        .await
+        .map_err(PaymentError::Db)
+}
+
 /// Return the `payment_intents` row whose `charge_id` matches,
 /// or `None` if absent.
 ///
@@ -578,6 +617,209 @@ mod tests {
         assert!(
             found.is_some(),
             "original payment_intent_id must not be overwritten"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Tests for find_expired
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn find_expired_returns_reserved_intent_whose_expires_at_is_before_now() {
+        let conn = fresh_db().await;
+        // Seed a reserved row with expires_at in the past.
+        let past = chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let row = create_reserved(1, "order", 10, 500, "EUR", past, &conn)
+            .await
+            .expect("create_reserved past");
+
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let expired = find_expired(now, &conn).await.expect("find_expired");
+        assert_eq!(expired.len(), 1, "must return the one expired row");
+        assert_eq!(expired[0].id, row.id);
+    }
+
+    #[tokio::test]
+    async fn find_expired_excludes_reserved_intent_whose_expires_at_is_after_now() {
+        let conn = fresh_db().await;
+        // expires_at in the future.
+        let future = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        create_reserved(1, "order", 10, 500, "EUR", future, &conn)
+            .await
+            .expect("create_reserved future");
+
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let expired = find_expired(now, &conn).await.expect("find_expired");
+        assert!(expired.is_empty(), "future-expires row must not be returned");
+    }
+
+    #[tokio::test]
+    async fn find_expired_excludes_paid_intent_even_if_expires_at_is_in_the_past() {
+        let conn = fresh_db().await;
+        // Seed a reserved row with past expiry, then mark it paid.
+        let past = chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let row = create_reserved(1, "order", 10, 500, "EUR", past, &conn)
+            .await
+            .expect("create_reserved paid");
+        mark_paid(row.id, &conn).await.expect("mark_paid");
+
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let expired = find_expired(now, &conn).await.expect("find_expired");
+        assert!(
+            expired.is_empty(),
+            "paid row must not be returned even if expires_at is in the past"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Tests for find_refunds_in_flight
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn find_refunds_in_flight_returns_paid_intent_with_refund_snapshot_and_null_refunded_at() {
+        let conn = fresh_db().await;
+        // Seed a paid row with refund_amount_cents set and refunded_at NULL.
+        let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let paid_at = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let inserted = entity::ActiveModel {
+            tenant_id: Set(1),
+            billable_kind: Set("order".to_string()),
+            billable_id: Set(100),
+            amount_cents: Set(1000),
+            currency: Set("EUR".to_string()),
+            status: Set(PaymentIntentStatus::Paid),
+            stripe_session_id: Set(None),
+            payment_intent_id: Set(Some("pi_refund_in_flight".to_string())),
+            charge_id: Set(None),
+            application_fee_cents: Set(None),
+            expires_at: Set(expires_at),
+            reserved_at: Set(paid_at),
+            paid_at: Set(Some(paid_at)),
+            released_at: Set(None),
+            refunded_at: Set(None),
+            refund_amount_cents: Set(Some(500)),
+            metadata: Set(None),
+            ..Default::default()
+        }
+        .insert(&conn)
+        .await
+        .expect("insert in-flight refund row");
+
+        let older_than = chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let inflight = find_refunds_in_flight(older_than, &conn)
+            .await
+            .expect("find_refunds_in_flight");
+        assert_eq!(inflight.len(), 1, "must return the one in-flight row");
+        assert_eq!(inflight[0].id, inserted.id);
+    }
+
+    #[tokio::test]
+    async fn find_refunds_in_flight_excludes_paid_intent_with_refunded_at_already_set() {
+        let conn = fresh_db().await;
+        let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let paid_at = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        // Row with refunded_at already set — should be excluded.
+        entity::ActiveModel {
+            tenant_id: Set(1),
+            billable_kind: Set("order".to_string()),
+            billable_id: Set(200),
+            amount_cents: Set(1000),
+            currency: Set("EUR".to_string()),
+            status: Set(PaymentIntentStatus::Refunded),
+            stripe_session_id: Set(None),
+            payment_intent_id: Set(Some("pi_already_refunded".to_string())),
+            charge_id: Set(None),
+            application_fee_cents: Set(None),
+            expires_at: Set(expires_at),
+            reserved_at: Set(paid_at),
+            paid_at: Set(Some(paid_at)),
+            released_at: Set(None),
+            refunded_at: Set(Some(paid_at)),
+            refund_amount_cents: Set(Some(1000)),
+            metadata: Set(None),
+            ..Default::default()
+        }
+        .insert(&conn)
+        .await
+        .expect("insert already-refunded row");
+
+        let older_than = chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let inflight = find_refunds_in_flight(older_than, &conn)
+            .await
+            .expect("find_refunds_in_flight");
+        assert!(
+            inflight.is_empty(),
+            "already-refunded row must not be returned"
+        );
+    }
+
+    #[tokio::test]
+    async fn find_refunds_in_flight_excludes_paid_intent_with_null_refund_amount_cents() {
+        let conn = fresh_db().await;
+        let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let paid_at = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        // Paid row with NO refund snapshot — should be excluded.
+        entity::ActiveModel {
+            tenant_id: Set(1),
+            billable_kind: Set("order".to_string()),
+            billable_id: Set(300),
+            amount_cents: Set(1000),
+            currency: Set("EUR".to_string()),
+            status: Set(PaymentIntentStatus::Paid),
+            stripe_session_id: Set(None),
+            payment_intent_id: Set(Some("pi_no_refund_snapshot".to_string())),
+            charge_id: Set(None),
+            application_fee_cents: Set(None),
+            expires_at: Set(expires_at),
+            reserved_at: Set(paid_at),
+            paid_at: Set(Some(paid_at)),
+            released_at: Set(None),
+            refunded_at: Set(None),
+            refund_amount_cents: Set(None),
+            metadata: Set(None),
+            ..Default::default()
+        }
+        .insert(&conn)
+        .await
+        .expect("insert paid-no-refund row");
+
+        let older_than = chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let inflight = find_refunds_in_flight(older_than, &conn)
+            .await
+            .expect("find_refunds_in_flight");
+        assert!(
+            inflight.is_empty(),
+            "paid row with null refund_amount_cents must not be returned"
         );
     }
 
