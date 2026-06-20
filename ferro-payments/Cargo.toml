@@ -21,6 +21,7 @@ async-trait = "0.1"
 tracing = "0.1"
 ferro-orm = { path = "../ferro-orm", version = "0.2" }
 ferro-stripe = { path = "../ferro-stripe", version = "0.9" }
+ferro-queue = { path = "../ferro-queue", version = "0.2" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
