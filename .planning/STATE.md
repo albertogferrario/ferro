@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 236-02-PLAN.md — list_for_payment_intent poll primitive + RefundStatus gateway seam
-last_updated: "2026-06-20T22:51:42.736Z"
+stopped_at: Completed 236-03-PLAN.md — release_expired + reconcile_refunds_in_flight reapers
+last_updated: "2026-06-20T23:00:28.806Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 244
   completed_phases: 220
   total_plans: 697
-  completed_plans: 681
+  completed_plans: 682
   percent: 98
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
 Phase: 236 (ferro-payments-reapers-and-publish-0-1-0) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
@@ -164,6 +164,7 @@ Progress: [██████████] 100%
 | Phase 235-ferro-payments-webhook-sync-dispatcher-integration-and-auto- P05 | 559 | 2 tasks | 5 files |
 | Phase 236-ferro-payments-reapers-and-publish-0-1-0 P01 | 5 | 1 tasks | 1 files |
 | Phase 236 P02 | 384 | 2 tasks | 3 files |
+| Phase 236 P03 | 6 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -217,7 +218,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-20T22:51:42.723Z
-Stopped at: Completed 236-02-PLAN.md — list_for_payment_intent poll primitive + RefundStatus gateway seam
+Last session: 2026-06-20T23:00:28.795Z
+Stopped at: Completed 236-03-PLAN.md — release_expired + reconcile_refunds_in_flight reapers
 Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
