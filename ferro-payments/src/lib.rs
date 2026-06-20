@@ -8,6 +8,7 @@ pub mod intent;
 pub mod loader;
 pub mod migration;
 pub mod service;
+mod reaper;
 mod webhook;
 
 pub use error::{AutoRefundReason, PaymentError};
@@ -19,6 +20,7 @@ pub use intent::lifecycle::{
 };
 pub use intent::status::PaymentIntentStatus;
 pub use migration::CreatePaymentIntentsTable;
+pub use reaper::{ReconcileRefundsInFlight, ReleaseExpiredPaymentIntents};
 pub use webhook::wire_dispatcher;
 
 pub use billable::Billable;
