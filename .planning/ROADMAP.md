@@ -3260,10 +3260,10 @@ written.
 
 **Depends on:** Phase 235.
 
-**Plans:** 7 plans (5 waves; publish operator-gated)
+**Plans:** 1/7 plans executed
 
 Plans:
-- [ ] 236-01-PLAN.md — find_expired + find_refunds_in_flight lifecycle finders (wave 1)
+- [x] 236-01-PLAN.md — find_expired + find_refunds_in_flight lifecycle finders (wave 1)
 - [ ] 236-02-PLAN.md — ferro-stripe refund poll primitive + RefundStatus + gateway/mock (wave 1)
 - [ ] 236-03-PLAN.md — release_expired + reconcile_refunds_in_flight PaymentService methods (wave 2)
 - [ ] 236-04-PLAN.md — ferro-queue Job structs (ReleaseExpired/ReconcileRefunds) + wiring (wave 3)
