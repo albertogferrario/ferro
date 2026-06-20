@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use ferro_orm::{GuardedUpdate, Value};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, TransactionTrait};
 
 use crate::billable::Billable;
 use crate::error::PaymentError;
@@ -17,6 +17,7 @@ use crate::intent::entity::{Column, Entity};
 use crate::intent::lifecycle;
 use crate::intent::status::PaymentIntentStatus;
 use crate::loader::BillableLoader;
+use crate::BillableKind;
 
 // ---------------------------------------------------------------------------
 // URL types
@@ -395,6 +396,205 @@ impl<L: BillableLoader> PaymentService<L> {
                 );
                 PaymentError::Stripe(e)
             })
+    }
+
+    // -----------------------------------------------------------------------
+    // release_expired (PAY-POLY-REAP-01)
+    // -----------------------------------------------------------------------
+
+    /// Inner implementation of the release reaper with an injected clock (D-04).
+    ///
+    /// Selects all `reserved` rows whose `expires_at < now`, then for each:
+    /// - `mark_released` (GuardedUpdate `reserved → released`); `Ok(false)` = race
+    ///   no-op (webhook already took it) → skip, no on_released.
+    /// - Loader `Ok(None)` / `Err` = benign (no money was captured, status was
+    ///   Reserved) → `tracing::warn!` + skip, NO auto-refund (D-06).
+    /// - `on_released` error → logged, loop continues (D-05 failure isolation).
+    ///
+    /// Returns the count of intents actually released this tick.
+    pub(crate) async fn release_expired_at(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<usize, PaymentError> {
+        let expired = lifecycle::find_expired(now, &self.db).await?;
+        let mut released = 0usize;
+
+        for intent in expired {
+            let result: Result<(), PaymentError> = async {
+                let marked = lifecycle::mark_released(intent.id, &self.db).await?;
+                if !marked {
+                    // Racing webhook already released this row — skip, no on_released.
+                    return Ok(());
+                }
+
+                let kind = BillableKind::from_string(intent.billable_kind.clone());
+                match self.loader.load(kind, intent.billable_id).await {
+                    Ok(Some(billable)) => {
+                        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+                        match billable.on_released(&txn).await {
+                            Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
+                            Err(e) => {
+                                txn.rollback().await.ok();
+                                return Err(e);
+                            }
+                        }
+                        // Count only when on_released completed successfully.
+                        return Ok(());
+                    }
+                    Ok(None) | Err(_) => {
+                        // Loader vanished — benign (no money captured; status was
+                        // Reserved). Log and skip; no auto-refund (D-06).
+                        tracing::warn!(
+                            intent_id = intent.id,
+                            "release_expired: loader returned None/Err — \
+                             skipping (no money captured)"
+                        );
+                    }
+                }
+                Ok(())
+            }
+            .await;
+
+            match result {
+                Ok(()) => released += 1,
+                Err(e) => {
+                    tracing::error!(
+                        intent_id = intent.id,
+                        err = %e,
+                        "release_expired: per-intent error — continuing"
+                    );
+                    // D-05: do not propagate; let the loop continue.
+                }
+            }
+        }
+
+        Ok(released)
+    }
+
+    /// Release reaper entry (PAY-POLY-REAP-01). Releases reserved intents whose
+    /// hold has expired; per-intent transaction, failure-isolated, returns the
+    /// count released.
+    pub async fn release_expired(&self) -> Result<usize, PaymentError> {
+        self.release_expired_at(chrono::Utc::now()).await
+    }
+
+    // -----------------------------------------------------------------------
+    // reconcile_refunds_in_flight (PAY-POLY-REAP-02)
+    // -----------------------------------------------------------------------
+
+    /// Inner implementation of the reconcile reaper with an injected clock (D-04).
+    ///
+    /// Selects `paid` rows with `refund_amount_cents IS NOT NULL`,
+    /// `refunded_at IS NULL`, and `paid_at < older_than` (1 h behind `now`),
+    /// then for each polls Stripe:
+    /// - `Succeeded` → `mark_refunded` + `on_refunded`; `Ok(false)` = race no-op.
+    /// - `Pending` → leave for next tick (no count increment).
+    /// - `Failed` → `tracing::warn!` only; NO second Stripe call, NO
+    ///   `mark_refunded` (double-refund guard, D-09).
+    ///
+    /// Returns the count of intents actually resolved this tick.
+    pub(crate) async fn reconcile_refunds_in_flight_at(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Result<usize, PaymentError> {
+        // Age anchor: only rows older than 1 h — prevents polling a refund that
+        // Stripe has not yet indexed. The cron schedule is the consumer's knob.
+        let older_than = now - chrono::Duration::hours(1);
+        let in_flight = lifecycle::find_refunds_in_flight(older_than, &self.db).await?;
+        let mut resolved = 0usize;
+
+        for intent in in_flight {
+            // Returns Ok(true) when the intent was resolved (Succeeded path),
+            // Ok(false) when skipped (Pending, Failed, race no-op, loader-vanished),
+            // Err when on_refunded itself fails (D-05: logged, loop continues).
+            let result: Result<bool, PaymentError> = async {
+                let Some(ref pi_id) = intent.payment_intent_id else {
+                    tracing::warn!(
+                        intent_id = intent.id,
+                        "reconcile: payment_intent_id is NULL — cannot poll Stripe; skipping"
+                    );
+                    return Ok(false);
+                };
+
+                let status = self
+                    .stripe
+                    .fetch_refund_status_for_payment_intent(pi_id)
+                    .await
+                    .map_err(PaymentError::Stripe)?;
+
+                match status {
+                    RefundStatus::Succeeded { amount_cents } => {
+                        let marked = lifecycle::mark_refunded(intent.id, &self.db).await?;
+                        if !marked {
+                            // Race no-op: webhook already refunded this row.
+                            return Ok(false);
+                        }
+
+                        let kind = BillableKind::from_string(intent.billable_kind.clone());
+                        match self.loader.load(kind, intent.billable_id).await {
+                            Ok(Some(billable)) => {
+                                let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+                                match billable.on_refunded(&txn, amount_cents).await {
+                                    Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
+                                    Err(e) => {
+                                        txn.rollback().await.ok();
+                                        return Err(e);
+                                    }
+                                }
+                            }
+                            Ok(None) | Err(_) => {
+                                // Loader vanished on a money path — mirror webhook
+                                // handle_charge_refunded `_` arm: rollback + skip.
+                                tracing::warn!(
+                                    intent_id = intent.id,
+                                    "reconcile: loader returned None/Err on succeeded refund — skipping"
+                                );
+                                return Ok(false);
+                            }
+                        }
+                        Ok(true)
+                    }
+                    RefundStatus::Pending => {
+                        // Leave for next tick; do not increment resolved count.
+                        Ok(false)
+                    }
+                    RefundStatus::Failed { reason } => {
+                        // D-09 double-refund guard: NEVER auto-retry a failed refund.
+                        // Operator must investigate and manually resolve.
+                        tracing::warn!(
+                            intent_id = intent.id,
+                            ?reason,
+                            "reconcile: refund failed at Stripe — NOT auto-retrying \
+                             (double-refund guard); operator action required"
+                        );
+                        Ok(false)
+                    }
+                }
+            }
+            .await;
+
+            match result {
+                Ok(true) => resolved += 1,
+                Ok(false) => {} // skip — Pending, Failed, race no-op, or loader-vanished
+                Err(e) => {
+                    tracing::error!(
+                        intent_id = intent.id,
+                        err = %e,
+                        "reconcile_refunds_in_flight: per-intent error — continuing"
+                    );
+                    // D-05: do not propagate; let the loop continue.
+                }
+            }
+        }
+
+        Ok(resolved)
+    }
+
+    /// Reconcile reaper entry (PAY-POLY-REAP-02). Polls Stripe for refund-in-flight
+    /// intents and resolves succeeded refunds. Per-intent transaction; returns the
+    /// count resolved.
+    pub async fn reconcile_refunds_in_flight(&self) -> Result<usize, PaymentError> {
+        self.reconcile_refunds_in_flight_at(chrono::Utc::now()).await
     }
 }
 
@@ -1061,5 +1261,483 @@ mod tests {
             0,
             "Stripe must NOT be called for zero amount"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Reaper test infrastructure
+    // -----------------------------------------------------------------------
+
+    /// A `BillableLoader` that returns a concrete `Billable` for any (kind, id).
+    /// Used by reaper tests that need `on_released` / `on_refunded` to be called.
+    struct ReturningLoader;
+
+    struct SimpleBillable {
+        id: i64,
+    }
+
+    #[async_trait::async_trait]
+    impl Billable for SimpleBillable {
+        fn kind(&self) -> BillableKind {
+            BillableKind::new("booking")
+        }
+        fn id(&self) -> i64 {
+            self.id
+        }
+        fn tenant_id(&self) -> i64 {
+            1
+        }
+        fn amount_cents(&self) -> i64 {
+            1000
+        }
+        fn currency(&self) -> &str {
+            "EUR"
+        }
+        fn checkout_line_description(&self) -> String {
+            "Test booking".to_string()
+        }
+        async fn on_paid(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_released(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_refunded(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+            _amount_cents: i64,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl BillableLoader for ReturningLoader {
+        async fn load(
+            &self,
+            _kind: BillableKind,
+            id: i64,
+        ) -> Result<Option<Box<dyn Billable>>, PaymentError> {
+            Ok(Some(Box::new(SimpleBillable { id })))
+        }
+    }
+
+    /// Seed a `reserved` row with `expires_at` in the past (already expired).
+    /// Returns the inserted row id.
+    async fn seed_expired_reserved(
+        conn: &sea_orm::DatabaseConnection,
+        billable_id: i64,
+    ) -> i64 {
+        conn.execute_unprepared(&format!(
+            "INSERT INTO payment_intents \
+             (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
+              expires_at,reserved_at) \
+             VALUES (1,'booking',{billable_id},1000,'EUR','reserved',\
+             '2020-01-01T00:00:00Z','2019-12-01T00:00:00Z')"
+        ))
+        .await
+        .expect("seed expired reserved row");
+
+        conn.query_one(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT last_insert_rowid() AS id".to_string(),
+        ))
+        .await
+        .expect("query last id")
+        .expect("row")
+        .try_get::<i64>("", "id")
+        .expect("id")
+    }
+
+    /// Seed a `paid` row with `refund_amount_cents` set and `refunded_at` NULL,
+    /// with `paid_at` well in the past (older than 1 h). Returns the row id.
+    async fn seed_refund_in_flight(
+        conn: &sea_orm::DatabaseConnection,
+        billable_id: i64,
+        pi_id: &str,
+    ) -> i64 {
+        conn.execute_unprepared(&format!(
+            "INSERT INTO payment_intents \
+             (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
+              payment_intent_id,expires_at,reserved_at,paid_at,refund_amount_cents) \
+             VALUES (1,'booking',{billable_id},1000,'EUR','paid',\
+             '{pi_id}',\
+             '2030-01-01T00:00:00Z','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z',500)"
+        ))
+        .await
+        .expect("seed refund in flight row");
+
+        conn.query_one(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "SELECT last_insert_rowid() AS id".to_string(),
+        ))
+        .await
+        .expect("query last id")
+        .expect("row")
+        .try_get::<i64>("", "id")
+        .expect("id")
+    }
+
+    fn make_svc_with_loader<L: BillableLoader>(
+        db: sea_orm::DatabaseConnection,
+        mock: Arc<MockStripeGateway>,
+        loader: L,
+    ) -> PaymentService<L> {
+        PaymentService::new(
+            db,
+            mock,
+            loader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        )
+    }
+
+    // -----------------------------------------------------------------------
+    // PAY-POLY-REAP-01: release_expired tests
+    // -----------------------------------------------------------------------
+
+    /// Expired reserved intent with a returning loader → on_released called,
+    /// status flipped to released, count = 1.
+    #[tokio::test]
+    async fn release_expired() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        let row_id = seed_expired_reserved(&db, 1001).await;
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        // Use a `now` that is after the expires_at (2020-01-01).
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .release_expired_at(now)
+            .await
+            .expect("release_expired_at");
+
+        assert_eq!(count, 1, "must release exactly one expired row");
+
+        // Verify the row transitioned to released.
+        use crate::intent::status::PaymentIntentStatus;
+        let row = Entity::find_by_id(row_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(
+            row.status,
+            PaymentIntentStatus::Released,
+            "status must be released after reaper"
+        );
+    }
+
+    /// A row not yet expired (expires_at in the future) must be untouched.
+    #[tokio::test]
+    async fn release_expired_excludes_non_expired_row() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+
+        // Seed a reserved row with expires_at in the future.
+        db.execute_unprepared(
+            "INSERT INTO payment_intents \
+             (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
+              expires_at,reserved_at) \
+             VALUES (1,'booking',2001,1000,'EUR','reserved',\
+             '2030-01-01T00:00:00Z','2026-01-01T00:00:00Z')",
+        )
+        .await
+        .expect("seed future row");
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-06-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .release_expired_at(now)
+            .await
+            .expect("release_expired_at");
+
+        assert_eq!(count, 0, "non-expired row must not be counted");
+    }
+
+    /// mark_released returns Ok(false) (racing webhook already released) →
+    /// no-op skip, no on_released call, count = 0.
+    #[tokio::test]
+    async fn reaper_skips_already_released() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        let row_id = seed_expired_reserved(&db, 3001).await;
+
+        // Simulate a racing webhook: mark the row released before the reaper runs.
+        db.execute_unprepared(&format!(
+            "UPDATE payment_intents SET status='released', released_at='2026-01-01T00:00:00Z' \
+             WHERE id={row_id}"
+        ))
+        .await
+        .expect("pre-release row");
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .release_expired_at(now)
+            .await
+            .expect("release_expired_at");
+
+        // Row was not in expired query (status != reserved) → count = 0.
+        assert_eq!(count, 0, "already-released row must be skipped");
+    }
+
+    /// One intent's on_released failure → logged, loop continues, other rows
+    /// still released (D-05).
+    ///
+    /// The failure path that exercises D-05 isolation is `on_released` returning Err
+    /// (not loader returning Err — that is D-06 benign skip which still counts the row).
+    #[tokio::test]
+    async fn reaper_continues_on_error() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc as StdArc;
+
+        // A billable that returns Err from on_released for one specific id.
+        struct FailingOnReleasedBillable {
+            id: i64,
+            should_fail: bool,
+            did_fail: StdArc<AtomicBool>,
+        }
+
+        #[async_trait::async_trait]
+        impl Billable for FailingOnReleasedBillable {
+            fn kind(&self) -> BillableKind {
+                BillableKind::new("booking")
+            }
+            fn id(&self) -> i64 {
+                self.id
+            }
+            fn tenant_id(&self) -> i64 {
+                1
+            }
+            fn amount_cents(&self) -> i64 {
+                1000
+            }
+            fn currency(&self) -> &str {
+                "EUR"
+            }
+            fn checkout_line_description(&self) -> String {
+                "test".to_string()
+            }
+            async fn on_paid(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_released(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                if self.should_fail {
+                    self.did_fail.store(true, Ordering::SeqCst);
+                    return Err(PaymentError::StatusPrecondition(
+                        "injected on_released error".to_string(),
+                    ));
+                }
+                Ok(())
+            }
+            async fn on_refunded(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+                _amount_cents: i64,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+        }
+
+        struct PartiallyFailingLoader {
+            fail_id: i64,
+            did_fail: StdArc<AtomicBool>,
+        }
+
+        #[async_trait::async_trait]
+        impl BillableLoader for PartiallyFailingLoader {
+            async fn load(
+                &self,
+                _kind: BillableKind,
+                id: i64,
+            ) -> Result<Option<Box<dyn Billable>>, PaymentError> {
+                let should_fail = id == self.fail_id;
+                Ok(Some(Box::new(FailingOnReleasedBillable {
+                    id,
+                    should_fail,
+                    did_fail: self.did_fail.clone(),
+                })))
+            }
+        }
+
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        let did_fail = StdArc::new(AtomicBool::new(false));
+
+        // Seed two expired rows — on_released fails for billable_id 4001, succeeds for 4002.
+        let _fail_row = seed_expired_reserved(&db, 4001).await;
+        let _ok_row = seed_expired_reserved(&db, 4002).await;
+
+        let loader = PartiallyFailingLoader {
+            fail_id: 4001,
+            did_fail: did_fail.clone(),
+        };
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), loader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2025-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        // Must not return Err — failure isolation means the reaper continues (D-05).
+        let count = svc
+            .release_expired_at(now)
+            .await
+            .expect("release_expired_at must not propagate per-intent error");
+
+        // The failing on_released error is logged and the loop continues.
+        // The ok row (4002) is counted; the fail row (4001) is logged + not counted.
+        assert!(did_fail.load(Ordering::SeqCst), "on_released error must have been triggered");
+        assert_eq!(count, 1, "only the row with successful on_released should be counted");
+    }
+
+    // -----------------------------------------------------------------------
+    // PAY-POLY-REAP-02: reconcile_refunds_in_flight tests
+    // -----------------------------------------------------------------------
+
+    /// Stripe poll returns Succeeded → mark_refunded + on_refunded called, count = 1.
+    #[tokio::test]
+    async fn reconcile_succeeded() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        // Default mock returns Succeeded { amount_cents: 1000 }.
+        let row_id = seed_refund_in_flight(&db, 5001, "pi_reconcile_ok").await;
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        // now is 2 h after the seeded paid_at (2026-01-01), so older_than = now - 1h
+        // is still > paid_at → row is selected.
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        assert_eq!(count, 1, "succeeded refund must be counted as resolved");
+
+        // Verify the poll was made — drop the guard before the await below.
+        {
+            let polls = mock.poll_calls.lock().unwrap();
+            assert_eq!(polls.len(), 1);
+            assert_eq!(polls[0], "pi_reconcile_ok");
+        }
+
+        // Verify the row transitioned to refunded.
+        use crate::intent::status::PaymentIntentStatus;
+        let row = Entity::find_by_id(row_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(row.status, PaymentIntentStatus::Refunded);
+    }
+
+    /// Stripe poll returns Pending → row left untouched, count = 0.
+    #[tokio::test]
+    async fn reconcile_pending_noop() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        mock.set_refund_status(Ok(RefundStatus::Pending));
+        let row_id = seed_refund_in_flight(&db, 6001, "pi_reconcile_pending").await;
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        assert_eq!(count, 0, "pending refund must NOT be counted");
+
+        // Row must still be in paid status.
+        use crate::intent::status::PaymentIntentStatus;
+        let row = Entity::find_by_id(row_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(row.status, PaymentIntentStatus::Paid);
+        assert!(row.refunded_at.is_none(), "refunded_at must still be NULL");
+    }
+
+    /// Stripe poll returns Failed → warn only, NO second Stripe call, NO mark_refunded.
+    /// This test asserts the mock recorded zero refund-creation calls (D-09).
+    #[tokio::test]
+    async fn reconcile_failed_no_retry() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        mock.set_refund_status(Ok(RefundStatus::Failed {
+            reason: Some("do_not_honor".to_string()),
+        }));
+        let row_id = seed_refund_in_flight(&db, 7001, "pi_reconcile_failed").await;
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        // Failed → warn, no resolution.
+        assert_eq!(count, 0, "failed refund must NOT be counted as resolved");
+
+        // Critical: NO refund-creation call must have been made (D-09 double-refund guard).
+        // Drop guards before the await below.
+        {
+            let pi_refund_calls = mock.pi_refund_calls.lock().unwrap();
+            assert_eq!(
+                pi_refund_calls.len(),
+                0,
+                "reconcile must NOT call create_refund_for_payment_intent on Failed status (D-09)"
+            );
+        }
+        {
+            let refund_calls = mock.refund_calls.lock().unwrap();
+            assert_eq!(
+                refund_calls.len(),
+                0,
+                "reconcile must NOT call create_refund on Failed status (D-09)"
+            );
+        }
+
+        // Row must be untouched (still paid, refunded_at still NULL).
+        use crate::intent::status::PaymentIntentStatus;
+        let row = Entity::find_by_id(row_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(row.status, PaymentIntentStatus::Paid);
+        assert!(row.refunded_at.is_none(), "refunded_at must still be NULL");
     }
 }
