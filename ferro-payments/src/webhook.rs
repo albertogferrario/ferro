@@ -492,6 +492,13 @@ mod tests {
                 .take()
                 .unwrap_or(Ok(()))
         }
+
+        async fn fetch_refund_status_for_payment_intent(
+            &self,
+            _payment_intent_id: &str,
+        ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
+            Ok(crate::service::RefundStatus::Pending)
+        }
     }
 
     // -----------------------------------------------------------------------

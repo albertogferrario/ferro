@@ -34,6 +34,23 @@ pub struct ReturnUrls {
 pub struct CheckoutUrl(pub String);
 
 // ---------------------------------------------------------------------------
+// RefundStatus
+// ---------------------------------------------------------------------------
+
+/// Resolution of a refund-in-flight poll (D-08).
+///
+/// Returned by `StripeGateway::fetch_refund_status_for_payment_intent`.
+/// The reconcile reaper maps this to the appropriate lifecycle action:
+/// `Succeeded` → `mark_refunded`; `Pending` → leave for next tick;
+/// `Failed` → `tracing::warn!`, no auto-retry (D-09).
+#[derive(Debug, Clone, PartialEq)]
+pub enum RefundStatus {
+    Succeeded { amount_cents: i64 },
+    Pending,
+    Failed { reason: Option<String> },
+}
+
+// ---------------------------------------------------------------------------
 // StripeGateway request / response
 // ---------------------------------------------------------------------------
 
@@ -86,6 +103,16 @@ pub trait StripeGateway: Send + Sync {
         amount_cents: Option<i64>,
         idempotency_key: &str,
     ) -> Result<(), ferro_stripe::Error>;
+
+    /// Read-only poll of the most recent refund for `payment_intent_id`.
+    ///
+    /// Used by the reconcile reaper (D-08) to determine whether a
+    /// refund-in-flight intent has landed at Stripe. This is a query — it
+    /// never issues or retries a refund (D-09).
+    async fn fetch_refund_status_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
+    ) -> Result<RefundStatus, ferro_stripe::Error>;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +185,34 @@ impl StripeGateway for StripeClientGateway {
         )
         .await?;
         Ok(())
+    }
+
+    async fn fetch_refund_status_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
+    ) -> Result<RefundStatus, ferro_stripe::Error> {
+        let refunds =
+            ferro_stripe::refund::list_for_payment_intent(payment_intent_id).await?;
+
+        // Take the most recent refund. Stripe returns refunds newest-first with
+        // limit=10, so `.first()` is the latest. An empty list means Stripe has
+        // no record yet — return Pending so the reaper retries next tick
+        // (T-236-03c: missing refund never maps to Succeeded).
+        let Some(refund) = refunds.first() else {
+            return Ok(RefundStatus::Pending);
+        };
+
+        Ok(match refund.status.as_deref() {
+            Some("succeeded") => RefundStatus::Succeeded {
+                amount_cents: refund.amount,
+            },
+            Some("pending") | Some("requires_action") => RefundStatus::Pending,
+            Some("failed") | Some("canceled") => RefundStatus::Failed {
+                reason: refund.failure_reason.clone(),
+            },
+            // Unknown or missing status — treat as Pending (safe default).
+            _ => RefundStatus::Pending,
+        })
     }
 }
 
@@ -393,6 +448,11 @@ mod tests {
         canned_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
         pi_refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         canned_pi_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
+        /// Records payment_intent_ids passed to fetch_refund_status_for_payment_intent.
+        poll_calls: Mutex<Vec<String>>,
+        /// Canned result for the next fetch_refund_status_for_payment_intent call.
+        /// `None` → default Ok(RefundStatus::Succeeded { amount_cents: 1000 }).
+        canned_refund_status: Mutex<Option<Result<RefundStatus, ferro_stripe::Error>>>,
     }
 
     impl MockStripeGateway {
@@ -405,6 +465,10 @@ mod tests {
         #[allow(dead_code)] // used by handle_* tests in plan 05
         fn pi_refund_calls(&self) -> Vec<(String, Option<i64>)> {
             self.pi_refund_calls.lock().unwrap().clone()
+        }
+        /// Program the next fetch_refund_status_for_payment_intent result.
+        fn set_refund_status(&self, result: Result<RefundStatus, ferro_stripe::Error>) {
+            *self.canned_refund_status.lock().unwrap() = Some(result);
         }
     }
 
@@ -450,6 +514,21 @@ mod tests {
                 .unwrap()
                 .take()
                 .unwrap_or(Ok(()))
+        }
+
+        async fn fetch_refund_status_for_payment_intent(
+            &self,
+            payment_intent_id: &str,
+        ) -> Result<RefundStatus, ferro_stripe::Error> {
+            self.poll_calls
+                .lock()
+                .unwrap()
+                .push(payment_intent_id.to_string());
+            self.canned_refund_status
+                .lock()
+                .unwrap()
+                .take()
+                .unwrap_or(Ok(RefundStatus::Succeeded { amount_cents: 1000 }))
         }
     }
 
@@ -847,6 +926,58 @@ mod tests {
             "idempotency key must be deterministic"
         );
         assert_eq!(captured.connect_account_id.as_deref(), Some("acct_test"));
+    }
+
+    // -----------------------------------------------------------------------
+    // PAY-POLY-REAP-02: RefundStatus + fetch_refund_status_for_payment_intent
+    // -----------------------------------------------------------------------
+
+    /// PAY-POLY-REAP-02a: MockStripeGateway records poll calls and returns
+    /// the default canned status (Succeeded { amount_cents: 1000 }).
+    #[tokio::test]
+    async fn mock_poll_records_call_and_returns_default() {
+        let mock = MockStripeGateway::default();
+        let result = mock
+            .fetch_refund_status_for_payment_intent("pi_test_123")
+            .await
+            .expect("mock poll");
+        assert_eq!(
+            result,
+            RefundStatus::Succeeded { amount_cents: 1000 },
+            "default canned status is Succeeded(1000)"
+        );
+        let calls = mock.poll_calls.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0], "pi_test_123");
+    }
+
+    /// PAY-POLY-REAP-02b: set_refund_status programs a canned Pending response.
+    #[tokio::test]
+    async fn mock_poll_returns_canned_pending() {
+        let mock = MockStripeGateway::default();
+        mock.set_refund_status(Ok(RefundStatus::Pending));
+        let result = mock
+            .fetch_refund_status_for_payment_intent("pi_test_456")
+            .await
+            .expect("mock poll");
+        assert_eq!(result, RefundStatus::Pending);
+    }
+
+    /// PAY-POLY-REAP-02c: set_refund_status programs a canned Failed response.
+    #[tokio::test]
+    async fn mock_poll_returns_canned_failed() {
+        let mock = MockStripeGateway::default();
+        mock.set_refund_status(Ok(RefundStatus::Failed {
+            reason: Some("lost".to_string()),
+        }));
+        let result = mock
+            .fetch_refund_status_for_payment_intent("pi_test_789")
+            .await
+            .expect("mock poll");
+        assert!(
+            matches!(result, RefundStatus::Failed { reason: Some(_) }),
+            "expected Failed with reason"
+        );
     }
 
     /// WR-03 (D-12): start_checkout rejects amount_cents <= 0 before any DB write.
