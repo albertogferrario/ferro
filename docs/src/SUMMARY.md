@@ -47,6 +47,7 @@
 - [Inertia.js](features/inertia.md)
 - [JSON-UI](features/json-ui.md)
 - [Stripe](features/stripe.md)
+- [Payments](features/payments.md)
 - [WhatsApp](features/whatsapp.md)
 - [Themes](features/themes.md)
 - [Service Projections](features/projections.md)

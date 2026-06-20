@@ -2,6 +2,8 @@
 
 ferro-stripe adds Stripe billing to Ferro applications. It covers two dimensions:
 
+> For the polymorphic payment-intent layer built on top of this integration, see [Payments](payments.md).
+
 - **Platform subscriptions** — the application charges tenants for plan tiers (Free/Pro/Enterprise)
 - **Stripe Connect** — tenants collect payments from their end users via connected Stripe accounts
 
