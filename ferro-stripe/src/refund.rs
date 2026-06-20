@@ -79,6 +79,30 @@ pub async fn create_for_payment_intent(
     Ok(refund)
 }
 
+/// Read-only poll of refunds attached to a PaymentIntent.
+///
+/// Used by the ferro-payments reconcile reaper to resolve refund-in-flight
+/// intents idempotently (a query, never a re-issue).
+///
+/// Returns up to 10 refunds for the given `payment_intent_id`. An invalid
+/// `payment_intent_id` returns `Err(Error::Stripe(_))` before reaching Stripe
+/// (T-236-03).
+pub async fn list_for_payment_intent(
+    payment_intent_id: &str,
+) -> Result<Vec<stripe::Refund>, Error> {
+    // Parse before touching the client so an invalid id is caught without
+    // requiring Stripe::init() (T-236-03: validate before any API call).
+    let pi_id: stripe::PaymentIntentId = payment_intent_id
+        .parse()
+        .map_err(|_| Error::Stripe(format!("invalid payment intent id: {payment_intent_id}")))?;
+    let client = crate::Stripe::client();
+    let mut params = stripe::ListRefunds::new();
+    params.payment_intent = Some(pi_id);
+    params.limit = Some(10);
+    let list = stripe::Refund::list(client, &params).await?;
+    Ok(list.data)
+}
+
 /// Retrieves a refund by id.
 pub async fn retrieve(refund_id: &str) -> Result<stripe::Refund, Error> {
     let client = crate::Stripe::client();
@@ -91,9 +115,21 @@ pub async fn retrieve(refund_id: &str) -> Result<stripe::Refund, Error> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn invalid_payment_intent_id_does_not_parse() {
         // Guards create_for_payment_intent's early-return Err path without a network call.
         assert!("not_a_pi".parse::<stripe::PaymentIntentId>().is_err());
+    }
+
+    #[tokio::test]
+    async fn list_for_payment_intent_invalid_id_returns_error() {
+        // T-236-03: invalid PI id must not reach Stripe — parse error is caught early.
+        let result = list_for_payment_intent("not-a-pi").await;
+        assert!(
+            matches!(result, Err(Error::Stripe(_))),
+            "expected Err(Error::Stripe(_)) for invalid pi id, got: {result:?}"
+        );
     }
 }
