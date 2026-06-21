@@ -402,6 +402,19 @@ impl App {
     pub fn boot_services() {
         provider::bootstrap();
     }
+
+    /// Set the process-global Inertia configuration.
+    ///
+    /// Call once from `bootstrap.rs` before the server starts accepting requests.
+    /// A downstream app then supplies only page props; the root template (title,
+    /// `<head>` extras, mount node) comes from this config.
+    ///
+    /// Subsequent calls are ignored (`OnceLock` semantics); a warning is emitted
+    /// on the second call to surface the mistake.
+    #[cfg(feature = "inertia")]
+    pub fn set_inertia_config(config: ferro_inertia::InertiaConfig) {
+        crate::inertia::global::set_inertia_config(config);
+    }
 }
 
 /// Bind a trait to a singleton implementation (auto-wraps in Arc)

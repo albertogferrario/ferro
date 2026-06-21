@@ -123,7 +123,12 @@ impl Inertia {
     /// }
     /// ```
     pub fn render<P: Serialize>(req: &Request, component: &str, props: P) -> Response {
-        Self::render_with_config(req, component, props, InertiaConfig::default())
+        Self::render_with_config(
+            req,
+            component,
+            props,
+            crate::inertia::global::get_inertia_config(),
+        )
     }
 
     /// Render an Inertia response with custom configuration.
@@ -197,7 +202,7 @@ impl Inertia {
             component,
             props,
             Some(&shared),
-            InertiaConfig::default(),
+            crate::inertia::global::get_inertia_config(),
         );
 
         Ok(Self::convert_response(http_response))
