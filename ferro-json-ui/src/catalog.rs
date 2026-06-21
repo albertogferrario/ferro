@@ -27,15 +27,14 @@ use schemars::schema_for;
 use serde_json::{to_value, Value};
 
 use crate::component::{
-    ActionCardProps, ActionGroupProps, AlertProps, AvatarProps, BadgeProps,
-    BreadcrumbProps, ButtonGroupProps, ButtonProps, CalendarCellProps, CardProps,
-    CheckboxListProps, CheckboxProps, ChecklistProps, CollapsibleProps, DataTableProps,
-    DescriptionListProps, DetailPageProps, EmptyStateProps, FormProps, FormSectionProps,
-    GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps,
-    ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps,
-    ProgressProps, RawHtmlProps, SegmentedControlProps, SelectProps, SeparatorProps,
-    SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps,
-    TableProps, TabsProps, TextProps, ToastProps,
+    ActionCardProps, ActionGroupProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps,
+    ButtonGroupProps, ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps,
+    ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
+    EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
+    KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
+    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
+    SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
+    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────

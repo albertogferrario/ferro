@@ -12,8 +12,8 @@ use crate::action::HttpMethod;
 use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
-    ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps,
-    HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
+    ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps, HeaderProps,
+    IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
     Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps,
     ToastVariant,
