@@ -36,10 +36,22 @@ pub struct InertiaConfig {
     pub html_template: Option<String>,
     /// Path to Vite's manifest.json for resolving hashed asset filenames
     pub manifest_path: String,
+    /// Optional page title. When `Some`, overrides `app_name` in `<title>`.
+    pub title: Option<String>,
+    /// Raw HTML injected into `<head>` before `</head>` (meta, favicon, font tags).
+    /// SECURITY: developer-controlled config only — never populate from request data.
+    /// Ignored when `html_template` is set (the custom template owns `<head>`).
+    pub head_extras: Option<String>,
+    /// id attribute of the mount node. Defaults to `"app"`.
+    pub mount_id: String,
 }
 
-impl Default for InertiaConfig {
-    fn default() -> Self {
+impl InertiaConfig {
+    /// Build configuration from environment variables.
+    ///
+    /// Reads `APP_NAME`, `VITE_DEV_SERVER`, `VITE_ENTRY_POINT`, `INERTIA_VERSION`,
+    /// and `APP_ENV`. Mirrors the framework `from_env()` convention.
+    pub fn from_env() -> Self {
         let vite_dev_server = std::env::var("VITE_DEV_SERVER")
             .unwrap_or_else(|_| "http://localhost:5173".to_string());
 
@@ -53,16 +65,18 @@ impl Default for InertiaConfig {
         Self {
             app_name,
             vite_dev_server,
-            entry_point: "src/main.tsx".to_string(),
-            version: "1.0".to_string(),
+            entry_point: std::env::var("VITE_ENTRY_POINT")
+                .unwrap_or_else(|_| "src/main.tsx".to_string()),
+            version: std::env::var("INERTIA_VERSION").unwrap_or_else(|_| "1.0".to_string()),
             development: is_dev,
             html_template: None,
             manifest_path: "public/.vite/manifest.json".to_string(),
+            title: None,
+            head_extras: None,
+            mount_id: "app".to_string(),
         }
     }
-}
 
-impl InertiaConfig {
     /// Create a new configuration with default values.
     pub fn new() -> Self {
         Self::default()
@@ -138,5 +152,74 @@ impl InertiaConfig {
     pub fn html_template(mut self, template: impl Into<String>) -> Self {
         self.html_template = Some(template.into());
         self
+    }
+
+    /// Override the `<title>` tag. When `None`, falls back to `app_name`.
+    pub fn title(mut self, t: impl Into<String>) -> Self {
+        self.title = Some(t.into());
+        self
+    }
+
+    /// Raw HTML injected into `<head>` before `</head>`.
+    /// Ignored when `html_template` is set.
+    pub fn head_extras(mut self, h: impl Into<String>) -> Self {
+        self.head_extras = Some(h.into());
+        self
+    }
+
+    /// Set the mount node id (default `"app"`).
+    pub fn mount_id(mut self, id: impl Into<String>) -> Self {
+        self.mount_id = id.into();
+        self
+    }
+}
+
+impl Default for InertiaConfig {
+    fn default() -> Self {
+        Self::from_env()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_env_reads_defaults() {
+        // CI does not set VITE_ENTRY_POINT / INERTIA_VERSION, so defaults apply.
+        let c = InertiaConfig::from_env();
+        assert_eq!(c.entry_point, "src/main.tsx");
+        assert_eq!(c.version, "1.0");
+        assert_eq!(c.mount_id, "app");
+    }
+
+    #[test]
+    fn new_fields_default_to_none() {
+        let c = InertiaConfig::from_env();
+        assert!(c.title.is_none());
+        assert!(c.head_extras.is_none());
+    }
+
+    #[test]
+    fn builders_set_new_fields() {
+        let c = InertiaConfig::new()
+            .title("My App")
+            .head_extras(r#"<link rel="icon" href="/favicon.ico">"#)
+            .mount_id("root");
+        assert_eq!(c.title.as_deref(), Some("My App"));
+        assert_eq!(
+            c.head_extras.as_deref(),
+            Some(r#"<link rel="icon" href="/favicon.ico">"#)
+        );
+        assert_eq!(c.mount_id, "root");
+    }
+
+    #[test]
+    fn default_equals_from_env_shape() {
+        let a = InertiaConfig::default();
+        let b = InertiaConfig::from_env();
+        assert_eq!(a.entry_point, b.entry_point);
+        assert_eq!(a.version, b.version);
+        assert_eq!(a.mount_id, b.mount_id);
     }
 }
