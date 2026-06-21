@@ -3278,3 +3278,38 @@ Plans:
 Phases 231–232 (EXEC-01..05) — full details archived in [milestones/v16.0-ROADMAP.md](milestones/v16.0-ROADMAP.md).
 
 Delivered: the projection/intent write path now derives transitions from the `StateMachine` declaration across both the MCP and visual write surfaces through one `framework::write` kernel — "declare twice" eliminated, no per-channel executor.
+
+---
+
+## v16.1 ferro-json-ui ActionGroup Action Primitive (Phase 237)
+
+The dashboard kebab/action pattern becomes a first-class component. `ActionGroup`
+replaces `DropdownMenu` as the sole public action primitive, enforcing the
+"primary first / destructive in the kebab / kebab last / ≤N inline buttons"
+conventions structurally rather than by author discipline. Research seed:
+[research/actiongroup-component.md](research/actiongroup-component.md).
+
+### Phase 237: ActionGroup component + DropdownMenu replacement + 0.2.72 release
+
+**Goal:** ferro-json-ui exposes an `ActionGroup` component that takes one ordered
+action list and renders inline buttons + a trailing overflow kebab — forcing
+destructive items into the kebab (rendered last), capping inline buttons at
+`max_inline`, auto-wrapping non-GET inline buttons in `<form>`, and accepting
+`items` as a literal array or `{"$data":"/path"}` binding with `{row_key}` /
+`visible_if` row semantics. `DropdownMenu` is removed from the public surface (its
+kebab rendering may survive as an internal helper ActionGroup calls).
+
+**Depends on:** none — json-ui primitive, independent of the payments / write-boundary lines.
+
+**Replaces:** the public `DropdownMenu` component. Per "delete old code completely":
+once internal usages migrate, no consumer-authored `DropdownMenu` spec remains.
+
+**Success Criteria** (what must be TRUE):
+  1. A spec authoring a single `ActionGroup` with N items renders inline buttons up to `max_inline` (default 2) plus a trailing kebab holding the overflow; any `destructive: true` item appears in the kebab and last, regardless of input order.
+  2. `items` bound via `{"$data":"/x/actions"}` renders identically to a literal list; `{row_key}` substitution and `visible_if` row gates work in DataTable/Kanban contexts (parity with the former DropdownMenu).
+  3. A non-GET inline action renders inside a `<form>` (no bare POST button); a GET action renders as a plain link/button.
+  4. `DropdownMenu` no longer appears in `BUILTIN_TYPES`, `BUILTIN_SPECS`, the public `lib.rs` export, or the catalog; both drift guards (catalog.rs runtime length check + `builtin_types_count_drift_guard`) pass with updated counts; the json-ui schema export lists `ActionGroup` and omits `DropdownMenu`.
+  5. Projection codegen `emit_actions_placeholder` emits an `ActionGroup` element; ferro-internal/example/test specs and json-ui docs no longer reference `DropdownMenu`.
+  6. The ferro workspace is version-bumped `0.2.71 → 0.2.72` and `ferro-json-ui` (+ `ferro-rs` re-export) is published to crates.io (operator-gated publish step).
+
+**Plans:** TBD
