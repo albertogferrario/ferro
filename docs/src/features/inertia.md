@@ -47,16 +47,31 @@ pub async fn register() {
 
 ### Manual Configuration
 
+Use the builder chain to set specific fields on top of the environment defaults:
+
 ```rust
 use ferro::InertiaConfig;
 
-let config = InertiaConfig {
-    vite_dev_server: "http://localhost:5173".to_string(),
-    entry_point: "src/main.tsx".to_string(),
-    version: "1.0".to_string(),
-    development: true,
-    html_template: None,
-};
+let config = InertiaConfig::from_env()
+    .title("My App")
+    .head_extras(r#"<link rel="icon" href="/favicon.ico">"#)
+    .mount_id("app");
+```
+
+`head_extras` accepts raw HTML injected into `<head>` before `</head>`. It is
+developer-controlled config and must not be populated from request data. When
+`html_template` is set, `head_extras` is ignored — the custom template owns the
+entire `<head>`.
+
+For full control, override individual builder methods:
+
+```rust
+let config = InertiaConfig::from_env()
+    .vite_dev_server("http://localhost:5173")
+    .entry_point("src/main.tsx")
+    .version("1.0")
+    .development()
+    .mount_id("app");
 ```
 
 ## Basic Usage
@@ -704,11 +719,9 @@ interface FormProps {
 In development, Ferro serves the Vite dev server with HMR:
 
 ```rust
-let config = InertiaConfig {
-    development: true,
-    vite_dev_server: "http://localhost:5173".to_string(),
-    // ...
-};
+let config = InertiaConfig::from_env()
+    .development()
+    .vite_dev_server("http://localhost:5173");
 ```
 
 The rendered HTML includes:
@@ -723,10 +736,8 @@ The rendered HTML includes:
 In production, Ferro uses the built manifest:
 
 ```rust
-let config = InertiaConfig {
-    development: false,
-    // ...
-};
+let config = InertiaConfig::from_env()
+    .production();
 ```
 
 The rendered HTML includes hashed assets:
