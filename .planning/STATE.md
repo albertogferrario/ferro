@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v11.0
-milestone_name: Framework Consolidation Audit
+milestone: v1.0
+milestone_name: milestone
 status: executing
-stopped_at: Phase 238 context gathered
-last_updated: "2026-06-21T16:38:05.080Z"
+stopped_at: Completed 238-01-PLAN.md
+last_updated: "2026-06-21T17:04:07.543Z"
 last_activity: 2026-06-21
 progress:
   total_phases: 245
   completed_phases: 221
-  total_plans: 697
-  completed_plans: 686
+  total_plans: 701
+  completed_plans: 687
   percent: 98
 ---
 
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 236 — ferro-payments-reapers-and-publish-0-1-0
+**Current focus:** Phase 238 — inertia-first-load-html-shell
 
 ## Current Position
 
 Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor. Goal: derive a default write executor from the `ServiceDef` StateMachine (kill the "declare twice" `WriteDispatcher` duplication) with an override hook for the app-specific 20%. Last load-bearing gap in the projection/intent killer feature's write path. Verified 2026-06-16: `ferro-projections` has no executor-derivation machinery at 0.2.65.
 
-Phase: 236
-Plan: Not started
+Phase: 238 (inertia-first-load-html-shell) — EXECUTING
+Plan: 2 of 4
 Next: `/gsd-plan-phase 231`. Phase 231 = derivation + guard re-eval + override hook + sync-by-construction in `ferro-projections` (EXEC-01/02/03/04). Phase 232 = wire the derived executor across the MCP + visual/form write surfaces, retire the hand-written `WriteDispatcher` (EXEC-05). All 5 v16 requirements mapped, no orphans.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221, shipped 2026-06-14, published 0.2.66). v14.0 ✅ Channel Projection (215–216, `ferro-text::TextRenderer`); v13.x ✅ (207–214). Phase 213 closed the projection render-content gaps (kanban/StatCard/actions data-bound).
 
-Status: Executing Phase 236
+Status: Ready to execute
 
 Last activity: 2026-06-21
 Workspace version: 0.2.66 (published; local tree 0.2.65 + remote 0.2.66 version bump)
@@ -169,6 +169,7 @@ Progress: [██████████] 100%
 | Phase 236 P04 | 12 | 2 tasks | 3 files |
 | Phase 236 P05 | 5 | 1 tasks | 5 files |
 | Phase 236 P06 | 4 | 1 tasks | 3 files |
+| Phase 238-inertia-first-load-html-shell P01 | 127 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -223,7 +224,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-21T16:38:05.042Z
-Stopped at: Phase 238 context gathered
-Resume file: .planning/phases/238-inertia-first-load-html-shell/238-CONTEXT.md
+Last session: 2026-06-21T17:04:07.530Z
+Stopped at: Completed 238-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
