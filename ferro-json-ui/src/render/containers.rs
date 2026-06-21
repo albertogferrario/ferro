@@ -1096,13 +1096,16 @@ pub(crate) fn render_action_group(
             Some(u) => u.to_string(),
             None => {
                 let h = item.action.handler.as_str();
-                if h.is_empty() { "#".to_string() } else { h.to_string() }
+                if h.is_empty() {
+                    "#".to_string()
+                } else {
+                    h.to_string()
+                }
             }
         };
 
-        let btn_classes = button_variant_classes(
-            item.variant.as_ref().unwrap_or(&ButtonVariant::Default),
-        );
+        let btn_classes =
+            button_variant_classes(item.variant.as_ref().unwrap_or(&ButtonVariant::Default));
         let label = html_escape(&item.label);
 
         match item.action.method {
@@ -2533,8 +2536,14 @@ mod tests {
         assert!(html.contains(">A<"), "A inline missing: {html}");
         assert!(html.contains(">B<"), "B inline missing: {html}");
         // overflow kebab present
-        assert!(html.contains("popovertarget=\"m1\""), "kebab trigger missing: {html}");
-        assert!(html.contains("popover id=\"m1\" data-popover-menu"), "popover panel missing: {html}");
+        assert!(
+            html.contains("popovertarget=\"m1\""),
+            "kebab trigger missing: {html}"
+        );
+        assert!(
+            html.contains("popover id=\"m1\" data-popover-menu"),
+            "popover panel missing: {html}"
+        );
         // C, D, E in overflow
         assert!(html.contains(">C<"), "C in overflow missing: {html}");
         assert!(html.contains(">D<"), "D in overflow missing: {html}");
@@ -2544,10 +2553,7 @@ mod tests {
     #[test]
     fn action_group_no_overflow_hides_kebab() {
         // 2 GET items, max_inline 2, none destructive → NO kebab
-        let items = json!([
-            action_item("A", "/a", "GET"),
-            action_item("B", "/b", "GET"),
-        ]);
+        let items = json!([action_item("A", "/a", "GET"), action_item("B", "/b", "GET"),]);
         let spec = build_spec(vec![(
             "root",
             Element::new("ActionGroup")
@@ -2556,8 +2562,14 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_action_group(el, &spec, &json!({}), 1);
-        assert!(!html.contains("popovertarget"), "kebab should be absent: {html}");
-        assert!(!html.contains("popover id="), "popover panel should be absent: {html}");
+        assert!(
+            !html.contains("popovertarget"),
+            "kebab should be absent: {html}"
+        );
+        assert!(
+            !html.contains("popover id="),
+            "popover panel should be absent: {html}"
+        );
         assert!(html.contains(">A<"), "A missing: {html}");
         assert!(html.contains(">B<"), "B missing: {html}");
     }
@@ -2583,18 +2595,30 @@ mod tests {
         assert!(html.contains(">A<"), "A inline missing: {html}");
         assert!(html.contains(">B<"), "B inline missing: {html}");
         // kebab exists (destructive overflows)
-        assert!(html.contains("popovertarget=\"m3\""), "kebab missing: {html}");
+        assert!(
+            html.contains("popovertarget=\"m3\""),
+            "kebab missing: {html}"
+        );
         // DEL in overflow (in popover panel)
         assert!(html.contains(">DEL<"), "DEL missing: {html}");
         // DEL must appear AFTER the popover panel opening tag
         let popover_start = html.find("popover id=\"m3\"").expect("popover panel");
         let del_pos = html.find(">DEL<").expect("DEL pos");
-        assert!(del_pos > popover_start, "DEL should be inside overflow panel: {html}");
+        assert!(
+            del_pos > popover_start,
+            "DEL should be inside overflow panel: {html}"
+        );
         // DEL must be last in the panel (no inline button named DEL before popover)
         let a_pos = html.find(">A<").expect("A pos");
         let b_pos = html.find(">B<").expect("B pos");
-        assert!(a_pos < popover_start, "A should be inline (before popover): {html}");
-        assert!(b_pos < popover_start, "B should be inline (before popover): {html}");
+        assert!(
+            a_pos < popover_start,
+            "A should be inline (before popover): {html}"
+        );
+        assert!(
+            b_pos < popover_start,
+            "B should be inline (before popover): {html}"
+        );
     }
 
     #[test]
@@ -2609,9 +2633,18 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_action_group(el, &spec, &json!({}), 1);
-        assert!(html.contains("<form action=\"/save\" method=\"post\">"), "form missing: {html}");
-        assert!(html.contains("<button type=\"submit\""), "submit button missing: {html}");
-        assert!(!html.contains("popovertarget"), "no overflow expected: {html}");
+        assert!(
+            html.contains("<form action=\"/save\" method=\"post\">"),
+            "form missing: {html}"
+        );
+        assert!(
+            html.contains("<button type=\"submit\""),
+            "submit button missing: {html}"
+        );
+        assert!(
+            !html.contains("popovertarget"),
+            "no overflow expected: {html}"
+        );
     }
 
     #[test]
@@ -2627,7 +2660,10 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_action_group(el, &spec, &json!({}), 1);
         assert!(html.contains("<a href=\"/view\""), "anchor missing: {html}");
-        assert!(!html.contains("<form"), "form should not appear for GET: {html}");
+        assert!(
+            !html.contains("<form"),
+            "form should not appear for GET: {html}"
+        );
     }
 
     #[test]
@@ -2635,10 +2671,7 @@ mod tests {
         // Items decoded from a literal array render identically to the same
         // items declared directly — $data binding is resolved before render_action_group
         // is called; this test asserts that decoding an items array is transparent.
-        let items = json!([
-            action_item("X", "/x", "GET"),
-            action_item("Y", "/y", "GET"),
-        ]);
+        let items = json!([action_item("X", "/x", "GET"), action_item("Y", "/y", "GET"),]);
         let spec = build_spec(vec![(
             "root",
             Element::new("ActionGroup")
@@ -2687,7 +2720,13 @@ mod tests {
         // data row with "active": true but no "nonexistent_field"
         let data = json!({"active": true});
         let html = render_action_group(el, &spec, &data, 1);
-        assert!(html.contains(">Shown<"), "Shown item should be visible: {html}");
-        assert!(!html.contains(">Hidden<"), "Hidden item should be absent (fail-closed): {html}");
+        assert!(
+            html.contains(">Shown<"),
+            "Shown item should be visible: {html}"
+        );
+        assert!(
+            !html.contains(">Hidden<"),
+            "Hidden item should be absent (fail-closed): {html}"
+        );
     }
 }
