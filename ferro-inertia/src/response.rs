@@ -6,6 +6,17 @@ use crate::request::InertiaRequest;
 use crate::shared::InertiaShared;
 use serde::Serialize;
 
+/// Escape a string for safe insertion into a double-quoted HTML attribute or element text.
+/// Covers the five characters that can break attribute/text context.
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+
 /// Framework-agnostic HTTP response.
 ///
 /// Convert this to your framework's response type.
@@ -114,6 +125,14 @@ impl Inertia {
     /// It automatically:
     /// - Detects XHR vs initial page load
     /// - Filters props for partial reloads
+    ///
+    /// # Configuration
+    ///
+    /// This uses [`InertiaConfig::default`] (env-driven). It does NOT read any
+    /// process-global app config — that wiring lives in the framework wrapper
+    /// (`ferro_rs::Inertia`, configured via `App::set_inertia_config`). Direct
+    /// embedders of this crate that need custom config should call
+    /// [`Inertia::render_with_config`].
     ///
     /// # Example
     ///
@@ -379,34 +398,31 @@ impl InertiaResponse {
             "version": self.config.version,
         });
 
-        // Escape JSON for HTML attribute
-        let page_json = serde_json::to_string(&page_data)
-            .unwrap_or_default()
-            .replace('&', "&amp;")
-            .replace('<', "&lt;")
-            .replace('>', "&gt;")
-            .replace('"', "&quot;")
-            .replace('\'', "&#x27;");
+        // Escape JSON for the double-quoted data-page HTML attribute.
+        let page_json = escape_html(&serde_json::to_string(&page_data).unwrap_or_default());
 
-        let csrf = csrf_token.unwrap_or("");
+        let csrf = escape_html(csrf_token.unwrap_or(""));
 
         // Use custom template if provided
         if let Some(template) = &self.config.html_template {
             let html = template
                 .replace("{page}", &page_json)
-                .replace("{csrf}", csrf);
+                .replace("{csrf}", &csrf);
             return InertiaHttpResponse::html(html);
         }
 
         // Derive shared template values from config fields (title/head_extras/mount_id).
-        // These are computed once here and used in both dev and prod branches below.
-        let title_text = self
-            .config
-            .title
-            .as_deref()
-            .unwrap_or(&self.config.app_name);
+        // title and mount_id are escaped — they land in a <title> element and an id="" attribute.
+        // head_extras is intentionally NOT escaped: it is raw, developer-controlled HTML
+        // (trust boundary documented on InertiaConfig::head_extras — never populate from request data).
+        let title_text = escape_html(
+            self.config
+                .title
+                .as_deref()
+                .unwrap_or(&self.config.app_name),
+        );
         let head_extras = self.config.head_extras.as_deref().unwrap_or("");
-        let mount_id = self.config.mount_id.as_str();
+        let mount_id = escape_html(&self.config.mount_id);
 
         // Default template
         let html = if self.config.development {

@@ -356,7 +356,7 @@ use ferro::{handler, Request, Response, Inertia, SavedInertiaContext, Validator}
 #[handler]
 pub async fn store(req: Request) -> Response {
     // Save context BEFORE consuming the request
-    let ctx = SavedInertiaContext::from_request(&req);
+    let ctx = SavedInertiaContext::from(&req);
 
     // Now consume the request body
     let data: serde_json::Value = req.json().await?;
@@ -395,7 +395,7 @@ use ferro::{handler, Request, Response, Inertia, SavedInertiaContext, Validator}
 pub async fn store(req: Request) -> Response {
     // STEP 1: Save context BEFORE consuming the request body
     // This is required because req.json()/req.input() consumes the body
-    let ctx = SavedInertiaContext::from_request(&req);
+    let ctx = SavedInertiaContext::from(&req);
 
     // STEP 2: Now safely consume the request body
     let data: CreateItemRequest = req.json().await?;
@@ -666,7 +666,7 @@ use ferro::{Inertia, SavedInertiaContext};
 
 #[handler]
 pub async fn store(req: Request) -> Response {
-    let ctx = SavedInertiaContext::from_request(&req);
+    let ctx = SavedInertiaContext::from(&req);
     let data: CreatePostRequest = req.json().await?;
 
     let errors = validate_post(&data);
@@ -922,7 +922,7 @@ pub async fn create(req: Request) -> Response {
 
 #[handler]
 pub async fn store(req: Request) -> Response {
-    let ctx = SavedInertiaContext::from_request(&req);
+    let ctx = SavedInertiaContext::from(&req);
     let data: CreatePostInput = req.json().await?;
 
     match Post::create(&data).await {
@@ -949,7 +949,7 @@ pub async fn edit(post: Post, req: Request) -> Response {
 
 #[handler]
 pub async fn update(post: Post, req: Request) -> Response {
-    let ctx = SavedInertiaContext::from_request(&req);
+    let ctx = SavedInertiaContext::from(&req);
     let data: UpdatePostInput = req.json().await?;
 
     match post.update(&data).await {
@@ -1040,7 +1040,7 @@ pub async fn store(req: Request) -> Response {
 **Solution:** Use `SavedInertiaContext` to capture request metadata before consuming the body:
 
 ```rust
-let ctx = SavedInertiaContext::from_request(&req);  // Save first
+let ctx = SavedInertiaContext::from(&req);  // Save first
 let data = req.json().await?;                        // Then consume
 Inertia::render_ctx(&ctx, "Component", props)        // Use saved context
 ```
