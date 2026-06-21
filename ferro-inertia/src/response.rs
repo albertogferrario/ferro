@@ -400,7 +400,11 @@ impl InertiaResponse {
 
         // Derive shared template values from config fields (title/head_extras/mount_id).
         // These are computed once here and used in both dev and prod branches below.
-        let title_text = self.config.title.as_deref().unwrap_or(&self.config.app_name);
+        let title_text = self
+            .config
+            .title
+            .as_deref()
+            .unwrap_or(&self.config.app_name);
         let head_extras = self.config.head_extras.as_deref().unwrap_or("");
         let mount_id = self.config.mount_id.as_str();
 
@@ -477,7 +481,7 @@ impl InertiaResponse {
 }
 
 #[cfg(test)]
-mod template_field_tests {
+mod content_negotiation_tests {
     use super::*;
     use crate::config::InertiaConfig;
 
@@ -500,12 +504,103 @@ mod template_field_tests {
     }
 
     #[test]
-    fn title_override() {
+    fn non_inertia_request_returns_html_document() {
+        let req = MockReq {
+            is_inertia: false,
+            path: "/home",
+        };
         let resp = Inertia::render_with_config(
-            &MockReq { is_inertia: false, path: "/" },
+            &req,
+            "Home",
+            serde_json::json!({"title": "Hi"}),
+            InertiaConfig::new().development(),
+        );
+        assert_eq!(resp.content_type, "text/html; charset=utf-8");
+        assert!(resp.body.contains("<!DOCTYPE html>"));
+        assert!(resp.body.contains(r#"data-page=""#));
+    }
+
+    #[test]
+    fn inertia_request_returns_json_contract() {
+        let req = MockReq {
+            is_inertia: true,
+            path: "/home",
+        };
+        let resp = Inertia::render_with_config(
+            &req,
+            "Home",
+            serde_json::json!({"title": "Hi"}),
+            InertiaConfig::new().development(),
+        );
+        assert_eq!(resp.content_type, "application/json");
+        let body: serde_json::Value = serde_json::from_str(&resp.body).unwrap();
+        assert_eq!(body["component"], "Home");
+    }
+
+    #[test]
+    fn html_data_page_equals_json_contract() {
+        let props = serde_json::json!({"title": "Hi", "count": 42});
+        let cfg = InertiaConfig::new().development().version("test-1");
+        let html = Inertia::render_with_config(
+            &MockReq {
+                is_inertia: false,
+                path: "/home",
+            },
+            "Home",
+            props.clone(),
+            cfg.clone(),
+        );
+        let json = Inertia::render_with_config(
+            &MockReq {
+                is_inertia: true,
+                path: "/home",
+            },
+            "Home",
+            props,
+            cfg,
+        );
+        let start = html.body.find(r#"data-page=""#).unwrap() + 11;
+        let end = html.body[start..].find('"').unwrap() + start;
+        let page = html.body[start..end]
+            .replace("&quot;", "\"")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&#x27;", "'");
+        let html_page: serde_json::Value = serde_json::from_str(&page).unwrap();
+        let json_page: serde_json::Value = serde_json::from_str(&json.body).unwrap();
+        assert_eq!(html_page, json_page);
+    }
+
+    #[test]
+    fn dev_mode_emits_vite_client_script() {
+        let resp = Inertia::render_with_config(
+            &MockReq {
+                is_inertia: false,
+                path: "/",
+            },
             "App",
             serde_json::json!({}),
-            InertiaConfig::new().development().app_name("Fallback").title("Explicit"),
+            InertiaConfig::new()
+                .development()
+                .vite_dev_server("http://localhost:5173"),
+        );
+        assert!(resp.body.contains("http://localhost:5173/@vite/client"));
+    }
+
+    #[test]
+    fn title_override() {
+        let resp = Inertia::render_with_config(
+            &MockReq {
+                is_inertia: false,
+                path: "/",
+            },
+            "App",
+            serde_json::json!({}),
+            InertiaConfig::new()
+                .development()
+                .app_name("Fallback")
+                .title("Explicit"),
         );
         assert!(resp.body.contains("<title>Explicit</title>"));
         assert!(!resp.body.contains("<title>Fallback</title>"));
@@ -514,7 +609,10 @@ mod template_field_tests {
     #[test]
     fn head_extras_in_html() {
         let resp = Inertia::render_with_config(
-            &MockReq { is_inertia: false, path: "/" },
+            &MockReq {
+                is_inertia: false,
+                path: "/",
+            },
             "App",
             serde_json::json!({}),
             InertiaConfig::new()
@@ -527,11 +625,34 @@ mod template_field_tests {
     #[test]
     fn mount_id_applied() {
         let resp = Inertia::render_with_config(
-            &MockReq { is_inertia: false, path: "/" },
+            &MockReq {
+                is_inertia: false,
+                path: "/",
+            },
             "App",
             serde_json::json!({}),
             InertiaConfig::new().development().mount_id("root"),
         );
         assert!(resp.body.contains(r#"id="root" data-page="#));
+    }
+
+    // SECURITY (T-238-03): prod build must never emit the @vite/client preamble.
+    // Uses the prod branch — asserts ABSENCE of dev tags (manifest-cache bleed
+    // is harmless for absence assertions).
+    #[test]
+    fn prod_mode_does_not_leak_dev_server() {
+        let resp = Inertia::render_with_config(
+            &MockReq {
+                is_inertia: false,
+                path: "/",
+            },
+            "App",
+            serde_json::json!({}),
+            InertiaConfig::new()
+                .production()
+                .vite_dev_server("http://localhost:5173"),
+        );
+        assert!(!resp.body.contains("/@vite/client"));
+        assert!(!resp.body.contains("@react-refresh"));
     }
 }
