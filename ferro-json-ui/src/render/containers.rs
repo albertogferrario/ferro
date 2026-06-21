@@ -11,11 +11,12 @@
 
 use serde_json::Value;
 
+use crate::action::HttpMethod;
 use crate::component::{
-    ButtonGroupProps, CardProps, CardVariant, CollapsibleProps, DetailPageProps, FormMaxWidth,
-    FormSectionLayout, FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps,
-    PageHeaderProps, SegmentedControlProps, SegmentedItem, SidebarLayoutItem, SidebarLayoutProps,
-    Size, TabsProps,
+    ActionGroupProps, ActionItem, ButtonGroupProps, ButtonVariant, CardProps, CardVariant,
+    CollapsibleProps, DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout,
+    FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps,
+    SegmentedControlProps, SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -961,6 +962,226 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
         .collect();
 
     format!("<div class=\"flex items-center gap-2 flex-wrap\">{body}</div>")
+}
+
+/// Returns the Tailwind button classes for a given `ButtonVariant` at default size.
+/// Matches the `render_button_inner` variant table in `atoms.rs`.
+// Dead-code suppressed: used by render_action_group; both become call sites in plan 02.
+#[allow(dead_code)]
+fn button_variant_classes(variant: &ButtonVariant) -> &'static str {
+    match variant {
+        ButtonVariant::Default => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 bg-primary text-primary-foreground hover:bg-primary/90 \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+        ButtonVariant::Secondary => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 bg-secondary text-secondary-foreground hover:bg-secondary/90 \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+        ButtonVariant::Destructive => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 bg-destructive text-primary-foreground hover:bg-destructive/90 \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+        ButtonVariant::Outline => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 border border-border bg-background text-text hover:bg-surface \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+        ButtonVariant::Ghost => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 text-text hover:bg-surface \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+        ButtonVariant::Link => {
+            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
+             transition-colors duration-150 text-primary underline hover:text-primary/80 \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        }
+    }
+}
+
+/// Fail-closed visibility gate for `ActionItem.visible_if`.
+///
+/// Mirrors the semantics of `action_visible_for_row` in `render/data.rs`:
+/// - `visible_if` absent → always visible.
+/// - `visible_if` set and `data[field]` is missing, null, false, `0`, or
+///   empty string/array/object → hidden.
+// Dead-code suppressed: used by render_action_group; both become call sites in plan 02.
+#[allow(dead_code)]
+fn action_item_visible(item: &ActionItem, data: &serde_json::Value) -> bool {
+    let Some(field) = item.visible_if.as_deref() else {
+        return true;
+    };
+    match data.get(field) {
+        None | Some(serde_json::Value::Null) => false,
+        Some(serde_json::Value::Bool(b)) => *b,
+        Some(serde_json::Value::Number(n)) => {
+            if let Some(i) = n.as_i64() {
+                i != 0
+            } else if let Some(f) = n.as_f64() {
+                f != 0.0
+            } else {
+                false
+            }
+        }
+        Some(serde_json::Value::String(s)) => !s.is_empty(),
+        Some(serde_json::Value::Array(a)) => !a.is_empty(),
+        Some(serde_json::Value::Object(o)) => !o.is_empty(),
+    }
+}
+
+/// Renders an `ActionGroup` — an ordered action list that emits inline buttons
+/// up to `max_inline` and a trailing overflow kebab for the rest. Destructive
+/// items are always in the kebab, rendered last.
+///
+/// ## Partition rules (D-01..D-04)
+/// - Non-destructive items up to `max_inline` (default 2) → inline.
+/// - Non-destructive items beyond the cap → overflow kebab in input order.
+/// - Destructive items → overflow kebab appended **last**, regardless of their
+///   position in `items`. They never count toward `max_inline`.
+/// - The overflow kebab is hidden when nothing overflows (D-03).
+///
+/// ## Form-wrapping (D-15)
+/// Non-GET inline actions wrap in `<form method="post">`. GET actions render as
+/// `<a href>` links. Matches `render_menu_item`'s non-GET branch in `atoms.rs`.
+///
+/// ## `visible_if` gate
+/// Fail-closed: items whose `visible_if` field is absent or falsy in `data` are
+/// removed before partitioning.
+// Dead-code suppressed until plan 02 wires this into the dispatch table.
+#[allow(dead_code)]
+pub(crate) fn render_action_group(
+    el: &Element,
+    _spec: &Spec,
+    data: &serde_json::Value,
+    _depth: usize,
+) -> String {
+    let props: ActionGroupProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode ActionGroup props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let overflow_label = props.overflow_label.as_deref().unwrap_or("Azioni");
+    let max_inline = props.max_inline.unwrap_or(2) as usize;
+
+    // Apply visible_if fail-closed gate.
+    let visible_items: Vec<&ActionItem> = props
+        .items
+        .iter()
+        .filter(|item| action_item_visible(item, data))
+        .collect();
+
+    // Partition into normal (non-destructive) and destructive.
+    let (normal, destructive): (Vec<&ActionItem>, Vec<&ActionItem>) =
+        visible_items.iter().partition(|i| !i.destructive);
+
+    let inline_items: Vec<&&ActionItem> = normal.iter().take(max_inline).collect();
+    let mut overflow: Vec<&&ActionItem> = normal.iter().skip(max_inline).collect();
+    // Destructive items go last in the overflow.
+    overflow.extend(destructive.iter());
+
+    let mut html = String::new();
+
+    // Render inline items.
+    for item in &inline_items {
+        let url = match item.action.url.as_deref().filter(|s| !s.is_empty()) {
+            Some(u) => u.to_string(),
+            None => {
+                let h = item.action.handler.as_str();
+                if h.is_empty() { "#".to_string() } else { h.to_string() }
+            }
+        };
+
+        let btn_classes = button_variant_classes(
+            item.variant.as_ref().unwrap_or(&ButtonVariant::Default),
+        );
+        let label = html_escape(&item.label);
+
+        match item.action.method {
+            HttpMethod::Get => {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"{btn_classes}\">{label}</a>",
+                    html_escape(&url),
+                ));
+            }
+            HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch | HttpMethod::Delete => {
+                let method_spoof = match item.action.method {
+                    HttpMethod::Put => Some("PUT"),
+                    HttpMethod::Patch => Some("PATCH"),
+                    HttpMethod::Delete => Some("DELETE"),
+                    _ => None,
+                };
+                html.push_str(&format!(
+                    "<form action=\"{}\" method=\"post\">",
+                    html_escape(&url),
+                ));
+                if let Some(m) = method_spoof {
+                    html.push_str(&format!(
+                        "<input type=\"hidden\" name=\"_method\" value=\"{m}\">"
+                    ));
+                }
+                html.push_str(&format!(
+                    "<button type=\"submit\" class=\"{btn_classes}\">{label}</button>"
+                ));
+                html.push_str("</form>");
+            }
+        }
+    }
+
+    // Render overflow kebab only when there is overflow.
+    if !overflow.is_empty() {
+        let trigger_icon = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" \
+             viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" \
+             stroke-linecap=\"round\" stroke-linejoin=\"round\">\
+             <circle cx=\"12\" cy=\"5\" r=\"1\"/>\
+             <circle cx=\"12\" cy=\"12\" r=\"1\"/>\
+             <circle cx=\"12\" cy=\"19\" r=\"1\"/></svg>";
+
+        html.push_str(&format!(
+            "<button type=\"button\" popovertarget=\"{}\" aria-label=\"{}\" \
+             class=\"inline-flex items-center justify-center rounded-md p-1.5 \
+             text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 \
+             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
+             focus-visible:ring-offset-2\">{trigger_icon}</button>",
+            html_escape(&props.menu_id),
+            html_escape(overflow_label),
+        ));
+
+        html.push_str(&format!(
+            "<div popover id=\"{}\" data-popover-menu \
+             class=\"w-48 rounded-md border border-border bg-card shadow-md text-left p-0\">",
+            html_escape(&props.menu_id),
+        ));
+
+        for item in &overflow {
+            // Convert ActionItem to DropdownMenuAction at the call boundary
+            // so we can reuse render_menu_item without duplicating its logic.
+            let dma = DropdownMenuAction {
+                label: item.label.clone(),
+                action: item.action.clone(),
+                destructive: item.destructive,
+                visible_if: item.visible_if.clone(),
+            };
+            html.push_str(&super::atoms::render_menu_item(
+                &dma,
+                "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150",
+                "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150",
+                "",
+            ));
+        }
+
+        html.push_str("</div>"); // close popover panel
+    }
+
+    format!("<div class=\"flex items-center gap-2 flex-wrap\">{html}</div>")
 }
 
 /// Renders a `SegmentedControl` — a connected button cluster used for date
@@ -2270,5 +2491,203 @@ mod tests {
             tail_b.ends_with('B'),
             "active=b should highlight B; tail_b={tail_b}"
         );
+    }
+
+    // ── ActionGroup tests ─────────────────────────────────────────────────
+
+    fn action_item(label: &str, url: &str, method: &str) -> serde_json::Value {
+        json!({
+            "label": label,
+            "action": {"url": url, "method": method, "handler": ""}
+        })
+    }
+
+    fn action_item_destructive(label: &str, url: &str) -> serde_json::Value {
+        json!({
+            "label": label,
+            "action": {"url": url, "method": "DELETE", "handler": ""},
+            "destructive": true
+        })
+    }
+
+    #[test]
+    fn render_action_group_inline_and_overflow() {
+        // 5 GET items, max_inline default (2), none destructive:
+        // → 2 inline anchors + kebab holding 3 overflow items
+        let items = json!([
+            action_item("A", "/a", "GET"),
+            action_item("B", "/b", "GET"),
+            action_item("C", "/c", "GET"),
+            action_item("D", "/d", "GET"),
+            action_item("E", "/e", "GET"),
+        ]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m1"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        // inline: A and B appear as links
+        assert!(html.contains(">A<"), "A inline missing: {html}");
+        assert!(html.contains(">B<"), "B inline missing: {html}");
+        // overflow kebab present
+        assert!(html.contains("popovertarget=\"m1\""), "kebab trigger missing: {html}");
+        assert!(html.contains("popover id=\"m1\" data-popover-menu"), "popover panel missing: {html}");
+        // C, D, E in overflow
+        assert!(html.contains(">C<"), "C in overflow missing: {html}");
+        assert!(html.contains(">D<"), "D in overflow missing: {html}");
+        assert!(html.contains(">E<"), "E in overflow missing: {html}");
+    }
+
+    #[test]
+    fn action_group_no_overflow_hides_kebab() {
+        // 2 GET items, max_inline 2, none destructive → NO kebab
+        let items = json!([
+            action_item("A", "/a", "GET"),
+            action_item("B", "/b", "GET"),
+        ]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m2"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        assert!(!html.contains("popovertarget"), "kebab should be absent: {html}");
+        assert!(!html.contains("popover id="), "popover panel should be absent: {html}");
+        assert!(html.contains(">A<"), "A missing: {html}");
+        assert!(html.contains(">B<"), "B missing: {html}");
+    }
+
+    #[test]
+    fn action_group_destructive_ordering() {
+        // items: [A (normal), DEL (destructive), B (normal)], max_inline 2
+        // → A and B inline, DEL in kebab and LAST; DEL never inline
+        let items = json!([
+            action_item("A", "/a", "GET"),
+            action_item_destructive("DEL", "/del"),
+            action_item("B", "/b", "GET"),
+        ]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m3"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        // A and B inline
+        assert!(html.contains(">A<"), "A inline missing: {html}");
+        assert!(html.contains(">B<"), "B inline missing: {html}");
+        // kebab exists (destructive overflows)
+        assert!(html.contains("popovertarget=\"m3\""), "kebab missing: {html}");
+        // DEL in overflow (in popover panel)
+        assert!(html.contains(">DEL<"), "DEL missing: {html}");
+        // DEL must appear AFTER the popover panel opening tag
+        let popover_start = html.find("popover id=\"m3\"").expect("popover panel");
+        let del_pos = html.find(">DEL<").expect("DEL pos");
+        assert!(del_pos > popover_start, "DEL should be inside overflow panel: {html}");
+        // DEL must be last in the panel (no inline button named DEL before popover)
+        let a_pos = html.find(">A<").expect("A pos");
+        let b_pos = html.find(">B<").expect("B pos");
+        assert!(a_pos < popover_start, "A should be inline (before popover): {html}");
+        assert!(b_pos < popover_start, "B should be inline (before popover): {html}");
+    }
+
+    #[test]
+    fn action_group_non_get_wraps_form() {
+        // 1 POST inline item → output contains <form method="post"> + <button type="submit"
+        let items = json!([action_item("Save", "/save", "POST")]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m4"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        assert!(html.contains("<form action=\"/save\" method=\"post\">"), "form missing: {html}");
+        assert!(html.contains("<button type=\"submit\""), "submit button missing: {html}");
+        assert!(!html.contains("popovertarget"), "no overflow expected: {html}");
+    }
+
+    #[test]
+    fn action_group_get_renders_link() {
+        // 1 GET inline item → <a href → no <form
+        let items = json!([action_item("View", "/view", "GET")]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m5"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        assert!(html.contains("<a href=\"/view\""), "anchor missing: {html}");
+        assert!(!html.contains("<form"), "form should not appear for GET: {html}");
+    }
+
+    #[test]
+    fn action_group_data_binding_parity() {
+        // Items decoded from a literal array render identically to the same
+        // items declared directly — $data binding is resolved before render_action_group
+        // is called; this test asserts that decoding an items array is transparent.
+        let items = json!([
+            action_item("X", "/x", "GET"),
+            action_item("Y", "/y", "GET"),
+        ]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items.clone())
+                .prop("menu_id", "parity"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_action_group(el, &spec, &json!({}), 1);
+        assert!(html.contains(">X<"), "X missing: {html}");
+        assert!(html.contains(">Y<"), "Y missing: {html}");
+        // same render from a second spec with identical props — deterministic
+        let spec2 = build_spec(vec![(
+            "root2",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "parity"),
+        )]);
+        let el2 = spec2.elements.get("root2").unwrap();
+        let html2 = render_action_group(el2, &spec2, &json!({}), 1);
+        assert_eq!(html, html2, "render should be deterministic/identical");
+    }
+
+    #[test]
+    fn action_group_visible_if() {
+        // item with visible_if pointing to an absent field → hidden (fail-closed)
+        // item with visible_if pointing to a truthy field → shown
+        let items = json!([
+            {
+                "label": "Shown",
+                "action": {"url": "/shown", "method": "GET", "handler": ""},
+                "visible_if": "active"
+            },
+            {
+                "label": "Hidden",
+                "action": {"url": "/hidden", "method": "GET", "handler": ""},
+                "visible_if": "nonexistent_field"
+            },
+        ]);
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("ActionGroup")
+                .prop("items", items)
+                .prop("menu_id", "m6"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        // data row with "active": true but no "nonexistent_field"
+        let data = json!({"active": true});
+        let html = render_action_group(el, &spec, &data, 1);
+        assert!(html.contains(">Shown<"), "Shown item should be visible: {html}");
+        assert!(!html.contains(">Hidden<"), "Hidden item should be absent (fail-closed): {html}");
     }
 }
