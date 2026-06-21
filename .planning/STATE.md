@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v11.0
 milestone_name: Framework Consolidation Audit
 status: executing
-stopped_at: Completed 236-06-PLAN.md — payments documentation page
-last_updated: "2026-06-21T00:48:10.136Z"
+stopped_at: Phase 238 context gathered
+last_updated: "2026-06-21T16:38:05.080Z"
 last_activity: 2026-06-21
 progress:
-  total_phases: 244
+  total_phases: 245
   completed_phases: 221
   total_plans: 697
   completed_plans: 686
@@ -217,12 +217,13 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ### Roadmap Evolution
 
+- Phase 238 added (2026-06-21): v16.2 `ferro-inertia` first-load HTML shell. Promotes [backlog/2026-06-21-inertia-first-load-shell.md](backlog/2026-06-21-inertia-first-load-shell.md) — `ferro-inertia` owns the `X-Inertia` JSON contract but has no server-rendered first-load HTML document (embedded `data-page` + Vite asset tags). Content-negotiated render: full HTML when not `X-Inertia`, JSON when it is; dev (Vite module tags off `vite_dev_server`) / prod (hashed tags from Vite `manifest.json`) asset modes; configurable root template; same-origin `server.proxy` docs. Field-reported by downstream app `u` (Phase 5 OQ-4 deferral). **Reconcile against `ferro-assets` SSR-manifest substrate before planning — likely wiring, not from-scratch.** Numbered 238 to avoid collision with the pre-existing Phase 237 (ActionGroup, roadmap-only reservation that `phase add` could not see — no directory). Next: `/gsd-plan-phase 238`.
 - Phases 233-236 added (2026-06-17): v16.1 ferro-payments milestone [CONSUMER-PAIRED with gestiscilo 218-223]. New workspace crate `ferro-payments` shipping a polymorphic `PaymentIntent` entity + `Billable` trait, decomposed into four phases: **233** crate scaffold + PaymentIntent entity + portable migration `m20260617_create_payment_intents` (partial unique on (billable_kind, billable_id) WHERE status IN ('reserved','paid')), **234** Billable trait + BillableLoader trait + PaymentService core (start_checkout + request_refund, mocked-Stripe unit tests), **235** webhook SyncDispatcher integration (wire_dispatcher helper + three typed handlers + auto-refund fallback for loader-None/already-released races), **236** ReleaseExpiredPaymentIntents + ReconcileRefundsInFlight reapers + workspace test bin + publish `ferro-payments 0.1.0`. Reuses existing ferro-stripe SyncDispatcher + ProcessedEventLog + CheckoutBuilder + Connect destination-charge support — no new ferro-stripe surface. First consumer: gestiscilo Phases 218-223 (tenant booking upfront payment), blocked on Phase 236 publication. Spec: `docs/superpowers/specs/2026-06-17-ferro-payments-crate-design.md`. Next: `/gsd-plan-phase 233`.
 - v15.0 roadmap created 2026-06-13: Phases 217-221. Phase numbering continues from v14.0 (last phase 216). AMCP-01..06 mapped: 217 (AMCP-01, AMCP-02), 218 (AMCP-03), 219 (AMCP-04), 220 (AMCP-05), 221 (AMCP-06). All 6 requirements covered.
 
 ## Session Continuity
 
-Last session: 2026-06-20T23:20:17.053Z
-Stopped at: Completed 236-06-PLAN.md — payments documentation page
-Resume file: None
+Last session: 2026-06-21T16:38:05.042Z
+Stopped at: Phase 238 context gathered
+Resume file: .planning/phases/238-inertia-first-load-html-shell/238-CONTEXT.md
 Next action: `/gsd-plan-phase 217` — Tenant Context + Per-Tenant API-Key Auth
