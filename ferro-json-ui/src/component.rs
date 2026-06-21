@@ -935,6 +935,62 @@ pub struct ButtonGroupProps {
     pub gap: GapSize,
 }
 
+/// A single action in an `ActionGroup`'s ordered item list.
+///
+/// Inline items (non-destructive, within `max_inline`) render as buttons.
+/// The `destructive` flag forces the item into the overflow kebab and renders
+/// it last regardless of its position in `items`.
+///
+/// `visible_if` is a fail-closed row gate (same semantics as
+/// `DropdownMenuAction.visible_if`): when set, the item is hidden unless
+/// `row[field]` is truthy. An absent or falsy field hides the item — a typo
+/// in the field name cannot leak an action.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ActionItem {
+    pub label: String,
+    pub action: Action,
+    /// When true, this item is forced into the overflow kebab and rendered last,
+    /// regardless of position in `items`. Does not count toward `max_inline`.
+    #[serde(default)]
+    pub destructive: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant: Option<ButtonVariant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    /// Fail-closed row gate (same semantics as `DropdownMenuAction.visible_if`).
+    /// When set, the item is only shown when `row[visible_if]` is truthy.
+    /// Absent/falsy field hides the item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible_if: Option<String>,
+}
+
+/// Props for `ActionGroup` — ordered action list rendering inline buttons (up to
+/// `max_inline`) plus a trailing overflow kebab for the remainder. Destructive
+/// items are always in the kebab, rendered last, regardless of input order.
+///
+/// Input order determines button priority: the first item in `items` is the
+/// primary action and renders first inline. Use `variant` on an item to control
+/// button styling.
+///
+/// The overflow kebab is hidden entirely when nothing overflows (≤ `max_inline`
+/// non-destructive items and zero destructive items).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ActionGroupProps {
+    pub items: Vec<ActionItem>,
+    /// ID pairing the overflow popover to its trigger button. Required; callers
+    /// must supply a unique value per page to prevent DOM id collisions.
+    pub menu_id: String,
+    /// Maximum non-destructive items rendered inline (default 2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_inline: Option<u8>,
+    /// Aria-label for the overflow trigger button (default "Azioni").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overflow_label: Option<String>,
+    /// Key used for `{row_key}` substitution in action URLs (DataTable / Kanban context).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_key: Option<String>,
+}
+
 /// Props for SegmentedControl — a tightly-packed cluster of toggle/nav links
 /// rendered as a single bordered group with no gap between segments.
 ///
@@ -1503,6 +1559,16 @@ mod schema_smoke_tests {
     #[test]
     fn schema_for_button_group_props_generates() {
         assert_schema_nonempty_object::<ButtonGroupProps>("ButtonGroupProps");
+    }
+
+    #[test]
+    fn schema_for_action_item_generates() {
+        assert_schema_nonempty_object::<ActionItem>("ActionItem");
+    }
+
+    #[test]
+    fn schema_for_action_group_props_generates() {
+        assert_schema_nonempty_object::<ActionGroupProps>("ActionGroupProps");
     }
 
     #[test]
