@@ -27,14 +27,15 @@ use schemars::schema_for;
 use serde_json::{to_value, Value};
 
 use crate::component::{
-    ActionCardProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonGroupProps,
-    ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps, ChecklistProps,
-    CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps, DropdownMenuProps,
-    EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
-    KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
-    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
-    SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
-    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
+    ActionCardProps, ActionGroupProps, AlertProps, AvatarProps, BadgeProps,
+    BreadcrumbProps, ButtonGroupProps, ButtonProps, CalendarCellProps, CardProps,
+    CheckboxListProps, CheckboxProps, ChecklistProps, CollapsibleProps, DataTableProps,
+    DescriptionListProps, DetailPageProps, EmptyStateProps, FormProps, FormSectionProps,
+    GridProps, HeaderProps, ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps,
+    ModalProps, NotificationDropdownProps, PageHeaderProps, PaginationProps, ProductTileProps,
+    ProgressProps, RawHtmlProps, SegmentedControlProps, SelectProps, SeparatorProps,
+    SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps,
+    TableProps, TabsProps, TextProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -238,12 +239,6 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         &[],
     ),
     (
-        "DropdownMenu",
-        "Trigger button with an absolutely-positioned kebab-style action panel.",
-        || to_value(schema_for!(DropdownMenuProps)).unwrap(),
-        &[],
-    ),
-    (
         "CalendarCell",
         "Single day in a month grid with today highlight, out-of-month muting, event dots.",
         || to_value(schema_for!(CalendarCellProps)).unwrap(),
@@ -346,6 +341,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         || to_value(schema_for!(SidebarLayoutProps)).unwrap(),
         &[],
     ),
+    (
+        "ActionGroup",
+        "Ordered action list: inline buttons up to max_inline, trailing overflow kebab for the rest; destructive items forced into the kebab last.",
+        || to_value(schema_for!(ActionGroupProps)).unwrap(),
+        &[],
+    ),
     // === Form controls (form.rs) ===
     (
         "Form",
@@ -401,7 +402,7 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
     ),
     (
         "DataTable",
-        "Stripe-style alternating-row table with per-row DropdownMenu and mobile card fallback.",
+        "Stripe-style alternating-row table with per-row action menu and mobile card fallback.",
         || to_value(schema_for!(DataTableProps)).unwrap(),
         &[],
     ),
@@ -1096,7 +1097,8 @@ mod tests {
         // other test asserts its invariant relationally (against
         // BUILTIN_TYPES.len()), so a component addition breaks only this test.
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
-        // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout).
+        // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
+        // → 47 (DropdownMenu replaced by ActionGroup).
         assert_eq!(crate::render::BUILTIN_TYPES.len(), 47);
     }
 

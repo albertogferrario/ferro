@@ -12,7 +12,7 @@ use crate::action::HttpMethod;
 use crate::component::{
     ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
     BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
-    ChecklistProps, DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps,
+    ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps,
     HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
     Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps,
@@ -1151,49 +1151,6 @@ pub(crate) fn render_menu_item(
     }
 }
 
-pub(crate) fn render_dropdown_menu(
-    el: &Element,
-    _spec: &Spec,
-    _data: &Value,
-    _depth: usize,
-) -> String {
-    let props: DropdownMenuProps = match decode_props(&el.props) {
-        Ok(p) => p,
-        Err(e) => return decode_diagnostic("DropdownMenu", e),
-    };
-    let mut html = String::new();
-
-    let trigger_icon = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"12\" cy=\"12\" r=\"1\"/><circle cx=\"12\" cy=\"19\" r=\"1\"/></svg>";
-    html.push_str(&format!(
-        "<button type=\"button\" popovertarget=\"{}\" aria-label=\"{}\" \
-         class=\"inline-flex items-center justify-center rounded-md p-1.5 \
-         text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 \
-         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
-         focus-visible:ring-offset-2\">{}</button>",
-        html_escape(&props.menu_id),
-        html_escape(&props.trigger_label),
-        trigger_icon,
-    ));
-
-    html.push_str(&format!(
-        "<div popover id=\"{}\" data-popover-menu \
-         class=\"w-48 rounded-md border border-border bg-card shadow-md text-left p-0\">",
-        html_escape(&props.menu_id),
-    ));
-
-    for item in &props.items {
-        html.push_str(&render_menu_item(
-            item,
-            "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150",
-            "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150",
-            "",
-        ));
-    }
-
-    html.push_str("</div>"); // close popover panel
-    html
-}
-
 // ── 21. CalendarCell ─────────────────────────────────────────────────────
 
 pub(crate) fn render_calendar_cell(
@@ -2013,55 +1970,6 @@ mod tests {
         let html = render_header(el, &spec, &json!({}), 1);
         assert!(html.contains("<header"), "got: {html}");
         assert!(html.contains("My Co"));
-    }
-
-    // ── 20. DropdownMenu ───────────────────────────────────────────────
-
-    #[test]
-    fn dropdown_menu_emits_actions() {
-        let spec = spec_with_root(
-            Element::new("DropdownMenu")
-                .prop("menu_id", "m1")
-                .prop("trigger_label", "Actions")
-                .prop(
-                    "items",
-                    json!([
-                        {
-                            "label": "Edit",
-                            "action": {"handler": "edit", "method": "POST", "url": "/edit"}
-                        }
-                    ]),
-                ),
-        );
-        let el = spec.elements.get("root").unwrap();
-        let html = render_dropdown_menu(el, &spec, &json!({}), 1);
-        assert!(html.contains("Edit"), "got: {html}");
-        assert!(html.contains("popovertarget=\"m1\""), "got: {html}");
-        assert!(
-            html.contains("popover id=\"m1\" data-popover-menu"),
-            "got: {html}"
-        );
-    }
-
-    #[test]
-    fn dropdown_menu_get_action_renders_anchor() {
-        let spec = spec_with_root(
-            Element::new("DropdownMenu")
-                .prop("menu_id", "m1")
-                .prop("trigger_label", "Actions")
-                .prop(
-                    "items",
-                    json!([
-                        {
-                            "label": "View",
-                            "action": {"handler": "view", "method": "GET", "url": "/view"}
-                        }
-                    ]),
-                ),
-        );
-        let el = spec.elements.get("root").unwrap();
-        let html = render_dropdown_menu(el, &spec, &json!({}), 1);
-        assert!(html.contains("<a href=\"/view\""), "got: {html}");
     }
 
     // ── 21. CalendarCell ───────────────────────────────────────────────

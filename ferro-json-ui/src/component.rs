@@ -1127,16 +1127,6 @@ pub struct DropdownMenuAction {
     pub visible_if: Option<String>,
 }
 
-/// Props for DropdownMenu component — trigger button with absolutely-positioned action panel.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct DropdownMenuProps {
-    pub menu_id: String,
-    pub trigger_label: String,
-    pub items: Vec<DropdownMenuAction>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub trigger_variant: Option<ButtonVariant>,
-}
-
 /// Props for the DataTable component — Stripe-style alternating rows with DropdownMenu per row,
 /// mobile card fallback, and empty state.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -1574,11 +1564,6 @@ mod schema_smoke_tests {
     #[test]
     fn schema_for_dropdown_menu_action_generates() {
         assert_schema_nonempty_object::<DropdownMenuAction>("DropdownMenuAction");
-    }
-
-    #[test]
-    fn schema_for_dropdown_menu_props_generates() {
-        assert_schema_nonempty_object::<DropdownMenuProps>("DropdownMenuProps");
     }
 
     #[test]

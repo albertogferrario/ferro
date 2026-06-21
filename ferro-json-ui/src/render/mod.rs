@@ -61,7 +61,6 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "NotificationDropdown",
     "Sidebar",
     "Header",
-    "DropdownMenu",
     "CalendarCell",
     "ActionCard",
     "ProductTile",
@@ -80,6 +79,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "ButtonGroup",
     "SegmentedControl",
     "SidebarLayout",
+    "ActionGroup",
     // Form controls (form.rs)
     "Form",
     "Input",
@@ -194,7 +194,6 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "NotificationDropdown" => atoms::render_notification_dropdown(el, spec, data, depth),
         "Sidebar" => atoms::render_sidebar(el, spec, data, depth),
         "Header" => atoms::render_header(el, spec, data, depth),
-        "DropdownMenu" => atoms::render_dropdown_menu(el, spec, data, depth),
         "CalendarCell" => atoms::render_calendar_cell(el, spec, data, depth),
         "ActionCard" => atoms::render_action_card(el, spec, data, depth),
         "ProductTile" => atoms::render_product_tile(el, spec, data, depth),
@@ -213,6 +212,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "ButtonGroup" => containers::render_button_group(el, spec, data, depth),
         "SegmentedControl" => containers::render_segmented_control(el, spec, data, depth),
         "SidebarLayout" => containers::render_sidebar_layout(el, spec, data, depth),
+        "ActionGroup" => containers::render_action_group(el, spec, data, depth),
         // Form controls
         "Form" => form::render_form(el, spec, data, depth),
         "Input" => form::render_input(el, spec, data, depth),

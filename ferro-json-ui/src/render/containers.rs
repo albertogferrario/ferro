@@ -966,8 +966,6 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
 
 /// Returns the Tailwind button classes for a given `ButtonVariant` at default size.
 /// Matches the `render_button_inner` variant table in `atoms.rs`.
-// Dead-code suppressed: used by render_action_group; both become call sites in plan 02.
-#[allow(dead_code)]
 fn button_variant_classes(variant: &ButtonVariant) -> &'static str {
     match variant {
         ButtonVariant::Default => {
@@ -1009,8 +1007,6 @@ fn button_variant_classes(variant: &ButtonVariant) -> &'static str {
 /// - `visible_if` absent → always visible.
 /// - `visible_if` set and `data[field]` is missing, null, false, `0`, or
 ///   empty string/array/object → hidden.
-// Dead-code suppressed: used by render_action_group; both become call sites in plan 02.
-#[allow(dead_code)]
 fn action_item_visible(item: &ActionItem, data: &serde_json::Value) -> bool {
     let Some(field) = item.visible_if.as_deref() else {
         return true;

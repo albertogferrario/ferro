@@ -47,13 +47,13 @@ pub mod runtime;
 pub use action::{Action, ActionOutcome, ConfirmDialog, DialogVariant, HttpMethod, NotifyVariant};
 pub use assets::FERRO_BASE_CSS;
 pub use component::{
-    ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
-    BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType,
-    ButtonVariant, CardProps, CardVariant, CheckboxListProps, CheckboxProps, ChecklistItem,
-    ChecklistProps, CollapsibleProps, Column, ColumnFormat, DataTableProps, DescriptionItem,
-    DescriptionListProps, DropdownMenuAction, DropdownMenuProps, EmptyStateProps, FormMaxWidth,
-    FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition, ImageProps,
-    InputProps, InputType, KanbanBoardProps, KanbanColumnProps, ModalProps,
+    ActionCardProps, ActionCardVariant, ActionGroupProps, ActionItem, AlertProps, AlertVariant,
+    AvatarProps, BadgeProps, BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonGroupProps,
+    ButtonProps, ButtonType, ButtonVariant, CardProps, CardVariant, CheckboxListProps,
+    CheckboxProps, ChecklistItem, ChecklistProps, CollapsibleProps, Column, ColumnFormat,
+    DataTableProps, DescriptionItem, DescriptionListProps, DropdownMenuAction, EmptyStateProps,
+    FormMaxWidth, FormProps, FormSectionProps, GapSize, GridProps, HeaderProps, IconPosition,
+    ImageProps, InputProps, InputType, KanbanBoardProps, KanbanColumnProps, ModalProps,
     NotificationDropdownProps, NotificationItem, Orientation, PageHeaderProps, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, RichTextEditorProps, SegmentedControlProps,
     SegmentedItem, SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarLayoutItem,
