@@ -22,10 +22,12 @@
 
 mod config;
 mod context;
+pub(crate) mod global;
 mod response;
 
 pub use config::InertiaConfig;
 pub use context::{Inertia, InertiaShared, SavedInertiaContext};
+pub use global::{get_inertia_config, set_inertia_config};
 pub use response::InertiaResponse;
 
 // Re-export core types from ferro-inertia for advanced usage
