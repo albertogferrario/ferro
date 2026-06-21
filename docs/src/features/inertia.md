@@ -11,6 +11,86 @@ Inertia.js is a protocol that connects your server-side framework to a client-si
 3. On subsequent requests, only JSON is returned
 4. The client-side adapter swaps components without full page reloads
 
+## First-Load HTML Shell
+
+### The first-load document
+
+A non-`X-Inertia` GET request to an Inertia handler returns a complete HTML document
+containing a mount node with the serialized page object as an attribute:
+
+```html
+<div id="app" data-page="{&quot;component&quot;:&quot;Home&quot;,&quot;props&quot;:{...},&quot;url&quot;:&quot;/&quot;,&quot;version&quot;:&quot;1.0&quot;}"></div>
+```
+
+The same handler returns the JSON contract when the request carries `X-Inertia: true`.
+No hand-rolled root HTML document or per-app manifest parsing is needed — the
+application supplies only page props.
+
+In development mode the HTML includes Vite HMR tags; in production it includes
+hashed asset paths resolved from the Vite `manifest.json`. Both modes are handled
+automatically by `Inertia::render`.
+
+### Same-origin convention (recommended)
+
+The recommended first-load pattern is for the Ferro backend to serve both the HTML
+shell and the API from the same origin (e.g. `http://localhost:8080`). The browser
+issues a `GET /` to that origin, the Ferro Inertia handler responds with the full
+HTML document containing the `data-page` mount node, and subsequent Inertia XHR
+requests go to the same origin.
+
+With same-origin serving, session cookies work with any `SameSite` value (`Strict`,
+`Lax`, or `None`) because browser and backend share one origin. No proxy configuration
+is required.
+
+### Vite `server.proxy` recipe (split-port dev)
+
+For development setups where Vite HMR runs on a separate port from the Ferro backend,
+configure Vite's dev server proxy to forward requests to the backend. From the
+browser's perspective every request goes to the Vite origin; Vite forwards them to
+the backend, and the `Set-Cookie` response from Ferro is accepted.
+
+<!-- Verify against current Vite docs: https://vitejs.dev/config/server-options -->
+
+```typescript
+// vite.config.ts — split-port dev: Vite on :5173, Ferro backend on :8080
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  server: {
+    proxy: {
+      // Forward API requests to Ferro.
+      // changeOrigin: false preserves the Origin header so CSRF and session
+      // validation on the backend receives the browser's actual origin.
+      '/api': { target: 'http://localhost:8080', changeOrigin: false },
+      // If the backend also serves the HTML shell, proxy the root as well:
+      '/': { target: 'http://localhost:8080', changeOrigin: false },
+    },
+  },
+})
+```
+
+**Cookie flow:** `SameSite=Lax` (or `None`) cookies flow correctly across the proxy
+because the browser sends all requests to the Vite origin (:5173) and Vite forwards
+them to the Ferro backend (:8080). `SameSite=Strict` or strict `HttpOnly` setups
+require the same-origin story above — the proxy approach does not satisfy
+`SameSite=Strict` since the cookie was set by the backend origin, not the Vite origin.
+
+**`changeOrigin` guidance:** `changeOrigin: false` (the default) keeps the `Origin`
+header intact, which is what Ferro's CSRF validation expects. Set `changeOrigin: true`
+only if the backend explicitly requires the `Origin` to match its own host — doing so
+rewrites the `Origin` and can break CSRF checks.
+
+### `head_extras` and the custom template escape hatch
+
+`head_extras` adds raw HTML into `<head>` (e.g. meta tags, favicon, font preloads)
+and is developer-controlled config — it must not be populated from request data to
+avoid XSS.
+
+When `html_template` is set in `InertiaConfig`, the custom template owns the entire
+HTML document and `head_extras` is ignored. Use `html_template` only when the
+structured fields (`title`, `head_extras`, `mount_id`) are insufficient for your
+needs.
+
 ## Configuration
 
 ### Environment Variables
