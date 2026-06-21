@@ -292,7 +292,7 @@ mod tests {
         assert_eq!(
             catalog.components.len(),
             47,
-            "Catalog should contain all 47 built-in components (incl. SegmentedControl, SidebarLayout), got {}",
+            "Catalog should contain all 47 built-in components (incl. SegmentedControl, SidebarLayout, ActionGroup), got {}",
             catalog.components.len()
         );
 
@@ -332,7 +332,7 @@ mod tests {
             "FormSection",
             "PageHeader",
             "ButtonGroup",
-            "DropdownMenu",
+            "ActionGroup",
             "DataTable",
             "KanbanBoard",
             "CalendarCell",
@@ -343,6 +343,8 @@ mod tests {
             "Image",
             "DetailPage",
             "MediaCardGrid",
+            "SegmentedControl",
+            "SidebarLayout",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");

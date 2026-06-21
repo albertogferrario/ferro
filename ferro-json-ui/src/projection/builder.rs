@@ -25,8 +25,8 @@ use ferro_theme::IntentSlotTemplate;
 use crate::action::Action;
 use crate::catalog::{global_catalog, Catalog};
 use crate::component::{
-    CardProps, CardVariant, Column, DataTableProps, DescriptionItem, DescriptionListProps,
-    DropdownMenuAction, DropdownMenuProps, FormProps, KanbanBoardProps, KanbanColumnProps,
+    ActionGroupProps, ActionItem, CardProps, CardVariant, Column, DataTableProps, DescriptionItem,
+    DescriptionListProps, DropdownMenuAction, FormProps, KanbanBoardProps, KanbanColumnProps,
     StatCardProps, Tab, TableProps, TabsProps,
 };
 use crate::spec::{Element, ElementBuilder, Spec};
@@ -664,7 +664,7 @@ fn emit_relationships(
     }
 }
 
-/// `actions` slot. Emits a single `DropdownMenu` element carrying one item
+/// `actions` slot. Emits a single `ActionGroup` element carrying one item
 /// per `ServiceDef.action`. Action URLs follow the convention
 /// `POST /{service.name}/{action.name}` — `ActionDef` has no route field, so
 /// the consumer's route table must match this convention for the buttons to
@@ -677,25 +677,28 @@ fn emit_actions_placeholder(
     if service.actions.is_empty() {
         return;
     }
-    let items: Vec<DropdownMenuAction> = service
+    let items: Vec<ActionItem> = service
         .actions
         .iter()
-        .map(|a| DropdownMenuAction {
+        .map(|a| ActionItem {
             label: a.display_name.as_deref().unwrap_or(&a.name).to_string(),
             action: Action::new(format!("/{}/{}", service.name, a.name)),
             destructive: false,
+            variant: None,
+            icon: None,
             visible_if: None,
         })
         .collect();
-    let props = serde_json::to_value(DropdownMenuProps {
-        menu_id: format!("actions_{}", service.name),
-        trigger_label: "Actions".to_string(),
+    let props = serde_json::to_value(ActionGroupProps {
         items,
-        trigger_variant: None,
+        menu_id: format!("actions_{}", service.name),
+        max_inline: None,
+        overflow_label: None,
+        row_key: None,
     })
-    .expect("DropdownMenuProps serialization cannot fail");
+    .expect("ActionGroupProps serialization cannot fail");
     let id = "actions_menu".to_string();
-    aux.push((id.clone(), element_with_props("DropdownMenu", props)));
+    aux.push((id.clone(), element_with_props("ActionGroup", props)));
     children_out.push(id);
 }
 
@@ -1217,8 +1220,8 @@ mod tests {
     // -- Gap B render tests (TDD RED added in Task 1; GREEN wired in Task 2) --
 
     #[test]
-    fn actions_slot_emits_dropdown_from_service_actions() {
-        use crate::component::DropdownMenuProps;
+    fn actions_slot_emits_action_group_from_service_actions() {
+        use crate::component::ActionGroupProps;
         let service = service_with_actions();
         let mut aux: Vec<(String, ElementBuilder)> = Vec::new();
         let mut children: Vec<String> = Vec::new();
@@ -1227,11 +1230,11 @@ mod tests {
         let pos = aux
             .iter()
             .position(|(id, _)| id == "actions_menu")
-            .expect("DropdownMenu must be emitted");
+            .expect("ActionGroup must be emitted");
         let (_, el) = aux.remove(pos);
         let built = el.build();
-        let props: DropdownMenuProps =
-            serde_json::from_value(built.props).expect("props decode as DropdownMenuProps");
+        let props: ActionGroupProps =
+            serde_json::from_value(built.props).expect("props decode as ActionGroupProps");
         assert_eq!(props.items.len(), service.actions.len());
         assert_eq!(props.items[0].label, "View");
     }
