@@ -296,6 +296,28 @@ pub async fn attach_payment_intent<C: ConnectionTrait>(
         .map_err(|e| PaymentError::Db(sea_orm::DbErr::Custom(e.to_string())))
 }
 
+/// Persist the Stripe `refund_id` onto the row once a refund has been created
+/// (WR-05). Guard: `WHERE stripe_refund_id IS NULL` — idempotent, never
+/// overwrites a refund id already recorded. Lets the reconcile reaper poll the
+/// exact refund this system initiated rather than guessing from the PI's refund
+/// list. Returns `Ok(true)` when written, `Ok(false)` when already set.
+pub async fn attach_refund_id<C: ConnectionTrait>(
+    id: i64,
+    stripe_refund_id: &str,
+    conn: &C,
+) -> Result<bool, PaymentError> {
+    GuardedUpdate::new(Entity)
+        .filter(Column::Id.eq(id))
+        .filter(Column::StripeRefundId.is_null())
+        .set_value(
+            Column::StripeRefundId,
+            Value::String(Some(Box::new(stripe_refund_id.to_string()))),
+        )
+        .exec_at_most_one(conn)
+        .await
+        .map_err(|e| PaymentError::Db(sea_orm::DbErr::Custom(e.to_string())))
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------

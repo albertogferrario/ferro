@@ -128,48 +128,41 @@ impl<L: BillableLoader> PaymentService<L> {
             return Ok(());
         };
 
-        // D-06: mark reserved→paid (GuardedUpdate)
-        let marked = lifecycle::mark_paid(intent.id, &self.db).await?;
+        // WR-01: flip reserved→paid AND run on_paid in ONE transaction. The
+        // status flip committing separately (before on_paid) is what made a
+        // transient on_paid failure unrecoverable: the row was left `paid`, the
+        // event marked processed, and Stripe's retry short-circuited on the
+        // idempotency fast-path → the capture was never honored. With the flip
+        // inside the txn, a transient failure rolls the row back to `reserved`
+        // and we un-mark the event so the retry redoes mark_paid + on_paid.
+        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+        let marked = lifecycle::mark_paid(intent.id, &txn).await?;
         if !marked {
-            // Side-state conflict: row not in reserved state (reaper released first).
+            // Row not reserved — the reaper released it first (the entry
+            // idempotency check rules out a plain duplicate delivery). The money
+            // was captured, so record the capture and auto-refund.
+            txn.rollback().await.ok();
             return self
-                .trigger_auto_refund(
-                    &event.payment_intent_id,
-                    event.amount_total_cents,
-                    intent.id,
-                    AutoRefundReason::SideStateConflict,
-                )
+                .capture_then_auto_refund(&event, intent.id, AutoRefundReason::SideStateConflict)
                 .await;
         }
 
-        // Attach payment_intent_id (guarded — idempotent).
+        // Attach payment_intent_id within the same txn (guarded — idempotent).
         if let Some(ref pi_id) = event.payment_intent_id {
-            lifecycle::attach_payment_intent(intent.id, pi_id, &self.db).await?;
+            lifecycle::attach_payment_intent(intent.id, pi_id, &txn).await?;
         }
 
-        // Open billable transaction
-        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
         let kind = BillableKind::from_string(intent.billable_kind.clone());
         match self.loader.load(kind, intent.billable_id).await {
             Err(_) => {
                 txn.rollback().await.ok();
-                self.trigger_auto_refund(
-                    &event.payment_intent_id,
-                    event.amount_total_cents,
-                    intent.id,
-                    AutoRefundReason::LoaderError,
-                )
-                .await
+                self.capture_then_auto_refund(&event, intent.id, AutoRefundReason::LoaderError)
+                    .await
             }
             Ok(None) => {
                 txn.rollback().await.ok();
-                self.trigger_auto_refund(
-                    &event.payment_intent_id,
-                    event.amount_total_cents,
-                    intent.id,
-                    AutoRefundReason::BillableVanished,
-                )
-                .await
+                self.capture_then_auto_refund(&event, intent.id, AutoRefundReason::BillableVanished)
+                    .await
             }
             Ok(Some(billable)) => match billable.on_paid(&txn).await {
                 Ok(()) => {
@@ -179,14 +172,15 @@ impl<L: BillableLoader> PaymentService<L> {
                 Err(e) => {
                     txn.rollback().await.ok();
                     if is_transient(&e) {
-                        // Transient infrastructure error — propagate so Stripe retries.
-                        // mark_paid already ran and is idempotent on retry via guards.
+                        // WR-01: the status flip was rolled back with the txn, so
+                        // un-mark the event — Stripe's retry will reprocess from
+                        // `reserved` and re-run mark_paid + on_paid cleanly.
+                        self.processed_log.unmark(&event.event_id).await.ok();
                         return Err(e);
                     }
-                    // Permanent business-state conflict — auto-refund.
-                    self.trigger_auto_refund(
-                        &event.payment_intent_id,
-                        event.amount_total_cents,
+                    // Permanent business-state conflict — record capture + auto-refund.
+                    self.capture_then_auto_refund(
+                        &event,
                         intent.id,
                         AutoRefundReason::SideStateConflict,
                     )
@@ -194,6 +188,30 @@ impl<L: BillableLoader> PaymentService<L> {
                 }
             },
         }
+    }
+
+    /// Honor-failure branch of [`Self::handle_session_completed`]: the money was
+    /// captured at Stripe but the billable cannot be honored. Commit the capture
+    /// (mark paid + attach payment_intent_id, both guarded/idempotent) so the row
+    /// is `paid` and the reconcile reaper can recover a failed refund, then issue
+    /// the auto-refund. Runs outside the (rolled-back) on_paid transaction.
+    async fn capture_then_auto_refund(
+        &self,
+        event: &StripeCheckoutCompleted,
+        intent_id: i64,
+        reason: AutoRefundReason,
+    ) -> Result<(), PaymentError> {
+        lifecycle::mark_paid(intent_id, &self.db).await?;
+        if let Some(ref pi_id) = event.payment_intent_id {
+            lifecycle::attach_payment_intent(intent_id, pi_id, &self.db).await?;
+        }
+        self.trigger_auto_refund(
+            &event.payment_intent_id,
+            event.amount_total_cents,
+            intent_id,
+            reason,
+        )
+        .await
     }
 
     /// Handle `checkout.session.expired` events.
@@ -218,12 +236,16 @@ impl<L: BillableLoader> PaymentService<L> {
             return Ok(());
         };
 
-        let marked = lifecycle::mark_released(intent.id, &self.db).await?;
+        // WR-01: flip reserved→released and run on_released atomically. A
+        // transient failure rolls the row back to `reserved` (the release reaper
+        // then retries it) and un-marks the event so a Stripe retry reprocesses.
+        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+        let marked = lifecycle::mark_released(intent.id, &txn).await?;
         if !marked {
-            return Ok(()); // no-op: already released
+            txn.rollback().await.ok();
+            return Ok(()); // no-op: already non-reserved (reaper or paid)
         }
 
-        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
         let kind = BillableKind::from_string(intent.billable_kind.clone());
         match self.loader.load(kind, intent.billable_id).await {
             Ok(Some(billable)) => match billable.on_released(&txn).await {
@@ -231,10 +253,13 @@ impl<L: BillableLoader> PaymentService<L> {
                 Err(e) => {
                     txn.rollback().await.ok();
                     if is_transient(&e) {
-                        // Transient — propagate so Stripe retries.
+                        // Transient — un-mark + propagate so Stripe retries (the
+                        // status flip was rolled back with the txn).
+                        self.processed_log.unmark(&event.event_id).await.ok();
                         return Err(e);
                     }
-                    // Terminal business-state error — absorb; no retry loop.
+                    // Terminal business-state error — absorb; no retry loop. The
+                    // row reverts to `reserved`; the release reaper is the backstop.
                 }
             },
             _ => {
@@ -275,11 +300,6 @@ impl<L: BillableLoader> PaymentService<L> {
             },
         };
 
-        let marked = lifecycle::mark_refunded(intent.id, &self.db).await?;
-        if !marked {
-            return Ok(()); // already refunded or wrong source state
-        }
-
         // WR-03: when this system snapshotted the refund amount (system-initiated
         // refund under the IS-NULL guard), prefer it over the event's reported
         // amount, which could reflect an unrelated refund on the same charge.
@@ -289,7 +309,22 @@ impl<L: BillableLoader> PaymentService<L> {
             .refund_amount_cents
             .unwrap_or(event.amount_refunded_cents);
 
+        // WR-01: flip paid→refunded and run on_refunded atomically; a transient
+        // failure rolls the row back to `paid` and un-marks the event so a Stripe
+        // retry reprocesses (the reconcile reaper is the secondary backstop).
         let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+        let marked = lifecycle::mark_refunded(intent.id, &txn).await?;
+        if !marked {
+            txn.rollback().await.ok();
+            return Ok(()); // already refunded or wrong source state
+        }
+
+        // WR-05: persist the Stripe refund id from the event when present, so a
+        // later reconcile poll resolves by the exact refund rather than guessing.
+        if let Some(ref refund_id) = event.refund_id {
+            lifecycle::attach_refund_id(intent.id, refund_id, &txn).await?;
+        }
+
         let kind = BillableKind::from_string(intent.billable_kind.clone());
         match self.loader.load(kind, intent.billable_id).await {
             Ok(Some(billable)) => {
@@ -298,7 +333,9 @@ impl<L: BillableLoader> PaymentService<L> {
                     Err(e) => {
                         txn.rollback().await.ok();
                         if is_transient(&e) {
-                            // Transient — propagate so Stripe retries.
+                            // Transient — un-mark + propagate so Stripe retries
+                            // (the status flip was rolled back with the txn).
+                            self.processed_log.unmark(&event.event_id).await.ok();
                             return Err(e);
                         }
                         // Terminal business-state error — absorb; no retry loop.
@@ -354,7 +391,12 @@ impl<L: BillableLoader> PaymentService<L> {
             .create_refund_for_payment_intent(pi_id, Some(amount_cents), &idempotency_key)
             .await
         {
-            Ok(()) => {
+            Ok(refund_id) => {
+                // WR-05: persist the refund id so the reconcile reaper resolves by
+                // it. Best-effort — a failure here just falls back to the PI poll.
+                lifecycle::attach_refund_id(intent_id, &refund_id, &self.db)
+                    .await
+                    .ok();
                 tracing::warn!(
                     intent_id,
                     pi_id = %pi_id,
@@ -436,7 +478,7 @@ mod tests {
         refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         canned_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
         pi_refund_calls: Mutex<Vec<(String, Option<i64>)>>,
-        canned_pi_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
+        canned_pi_refund: Mutex<Option<Result<String, ferro_stripe::Error>>>,
     }
 
     impl MockStripeGateway {
@@ -487,7 +529,7 @@ mod tests {
             payment_intent_id: &str,
             amount_cents: Option<i64>,
             _key: &str,
-        ) -> Result<(), ferro_stripe::Error> {
+        ) -> Result<String, ferro_stripe::Error> {
             self.pi_refund_calls
                 .lock()
                 .unwrap()
@@ -496,12 +538,19 @@ mod tests {
                 .lock()
                 .unwrap()
                 .take()
-                .unwrap_or(Ok(()))
+                .unwrap_or_else(|| Ok("re_mock".to_string()))
         }
 
         async fn fetch_refund_status_for_payment_intent(
             &self,
             _payment_intent_id: &str,
+        ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
+            Ok(crate::service::RefundStatus::Pending)
+        }
+
+        async fn fetch_refund_status_by_id(
+            &self,
+            _refund_id: &str,
         ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
             Ok(crate::service::RefundStatus::Pending)
         }
@@ -1247,6 +1296,142 @@ mod tests {
             billable.paid_count(),
             1,
             "on_paid must be called through the dispatcher"
+        );
+    }
+
+    /// WR-01: a transient on_paid failure must NOT lose the capture. The status
+    /// flip rolls back to `reserved` and the event is un-marked, so Stripe's
+    /// retry reprocesses and on_paid completes — no auto-refund, no lost update.
+    #[tokio::test]
+    async fn handle_session_completed_transient_recovers() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc as StdArc;
+
+        #[derive(Clone)]
+        struct FlakyBillable {
+            attempts: StdArc<AtomicUsize>,
+        }
+
+        #[async_trait::async_trait]
+        impl Billable for FlakyBillable {
+            fn kind(&self) -> BillableKind {
+                BillableKind::new("mock")
+            }
+            fn id(&self) -> i64 {
+                1
+            }
+            fn tenant_id(&self) -> i64 {
+                1
+            }
+            fn amount_cents(&self) -> i64 {
+                1000
+            }
+            fn currency(&self) -> &str {
+                "eur"
+            }
+            fn checkout_line_description(&self) -> String {
+                "flaky".to_string()
+            }
+            async fn on_paid(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                // First attempt: transient (Stripe) error → must be retried.
+                if self.attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                    return Err(PaymentError::Stripe(ferro_stripe::Error::Stripe(
+                        "transient".to_string(),
+                    )));
+                }
+                Ok(())
+            }
+            async fn on_released(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_refunded(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+                _amount_cents: i64,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+        }
+
+        struct FlakyLoader {
+            attempts: StdArc<AtomicUsize>,
+        }
+
+        #[async_trait::async_trait]
+        impl BillableLoader for FlakyLoader {
+            async fn load(
+                &self,
+                _kind: BillableKind,
+                _id: i64,
+            ) -> Result<Option<Box<dyn Billable>>, PaymentError> {
+                Ok(Some(Box::new(FlakyBillable {
+                    attempts: self.attempts.clone(),
+                })))
+            }
+        }
+
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        let attempts = StdArc::new(AtomicUsize::new(0));
+        seed_reserved_with_session(&db, 42, "cs_flaky").await;
+
+        let svc = Arc::new(PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            FlakyLoader {
+                attempts: attempts.clone(),
+            },
+            Arc::new(MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        ));
+
+        // First delivery: transient on_paid failure → Err, row rolled back to reserved.
+        let r1 = svc
+            .handle_session_completed(make_completed_event("cs_flaky", Some("pi_flaky"), 1000))
+            .await;
+        assert!(r1.is_err(), "transient failure must propagate as Err");
+        let row = lifecycle::find_by_stripe_session("cs_flaky", &db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row.status,
+            crate::intent::status::PaymentIntentStatus::Reserved,
+            "WR-01: row must roll back to reserved on transient failure (not stuck paid)"
+        );
+
+        // Retry (same event_id): the event was un-marked, so it reprocesses.
+        let r2 = svc
+            .handle_session_completed(make_completed_event("cs_flaky", Some("pi_flaky"), 1000))
+            .await;
+        assert!(r2.is_ok(), "retry must succeed after transient failure");
+        let row = lifecycle::find_by_stripe_session("cs_flaky", &db)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            row.status,
+            crate::intent::status::PaymentIntentStatus::Paid,
+            "retry must complete the capture"
+        );
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            2,
+            "on_paid attempted twice (fail, then succeed)"
+        );
+        assert_eq!(
+            mock.pi_refund_calls().len(),
+            0,
+            "transient recovery must NOT auto-refund"
         );
     }
 }

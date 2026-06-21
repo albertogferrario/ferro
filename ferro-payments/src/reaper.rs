@@ -229,13 +229,20 @@ mod tests {
             _payment_intent_id: &str,
             _amount_cents: Option<i64>,
             _idempotency_key: &str,
-        ) -> Result<(), ferro_stripe::Error> {
-            Ok(())
+        ) -> Result<String, ferro_stripe::Error> {
+            Ok("re_mock".to_string())
         }
 
         async fn fetch_refund_status_for_payment_intent(
             &self,
             _payment_intent_id: &str,
+        ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
+            Ok(crate::service::RefundStatus::Pending)
+        }
+
+        async fn fetch_refund_status_by_id(
+            &self,
+            _refund_id: &str,
         ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
             Ok(crate::service::RefundStatus::Pending)
         }

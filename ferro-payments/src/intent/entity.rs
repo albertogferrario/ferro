@@ -34,6 +34,9 @@ pub struct Model {
     pub payment_intent_id: Option<String>,
     /// Stripe Charge ID (set on `mark_paid` when available).
     pub charge_id: Option<String>,
+    /// Stripe Refund ID (set once a refund is created — WR-05). Lets the
+    /// reconcile reaper poll the exact refund this system initiated.
+    pub stripe_refund_id: Option<String>,
     /// Connect destination charge application fee in the smallest currency unit.
     pub application_fee_cents: Option<i64>,
     /// Reservation expiry timestamp. Set in Rust at `create_reserved` time.

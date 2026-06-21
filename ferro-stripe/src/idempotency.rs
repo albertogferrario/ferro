@@ -43,6 +43,16 @@ pub trait ProcessedEventLog: Send + Sync {
     /// Returns `Ok(false)` when the id was already present
     /// (the handler MUST skip side effects — this is a retry).
     async fn try_mark_processed(&self, event_id: &str) -> Result<bool, Error>;
+
+    /// Removes `event_id` from the processed set so a later delivery is
+    /// reprocessed.
+    ///
+    /// Call this when a handler marked an event processed but then failed
+    /// transiently *before* its side effects committed: un-marking lets Stripe's
+    /// retry re-run the handler instead of short-circuiting on the idempotency
+    /// fast-path (which would otherwise drop the side effect permanently).
+    /// Idempotent — un-marking an absent id is a no-op.
+    async fn unmark(&self, event_id: &str) -> Result<(), Error>;
 }
 
 /// In-memory [`ProcessedEventLog`] backed by [`dashmap::DashMap`].
@@ -77,6 +87,12 @@ impl ProcessedEventLog for MemoryProcessedLog {
         // present (already seen, so Ok(false)). DashMap shard locking
         // makes this atomic per key across concurrent callers.
         Ok(self.seen.insert(event_id.to_string(), ()).is_none())
+    }
+
+    async fn unmark(&self, event_id: &str) -> Result<(), Error> {
+        // Idempotent: removing an absent key is a no-op.
+        self.seen.remove(event_id);
+        Ok(())
     }
 }
 

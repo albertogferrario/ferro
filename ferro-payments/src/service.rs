@@ -98,22 +98,54 @@ pub trait StripeGateway: Send + Sync {
         idempotency_key: &str,
     ) -> Result<(), ferro_stripe::Error>;
 
+    /// Create a refund by `payment_intent_id`, returning the Stripe refund id.
+    ///
+    /// The id is persisted (`stripe_refund_id`) so the reconcile reaper can poll
+    /// the exact refund this system initiated rather than guessing from the PI's
+    /// refund list (WR-05).
     async fn create_refund_for_payment_intent(
         &self,
         payment_intent_id: &str,
         amount_cents: Option<i64>,
         idempotency_key: &str,
-    ) -> Result<(), ferro_stripe::Error>;
+    ) -> Result<String, ferro_stripe::Error>;
 
     /// Read-only poll of the most recent refund for `payment_intent_id`.
     ///
-    /// Used by the reconcile reaper (D-08) to determine whether a
-    /// refund-in-flight intent has landed at Stripe. This is a query — it
-    /// never issues or retries a refund (D-09).
+    /// Fallback used by the reconcile reaper (D-08) when no `stripe_refund_id`
+    /// was recorded. This is a query — it never issues or retries a refund (D-09).
     async fn fetch_refund_status_for_payment_intent(
         &self,
         payment_intent_id: &str,
     ) -> Result<RefundStatus, ferro_stripe::Error>;
+
+    /// Read-only poll of a specific refund by its Stripe id (WR-05).
+    ///
+    /// Preferred by the reconcile reaper when `stripe_refund_id` is set —
+    /// resolves the exact refund this system initiated, eliminating the
+    /// ambiguity of picking from a PaymentIntent's refund list. A query only (D-09).
+    async fn fetch_refund_status_by_id(
+        &self,
+        refund_id: &str,
+    ) -> Result<RefundStatus, ferro_stripe::Error>;
+}
+
+/// Map a Stripe refund's status string + amount to a [`RefundStatus`]. Shared by
+/// both poll paths (by-PaymentIntent and by-refund-id).
+fn refund_to_status(
+    status: Option<&str>,
+    amount_cents: i64,
+    failure_reason: Option<String>,
+) -> RefundStatus {
+    match status {
+        Some("succeeded") => RefundStatus::Succeeded { amount_cents },
+        Some("pending") | Some("requires_action") => RefundStatus::Pending,
+        Some("failed") | Some("canceled") => RefundStatus::Failed {
+            reason: failure_reason,
+        },
+        // Unknown or missing status — treat as Pending (safe default).
+        _ => RefundStatus::Pending,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -177,15 +209,15 @@ impl StripeGateway for StripeClientGateway {
         payment_intent_id: &str,
         amount_cents: Option<i64>,
         idempotency_key: &str,
-    ) -> Result<(), ferro_stripe::Error> {
-        ferro_stripe::refund::create_for_payment_intent(
+    ) -> Result<String, ferro_stripe::Error> {
+        let refund = ferro_stripe::refund::create_for_payment_intent(
             payment_intent_id,
             amount_cents,
             idempotency_key,
             None,
         )
         .await?;
-        Ok(())
+        Ok(refund.id.to_string())
     }
 
     async fn fetch_refund_status_for_payment_intent(
@@ -202,17 +234,23 @@ impl StripeGateway for StripeClientGateway {
             return Ok(RefundStatus::Pending);
         };
 
-        Ok(match refund.status.as_deref() {
-            Some("succeeded") => RefundStatus::Succeeded {
-                amount_cents: refund.amount,
-            },
-            Some("pending") | Some("requires_action") => RefundStatus::Pending,
-            Some("failed") | Some("canceled") => RefundStatus::Failed {
-                reason: refund.failure_reason.clone(),
-            },
-            // Unknown or missing status — treat as Pending (safe default).
-            _ => RefundStatus::Pending,
-        })
+        Ok(refund_to_status(
+            refund.status.as_deref(),
+            refund.amount,
+            refund.failure_reason.clone(),
+        ))
+    }
+
+    async fn fetch_refund_status_by_id(
+        &self,
+        refund_id: &str,
+    ) -> Result<RefundStatus, ferro_stripe::Error> {
+        let refund = ferro_stripe::refund::retrieve(refund_id).await?;
+        Ok(refund_to_status(
+            refund.status.as_deref(),
+            refund.amount,
+            refund.failure_reason.clone(),
+        ))
     }
 }
 
@@ -404,7 +442,8 @@ impl<L: BillableLoader> PaymentService<L> {
         }
 
         let idempotency_key = format!("refund-{intent_id}");
-        self.stripe
+        let refund_id = self
+            .stripe
             .create_refund_for_payment_intent(
                 &payment_intent_id,
                 Some(amount_cents),
@@ -420,7 +459,13 @@ impl<L: BillableLoader> PaymentService<L> {
                      (refund_amount_cents set, refunded_at NULL) — phase-236 reaper recovers"
                 );
                 PaymentError::Stripe(e)
-            })
+            })?;
+
+        // WR-05: persist the Stripe refund id so the reconcile reaper resolves by
+        // the exact refund. Best-effort: a failure here leaves the row
+        // refund-in-flight and the reaper falls back to the PI-list poll.
+        lifecycle::attach_refund_id(intent_id, &refund_id, &self.db).await?;
+        Ok(())
     }
 
     // -----------------------------------------------------------------------
@@ -534,19 +579,28 @@ impl<L: BillableLoader> PaymentService<L> {
             // Ok(false) when skipped (Pending, Failed, race no-op, loader-vanished),
             // Err when on_refunded itself fails (D-05: logged, loop continues).
             let result: Result<bool, PaymentError> = async {
-                let Some(ref pi_id) = intent.payment_intent_id else {
+                // WR-05: when this system recorded the Stripe refund id, poll that
+                // exact refund — eliminates the ambiguity of `refunds.first()` on a
+                // PaymentIntent with multiple refunds. Fall back to the PI-list poll
+                // for legacy rows that predate the refund-id capture.
+                let status = if let Some(ref refund_id) = intent.stripe_refund_id {
+                    self.stripe
+                        .fetch_refund_status_by_id(refund_id)
+                        .await
+                        .map_err(PaymentError::Stripe)?
+                } else if let Some(ref pi_id) = intent.payment_intent_id {
+                    self.stripe
+                        .fetch_refund_status_for_payment_intent(pi_id)
+                        .await
+                        .map_err(PaymentError::Stripe)?
+                } else {
                     tracing::warn!(
                         intent_id = intent.id,
-                        "reconcile: payment_intent_id is NULL — cannot poll Stripe; skipping"
+                        "reconcile: no stripe_refund_id and payment_intent_id is NULL \
+                         — cannot poll Stripe; skipping"
                     );
                     return Ok(false);
                 };
-
-                let status = self
-                    .stripe
-                    .fetch_refund_status_for_payment_intent(pi_id)
-                    .await
-                    .map_err(PaymentError::Stripe)?;
 
                 match status {
                     RefundStatus::Succeeded { amount_cents } => {
@@ -688,8 +742,8 @@ mod tests {
         refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         canned_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
         pi_refund_calls: Mutex<Vec<(String, Option<i64>)>>,
-        canned_pi_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
-        /// Records payment_intent_ids passed to fetch_refund_status_for_payment_intent.
+        canned_pi_refund: Mutex<Option<Result<String, ferro_stripe::Error>>>,
+        /// Records ids passed to either poll method (by-PI or by-refund-id).
         poll_calls: Mutex<Vec<String>>,
         /// Canned result for the next fetch_refund_status_for_payment_intent call.
         /// `None` → default Ok(RefundStatus::Succeeded { amount_cents: 1000 }).
@@ -745,7 +799,7 @@ mod tests {
             payment_intent_id: &str,
             amount_cents: Option<i64>,
             _key: &str,
-        ) -> Result<(), ferro_stripe::Error> {
+        ) -> Result<String, ferro_stripe::Error> {
             self.pi_refund_calls
                 .lock()
                 .unwrap()
@@ -754,7 +808,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .take()
-                .unwrap_or(Ok(()))
+                .unwrap_or_else(|| Ok("re_mock".to_string()))
         }
 
         async fn fetch_refund_status_for_payment_intent(
@@ -765,6 +819,18 @@ mod tests {
                 .lock()
                 .unwrap()
                 .push(payment_intent_id.to_string());
+            self.canned_refund_status
+                .lock()
+                .unwrap()
+                .take()
+                .unwrap_or(Ok(RefundStatus::Succeeded { amount_cents: 1000 }))
+        }
+
+        async fn fetch_refund_status_by_id(
+            &self,
+            refund_id: &str,
+        ) -> Result<RefundStatus, ferro_stripe::Error> {
+            self.poll_calls.lock().unwrap().push(refund_id.to_string());
             self.canned_refund_status
                 .lock()
                 .unwrap()
@@ -1050,6 +1116,12 @@ mod tests {
             .unwrap()
             .expect("row still exists");
         assert_eq!(row.refund_amount_cents, Some(5000));
+        // WR-05: the Stripe refund id is persisted for reaper poll-by-id.
+        assert_eq!(
+            row.stripe_refund_id,
+            Some("re_mock".to_string()),
+            "request_refund must persist the Stripe refund id"
+        );
     }
 
     /// PAY-POLY-SVC-03d (CR-01): non-paid status OR missing payment_intent_id →
@@ -1936,6 +2008,46 @@ mod tests {
         assert!(
             row.refunded_at.is_none(),
             "refunded_at must still be NULL after a vanished-loader tick"
+        );
+    }
+
+    /// WR-05: when a row carries a stripe_refund_id, reconcile polls that exact
+    /// refund via fetch_refund_status_by_id (recorded in poll_calls as the refund
+    /// id), not the PaymentIntent's refund list.
+    #[tokio::test]
+    async fn reconcile_polls_by_refund_id_when_set() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        // Default canned status → Succeeded { 1000 }.
+
+        // Seed a refund-in-flight row WITH a stripe_refund_id.
+        db.execute_unprepared(
+            "INSERT INTO payment_intents \
+             (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
+              payment_intent_id,stripe_refund_id,expires_at,reserved_at,paid_at,refund_amount_cents) \
+             VALUES (1,'booking',9501,1000,'EUR','paid',\
+             'pi_byid','re_specific',\
+             '2030-01-01T00:00:00Z','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z',500)",
+        )
+        .await
+        .expect("seed refund-in-flight with refund id");
+
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), ReturningLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        assert_eq!(count, 1, "refund resolved via by-id poll");
+        let polls = mock.poll_calls.lock().unwrap();
+        assert_eq!(
+            polls.as_slice(),
+            &["re_specific".to_string()],
+            "reconcile must poll by the exact refund id, not the payment_intent_id"
         );
     }
 }

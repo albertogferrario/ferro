@@ -67,6 +67,7 @@ impl MigrationTrait for Migration {
                             .null(),
                     )
                     .col(ColumnDef::new(PaymentIntents::ChargeId).text().null())
+                    .col(ColumnDef::new(PaymentIntents::StripeRefundId).text().null())
                     .col(
                         ColumnDef::new(PaymentIntents::ApplicationFeeCents)
                             .big_integer()
@@ -145,6 +146,18 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        // Non-unique index on stripe_refund_id for the reconcile reaper's
+        // poll-by-refund-id lookup (WR-05).
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_payment_intents_stripe_refund_id")
+                    .table(PaymentIntents::Table)
+                    .col(PaymentIntents::StripeRefundId)
+                    .to_owned(),
+            )
+            .await?;
+
         // --- Partial unique index (cross-backend) ------------------------------
         //
         // SeaORM's IndexCreateStatement has no WHERE-clause API (D-03). The
@@ -210,6 +223,7 @@ enum PaymentIntents {
     StripeSessionId,
     PaymentIntentId,
     ChargeId,
+    StripeRefundId,
     ApplicationFeeCents,
     ExpiresAt,
     ReservedAt,
@@ -262,6 +276,7 @@ mod tests {
         assert!(name_exists(&conn, "idx_payment_intents_tenant_status", "index").await);
         assert!(name_exists(&conn, "idx_payment_intents_stripe_session_id", "index").await);
         assert!(name_exists(&conn, "idx_payment_intents_payment_intent_id", "index").await);
+        assert!(name_exists(&conn, "idx_payment_intents_stripe_refund_id", "index").await);
         assert!(name_exists(&conn, "uq_payment_intents_active", "index").await);
     }
 
