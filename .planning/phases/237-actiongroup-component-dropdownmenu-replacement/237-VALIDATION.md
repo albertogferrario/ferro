@@ -1,8 +1,8 @@
 ---
 phase: 237
 slug: actiongroup-component-dropdownmenu-replacement
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-06-22
 ---
@@ -75,11 +75,11 @@ created: 2026-06-22
 
 ## Validation Sign-Off
 
-- [ ] All SC tasks have an `<automated>` verify or Wave 0 dependency (SC-6 publish is manual/operator-gated by design)
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (render_action_group tests + schema tests)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 90s (quick run)
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All SC tasks have an `<automated>` verify or Wave 0 dependency (SC-6 publish is manual/operator-gated by design)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (render_action_group tests + schema tests — created by Plan 01 TDD tasks)
+- [x] No watch-mode flags
+- [x] Feedback latency < 90s (quick run)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-22 (W0 test gaps assigned to Plan 01 TDD tasks; existing drift-guard/builder/mcp tests updated in place)

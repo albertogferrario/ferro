@@ -590,16 +590,15 @@ Step 2.5: SKIPPED — this is not a rename/refactor/migration phase. `ActionGrou
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is `render_dropdown_menu` dead code after this phase?**
-   - What we know: `render_dropdown_menu` at `atoms.rs:1154` is currently called from the dispatch arm (BUILTIN_TYPES "DropdownMenu" → atoms dispatch). After removing that dispatch arm, no call site in the main render path calls `render_dropdown_menu` directly — DataTable uses `render_inline_dropdown` (data.rs:520), and `render_action_group` will call the building blocks (kebab trigger + panel loop) directly rather than going through `render_dropdown_menu`'s Element-based API.
-   - What's unclear: Whether `render_dropdown_menu` should be kept (it encapsulates a useful pattern and the caller tests reference it), or whether it becomes `#[allow(dead_code)]`, or whether it gets deleted entirely after the unit tests in atoms.rs migrate.
-   - Recommendation: Keep `render_dropdown_menu` as `pub(crate)` for now — the unit tests in atoms.rs that currently test it should be migrated to test `render_action_group` instead, and `render_dropdown_menu` may then be dead code. Planner can add a `#[cfg(test)]` annotation to the atoms.rs DropdownMenu tests or delete them. If `render_dropdown_menu` goes unused by the end of the phase, remove it to comply with the "no deprecated code" principle. Compiler warnings (`-D warnings`) will catch it.
+1. **Is `render_dropdown_menu` dead code after this phase? — RESOLVED: YES, delete it.**
+   - What we know: `render_dropdown_menu` at `atoms.rs:1154` is currently called only from the dispatch arm (BUILTIN_TYPES "DropdownMenu" → atoms dispatch). After removing that dispatch arm, no call site in the main render path calls `render_dropdown_menu` directly — DataTable uses `render_inline_dropdown` (data.rs:520), and `render_action_group` reuses the building blocks (`render_menu_item`'s non-GET `<form>` branch + the kebab trigger/panel HTML at atoms.rs:1166-1193) directly rather than going through `render_dropdown_menu`'s `Element`-based API.
+   - **RESOLUTION:** `render_dropdown_menu` becomes dead code and is **deleted** (along with its atoms.rs tests ~:2018-2064) in Plan 03, after Plan 02 removes the dispatch arm. CI `-D warnings` enforces this. `render_menu_item` and the kebab building blocks are **kept** (`pub(crate)`). `DropdownMenuAction` is **kept** (D-11). This resolution refines CONTEXT D-10, which has been updated to match — the "keep the kebab rendering in one place" intent holds; only the specific retained helper changes from `render_dropdown_menu` to `render_menu_item` + building blocks.
 
-2. **Should ActionGroup slots appear in `BUILTIN_SPECS` slot_fields?**
+2. **Should ActionGroup slots appear in `BUILTIN_SPECS` slot_fields? — RESOLVED: NO, use `&[]`.**
    - What we know: `BUILTIN_SPECS` tuples have a `&[&str]` for slot fields. Current containers with slots: Card (`footer`), Modal (`footer`), PageHeader (`actions`), DetailPage (`actions`). ActionGroup has no child slots (all content is driven by the `items` prop array).
-   - Recommendation: Use `&[]` for ActionGroup's slot_fields (no children slots). This matches DropdownMenu's current `&[]`.
+   - **RESOLUTION:** Use `&[]` for ActionGroup's slot_fields (no children slots). This matches DropdownMenu's current `&[]`. Applied in Plan 02 (BUILTIN_SPECS entry).
 
 ---
 

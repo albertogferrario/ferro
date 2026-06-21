@@ -59,10 +59,18 @@ consumer adoption (separate consumer-repo phase, blocked on published 0.2.72).
 - **D-09:** Remove `DropdownMenu` from the **public** surface only: `BUILTIN_TYPES`,
   `BUILTIN_SPECS`, the `pub use component::{…}` export (`lib.rs`), the dispatch arm, and
   the catalog. No consumer authors a `DropdownMenu` spec after this phase.
-- **D-10:** **Keep** `render_dropdown_menu` / `render_menu_item` (`render/atoms.rs:1073,1154`)
-  as **internal** (`pub(crate)`) render helpers. `ActionGroup`'s overflow kebab calls
-  them, and `DataTable`/`Kanban` row rendering continues to call them for per-row action
-  menus. The kebab glyph, popover anchoring, and destructive styling stay in one place.
+- **D-10:** **Keep** `render_menu_item` and the kebab building blocks (kebab glyph SVG +
+  popover panel + destructive styling, `render/atoms.rs:1073,1166-1193`) as **internal**
+  (`pub(crate)`) render helpers — `ActionGroup`'s overflow path reuses `render_menu_item`'s
+  non-GET `<form>` branch and reproduces the kebab trigger/panel HTML from these blocks.
+  **Refined (per RESEARCH/checker):** `render_dropdown_menu` (`atoms.rs:1154`) is **NOT**
+  reused and becomes **dead code** once the `DropdownMenu` dispatch arm is removed — it is an
+  `Element`-based wrapper that `render_action_group` does not call, and `DataTable`/`Kanban`
+  rows already render via `render_inline_dropdown` (`data.rs:520`), not `render_dropdown_menu`.
+  Per "delete old code completely" + CI `-D warnings`, `render_dropdown_menu` and its atoms.rs
+  tests are **deleted** in this phase (Plan 03). The original D-10 intent — keep the kebab
+  rendering in one place, not re-invent it — holds; only the specific helper retained changes
+  from `render_dropdown_menu` to `render_menu_item` + the building blocks.
 - **D-11:** `DropdownMenuAction` / `DropdownMenuProps` structs: `DropdownMenuProps` (the
   public component props) is removed with the public component. `DropdownMenuAction` is
   **retained** as the internal row-action carrier used by `DataTableProps.row_actions` and
