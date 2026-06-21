@@ -10,6 +10,37 @@ This document is a sketch from a downstream-app perspective, not an inside-Ferro
 
 ---
 
+## Update — u Phase 6 shipped (2026-06-21): premise has shifted
+
+The downstream `u` app **completed its external-MCP phase (Phase 6) entirely u-native** and the original
+extraction premise is now partly obsolete — re-scope this item before promoting it:
+
+- **`ferro-mcp-server` and `ferro-mcp-oauth` already exist** in the Ferro repo. They were enough that `u`
+  did NOT need to hand-roll auth, and did NOT need a transport extraction to ship. `u` borrowed the auth
+  shape and wrote a ~150 LOC axum JSON-RPC dispatch (`initialize` / `tools/list` / `tools/call`) over its
+  own `ChatToolRegistry`. So the "downstream must hand-roll the whole transport" problem this doc opens
+  with is **no longer the blocker** — the real friction is narrower.
+- **The actual remaining gap is the tool-catalog model, not the transport.** `ferro-mcp-server`'s dispatch
+  is **projection-shaped** (auto-rendered `list_<service>` + state-machine write transitions through
+  `WriteDispatcher`). `u`'s catalog is a hand-written set of `ChatTool`s funnelling through a per-tenant
+  single-writer vault adapter. Adapting `u`'s catalog to `ferro-mcp-server`'s projection model was *more*
+  code than the 3-method dispatch, so `u` kept its own. **Re-scoped ask:** generalize `ferro-mcp-server`
+  dispatch to accept an **arbitrary, non-projection tool catalog** (a `ChatToolRegistry`-like trait object),
+  so a downstream app can plug its hand-written catalog into Ferro's transport without adopting the
+  projection write model. The introspection-vs-app-catalog separation in this doc still stands as the
+  security rationale; the transport/introspection split is lower priority now that the catalogs already
+  coexist.
+- **u reference (for the promoted phase):**
+  - `u/src/controllers/mcp.rs` — the hand-written JSON-RPC dispatch that the generalized `ferro-mcp-server`
+    would subsume.
+  - `u/src/chat/tools/mod.rs` — `ChatToolRegistry::read_write()` + the `ChatTool` trait (`is_write()`,
+    `ToolCtx`): the catalog shape Ferro's transport would need to accept.
+  - u Phase 6 close note: `u/.planning/phases/06-external-mcp/deferred-items.md` §2 records this as a Ferro
+    issue per the framework-trajectory discipline (filed here, done in a dedicated Ferro session — not
+    mid-product).
+
+---
+
 ## Problem statement
 
 `ferro-mcp` today does two things in one crate:
