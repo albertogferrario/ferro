@@ -398,6 +398,12 @@ impl InertiaResponse {
             return InertiaHttpResponse::html(html);
         }
 
+        // Derive shared template values from config fields (title/head_extras/mount_id).
+        // These are computed once here and used in both dev and prod branches below.
+        let title_text = self.config.title.as_deref().unwrap_or(&self.config.app_name);
+        let head_extras = self.config.head_extras.as_deref().unwrap_or("");
+        let mount_id = self.config.mount_id.as_str();
+
         // Default template
         let html = if self.config.development {
             format!(
@@ -417,17 +423,20 @@ impl InertiaResponse {
     </script>
     <script type="module" src="{}/@vite/client"></script>
     <script type="module" src="{}/{}"></script>
+    {}
 </head>
 <body>
-    <div id="app" data-page="{}"></div>
+    <div id="{}" data-page="{}"></div>
 </body>
 </html>"#,
                 csrf,
-                self.config.app_name,
+                title_text,
                 self.config.vite_dev_server,
                 self.config.vite_dev_server,
                 self.config.vite_dev_server,
                 self.config.entry_point,
+                head_extras,
+                mount_id,
                 page_json
             )
         } else {
@@ -447,19 +456,82 @@ impl InertiaResponse {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{csrf}">
-    <title>{app_name}</title>
+    <title>{title_text}</title>
     <script type="module" src="{js_src}"></script>
 {css_tags}
+    {head_extras}
 </head>
 <body>
-    <div id="app" data-page="{page_json}"></div>
+    <div id="{mount_id}" data-page="{page_json}"></div>
 </body>
 </html>"#,
-                app_name = self.config.app_name,
                 js_src = assets.js,
+                title_text = title_text,
+                head_extras = head_extras,
+                mount_id = mount_id,
             )
         };
 
         InertiaHttpResponse::html(html)
+    }
+}
+
+#[cfg(test)]
+mod template_field_tests {
+    use super::*;
+    use crate::config::InertiaConfig;
+
+    struct MockReq {
+        is_inertia: bool,
+        path: &'static str,
+    }
+
+    impl crate::request::InertiaRequest for MockReq {
+        fn inertia_header(&self, name: &str) -> Option<&str> {
+            if name == "X-Inertia" && self.is_inertia {
+                Some("true")
+            } else {
+                None
+            }
+        }
+        fn path(&self) -> &str {
+            self.path
+        }
+    }
+
+    #[test]
+    fn title_override() {
+        let resp = Inertia::render_with_config(
+            &MockReq { is_inertia: false, path: "/" },
+            "App",
+            serde_json::json!({}),
+            InertiaConfig::new().development().app_name("Fallback").title("Explicit"),
+        );
+        assert!(resp.body.contains("<title>Explicit</title>"));
+        assert!(!resp.body.contains("<title>Fallback</title>"));
+    }
+
+    #[test]
+    fn head_extras_in_html() {
+        let resp = Inertia::render_with_config(
+            &MockReq { is_inertia: false, path: "/" },
+            "App",
+            serde_json::json!({}),
+            InertiaConfig::new()
+                .development()
+                .head_extras(r#"<meta name="x" content="y">"#),
+        );
+        assert!(resp.body.contains(r#"<meta name="x" content="y">"#));
+    }
+
+    #[test]
+    fn mount_id_applied() {
+        let resp = Inertia::render_with_config(
+            &MockReq { is_inertia: false, path: "/" },
+            "App",
+            serde_json::json!({}),
+            InertiaConfig::new().development().mount_id("root"),
+        );
+        assert!(resp.body.contains(r#"id="root" data-page="#));
     }
 }
