@@ -53,7 +53,21 @@ pub async fn create_reserved<C: ConnectionTrait>(
         metadata: Set(None),
         ..Default::default()
     };
-    row.insert(conn).await.map_err(PaymentError::Db)
+    row.insert(conn).await.map_err(|e| {
+        // The partial unique index on `(billable_kind, billable_id) WHERE
+        // status IN ('reserved','paid')` (D-10) rejects a second active intent.
+        // Map it to a dedicated, user-recoverable variant so callers can return
+        // the existing checkout / a 409 instead of an opaque 500. `sql_err()`
+        // normalizes the violation across SQLite and Postgres.
+        if matches!(
+            e.sql_err(),
+            Some(sea_orm::SqlErr::UniqueConstraintViolation(_))
+        ) {
+            PaymentError::ActiveIntentExists
+        } else {
+            PaymentError::Db(e)
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -870,5 +884,29 @@ mod tests {
             .await
             .expect("find_by_stripe_session miss");
         assert!(miss.is_none());
+    }
+
+    /// WR-02: a second active intent for the same `(billable_kind, billable_id)`
+    /// violates the partial unique index and maps to `ActiveIntentExists`
+    /// (not an opaque `Db` error).
+    #[tokio::test]
+    async fn create_reserved_duplicate_active_maps_to_active_intent_exists() {
+        let conn = fresh_db().await;
+        let expires_at = chrono::DateTime::parse_from_rfc3339("2030-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        create_reserved(1, "order", 42, 1000, "EUR", expires_at, &conn)
+            .await
+            .expect("first reserved insert");
+
+        let err = create_reserved(1, "order", 42, 1000, "EUR", expires_at, &conn)
+            .await
+            .expect_err("second active intent must be rejected");
+
+        assert!(
+            matches!(err, PaymentError::ActiveIntentExists),
+            "expected ActiveIntentExists, got: {err:?}"
+        );
     }
 }

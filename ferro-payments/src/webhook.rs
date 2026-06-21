@@ -280,14 +280,20 @@ impl<L: BillableLoader> PaymentService<L> {
             return Ok(()); // already refunded or wrong source state
         }
 
+        // WR-03: when this system snapshotted the refund amount (system-initiated
+        // refund under the IS-NULL guard), prefer it over the event's reported
+        // amount, which could reflect an unrelated refund on the same charge.
+        // Fall back to the event amount for refunds with no snapshot (e.g. a
+        // dashboard-initiated refund).
+        let refund_amount = intent
+            .refund_amount_cents
+            .unwrap_or(event.amount_refunded_cents);
+
         let txn = self.db.begin().await.map_err(PaymentError::Db)?;
         let kind = BillableKind::from_string(intent.billable_kind.clone());
         match self.loader.load(kind, intent.billable_id).await {
             Ok(Some(billable)) => {
-                match billable
-                    .on_refunded(&txn, event.amount_refunded_cents)
-                    .await
-                {
+                match billable.on_refunded(&txn, refund_amount).await {
                     Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
                     Err(e) => {
                         txn.rollback().await.ok();

@@ -231,7 +231,14 @@ pub struct PaymentService<L: BillableLoader> {
     pub(crate) loader: L,
     #[allow(clippy::type_complexity)]
     return_url_builder: Arc<dyn Fn(&dyn Billable) -> ReturnUrls + Send + Sync>,
+    /// Minimum age a refund-in-flight row must reach before the reconcile reaper
+    /// polls Stripe for it — prevents polling a refund Stripe has not yet
+    /// indexed. Independent of the cron cadence (IN-04). Default: 1 hour.
+    reconcile_min_age: chrono::Duration,
 }
+
+/// Default minimum age before the reconcile reaper polls Stripe (IN-04).
+const DEFAULT_RECONCILE_MIN_AGE_HOURS: i64 = 1;
 
 impl<L: BillableLoader> PaymentService<L> {
     pub fn new(
@@ -247,7 +254,16 @@ impl<L: BillableLoader> PaymentService<L> {
             processed_log,
             loader,
             return_url_builder: Arc::new(return_url_builder),
+            reconcile_min_age: chrono::Duration::hours(DEFAULT_RECONCILE_MIN_AGE_HOURS),
         }
+    }
+
+    /// Override the minimum age a refund-in-flight row must reach before the
+    /// reconcile reaper polls Stripe for it (IN-04). Consuming builder; defaults
+    /// to 1 hour. Tune independently of the cron cadence.
+    pub fn with_reconcile_min_age(mut self, min_age: chrono::Duration) -> Self {
+        self.reconcile_min_age = min_age;
+        self
     }
 
     // -----------------------------------------------------------------------
@@ -335,15 +351,21 @@ impl<L: BillableLoader> PaymentService<L> {
     ///
     /// Flow (D-15):
     /// 1. Load the intent row (`NotFound` if absent).
-    /// 2. Require `status = paid` AND `charge_id IS NOT NULL`
+    /// 2. Require `status = paid` AND `payment_intent_id IS NOT NULL`
     ///    (`StatusPrecondition` otherwise).
     /// 3. Atomically snapshot `refund_amount_cents` via
     ///    `GuardedUpdate WHERE refund_amount_cents IS NULL`.
     ///    `Ok(false)` = already in flight — no-op, never call Stripe twice.
-    /// 4. Call `self.stripe.create_refund`.
+    /// 4. Call `self.stripe.create_refund_for_payment_intent`.
     ///
-    /// Does NOT flip `status` to `refunded` — that is the phase-235 webhook's
-    /// job (`mark_refunded`, D-16).
+    /// Refunds by `payment_intent_id` — the identifier the lifecycle actually
+    /// persists (`attach_payment_intent` on `checkout.session.completed`). This
+    /// aligns the manual refund path with the auto-refund path (CR-01); the
+    /// `charge_id` column is never populated on the success path, so a
+    /// charge-based precondition was structurally unreachable.
+    ///
+    /// Does NOT flip `status` to `refunded` — that is the webhook's
+    /// job (`mark_refunded`, D-16), or the reconcile reaper's.
     pub async fn request_refund(
         &self,
         intent_id: i64,
@@ -361,9 +383,9 @@ impl<L: BillableLoader> PaymentService<L> {
             ));
         }
 
-        let charge_id = row.charge_id.ok_or_else(|| {
+        let payment_intent_id = row.payment_intent_id.ok_or_else(|| {
             PaymentError::StatusPrecondition(
-                "charge_id must be set to request a refund".to_string(),
+                "payment_intent_id must be set to request a refund".to_string(),
             )
         })?;
 
@@ -383,12 +405,16 @@ impl<L: BillableLoader> PaymentService<L> {
 
         let idempotency_key = format!("refund-{intent_id}");
         self.stripe
-            .create_refund(&charge_id, Some(amount_cents), &idempotency_key)
+            .create_refund_for_payment_intent(
+                &payment_intent_id,
+                Some(amount_cents),
+                &idempotency_key,
+            )
             .await
             .map_err(|e| {
                 tracing::error!(
                     intent_id,
-                    %charge_id,
+                    %payment_intent_id,
                     err = %e,
                     "request_refund Stripe call failed; row is refund-in-flight \
                      (refund_amount_cents set, refunded_at NULL) — phase-236 reaper recovers"
@@ -496,9 +522,10 @@ impl<L: BillableLoader> PaymentService<L> {
         &self,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<usize, PaymentError> {
-        // Age anchor: only rows older than 1 h — prevents polling a refund that
-        // Stripe has not yet indexed. The cron schedule is the consumer's knob.
-        let older_than = now - chrono::Duration::hours(1);
+        // Age anchor: only rows older than `reconcile_min_age` (default 1 h) —
+        // prevents polling a refund that Stripe has not yet indexed. Tunable
+        // independently of the cron cadence (IN-04).
+        let older_than = now - self.reconcile_min_age;
         let in_flight = lifecycle::find_refunds_in_flight(older_than, &self.db).await?;
         let mut resolved = 0usize;
 
@@ -523,34 +550,48 @@ impl<L: BillableLoader> PaymentService<L> {
 
                 match status {
                     RefundStatus::Succeeded { amount_cents } => {
-                        let marked = lifecycle::mark_refunded(intent.id, &self.db).await?;
+                        // WR-03: prefer the snapshotted `refund_amount_cents` (the
+                        // amount THIS system requested under the IS-NULL guard) over
+                        // Stripe's reported amount, which may belong to an unrelated
+                        // refund on the same PaymentIntent (e.g. a dashboard refund —
+                        // `refunds.first()` is newest-first, see WR-05). Fall back to
+                        // the polled amount only if no snapshot is present.
+                        let amount = intent.refund_amount_cents.unwrap_or(amount_cents);
+
+                        // WR-04: load + on_refunded BEFORE flipping status. If the
+                        // loader has vanished on this money path, leave the row
+                        // in-flight (no mark_refunded) so the next tick retries,
+                        // rather than stranding it in `refunded` with the
+                        // consumer-side compensation permanently skipped. A loader
+                        // Err propagates to the per-intent error arm (D-05, logged,
+                        // loop continues) — the row likewise stays in-flight.
+                        let kind = BillableKind::from_string(intent.billable_kind.clone());
+                        let Some(billable) = self.loader.load(kind, intent.billable_id).await?
+                        else {
+                            tracing::warn!(
+                                intent_id = intent.id,
+                                "reconcile: loader returned None on succeeded refund — \
+                                 leaving row in-flight for next tick (no status flip)"
+                            );
+                            return Ok(false);
+                        };
+
+                        // Flip status INSIDE the same txn as on_refunded so they
+                        // commit atomically. If mark_refunded no-ops (a webhook
+                        // refunded concurrently), roll back so on_refunded is not
+                        // double-applied.
+                        let txn = self.db.begin().await.map_err(PaymentError::Db)?;
+                        if let Err(e) = billable.on_refunded(&txn, amount).await {
+                            txn.rollback().await.ok();
+                            return Err(e);
+                        }
+                        let marked = lifecycle::mark_refunded(intent.id, &txn).await?;
                         if !marked {
                             // Race no-op: webhook already refunded this row.
+                            txn.rollback().await.ok();
                             return Ok(false);
                         }
-
-                        let kind = BillableKind::from_string(intent.billable_kind.clone());
-                        match self.loader.load(kind, intent.billable_id).await {
-                            Ok(Some(billable)) => {
-                                let txn = self.db.begin().await.map_err(PaymentError::Db)?;
-                                match billable.on_refunded(&txn, amount_cents).await {
-                                    Ok(()) => txn.commit().await.map_err(PaymentError::Db)?,
-                                    Err(e) => {
-                                        txn.rollback().await.ok();
-                                        return Err(e);
-                                    }
-                                }
-                            }
-                            Ok(None) | Err(_) => {
-                                // Loader vanished on a money path — mirror webhook
-                                // handle_charge_refunded `_` arm: rollback + skip.
-                                tracing::warn!(
-                                    intent_id = intent.id,
-                                    "reconcile: loader returned None/Err on succeeded refund — skipping"
-                                );
-                                return Ok(false);
-                            }
-                        }
+                        txn.commit().await.map_err(PaymentError::Db)?;
                         Ok(true)
                     }
                     RefundStatus::Pending => {
@@ -853,25 +894,27 @@ mod tests {
     // Seed helpers
     // -----------------------------------------------------------------------
 
-    /// Seed a `paid` row with an optional `charge_id` via raw SQL (bypasses
-    /// lifecycle guards). `billable_id` is varied per call to avoid the partial
-    /// unique index on `(billable_kind, billable_id) WHERE status IN (...)`.
+    /// Seed a `paid` row with an optional `payment_intent_id` via raw SQL
+    /// (bypasses lifecycle guards). `billable_id` is varied per call to avoid the
+    /// partial unique index on `(billable_kind, billable_id) WHERE status IN (...)`.
+    /// `request_refund` refunds by `payment_intent_id` (CR-01), so the manual
+    /// refund precondition is "paid AND payment_intent_id IS NOT NULL".
     /// Returns the inserted row id.
-    async fn seed_paid_with_charge(
+    async fn seed_paid(
         conn: &sea_orm::DatabaseConnection,
         billable_id: i64,
-        charge: Option<&str>,
+        payment_intent_id: Option<&str>,
     ) -> i64 {
-        let charge_sql = match charge {
-            Some(c) => format!("'{c}'"),
+        let pi_sql = match payment_intent_id {
+            Some(p) => format!("'{p}'"),
             None => "NULL".to_string(),
         };
         conn.execute_unprepared(&format!(
             "INSERT INTO payment_intents \
              (tenant_id,billable_kind,billable_id,amount_cents,currency,status,\
-              charge_id,expires_at,reserved_at) \
+              payment_intent_id,expires_at,reserved_at) \
              VALUES (1,'booking',{billable_id},5000,'EUR','paid',\
-             {charge_sql},\
+             {pi_sql},\
              '2030-01-01T00:00:00Z','2026-06-17T00:00:00Z')"
         ))
         .await
@@ -963,13 +1006,14 @@ mod tests {
         );
     }
 
-    /// PAY-POLY-SVC-03c: paid row with charge_id → refund_amount_cents
-    /// snapshotted and Stripe called exactly once.
+    /// PAY-POLY-SVC-03c (CR-01): paid row with payment_intent_id →
+    /// refund_amount_cents snapshotted and the PI-based refund called exactly
+    /// once. charge_id is NOT required (it is never persisted on the success path).
     #[tokio::test]
     async fn request_refund() {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
-        let intent_id = seed_paid_with_charge(&db, 101, Some("ch_test_abc")).await;
+        let intent_id = seed_paid(&db, 101, Some("pi_test_abc")).await;
 
         let svc = PaymentService::new(
             db.clone(),
@@ -986,10 +1030,18 @@ mod tests {
             .await
             .expect("request_refund");
 
+        // CR-01: refund is issued by payment_intent_id, not charge_id.
+        let pi_calls = mock.pi_refund_calls();
+        assert_eq!(
+            pi_calls.len(),
+            1,
+            "PI-based refund must be called exactly once"
+        );
+        assert_eq!(pi_calls[0], ("pi_test_abc".to_string(), Some(5000)));
         assert_eq!(
             mock.refund_call_count(),
-            1,
-            "Stripe must be called exactly once"
+            0,
+            "charge-based refund must NOT be used by request_refund"
         );
 
         let row = Entity::find_by_id(intent_id)
@@ -1000,15 +1052,15 @@ mod tests {
         assert_eq!(row.refund_amount_cents, Some(5000));
     }
 
-    /// PAY-POLY-SVC-03d: non-paid status OR missing charge_id → StatusPrecondition,
-    /// Stripe NOT called.
+    /// PAY-POLY-SVC-03d (CR-01): non-paid status OR missing payment_intent_id →
+    /// StatusPrecondition, Stripe NOT called.
     #[tokio::test]
     async fn request_refund_precondition() {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
 
         // Seed a reserved row (not paid) — use unique billable_id to avoid unique index.
-        let reserved_id = seed_paid_with_charge(&db, 201, None).await;
+        let reserved_id = seed_paid(&db, 201, None).await;
         // Patch the status to reserved via raw SQL.
         db.execute_unprepared(&format!(
             "UPDATE payment_intents SET status='reserved' WHERE id={reserved_id}"
@@ -1016,8 +1068,8 @@ mod tests {
         .await
         .expect("patch to reserved");
 
-        // Seed a paid row without charge_id — different billable_id.
-        let no_charge_id = seed_paid_with_charge(&db, 202, None).await;
+        // Seed a paid row without payment_intent_id — different billable_id.
+        let no_pi_id = seed_paid(&db, 202, None).await;
 
         let svc = PaymentService::new(
             db.clone(),
@@ -1040,11 +1092,11 @@ mod tests {
             "expected StatusPrecondition, got: {err:?}"
         );
 
-        // Paid but no charge_id → StatusPrecondition
+        // Paid but no payment_intent_id → StatusPrecondition
         let err2 = svc
-            .request_refund(no_charge_id, 100)
+            .request_refund(no_pi_id, 100)
             .await
-            .expect_err("should fail without charge_id");
+            .expect_err("should fail without payment_intent_id");
         assert!(
             matches!(err2, PaymentError::StatusPrecondition(_)),
             "expected StatusPrecondition, got: {err2:?}"
@@ -1053,7 +1105,12 @@ mod tests {
         assert_eq!(
             mock.refund_call_count(),
             0,
-            "Stripe must NOT be called on precondition failure"
+            "charge-based Stripe refund must NOT be called on precondition failure"
+        );
+        assert_eq!(
+            mock.pi_refund_calls().len(),
+            0,
+            "PI-based Stripe refund must NOT be called on precondition failure"
         );
     }
 
@@ -1063,7 +1120,7 @@ mod tests {
     async fn request_refund_dedup() {
         let db = fresh_db().await;
         let mock = Arc::new(MockStripeGateway::default());
-        let intent_id = seed_paid_with_charge(&db, 301, Some("ch_dedup_test")).await;
+        let intent_id = seed_paid(&db, 301, Some("pi_dedup_test")).await;
 
         let svc = PaymentService::new(
             db.clone(),
@@ -1088,7 +1145,7 @@ mod tests {
             .expect("second request_refund must not error");
 
         assert_eq!(
-            mock.refund_call_count(),
+            mock.pi_refund_calls().len(),
             1,
             "Stripe must be called exactly once even on duplicate request"
         );
@@ -1739,5 +1796,146 @@ mod tests {
             .expect("row still exists");
         assert_eq!(row.status, PaymentIntentStatus::Paid);
         assert!(row.refunded_at.is_none(), "refunded_at must still be NULL");
+    }
+
+    /// WR-03: reconcile drives `on_refunded` with the snapshotted
+    /// `refund_amount_cents` (the amount this system requested), NOT the amount
+    /// Stripe reports — guarding against an unrelated refund on the same PI.
+    #[tokio::test]
+    async fn reconcile_uses_snapshot_amount_not_stripe_amount() {
+        use std::sync::Arc as StdArc;
+        use std::sync::Mutex as StdMutex;
+
+        struct RecordingBillable {
+            seen: StdArc<StdMutex<Vec<i64>>>,
+        }
+
+        #[async_trait::async_trait]
+        impl Billable for RecordingBillable {
+            fn kind(&self) -> BillableKind {
+                BillableKind::new("booking")
+            }
+            fn id(&self) -> i64 {
+                1
+            }
+            fn tenant_id(&self) -> i64 {
+                1
+            }
+            fn amount_cents(&self) -> i64 {
+                1000
+            }
+            fn currency(&self) -> &str {
+                "EUR"
+            }
+            fn checkout_line_description(&self) -> String {
+                "rec".to_string()
+            }
+            async fn on_paid(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_released(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+            ) -> Result<(), PaymentError> {
+                Ok(())
+            }
+            async fn on_refunded(
+                &self,
+                _txn: &sea_orm::DatabaseTransaction,
+                amount_cents: i64,
+            ) -> Result<(), PaymentError> {
+                self.seen.lock().unwrap().push(amount_cents);
+                Ok(())
+            }
+        }
+
+        struct RecordingLoader {
+            seen: StdArc<StdMutex<Vec<i64>>>,
+        }
+
+        #[async_trait::async_trait]
+        impl BillableLoader for RecordingLoader {
+            async fn load(
+                &self,
+                _kind: BillableKind,
+                _id: i64,
+            ) -> Result<Option<Box<dyn Billable>>, PaymentError> {
+                Ok(Some(Box::new(RecordingBillable {
+                    seen: self.seen.clone(),
+                })))
+            }
+        }
+
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        // Stripe reports 1000, but the seeded snapshot (refund_amount_cents) is 500.
+        mock.set_refund_status(Ok(RefundStatus::Succeeded { amount_cents: 1000 }));
+        let _row_id = seed_refund_in_flight(&db, 8001, "pi_snapshot").await;
+
+        let seen = StdArc::new(StdMutex::new(Vec::new()));
+        let svc = make_svc_with_loader(
+            db.clone(),
+            mock.clone(),
+            RecordingLoader { seen: seen.clone() },
+        );
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        assert_eq!(count, 1, "succeeded refund must resolve");
+        let amounts = seen.lock().unwrap();
+        assert_eq!(
+            amounts.as_slice(),
+            &[500],
+            "on_refunded must receive the snapshot amount (500), not Stripe's 1000"
+        );
+    }
+
+    /// WR-04: a vanished loader (None) on a succeeded refund leaves the row
+    /// in-flight (status stays paid, refunded_at NULL) for the next tick rather
+    /// than stranding it in `refunded` with the consumer-side compensation lost.
+    #[tokio::test]
+    async fn reconcile_vanished_loader_leaves_row_in_flight() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+        // Default mock → Succeeded { amount_cents: 1000 }.
+        let row_id = seed_refund_in_flight(&db, 9001, "pi_vanished").await;
+
+        // MockLoader returns Ok(None) — the billable vanished after the refund.
+        let svc = make_svc_with_loader(db.clone(), mock.clone(), MockLoader);
+
+        let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T02:00:00Z")
+            .unwrap()
+            .with_timezone(chrono::Utc::now().offset());
+        let count = svc
+            .reconcile_refunds_in_flight_at(now)
+            .await
+            .expect("reconcile_refunds_in_flight_at");
+
+        assert_eq!(count, 0, "vanished loader must NOT resolve the row");
+
+        use crate::intent::status::PaymentIntentStatus;
+        let row = Entity::find_by_id(row_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .expect("row still exists");
+        assert_eq!(
+            row.status,
+            PaymentIntentStatus::Paid,
+            "row must stay paid (in-flight) for the next tick — no premature status flip"
+        );
+        assert!(
+            row.refunded_at.is_none(),
+            "refunded_at must still be NULL after a vanished-loader tick"
+        );
     }
 }

@@ -12,6 +12,14 @@ pub enum PaymentError {
     #[error("payment: status precondition not met: {0}")]
     StatusPrecondition(String),
 
+    /// An active payment intent already exists for this `(billable_kind,
+    /// billable_id)` — the partial unique index rejected the insert. This is an
+    /// expected, user-recoverable condition (a checkout is already in flight),
+    /// distinct from a generic database fault: consumers should surface the
+    /// existing checkout or a 409, not a 500.
+    #[error("payment: an active payment intent already exists for this billable")]
+    ActiveIntentExists,
+
     /// Underlying database error.
     #[error("payment: db error: {0}")]
     Db(#[from] sea_orm::DbErr),
