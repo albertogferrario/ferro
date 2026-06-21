@@ -153,7 +153,7 @@ The following errors are emitted at `Spec::from_json` time, before any data is b
 
 ### Correlated children
 
-Sibling templates with the same `{path, as}` pair are correlated by index: the i-th clone of one sibling references the i-th clone of the other. The pattern shows up when a Card and its Badge / DropdownMenu children all iterate over the same source array — each card's badge and dropdown belong to the same row.
+Sibling templates with the same `{path, as}` pair are correlated by index: the i-th clone of one sibling references the i-th clone of the other. The pattern shows up when a Card and its Badge / ActionGroup children all iterate over the same source array — each card's badge and actions belong to the same row.
 
 ```json
 "order_card": {

@@ -501,7 +501,7 @@ This section documents the URL and data-path conventions that link a projection 
 
 | Context | URL pattern | Notes |
 |---------|-------------|-------|
-| Page-level action | `/{service.name}/{action.name}` | Emitted as a `Button` or `DropdownMenu` item |
+| Page-level action | `/{service.name}/{action.name}` | Emitted as a `Button` or `ActionGroup` item |
 | DataTable row action | `/{service.name}/{row_key}/{action.name}` | `{row_key}` is substituted per row at render time using `DataTableProps.row_key` (defaults to `"id"`) |
 
 The consumer's route table must define handlers at these paths for the action affordances to be functional. Example for a service named `order` with an action named `approve`:

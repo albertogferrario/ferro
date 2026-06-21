@@ -26,7 +26,7 @@ The sections below document every built-in component: its props table (with JSON
 |----------|------------|
 | **Layout** | Card, Grid, Tabs, Separator, Modal, Skeleton, Collapsible, FormSection |
 | **Data Display** | Text, DataTable, Table, DescriptionList, Badge, Avatar, Progress, Breadcrumb, Pagination, StatCard, Image, CalendarCell |
-| **Forms** | Form, Input, Select, Checkbox, CheckboxList, CheckboxGroup, Switch, Button, ButtonGroup, DropdownMenu |
+| **Forms** | Form, Input, Select, Checkbox, CheckboxList, CheckboxGroup, Switch, Button, ButtonGroup, ActionGroup |
 | **Feedback** | Alert, Toast, EmptyState |
 | **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
 | **Action** | ActionCard |
@@ -982,36 +982,56 @@ A horizontal group of buttons rendered together.
 }
 ```
 
-### DropdownMenu
+### ActionGroup
 
-A button that opens a dropdown with action items. Useful for per-row table actions.
+Renders one ordered action list as inline buttons plus a trailing overflow kebab. The
+component partitions the list structurally: the first `max_inline` non-destructive items
+render as inline buttons (the first is the primary action), any remaining non-destructive
+items move into the kebab, and every `destructive` item is forced into the kebab and rendered
+last regardless of input order. The kebab is omitted entirely when nothing overflows. Non-GET
+inline actions are wrapped in a `<form>` automatically; GET actions render as plain links.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `label` | `string` | Trigger button label |
-| `actions` | `array` | Action items (see below) |
+| `items` | `array \| {"$data":"/path"}` | Ordered action items (literal list or a data binding) |
+| `menu_id` | `string` | Required — pairs the overflow popover |
+| `max_inline` | `number \| null` | Inline non-destructive button cap (default `2`) |
+| `overflow_label` | `string \| null` | Kebab aria-label (default `"Azioni"`) |
+| `row_key` | `string \| null` | Row identifier for `{row_key}` substitution in DataTable/Kanban contexts |
 
-Each action object:
+Each item object:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `label` | `string` | Menu item text |
-| `handler` | `string` | Route handler name |
-| `method` | `string` | HTTP method |
-| `variant` | `string \| null` | `"destructive"` for danger actions |
+| `label` | `string` | Button / menu item text |
+| `action` | `object` | Action declaration (`{ "handler": ..., "method": ... }`) |
+| `destructive` | `boolean` | `true` forces the item into the kebab, rendered last (default `false`) |
+| `variant` | `string \| null` | Button variant for the inline rendering |
+| `icon` | `string \| null` | Optional icon name |
+| `visible_if` | `string \| null` | Row field gate (fail-closed: an absent or falsy field hides the item) |
+
+`items` accepts a literal array or a `{"$data":"/path"}` binding; in DataTable/Kanban contexts
+the bound rows support `{row_key}` substitution and the `visible_if` per-row gate.
 
 ```json
 "row_actions": {
-  "type": "DropdownMenu",
+  "type": "ActionGroup",
   "props": {
-    "label": "Actions",
-    "actions": [
-      { "label": "View Details", "handler": "orders.show", "method": "GET" },
-      { "label": "Delete", "handler": "orders.destroy", "method": "DELETE", "variant": "destructive" }
+    "menu_id": "order_actions",
+    "max_inline": 2,
+    "items": [
+      { "label": "View Details", "action": { "handler": "orders.show", "method": "GET" } },
+      { "label": "Mark Shipped", "action": { "handler": "orders.ship", "method": "POST" } },
+      { "label": "Refund", "action": { "handler": "orders.refund", "method": "POST" } },
+      { "label": "Delete", "action": { "handler": "orders.destroy", "method": "DELETE" }, "destructive": true }
     ]
   }
 }
 ```
+
+In this example "View Details" and "Mark Shipped" render as inline buttons (View first, as the
+primary action), "Refund" overflows into the kebab (beyond `max_inline`), and "Delete" is in the
+kebab and rendered last because it is destructive.
 
 ---
 
