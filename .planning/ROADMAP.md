@@ -3313,8 +3313,8 @@ once internal usages migrate, no consumer-authored `DropdownMenu` spec remains.
   5. Projection codegen `emit_actions_placeholder` emits an `ActionGroup` element; ferro-internal/example/test specs and json-ui docs no longer reference `DropdownMenu`.
   6. The ferro workspace is version-bumped `0.2.71 → 0.2.72` and `ferro-json-ui` (+ `ferro-rs` re-export) is published to crates.io (operator-gated publish step).
 
-**Plans:** 4 plans in 4 waves.
-- [ ] 237-01-PLAN.md — ActionItem + ActionGroupProps structs + render_action_group (partition / overflow kebab / destructive-last / form-wrap non-GET / visible_if) + tests (Wave 1)
+**Plans:** 1/4 plans executed
+- [x] 237-01-PLAN.md — ActionItem + ActionGroupProps structs + render_action_group (partition / overflow kebab / destructive-last / form-wrap non-GET / visible_if) + tests (Wave 1)
 - [ ] 237-02-PLAN.md — Atomic registration swap: add ActionGroup + remove public DropdownMenu (BUILTIN_TYPES / dispatch / BUILTIN_SPECS / lib.rs / drift guards) + ferro-mcp 45→47 mirror fix (Wave 2)
 - [ ] 237-03-PLAN.md — Projection codegen emit_actions_placeholder → ActionGroup + docs migration + delete dead render_dropdown_menu (Wave 3)
 - [ ] 237-04-PLAN.md — ferro-base.css regen + version bump 0.2.72→0.2.73 + operator-gated crates.io publish (Wave 4)
