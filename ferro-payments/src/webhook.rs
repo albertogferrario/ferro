@@ -319,9 +319,24 @@ impl<L: BillableLoader> PaymentService<L> {
             return Ok(()); // already refunded or wrong source state
         }
 
-        // WR-05: persist the Stripe refund id from the event when present, so a
-        // later reconcile poll resolves by the exact refund rather than guessing.
-        if let Some(ref refund_id) = event.refund_id {
+        // WR-05: persist the Stripe refund id so a later reconcile poll — and the
+        // consumer's `on_refunded` sidecar — resolve by the exact refund.
+        // Recent Stripe API versions omit the inline `refunds` list from
+        // `charge.refunded`, so `event.refund_id` is frequently `None`; backfill
+        // it from the PaymentIntent's refund list (query only, never refunds).
+        let refund_id = match event.refund_id.clone() {
+            Some(id) => Some(id),
+            None => match &event.payment_intent_id {
+                Some(pi) => self
+                    .stripe
+                    .latest_refund_id_for_payment_intent(pi)
+                    .await
+                    .ok()
+                    .flatten(),
+                None => None,
+            },
+        };
+        if let Some(ref refund_id) = refund_id {
             lifecycle::attach_refund_id(intent.id, refund_id, &txn).await?;
         }
 
@@ -479,6 +494,7 @@ mod tests {
         canned_refund: Mutex<Option<Result<(), ferro_stripe::Error>>>,
         pi_refund_calls: Mutex<Vec<(String, Option<i64>)>>,
         canned_pi_refund: Mutex<Option<Result<String, ferro_stripe::Error>>>,
+        canned_latest_refund_id: Mutex<Option<String>>,
     }
 
     impl MockStripeGateway {
@@ -553,6 +569,13 @@ mod tests {
             _refund_id: &str,
         ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
             Ok(crate::service::RefundStatus::Pending)
+        }
+
+        async fn latest_refund_id_for_payment_intent(
+            &self,
+            _payment_intent_id: &str,
+        ) -> Result<Option<String>, ferro_stripe::Error> {
+            Ok(self.canned_latest_refund_id.lock().unwrap().clone())
         }
     }
 

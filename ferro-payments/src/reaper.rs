@@ -246,6 +246,13 @@ mod tests {
         ) -> Result<crate::service::RefundStatus, ferro_stripe::Error> {
             Ok(crate::service::RefundStatus::Pending)
         }
+
+        async fn latest_refund_id_for_payment_intent(
+            &self,
+            _payment_intent_id: &str,
+        ) -> Result<Option<String>, ferro_stripe::Error> {
+            Ok(None)
+        }
     }
 
     // -----------------------------------------------------------------------

@@ -128,6 +128,15 @@ pub trait StripeGateway: Send + Sync {
         &self,
         refund_id: &str,
     ) -> Result<RefundStatus, ferro_stripe::Error>;
+
+    /// Most recent refund id for `payment_intent_id`, or `None` if Stripe has no
+    /// refund yet. Backfills `charge.refunded` events whose inline `refunds` list
+    /// is empty (recent Stripe API versions omit it), so the consumer's
+    /// `on_refunded` can resolve the exact refund. A query only — never refunds.
+    async fn latest_refund_id_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
+    ) -> Result<Option<String>, ferro_stripe::Error>;
 }
 
 /// Map a Stripe refund's status string + amount to a [`RefundStatus`]. Shared by
@@ -251,6 +260,15 @@ impl StripeGateway for StripeClientGateway {
             refund.amount,
             refund.failure_reason.clone(),
         ))
+    }
+
+    async fn latest_refund_id_for_payment_intent(
+        &self,
+        payment_intent_id: &str,
+    ) -> Result<Option<String>, ferro_stripe::Error> {
+        // Stripe returns refunds newest-first (limit=10); `.first()` is the latest.
+        let refunds = ferro_stripe::refund::list_for_payment_intent(payment_intent_id).await?;
+        Ok(refunds.first().map(|r| r.id.to_string()))
     }
 }
 
@@ -836,6 +854,13 @@ mod tests {
                 .unwrap()
                 .take()
                 .unwrap_or(Ok(RefundStatus::Succeeded { amount_cents: 1000 }))
+        }
+
+        async fn latest_refund_id_for_payment_intent(
+            &self,
+            _payment_intent_id: &str,
+        ) -> Result<Option<String>, ferro_stripe::Error> {
+            Ok(None)
         }
     }
 
