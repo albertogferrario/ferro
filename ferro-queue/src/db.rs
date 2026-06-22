@@ -282,6 +282,26 @@ fn ph(backend: DatabaseBackend, n: usize) -> String {
     }
 }
 
+/// Placeholder for a value bound to a `timestamp_with_time_zone` column.
+///
+/// ferro-queue binds every timestamp as RFC 3339 *text* (`Value::String`),
+/// which is correct for SQLite, where the columns have TEXT affinity and are
+/// compared lexically. Postgres, however, types those columns as real
+/// `timestamptz` and performs NO implicit text↔timestamptz coercion: a bare
+/// `$N` then yields `operator does not exist: timestamp with time zone < text`
+/// in a comparison and `column "failed_at" is timestamp with time zone but
+/// expression is text` in an assignment. Casting the bound text to
+/// `timestamptz` resolves both (Postgres accepts the ISO-8601/RFC 3339 form).
+/// SQLite has no `::` cast operator and needs none, so it keeps the bare
+/// placeholder. Use this instead of [`ph`] at any placeholder that lands on a
+/// timestamp column (comparison RHS, SET/INSERT value).
+fn ts_ph(backend: DatabaseBackend, n: usize) -> String {
+    match backend {
+        DatabaseBackend::Postgres => format!("${n}::timestamptz"),
+        _ => format!("?{n}"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // claim — atomic work-stealing claim (dual-backend)
 // ---------------------------------------------------------------------------
@@ -424,7 +444,7 @@ pub async fn reaper(
     // timed-out attempt. The in-flight attempt (number `attempts + 1`) failed,
     // so requeue only while `attempts + 1 < max_retries` — matching
     // `worker::handle_failure`.
-    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (p1, p2, p3) = (ts_ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let requeue_sql = format!(
         "UPDATE jobs SET status='pending', claimed_at=NULL, claimed_by=NULL, \
          attempts = attempts + 1, available_at = {p1} \
@@ -444,7 +464,7 @@ pub async fn reaper(
 
     // Step 2: park exhausted rows as failed, recording the failure time.
     // Use fresh placeholders (independent statement, not continuing p1..p3).
-    let (pp1, pp2, pp3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (pp1, pp2, pp3) = (ts_ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let park_sql = format!(
         "UPDATE jobs SET status='failed', error='visibility timeout exceeded', failed_at={pp1} \
          WHERE status='claimed' AND claimed_at < {pp2} \
@@ -497,8 +517,8 @@ pub async fn enqueue(
             ph(backend, 4),
             ph(backend, 5),
             ph(backend, 6),
-            ph(backend, 7),
-            ph(backend, 8),
+            ts_ph(backend, 7),
+            ts_ph(backend, 8),
         );
         let sql = format!(
             "INSERT INTO jobs (queue, job_type, payload, status, attempts, max_retries, \
@@ -532,8 +552,8 @@ pub async fn enqueue(
             ph(backend, 3),
             ph(backend, 4),
             ph(backend, 5),
-            ph(backend, 6),
-            ph(backend, 7),
+            ts_ph(backend, 6),
+            ts_ph(backend, 7),
         );
         let sql = format!(
             "INSERT INTO jobs (queue, job_type, payload, status, attempts, max_retries, \
@@ -576,7 +596,7 @@ pub async fn delete_job(conn: &DatabaseConnection, id: i64) -> Result<(), Error>
 /// Park a job as `failed` with an error message, recording the failure time.
 pub async fn fail_job(conn: &DatabaseConnection, id: i64, error: &str) -> Result<(), Error> {
     let backend = conn.get_database_backend();
-    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (p1, p2, p3) = (ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let sql =
         format!("UPDATE jobs SET status='failed', error={p1}, failed_at={p2} WHERE id = {p3}");
     let stmt = Statement::from_sql_and_values(
@@ -601,7 +621,7 @@ pub async fn release_job(
     available_at: DateTime<Utc>,
 ) -> Result<(), Error> {
     let backend = conn.get_database_backend();
-    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (p1, p2, p3) = (ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let sql = format!(
         "UPDATE jobs SET status='pending', claimed_at=NULL, claimed_by=NULL, \
          attempts={p1}, available_at={p2} WHERE id = {p3}"
@@ -663,13 +683,15 @@ pub async fn reap_startup_claims(
     let backend = conn.get_database_backend();
     let now_iso = Utc::now().to_rfc3339();
 
-    // Numbered placeholders: $1..$N for queue names, $N+1 for failed_at.
+    // Numbered placeholders: $1..$N for queue names, $N+1 for failed_at (cast
+    // to timestamptz on Postgres — the column is timestamptz, the bound value
+    // is RFC 3339 text).
     let queue_phs: Vec<String> = (1..=queues.len()).map(|i| ph(backend, i)).collect();
-    let ts_ph = ph(backend, queues.len() + 1);
+    let failed_at_ph = ts_ph(backend, queues.len() + 1);
     let sql = format!(
         "UPDATE jobs SET status='failed', \
          error='reaped on worker startup (orphan claim from previous worker)', \
-         failed_at={ts_ph} \
+         failed_at={failed_at_ph} \
          WHERE status='claimed' AND queue IN ({})",
         queue_phs.join(", "),
     );
@@ -697,7 +719,7 @@ pub async fn get_pending_jobs(
 ) -> Result<Vec<JobInfo>, Error> {
     let backend = conn.get_database_backend();
     let now_iso = Utc::now().to_rfc3339();
-    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (p1, p2, p3) = (ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let sql = format!(
         "SELECT id, job_type, queue, attempts, max_retries, created_at, available_at \
          FROM jobs WHERE status='pending' AND queue={p1} AND available_at <= {p2} \
@@ -726,7 +748,7 @@ pub async fn get_delayed_jobs(
 ) -> Result<Vec<JobInfo>, Error> {
     let backend = conn.get_database_backend();
     let now_iso = Utc::now().to_rfc3339();
-    let (p1, p2, p3) = (ph(backend, 1), ph(backend, 2), ph(backend, 3));
+    let (p1, p2, p3) = (ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
     let sql = format!(
         "SELECT id, job_type, queue, attempts, max_retries, created_at, available_at \
          FROM jobs WHERE status='pending' AND queue={p1} AND available_at > {p2} \
@@ -774,8 +796,7 @@ pub async fn get_stats(conn: &DatabaseConnection, queues: &[&str]) -> Result<Que
 
     for &q in queues {
         let p1 = ph(backend, 1);
-        let p2 = ph(backend, 2);
-        let p3 = ph(backend, 3);
+        let p2 = ts_ph(backend, 2);
         let pending_sql = format!(
             "SELECT COUNT(*) as cnt FROM jobs \
              WHERE status='pending' AND queue={p1} AND available_at <= {p2}"
@@ -799,7 +820,7 @@ pub async fn get_stats(conn: &DatabaseConnection, queues: &[&str]) -> Result<Que
 
         let delayed_sql = format!(
             "SELECT COUNT(*) as cnt FROM jobs \
-             WHERE status='pending' AND queue={p1} AND available_at > {p3}"
+             WHERE status='pending' AND queue={p1} AND available_at > {p2}"
         );
         let delayed_stmt = Statement::from_sql_and_values(
             backend,
@@ -956,6 +977,23 @@ mod tests {
             .expect("insert_job query")
             .expect("insert_job row");
         row.try_get_by::<i64, _>("id").expect("insert id")
+    }
+
+    #[test]
+    fn ts_ph_casts_timestamp_placeholders_on_postgres_only() {
+        // Regression guard for the Postgres timestamptz binding bug. The jobs
+        // table's timestamp columns are real `timestamptz` on Postgres, but
+        // ferro-queue binds timestamps as RFC 3339 text — so every placeholder
+        // landing on a timestamp column must cast on Postgres and stay bare on
+        // SQLite (TEXT columns, lexical compare). The in-memory DB tests below
+        // run on SQLite only and cannot catch the Postgres `timestamptz < text`
+        // / `column is timestamptz but expression is text` failures, so assert
+        // the generated placeholder form directly.
+        assert_eq!(ts_ph(DatabaseBackend::Postgres, 2), "$2::timestamptz");
+        assert_eq!(ts_ph(DatabaseBackend::Sqlite, 2), "?2");
+        // Non-timestamp placeholders must never be cast.
+        assert_eq!(ph(DatabaseBackend::Postgres, 2), "$2");
+        assert_eq!(ph(DatabaseBackend::Sqlite, 2), "?2");
     }
 
     #[tokio::test]
