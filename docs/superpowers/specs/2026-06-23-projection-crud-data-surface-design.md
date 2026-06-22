@@ -35,11 +35,43 @@ query, update, and delete do not. Track A closes that gap.
   Get-by-id already works as `list_` + id equality filter.
 - Write tools derive one per `ActionDef`; `build_action_input_schema` injects the
   identifier field plus declared inputs.
-- The app's `WriteDispatcher` is a "find-then-mutate" closure — **no insert or
-  delete path**.
 - Read authorization: `mcp_ability` (policy Gate) + key scope. Existing *action*
   writes deliberately skip the policy Gate because action names do not map 1:1 to
   a service; they rely on scope gate + live guard re-evaluation.
+
+### Shipped foundations Track A builds on (Phases 231 + 232)
+
+Track A does **not** introduce a dispatch architecture — it extends the one already
+shipped and verified:
+
+- **Phase 231 (StateMachine-derived executor):** `ferro-projections/src/executor.rs`
+  exposes `derive_transition_plan(svc, action)` — the default executor (state-read →
+  guard re-eval → transition → persist) derived from the `StateMachine` declaration
+  alone. A **post-persist override hook** (`OverrideFn` + `WriteDispatcher.with_override`
+  registry) handles the app-specific 20%. Undeclared transitions are rejected at boot
+  by `ServiceDef::validate()` (step 5).
+- **Phase 232 (single-source write kernel):** the channel-agnostic kernel lives at
+  `framework/src/write/mod.rs` — `dispatch_write(action, …, channel)` plus
+  `ExecutorFn`, `GuardEvaluatorFn`, `OverrideFn`, `WriteDispatcher`. It backs BOTH the
+  MCP and visual/form surfaces; the hand-written `WriteDispatcher` `match` was retired.
+  Idempotency, audit (channel-parameterized), confirmation, guard re-eval, and tenant
+  isolation are already in this kernel.
+
+**Consequence:** our earlier-stated decisions "derived default + override hook" and
+"retire the hand-written `WriteDispatcher`" describe the *shipped* state, but only for
+**state-transition actions**. Track A's job is to add the **CRUD analog** to that same
+machinery — not to rebuild it (rebuilding would create the duplicate write-control
+surface ferro's conventions forbid).
+
+### Reusable assets
+
+- `framework::write::dispatch_write` + `WriteDispatcher`/`ExecutorFn`/`OverrideFn` —
+  extend, do not fork.
+- `ferro-projections::derive_transition_plan` — the pattern to mirror with a
+  `derive_crud_plan`.
+- `ServiceDef::validate()` — extend with the write-ability/creatable checks.
+- `TenantScoped` + `find_for_tenant(id, tenant_id)` (from Phase 212) — tenant-scoped
+  lookup for update/delete targeting.
 
 ## Track A scope
 
@@ -80,9 +112,10 @@ ServiceDef::new("order")
     // existing fields / state_machine / actions unchanged
 ```
 
-**Startup validation (fail-fast):** if any of `creatable/updatable/deletable` is
-true but `mcp_write_ability` is unset, the projection fails to load — a config
-error at boot, never a silent deny at call time.
+**Startup validation (fail-fast):** extend the existing `ServiceDef::validate()`
+(which already rejects undeclared transitions, Phase 231) with a check: if any of
+`creatable/updatable/deletable` is true but `mcp_write_ability` is unset, `validate()`
+returns `Err` — a config error at boot, never a silent deny at call time.
 
 ## Derived tool surface
 
@@ -98,29 +131,37 @@ Per opted-in projection, with no further code:
 Field sets derive from the existing `field()` declarations and `FieldMeaning`, so
 a projection authored for reads yields correct write schemas for free.
 
-## Dispatch architecture (derived default + override hook)
+## Dispatch architecture (extend `framework::write`, do not rebuild)
 
-Unify writes behind a `WriteOp`:
+Phases 231/232 already ship the derived-default + override-hook kernel for
+transitions. Track A adds the **CRUD analog** inside the same kernel — it does not
+introduce a parallel dispatcher.
 
-```rust
-enum WriteOp {
-    Create { fields: Map },
-    Update { id: Value, fields: Map },    // patch
-    Delete { id: Value },                 // soft
-    Action { name: String, inputs: Map }, // existing transitions
-}
-```
+**The CRUD derivation (new):** add `derive_crud_plan(svc, verb, inputs)` to
+`ferro-projections/src/executor.rs`, mirroring `derive_transition_plan`. It produces a
+pure, serializable plan the kernel executes:
 
-- **Generic default (framework):** derives sea-orm statements from `ServiceDef` +
-  `.table()`:
-  - *Create* → `INSERT (creatable cols, tenant_id=ctx, status=initial, created_at=now) RETURNING *`
-  - *Update* → `UPDATE … SET <patch> WHERE id=? AND tenant_id=ctx AND deleted_at IS NULL`
-  - *Delete* → `UPDATE … SET deleted_at=now WHERE id=? AND tenant_id=ctx`
-- **Override hook:** a registry keyed by `(service, verb)`; a registered custom
-  handler runs instead of the generic path (validation, computed fields,
-  side-effects), with the same closure shape as today's dispatcher. The existing
-  `make_write_dispatcher` becomes "register overrides," not "implement
-  everything."
+- *Create* → `INSERT (creatable cols, tenant_id=ctx, status=initial, created_at=now) RETURNING *`
+- *Update* → `UPDATE … SET <patch> WHERE id=? AND tenant_id=ctx AND deleted_at IS NULL`
+- *Delete* → `UPDATE … SET deleted_at=now WHERE id=? AND tenant_id=ctx`
+
+**Kernel wiring (extend):** `framework::write::dispatch_write` is keyed on `ActionDef`
+today. Track A teaches the kernel a CRUD verb alongside the existing transition path —
+either by representing `create/update/delete` as derived `ActionDef`s with a CRUD plan,
+or by adding a thin verb discriminant. The existing `ExecutorFn` runs the derived plan;
+**idempotency, channel-parameterized audit, confirmation, and tenant context are reused
+unchanged** (delete sets `destructiveHint` → the existing confirmation path).
+
+**Override hook (reuse):** the existing `WriteDispatcher::with_override(action, hook)`
+registry covers CRUD verbs with no new mechanism — register
+`with_override("create_order", …)` for the app-specific 20% (validation, computed
+fields, side-effects). The generic derived plan is the default when no override is
+registered; `make_write_dispatcher` stays "register overrides," not "implement
+everything."
+
+**Single-source preserved:** because the kernel is channel-agnostic (Phase 232), the
+same derived CRUD plan backs the MCP surface and the visual/form surface — one
+declaration, every modality, exactly as transitions already do.
 
 ## Data-model requirements
 
@@ -184,11 +225,14 @@ well-formed `content[]` on every verb. This also unblocks the existing read path
 
 1. `tools/call` `content[]` fix + regression (unblocks everything)
 2. Data model + `deleted_at` migration
-3. `ServiceDef` declaration surface + startup validation
+3. `ServiceDef` declaration surface + `validate()` extension (write-ability check)
 4. Schema derivation (C/U/D inputSchema + query polish)
-5. `WriteOp` unification + generic CRUD dispatch + override hook
+5. `derive_crud_plan` in `ferro-projections` + wire CRUD verbs into the existing
+   `framework::write` kernel (reusing override registry / idempotency / audit /
+   confirmation) — **extends 231/232, does not rebuild the dispatcher**
 6. Authorization wiring (scope + write-ability Gate + tenant injection + delete confirmation)
-7. App integration + e2e + `ferro-mcp` catalog/docs
+7. App integration + e2e (both MCP and visual surfaces, since the kernel is shared)
+   + `ferro-mcp` catalog/docs
 
 ## Non-goals (YAGNI)
 
