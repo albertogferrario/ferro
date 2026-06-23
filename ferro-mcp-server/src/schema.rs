@@ -593,4 +593,157 @@ mod tests {
             "'priority' input must appear in properties"
         );
     }
+
+    // -------------------------------------------------------------------------
+    // Phase 240 Plan 02 Task 2: RED tests for build_create/update/delete_input_schema.
+    // -------------------------------------------------------------------------
+
+    use ferro_projections::StateMachine;
+
+    /// Full-field service fixture covering all exclusion categories.
+    fn write_service_no_sm() -> ServiceDef {
+        ServiceDef::new("order")
+            .tenant_column("org_id")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("updated_at", DataType::DateTime, FieldMeaning::UpdatedAt)
+            .field("org_id", DataType::Integer, FieldMeaning::ForeignKey)
+            .field("password", DataType::String, FieldMeaning::Sensitive)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("notes", DataType::String, FieldMeaning::FreeText)
+    }
+
+    fn write_service_with_sm() -> ServiceDef {
+        write_service_no_sm().state_machine(
+            StateMachine::new("order_lifecycle").initial("pending"),
+        )
+    }
+
+    /// T-240-04: build_create_input_schema must exclude Identifier, CreatedAt,
+    /// tenant column, UpdatedAt, Sensitive, and list fields; FreeText (notes) stays.
+    #[test]
+    fn test_create_schema_exclusions() {
+        let service = write_service_no_sm();
+        let schema = build_create_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+
+        // Excluded fields must be absent
+        assert!(!props.contains_key("id"), "Identifier 'id' must be excluded");
+        assert!(
+            !props.contains_key("created_at"),
+            "CreatedAt must be excluded"
+        );
+        assert!(
+            !props.contains_key("updated_at"),
+            "UpdatedAt must be excluded"
+        );
+        assert!(
+            !props.contains_key("org_id"),
+            "tenant column 'org_id' must be excluded"
+        );
+        assert!(
+            !props.contains_key("password"),
+            "Sensitive 'password' must be excluded"
+        );
+
+        // Writable field must be present
+        assert!(props.contains_key("notes"), "FreeText 'notes' must be present");
+    }
+
+    /// T-240-04: Status absent when SM present; Status present when no SM.
+    #[test]
+    fn test_create_schema_status_sm() {
+        let svc_with_sm = write_service_with_sm();
+        let schema_sm = build_create_input_schema(&svc_with_sm).expect("schema ok");
+        let props_sm = schema_sm["properties"].as_object().expect("object");
+        assert!(
+            !props_sm.contains_key("status"),
+            "Status must be absent when SM present"
+        );
+
+        let svc_no_sm = write_service_no_sm();
+        let schema_no_sm = build_create_input_schema(&svc_no_sm).expect("schema ok");
+        let props_no_sm = schema_no_sm["properties"].as_object().expect("object");
+        assert!(
+            props_no_sm.contains_key("status"),
+            "Status must be present when no SM"
+        );
+    }
+
+    /// T-240-05: build_update_input_schema — required[] is exactly ["id"];
+    /// data fields (notes, status-when-no-SM) appear in properties but NOT required[].
+    #[test]
+    fn test_update_schema_patch_semantics() {
+        let service = write_service_no_sm();
+        let schema = build_update_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+        let required = schema["required"].as_array().expect("required array");
+
+        // Identifier must be required
+        assert!(
+            required.iter().any(|v| v.as_str() == Some("id")),
+            "'id' must be in required[]"
+        );
+        assert_eq!(required.len(), 1, "required[] must be exactly [\"id\"]");
+
+        // Data fields in properties
+        assert!(props.contains_key("notes"), "notes must be in properties");
+        assert!(props.contains_key("status"), "status must be in properties (no SM)");
+
+        // Data fields NOT in required
+        assert!(
+            !required.iter().any(|v| v.as_str() == Some("notes")),
+            "notes must NOT be in required[] (patch semantics)"
+        );
+        assert!(
+            !required.iter().any(|v| v.as_str() == Some("status")),
+            "status must NOT be in required[] (patch semantics)"
+        );
+    }
+
+    /// Status absent from update properties when SM present.
+    #[test]
+    fn test_update_schema_status_sm() {
+        let service = write_service_with_sm();
+        let schema = build_update_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+        assert!(
+            !props.contains_key("status"),
+            "Status must be absent from update when SM present"
+        );
+    }
+
+    /// build_delete_input_schema — required is ["id"], properties contains id and
+    /// confirmation_token (type string); confirmation_token NOT in required.
+    #[test]
+    fn test_delete_schema() {
+        let service = write_service_no_sm();
+        let schema = build_delete_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+        let required = schema["required"].as_array().expect("required array");
+
+        // id required
+        assert!(
+            required.iter().any(|v| v.as_str() == Some("id")),
+            "'id' must be in required[]"
+        );
+        assert_eq!(required.len(), 1, "required[] must be exactly [\"id\"]");
+
+        // confirmation_token present in properties, not in required
+        assert!(
+            props.contains_key("confirmation_token"),
+            "confirmation_token must be in properties"
+        );
+        assert_eq!(
+            props["confirmation_token"]["type"].as_str(),
+            Some("string"),
+            "confirmation_token must have type: string"
+        );
+        assert!(
+            !required
+                .iter()
+                .any(|v| v.as_str() == Some("confirmation_token")),
+            "confirmation_token must NOT be in required[]"
+        );
+    }
 }
