@@ -191,6 +191,42 @@ mod tests {
         ))
         .await
         .expect("seed rows");
+        // Phase 241: CRUD dispatch writes to mcp_idempotency_keys + audit_log;
+        // add them so tests that route through dispatch_write do not error.
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS mcp_idempotency_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id INTEGER NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                result TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (tenant_id, idempotency_key)
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create mcp_idempotency_keys");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS audit_log (
+                id TEXT PRIMARY KEY NOT NULL,
+                tenant_id TEXT,
+                actor_kind TEXT NOT NULL,
+                actor_id TEXT,
+                action TEXT NOT NULL,
+                target_kind TEXT,
+                target_id TEXT,
+                before TEXT,
+                after TEXT,
+                reason TEXT,
+                correlation_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create audit_log");
         db
     }
 
@@ -399,21 +435,74 @@ mod tests {
     }
 
     // -------------------------------------------------------------------------
-    // Phase 240 Plan 03 RED test: CRUD verb tool call returns structured NTI
-    // envelope (not -32601). Extends the Phase 205 regression guard.
-    //
-    // This test is RED now: calling create_order routes to find_action which
-    // returns None, producing a -32601 JSON-RPC error. The NTI detection block
-    // in write_dispatch.rs (GREEN commit) intercepts it before find_action and
-    // returns a structured CallToolResult envelope.
+    // Phase 241 Plan 03: CRUD verb tool call routes through the real dispatch
+    // path and returns a structured success envelope — NOT a -32601 error and
+    // NOT an NTI stub. Extends the Phase 205 regression guard.
     // -------------------------------------------------------------------------
 
-    /// Phase 240-03 / D-01: calling a CRUD verb tool must return a structured
-    /// NTI envelope (error_kind=not_yet_implemented, is_error=false) — NOT a
-    /// JSON-RPC -32601 error — keeping the Phase 205 regression guard green.
+    /// Phase 241-03 / D-10: calling a CRUD verb tool must return a well-formed
+    /// CallToolResult with is_error=false and status=ok — NOT a JSON-RPC -32601
+    /// error — keeping the Phase 205 regression guard green.
+    ///
+    /// Phase 240 asserted error_kind=not_yet_implemented; Phase 241 replaces
+    /// that stub with real derive_crud_plan + dispatch_write, so the envelope
+    /// now carries status=ok with the created record.
     #[tokio::test]
     async fn crud_tool_call_nti_parses_as_valid_mcp_content() {
-        let db = setup_orders_db().await;
+        // Use a DB whose schema matches the minimal service below (id + status only).
+        // setup_orders_db() has a richer schema with NOT NULL columns that the
+        // minimal service would leave unset — the INSERT would fail.
+        let db = {
+            let d = Database::connect("sqlite::memory:")
+                .await
+                .expect("sqlite connect");
+            d.execute(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "CREATE TABLE IF NOT EXISTS orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    status TEXT,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )"
+                .to_string(),
+            ))
+            .await
+            .expect("create orders table");
+            d.execute(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "CREATE TABLE IF NOT EXISTS mcp_idempotency_keys (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tenant_id INTEGER NOT NULL,
+                    idempotency_key TEXT NOT NULL,
+                    result TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (tenant_id, idempotency_key)
+                )"
+                .to_string(),
+            ))
+            .await
+            .expect("create idempotency table");
+            d.execute(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "CREATE TABLE IF NOT EXISTS audit_log (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    tenant_id TEXT,
+                    actor_kind TEXT NOT NULL,
+                    actor_id TEXT,
+                    action TEXT NOT NULL,
+                    target_kind TEXT,
+                    target_id TEXT,
+                    before TEXT,
+                    after TEXT,
+                    reason TEXT,
+                    correlation_id TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )"
+                .to_string(),
+            ))
+            .await
+            .expect("create audit_log table");
+            d
+        };
 
         // Service with creatable=true and mcp_write_ability declared (Track A flags).
         let service = ServiceDef::new("order")
@@ -453,14 +542,14 @@ mod tests {
         )
         .await;
 
-        // Load-bearing: NTI response must parse as CallToolResult (not a -32601 error object).
+        // Load-bearing: CRUD response must parse as CallToolResult (not a -32601 error object).
         let parsed: CallToolResult = serde_json::from_value(response["result"].clone())
-            .expect("NTI result must parse as CallToolResult — NOT a -32601 error");
+            .expect("CRUD result must parse as CallToolResult — NOT a -32601 error");
 
         assert_eq!(
             parsed.is_error,
             Some(false),
-            "NTI envelope must have is_error=false"
+            "CRUD success envelope must have is_error=false"
         );
         assert_eq!(
             parsed.content.len(),
@@ -470,11 +559,11 @@ mod tests {
 
         let sc = parsed
             .structured_content
-            .expect("structuredContent must be present in NTI envelope");
+            .expect("structuredContent must be present in CRUD envelope");
         assert_eq!(
-            sc["error_kind"].as_str(),
-            Some("not_yet_implemented"),
-            "NTI envelope structuredContent.error_kind must be 'not_yet_implemented'"
+            sc["status"].as_str(),
+            Some("ok"),
+            "CRUD success envelope structuredContent.status must be 'ok'"
         );
     }
 

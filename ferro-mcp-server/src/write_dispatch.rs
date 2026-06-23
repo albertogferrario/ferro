@@ -10,7 +10,9 @@
 //! `"mcp"` into the kernel so the success-path audit reads `mcp.action.{name}`.
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
-use ferro_projections::{derive_crud_plan, derive_transition_plan, ActionDef, CrudVerb, ServiceDef};
+use ferro_projections::{
+    derive_crud_plan, derive_transition_plan, ActionDef, CrudVerb, ServiceDef,
+};
 use ferro_rs::write::{dispatch_write, WriteDispatcher, WriteError};
 // merged_guards is only consulted by the confirmation handlers' pre-check loop.
 #[cfg(feature = "confirmation")]
@@ -1064,6 +1066,20 @@ mod confirmation_tests {
         ))
         .await
         .expect("create audit_log table");
+        // orders table — required by CRUD dispatch tests (Phase 241-03).
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT NOT NULL DEFAULT 'draft',
+                amount TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                deleted_at TEXT
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create orders table");
         db
     }
 
@@ -1507,6 +1523,224 @@ mod confirmation_tests {
             exec_count.load(Ordering::SeqCst),
             0,
             "executor must NOT run when guard denies at confirm"
+        );
+    }
+
+    // ── Phase 241-03 CRUD framing tests ──────────────────────────────────────
+
+    /// ServiceDef fixture for CRUD tests — creatable + updatable + deletable,
+    /// mcp_write_ability set so validate() passes. Mirrors the Plan 02 fixture.
+    fn crud_order_service() -> ServiceDef {
+        use ferro_projections::{DataType, FieldMeaning};
+        ServiceDef::new("order")
+            .mcp_exposed(true)
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .mcp_write_ability("manage-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("amount", DataType::String, FieldMeaning::FreeText)
+    }
+
+    /// VALIDATION #16 / D-10: a create_order call returns a well-formed
+    /// structured envelope with status == "ok" and a result object.
+    #[tokio::test]
+    async fn crud_result_structured_envelope() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count);
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        let ctx = crate::McpContext::default();
+
+        let response = handle_write_call(
+            json!({ "name": "create_order", "arguments": { "amount": "10.00" } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        assert_eq!(
+            response["result"]["structuredContent"]["status"]
+                .as_str()
+                .unwrap_or(""),
+            "ok",
+            "create_order must return status=ok; got: {response:?}"
+        );
+        assert!(
+            response["result"]["structuredContent"]
+                .get("result")
+                .is_some(),
+            "structured envelope must have a 'result' field; got: {response:?}"
+        );
+    }
+
+    /// A bare delete_order without a confirmation token returns confirmation_required
+    /// naming request_confirm_delete_order as the next tool (T-241-10).
+    #[tokio::test]
+    async fn delete_bare_call_returns_confirmation_required() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count);
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        let ctx = crate::McpContext::default();
+
+        let response = handle_write_call(
+            json!({ "name": "delete_order", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        assert_eq!(
+            response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "confirmation_required",
+            "bare delete must return confirmation_required; got: {response:?}"
+        );
+        assert_eq!(
+            response["result"]["structuredContent"]["request_tool"]
+                .as_str()
+                .unwrap_or(""),
+            "request_confirm_delete_order",
+            "request_tool must name request_confirm_delete_order; got: {response:?}"
+        );
+    }
+
+    /// VALIDATION #14: request_confirm_delete_order -> token -> confirm_delete_order
+    /// soft-deletes the row (deleted_at IS NOT NULL).
+    #[tokio::test]
+    async fn delete_two_step_flow() {
+        let db = setup_db().await;
+        // Insert a row to delete.
+        db.execute(sea_orm::Statement::from_string(
+            sea_orm::DatabaseBackend::Sqlite,
+            "INSERT INTO orders (id, status, amount) VALUES (1, 'draft', '5.00')".to_string(),
+        ))
+        .await
+        .expect("insert test order");
+
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count);
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Step 1: request_confirm_delete_order
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_delete_order", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "delete_order",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("confirmation_token must be present");
+
+        // Step 2: confirm_delete_order
+        let confirm_response = handle_confirm(
+            json!({ "name": "confirm_delete_order", "arguments": { "confirmation_token": token, "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "delete_order",
+        )
+        .await;
+
+        assert_eq!(
+            confirm_response["result"]["structuredContent"]["status"]
+                .as_str()
+                .unwrap_or(""),
+            "ok",
+            "confirm_delete must return status=ok; got: {confirm_response:?}"
+        );
+
+        // Verify soft-delete: deleted_at IS NOT NULL
+        let row = db
+            .query_one(sea_orm::Statement::from_string(
+                sea_orm::DatabaseBackend::Sqlite,
+                "SELECT deleted_at FROM orders WHERE id = 1".to_string(),
+            ))
+            .await
+            .expect("query ok")
+            .expect("row must exist");
+        let deleted_at: Option<String> = row.try_get("", "deleted_at").ok();
+        assert!(
+            deleted_at.is_some() && deleted_at.as_deref().unwrap_or("") != "",
+            "deleted_at must be set after soft-delete; got: {deleted_at:?}"
+        );
+    }
+
+    /// T-241-11: a token issued for id=1 cannot delete id=2 (binding mismatch).
+    #[tokio::test]
+    async fn delete_wrong_record_token_rejected() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count);
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        let ctx = crate::McpContext::default();
+
+        // Issue token for id=1
+        let req_response = handle_request_confirm(
+            json!({ "name": "request_confirm_delete_order", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "delete_order",
+            300,
+        )
+        .await;
+
+        let token = req_response["result"]["structuredContent"]["confirmation_token"]
+            .as_str()
+            .expect("token must be present");
+
+        // Attempt to confirm with id=2 — must be rejected
+        let mismatch_response = handle_confirm(
+            json!({ "name": "confirm_delete_order", "arguments": { "confirmation_token": token, "id": 2 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            "delete_order",
+        )
+        .await;
+
+        assert_eq!(
+            mismatch_response["result"]["structuredContent"]["error_kind"]
+                .as_str()
+                .unwrap_or(""),
+            "confirmation_mismatch",
+            "wrong-record token must return confirmation_mismatch; got: {mismatch_response:?}"
         );
     }
 }

@@ -159,9 +159,7 @@ pub fn render_exposed_tools(
         // in handle_write_call routes to handle_request_confirm with action_name="delete_order".
         for svc in services.iter().filter(|s| s.mcp_exposed && s.deletable) {
             let base_name = format!("delete_{}", svc.name);
-            if let Some(req_tool) =
-                render_crud_delete_request_confirm_tool(&base_name, svc, ctx)?
-            {
+            if let Some(req_tool) = render_crud_delete_request_confirm_tool(&base_name, svc, ctx)? {
                 tagged.push((svc.name.clone(), req_tool));
             }
             if let Some(cfm_tool) = render_crud_delete_confirm_tool(&base_name, svc)? {
@@ -454,7 +452,8 @@ fn render_crud_delete_request_confirm_tool(
 ) -> std::result::Result<Option<Tool>, ProjError> {
     let name = format!("request_confirm_{base_name}");
     let display_name = service.display_name.as_deref().unwrap_or(&service.name);
-    let description = format!("Request a confirmation token to soft-delete a {display_name} record");
+    let description =
+        format!("Request a confirmation token to soft-delete a {display_name} record");
 
     let schema_value = crate::schema::build_delete_input_schema(service)
         .map_err(|e| ProjError::Render(e.to_string()))?;
