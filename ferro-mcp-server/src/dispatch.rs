@@ -1,4 +1,4 @@
-use crate::schema::is_filter_field;
+use crate::schema::{is_filter_field, is_range_filter_field};
 use ferro_projections::{FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde::Serialize;
@@ -47,6 +47,15 @@ fn json_to_sea_value(val: &serde_json::Value) -> sea_orm::Value {
         serde_json::Value::String(s) => sea_orm::Value::String(Some(Box::new(s.clone()))),
         other => sea_orm::Value::String(Some(Box::new(other.to_string()))),
     }
+}
+
+/// Split `"field__op"` on the LAST `__` separator.
+///
+/// Returns `Some(("field", "op"))` or `None` if no `__` is present.
+/// Uses `rfind` (not `find`) so field names that themselves contain `__` split correctly.
+fn split_op_key(key: &str) -> Option<(&str, &str)> {
+    let pos = key.rfind("__")?;
+    Some((&key[..pos], &key[pos + 2..]))
 }
 
 /// Extract query result rows into JSON objects.
@@ -107,7 +116,7 @@ fn rows_to_json(rows: Vec<sea_orm::QueryResult>) -> Vec<serde_json::Value> {
 /// returns `Err(InvalidFilter)` immediately — it never falls back to an unscoped SELECT.
 pub async fn dispatch(
     service: &ServiceDef,
-    filters: serde_json::Value,
+    mut filters: serde_json::Value,
     limit: u64,
     offset: u64,
     db: &sea_orm::DatabaseConnection,
@@ -121,29 +130,126 @@ pub async fn dispatch(
     let offset = offset.min(MAX_OFFSET);
     let table = service.resolved_table();
 
+    // Extract `sort` BEFORE the filter loop (Pitfall 4 — must not appear as a filter key).
+    // `filters` is `mut` so we can remove the key in-place without cloning the whole object.
+    let sort_param: Option<String> = if let Some(obj) = filters.as_object_mut() {
+        obj.remove("sort")
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+    } else {
+        None
+    };
+
+    // Parse sort into (column, direction), validated against the is_filter_field allowlist.
+    let parsed_sort: Option<(String, &'static str)> = match sort_param.as_deref() {
+        None => None,
+        Some(s) => {
+            let (col, dir) = if let Some(bare) = s.strip_prefix('-') {
+                (bare, "DESC")
+            } else {
+                (s, "ASC")
+            };
+            match service.fields.iter().find(|f| f.name == col) {
+                Some(f) if is_filter_field(f) => Some((col.to_string(), dir)),
+                _ => {
+                    return Err(crate::Error::InvalidFilter(format!(
+                        "unknown or non-sortable field: {col}"
+                    )));
+                }
+            }
+        }
+    };
+
     let mut where_clauses: Vec<String> = Vec::new();
     let mut values: Vec<sea_orm::Value> = Vec::new();
     let mut idx = 1usize;
 
     if let Some(obj) = filters.as_object() {
         for (key, val) in obj {
-            // ALLOWLIST: the filter key must name a field that is FILTER-ELIGIBLE
-            // (the exact predicate that gates the input schema), not merely a known
-            // field. This prevents an agent from filtering on a Sensitive,
-            // write-only, list, or Json/Binary field that the schema deliberately
-            // excludes — which would otherwise leak the column via `SELECT *` or
-            // enable an oracle attack. Unknown keys are never interpolated.
-            match service.fields.iter().find(|f| &f.name == key) {
-                Some(field) if is_filter_field(field) => {}
-                _ => {
-                    return Err(crate::Error::InvalidFilter(format!(
-                        "unknown or non-filterable filter field: {key}"
-                    )));
+            if let Some((base, op)) = split_op_key(key) {
+                // Op path — validate the op suffix against the allowlist, then the base
+                // field against the appropriate field allowlist. All values bound.
+                let op_sql = match op {
+                    "gt" => ">",
+                    "gte" => ">=",
+                    "lt" => "<",
+                    "lte" => "<=",
+                    "ne" => "!=",
+                    "in" => "IN",
+                    _ => {
+                        return Err(crate::Error::InvalidFilter(format!(
+                            "unknown op suffix '{op}' in filter key '{key}'"
+                        )));
+                    }
+                };
+                // Validate base field against the appropriate allowlist (D-10/D-12).
+                // gt/gte/lt/lte → is_range_filter_field; ne/in → is_filter_field.
+                let _base_field = match service.fields.iter().find(|f| f.name == base) {
+                    Some(f)
+                        if matches!(op, "gt" | "gte" | "lt" | "lte")
+                            && is_range_filter_field(f) =>
+                    {
+                        f
+                    }
+                    Some(f) if matches!(op, "ne" | "in") && is_filter_field(f) => f,
+                    _ => {
+                        return Err(crate::Error::InvalidFilter(format!(
+                            "unknown or non-filterable filter field: {key}"
+                        )));
+                    }
+                };
+
+                if op == "in" {
+                    let arr = val.as_array().ok_or_else(|| {
+                        crate::Error::InvalidFilter(format!(
+                            "'__in' value for '{base}' must be an array"
+                        ))
+                    })?;
+                    if arr.is_empty() {
+                        return Err(crate::Error::InvalidFilter(format!(
+                            "'__in' array for '{base}' must not be empty"
+                        )));
+                    }
+                    // Build parameterized IN placeholders. `idx` advances by `arr.len()` in
+                    // one step (after collecting) so the index sequence stays correct for
+                    // subsequent clauses. Each element is bound separately below.
+                    let placeholders: Vec<String> = (0..arr.len())
+                        .map(|i| placeholder(backend, idx + i))
+                        .collect();
+                    idx += arr.len();
+                    where_clauses.push(format!("\"{}\" IN ({})", base, placeholders.join(", ")));
+                    for item in arr {
+                        values.push(json_to_sea_value(item));
+                    }
+                } else {
+                    where_clauses.push(format!(
+                        "\"{}\" {} {}",
+                        base,
+                        op_sql,
+                        placeholder(backend, idx)
+                    ));
+                    values.push(json_to_sea_value(val));
+                    idx += 1;
                 }
+            } else {
+                // Equality path — byte-for-byte identical to the pre-extension loop.
+                // ALLOWLIST: the filter key must name a field that is FILTER-ELIGIBLE
+                // (the exact predicate that gates the input schema), not merely a known
+                // field. This prevents an agent from filtering on a Sensitive,
+                // write-only, list, or Json/Binary field that the schema deliberately
+                // excludes — which would otherwise leak the column via `SELECT *` or
+                // enable an oracle attack. Unknown keys are never interpolated.
+                match service.fields.iter().find(|f| &f.name == key) {
+                    Some(field) if is_filter_field(field) => {}
+                    _ => {
+                        return Err(crate::Error::InvalidFilter(format!(
+                            "unknown or non-filterable filter field: {key}"
+                        )));
+                    }
+                }
+                where_clauses.push(format!("\"{}\" = {}", key, placeholder(backend, idx)));
+                values.push(json_to_sea_value(val));
+                idx += 1;
             }
-            where_clauses.push(format!("\"{}\" = {}", key, placeholder(backend, idx)));
-            values.push(json_to_sea_value(val));
-            idx += 1;
         }
     }
 
@@ -196,18 +302,23 @@ pub async fn dispatch(
 
     // Deterministic ordering for stable offset pagination. Without ORDER BY,
     // offset-based pages can overlap or skip rows under concurrent writes. The
-    // sort column is chosen from the projection's own fields (the Identifier
+    // tiebreaker column is chosen from the projection's own fields (the Identifier
     // field, else the first field) — never from the call payload — so it cannot
-    // be an injection vector.
+    // be an injection vector. A user-supplied `sort` (parsed above and validated
+    // against the is_filter_field allowlist) is placed BEFORE the tiebreaker.
     let order_col = service
         .fields
         .iter()
         .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
         .or_else(|| service.fields.first())
         .map(|f| f.name.clone());
-    let order_str = match &order_col {
-        Some(col) => format!(" ORDER BY \"{col}\""),
-        None => String::new(),
+    let order_str = match (&parsed_sort, &order_col) {
+        (Some((col, dir)), Some(tiebreaker)) if col != tiebreaker => {
+            format!(" ORDER BY \"{col}\" {dir}, \"{tiebreaker}\"")
+        }
+        (Some((col, dir)), _) => format!(" ORDER BY \"{col}\" {dir}"),
+        (None, Some(tiebreaker)) => format!(" ORDER BY \"{tiebreaker}\""),
+        (None, None) => String::new(),
     };
 
     // DATA query with LIMIT/OFFSET bound as parameters
