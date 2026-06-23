@@ -281,6 +281,9 @@ mod tests {
             &disp,
             guard.as_deref(),
             "web",
+            #[cfg(feature = "confirmation")]
+            false,
+            None,
         )
         .await
     }

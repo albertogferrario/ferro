@@ -227,6 +227,7 @@ pub async fn handle_write_call(
         "mcp",
         #[cfg(feature = "confirmation")]
         false,
+        None,
     )
     .await
     {
@@ -538,6 +539,7 @@ pub async fn handle_confirm(
         transition_guard,
         "mcp",
         true,
+        None,
     )
     .await
     {
@@ -946,6 +948,7 @@ mod confirmation_tests {
             None,
             "mcp",
             false, // is_confirmed = false → triggers seam
+            None,
         )
         .await;
 

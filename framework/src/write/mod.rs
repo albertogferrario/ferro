@@ -13,7 +13,7 @@
 //! channel name.
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
-use ferro_projections::ActionDef;
+use ferro_projections::{ActionDef, CrudPlan};
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 use serde_json::Value;
 use std::future::Future;
@@ -51,6 +51,15 @@ pub enum WriteError {
     #[cfg(feature = "confirmation")]
     #[error("confirmation required for action: {0}")]
     ConfirmationRequired(String),
+    /// A CRUD verb (create/update/delete) was called on a service that has not
+    /// opted into that verb. Should not normally occur if the framing layer only
+    /// emits tools for enabled verbs, but checked defensively.
+    #[error("crud verb not enabled: {0}")]
+    CrudVerbNotEnabled(String),
+    /// A CRUD update or soft-delete targeted a row that does not exist or has
+    /// already been soft-deleted (`deleted_at IS NOT NULL`).
+    #[error("record not found or already deleted")]
+    RecordNotFound,
 }
 
 /// Result alias for the transition-execution kernel.
@@ -164,6 +173,280 @@ impl WriteDispatcher {
     pub fn with_override(mut self, action: impl Into<String>, hook: OverrideFn) -> Self {
         self.overrides.insert(action.into(), hook);
         self
+    }
+}
+
+// ── SQL helpers (CRUD executor) ───────────────────────────────────────────────
+
+/// Build a backend-specific placeholder for parameterized SQL.
+///
+/// SQLite uses `?`; Postgres uses `$N` (1-based index).
+fn placeholder(backend: DatabaseBackend, index: usize) -> String {
+    match backend {
+        DatabaseBackend::Postgres => format!("${index}"),
+        _ => "?".to_string(),
+    }
+}
+
+/// Coerce a `serde_json::Value` to the closest `sea_orm::Value` for binding.
+///
+/// Null → `String(None)`, Bool → `Bool`, integer Number → `BigInt`,
+/// float Number → `Double`, String → `String(Box)`, anything else → JSON
+/// string representation via `to_string()`.
+fn json_to_sea_value(val: &serde_json::Value) -> sea_orm::Value {
+    match val {
+        serde_json::Value::Null => sea_orm::Value::String(None),
+        serde_json::Value::Bool(b) => sea_orm::Value::Bool(Some(*b)),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                sea_orm::Value::BigInt(Some(i))
+            } else {
+                sea_orm::Value::Double(n.as_f64())
+            }
+        }
+        serde_json::Value::String(s) => sea_orm::Value::String(Some(Box::new(s.clone()))),
+        other => sea_orm::Value::String(Some(Box::new(other.to_string()))),
+    }
+}
+
+/// Convert a single `sea_orm::QueryResult` row to a `serde_json::Value` object.
+///
+/// Attempts column extraction as `i64`, then `f64`, then `bool`, then `String`,
+/// in that order, falling back to `null` for columns that can't be decoded.
+fn row_to_json(row: &sea_orm::QueryResult) -> serde_json::Value {
+    let columns: Vec<String> = row.column_names().iter().map(|s| s.to_string()).collect();
+    let mut obj = serde_json::Map::new();
+    for col in &columns {
+        let val = row
+            .try_get_by::<i64, _>(col.as_str())
+            .map(|v| serde_json::Value::Number(v.into()))
+            .or_else(|_| {
+                row.try_get_by::<f64, _>(col.as_str()).map(|v| {
+                    serde_json::Number::from_f64(v)
+                        .map(serde_json::Value::Number)
+                        .unwrap_or(serde_json::Value::Null)
+                })
+            })
+            .or_else(|_| {
+                row.try_get_by::<bool, _>(col.as_str())
+                    .map(serde_json::Value::Bool)
+            })
+            .or_else(|_| {
+                row.try_get_by::<String, _>(col.as_str())
+                    .map(serde_json::Value::String)
+            })
+            .unwrap_or(serde_json::Value::Null);
+        obj.insert(col.clone(), val);
+    }
+    serde_json::Value::Object(obj)
+}
+
+// ── Generic CRUD executor ─────────────────────────────────────────────────────
+
+/// Framework-provided generic CRUD executor.
+///
+/// Interprets a [`CrudPlan`] into parameterized SQL and executes it against
+/// `db`. All VALUES are bound via `sea_orm::Value` through
+/// `Statement::from_sql_and_values` (never string-interpolated). Table and
+/// column identifiers come exclusively from the `CrudPlan`, which is derived
+/// from a developer-authored `ServiceDef` projection — never from untrusted
+/// agent input.
+///
+/// # SQL shapes
+///
+/// - `Create` → `INSERT INTO <table> (<cols>, created_at) VALUES (<ph>, datetime('now')/NOW())`
+///   followed by `SELECT * FROM <table> WHERE id = last_insert_rowid()` (SQLite) or
+///   `INSERT … RETURNING *` (Postgres). Returns the inserted record including its `id`.
+/// - `Update` → `UPDATE <table> SET <col>=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL`.
+///   Zero rows affected → [`WriteError::RecordNotFound`].
+/// - `Delete` → `UPDATE <table> SET <soft_delete_column>=<now> WHERE <id_column>=? AND <soft_delete_column> IS NULL`.
+///   Zero rows affected → [`WriteError::RecordNotFound`]. Returns `{"id": <id_value>, "deleted": true}`.
+///
+/// # Security
+///
+/// - T-241-05: all values are bound parameters — no string interpolation of values.
+/// - T-241-06: Update and Delete predicates include `AND <soft_delete_column> IS NULL`
+///   so a soft-deleted row is unaddressable.
+/// - D-09: `tenant_column` is `None` in Phase 241; the executor adds no tenant predicate.
+///   A `Some(tc)` tenant-column slot is left as an extension point for Phase 242.
+async fn execute_crud_plan(
+    plan: &CrudPlan,
+    _tenant_id: i64,
+    db: &DatabaseConnection,
+) -> WriteResult<Value> {
+    let backend = db.get_database_backend();
+
+    // Backend-specific "now" expression injected as a SQL literal (not a bound
+    // parameter) for created_at/deleted_at server timestamps.
+    let now_expr = match backend {
+        DatabaseBackend::Postgres => "NOW()",
+        _ => "datetime('now')",
+    };
+
+    match plan {
+        CrudPlan::Create {
+            table,
+            columns,
+            tenant_column: _,
+        } => {
+            // Build column list and placeholder list.
+            // `created_at` is NOT in the plan (Plan 01 contract) — inject it here
+            // as a SQL literal expression so the server sets it, not the agent.
+            let mut col_names: Vec<String> = columns.iter().map(|(c, _)| c.clone()).collect();
+            col_names.push("created_at".to_string());
+
+            let mut ph_parts: Vec<String> = (1..=columns.len())
+                .map(|i| placeholder(backend, i))
+                .collect();
+            ph_parts.push(now_expr.to_string()); // literal, not a bound param
+
+            let col_list = col_names.join(", ");
+            let ph_list = ph_parts.join(", ");
+
+            let values: Vec<sea_orm::Value> =
+                columns.iter().map(|(_, v)| json_to_sea_value(v)).collect();
+
+            match backend {
+                DatabaseBackend::Postgres => {
+                    // Postgres: INSERT … RETURNING * in a single round-trip.
+                    let sql =
+                        format!("INSERT INTO {table} ({col_list}) VALUES ({ph_list}) RETURNING *");
+                    let stmt = Statement::from_sql_and_values(backend, &sql, values);
+                    let row = db
+                        .query_one(stmt)
+                        .await
+                        .map_err(|e| WriteError::Database(e.to_string()))?
+                        .ok_or_else(|| {
+                            WriteError::Database("INSERT RETURNING returned no row".to_string())
+                        })?;
+                    Ok(row_to_json(&row))
+                }
+                _ => {
+                    // SQLite: INSERT then SELECT last_insert_rowid() then SELECT *.
+                    let sql = format!("INSERT INTO {table} ({col_list}) VALUES ({ph_list})");
+                    let stmt = Statement::from_sql_and_values(backend, &sql, values);
+                    db.execute(stmt)
+                        .await
+                        .map_err(|e| WriteError::Database(e.to_string()))?;
+
+                    // Retrieve the auto-generated id.
+                    let id_row = db
+                        .query_one(Statement::from_string(
+                            backend,
+                            "SELECT last_insert_rowid() AS id".to_string(),
+                        ))
+                        .await
+                        .map_err(|e| WriteError::Database(e.to_string()))?
+                        .ok_or_else(|| {
+                            WriteError::Database("last_insert_rowid() returned no row".to_string())
+                        })?;
+                    let inserted_id: i64 = id_row
+                        .try_get("", "id")
+                        .map_err(|e| WriteError::Database(e.to_string()))?;
+
+                    // Fetch the full inserted record.
+                    let select_sql = format!("SELECT * FROM {table} WHERE id = ?");
+                    let select_stmt = Statement::from_sql_and_values(
+                        backend,
+                        &select_sql,
+                        vec![sea_orm::Value::BigInt(Some(inserted_id))],
+                    );
+                    let record_row = db
+                        .query_one(select_stmt)
+                        .await
+                        .map_err(|e| WriteError::Database(e.to_string()))?
+                        .ok_or_else(|| {
+                            WriteError::Database("SELECT after INSERT returned no row".to_string())
+                        })?;
+                    Ok(row_to_json(&record_row))
+                }
+            }
+        }
+
+        CrudPlan::Update {
+            table,
+            id_column,
+            id_value,
+            patch,
+            soft_delete_column,
+            tenant_column: _,
+        } => {
+            if patch.is_empty() {
+                return Err(WriteError::Validation(
+                    "patch must contain at least one field".into(),
+                ));
+            }
+            // UPDATE <table> SET col1=?, col2=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL
+            let set_clauses: Vec<String> = patch
+                .iter()
+                .enumerate()
+                .map(|(i, (col, _))| format!("{col} = {}", placeholder(backend, i + 1)))
+                .collect();
+            let set_sql = set_clauses.join(", ");
+            let id_ph = placeholder(backend, patch.len() + 1);
+            let sql = format!(
+                "UPDATE {table} SET {set_sql} WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
+            );
+
+            let mut values: Vec<sea_orm::Value> =
+                patch.iter().map(|(_, v)| json_to_sea_value(v)).collect();
+            values.push(json_to_sea_value(id_value));
+
+            let stmt = Statement::from_sql_and_values(backend, &sql, values);
+            let exec_result = db
+                .execute(stmt)
+                .await
+                .map_err(|e| WriteError::Database(e.to_string()))?;
+
+            if exec_result.rows_affected() == 0 {
+                return Err(WriteError::RecordNotFound);
+            }
+
+            // Fetch the updated record for the return value.
+            let id_ph2 = placeholder(backend, 1);
+            let select_sql = format!("SELECT * FROM {table} WHERE {id_column} = {id_ph2}");
+            let select_stmt = Statement::from_sql_and_values(
+                backend,
+                &select_sql,
+                vec![json_to_sea_value(id_value)],
+            );
+            let row = db
+                .query_one(select_stmt)
+                .await
+                .map_err(|e| WriteError::Database(e.to_string()))?
+                .ok_or_else(|| {
+                    WriteError::Database("SELECT after UPDATE returned no row".to_string())
+                })?;
+            Ok(row_to_json(&row))
+        }
+
+        CrudPlan::Delete {
+            table,
+            id_column,
+            id_value,
+            soft_delete_column,
+            tenant_column: _,
+        } => {
+            // Soft-delete: UPDATE <table> SET <soft_delete_column>=now WHERE <id_column>=?
+            //              AND <soft_delete_column> IS NULL
+            // Soft-delete only — no physical row removal (CRUD-03).
+            let id_ph = placeholder(backend, 1);
+            let sql = format!(
+                "UPDATE {table} SET {soft_delete_column} = {now_expr} WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
+            );
+            let stmt =
+                Statement::from_sql_and_values(backend, &sql, vec![json_to_sea_value(id_value)]);
+            let exec_result = db
+                .execute(stmt)
+                .await
+                .map_err(|e| WriteError::Database(e.to_string()))?;
+
+            if exec_result.rows_affected() == 0 {
+                return Err(WriteError::RecordNotFound);
+            }
+
+            Ok(serde_json::json!({ "id": id_value, "deleted": true }))
+        }
     }
 }
 
@@ -319,6 +602,7 @@ pub async fn dispatch_write(
     transition_guard: Option<&str>,
     channel: &str,
     #[cfg(feature = "confirmation")] is_confirmed: bool,
+    crud_plan: Option<&CrudPlan>,
 ) -> WriteResult<Value> {
     // 1. Guard re-evaluation (D-02, T-219-02 — load-bearing security gate).
     //
@@ -370,22 +654,35 @@ pub async fn dispatch_write(
     // 3. D-08 SEAM (Phase 220): confirmation gate for destructive actions.
     //
     // When the `confirmation` feature is on, a bare call to a destructive action
-    // (transition_trigger.is_some()) without a valid confirmation context returns
-    // Err(ConfirmationRequired) — the executor never fires. The channel's confirm
-    // handler sets is_confirmed=true to bypass this seam after token validation.
+    // returns Err(ConfirmationRequired) — the executor never fires. "Destructive"
+    // means: a transition with transition_trigger (existing behavior) OR a CRUD
+    // Delete verb (Phase 241 extension — D-06 / CRUD-03 / T-241-07).
+    // The channel's confirm handler sets is_confirmed=true to bypass this seam
+    // after token validation.
     //
     // Feature-off: fall through to executor (Phase 219 behavior preserved).
     #[cfg(feature = "confirmation")]
-    if action.transition_trigger.is_some() && !is_confirmed {
-        return Err(WriteError::ConfirmationRequired(action.name.clone()));
+    {
+        let is_destructive = action.transition_trigger.is_some()
+            || matches!(crud_plan, Some(CrudPlan::Delete { .. }));
+        if is_destructive && !is_confirmed {
+            return Err(WriteError::ConfirmationRequired(action.name.clone()));
+        }
     }
     #[cfg(not(feature = "confirmation"))]
-    let _ = &action.transition_trigger;
+    let _ = (&action.transition_trigger, crud_plan);
 
-    // 4. Execute callback (D-01).
+    // 4. Execute callback (D-01) or generic CRUD executor (D-04).
+    //    When crud_plan is Some, the framework-provided execute_crud_plan interprets
+    //    the CrudPlan into parameterized SQL — the app-registered executor is bypassed.
+    //    When crud_plan is None, the registered ExecutorFn runs (transition path).
     //    The executor owns TenantScoped enforcement (D-03): find_for_tenant(id, tenant_id)
     //    returning None is the cross-tenant denial primitive.
-    let result = (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?;
+    let result = if let Some(plan) = crud_plan {
+        execute_crud_plan(plan, tenant_id, db).await?
+    } else {
+        (dispatcher.executor)(&action.name, inputs, tenant_id, db).await?
+    };
 
     // 5. Store idempotency result (D-04).
     //    INSERT OR IGNORE / ON CONFLICT DO NOTHING for concurrency safety.
@@ -411,7 +708,14 @@ pub async fn dispatch_write(
     //    persist (no transaction), so the base persist is audited here
     //    unconditionally — the audit entry never overstates what persisted.
     let record_id = inputs.get("id").map(|v| v.to_string()).unwrap_or_default();
-    AuditEntry::record(format!("{channel}.action.{}", &action.name))
+    // CRUD verbs use a distinct audit prefix (`{channel}.crud.{name}`) so audit
+    // logs are queryable by verb class (D-08). Transitions keep `.action.` unchanged.
+    let audit_action = if crud_plan.is_some() {
+        format!("{channel}.crud.{}", &action.name)
+    } else {
+        format!("{channel}.action.{}", &action.name)
+    };
+    AuditEntry::record(audit_action)
         .tenant(tenant_id.to_string())
         .actor(AuditActor::User(tenant_id.to_string()))
         .target(AuditTarget::new(&action.name, record_id))
@@ -486,6 +790,20 @@ mod tests {
         ))
         .await
         .expect("create audit_log table");
+        // Phase 241: orders table for CRUD executor dispatch tests.
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT NOT NULL DEFAULT 'draft',
+                amount TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                deleted_at TEXT
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create orders table");
         db
     }
 
@@ -528,6 +846,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             false,
+            None,
         )
         .await;
 
@@ -562,6 +881,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             false,
+            None,
         )
         .await;
 
@@ -604,6 +924,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
 
@@ -650,6 +971,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
 
@@ -703,6 +1025,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
 
@@ -742,6 +1065,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
 
@@ -779,6 +1103,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
 
@@ -847,6 +1172,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             false,
+            None,
         )
         .await;
         let result2 = dispatch_write(
@@ -859,6 +1185,7 @@ mod tests {
             "mcp",
             #[cfg(feature = "confirmation")]
             false,
+            None,
         )
         .await;
 
@@ -903,6 +1230,7 @@ mod tests {
             "web",
             #[cfg(feature = "confirmation")]
             true,
+            None,
         )
         .await;
         assert!(result.is_ok(), "write must succeed: {result:?}");
@@ -938,5 +1266,502 @@ mod tests {
             mcp_count, 0,
             "no mcp-channel audit must be written when channel is 'web'"
         );
+    }
+
+    // ── CRUD dispatch tests (VALIDATION rows #6–#13) ──────────────────────────
+
+    /// Helpers shared across CRUD tests.
+    fn crud_action(name: &str) -> ActionDef {
+        ActionDef::new(name)
+    }
+
+    fn allow_dispatcher() -> WriteDispatcher {
+        WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            // The executor is bypassed on the CRUD path (crud_plan=Some).
+            // A panic here would mean the CRUD branch is not working.
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async {
+                    panic!("executor must NOT run on the CRUD path (crud_plan=Some)")
+                })
+            }),
+            overrides: std::collections::HashMap::new(),
+        }
+    }
+
+    fn create_plan(columns: Vec<(&str, serde_json::Value)>) -> CrudPlan {
+        CrudPlan::Create {
+            table: "orders".to_string(),
+            columns: columns
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect(),
+            tenant_column: None,
+        }
+    }
+
+    fn update_plan(id: i64, patch: Vec<(&str, serde_json::Value)>) -> CrudPlan {
+        CrudPlan::Update {
+            table: "orders".to_string(),
+            id_column: "id".to_string(),
+            id_value: serde_json::json!(id),
+            patch: patch.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            soft_delete_column: "deleted_at".to_string(),
+            tenant_column: None,
+        }
+    }
+
+    fn delete_plan(id: i64) -> CrudPlan {
+        CrudPlan::Delete {
+            table: "orders".to_string(),
+            id_column: "id".to_string(),
+            id_value: serde_json::json!(id),
+            soft_delete_column: "deleted_at".to_string(),
+            tenant_column: None,
+        }
+    }
+
+    /// VALIDATION #6 / SC#1: CREATE inserts a row; returned payload contains `id`.
+    #[tokio::test]
+    async fn crud_create_inserts_row() {
+        let db = setup_db().await;
+        let plan = create_plan(vec![("status", json!("draft")), ("amount", json!("99.00"))]);
+        let result = dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&plan),
+        )
+        .await
+        .expect("crud create must succeed");
+
+        assert!(
+            result.get("id").is_some(),
+            "returned record must have an id: {result:?}"
+        );
+
+        let count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM orders".to_string(),
+            ))
+            .await
+            .expect("count query")
+            .expect("count row")
+            .try_get::<i64>("", "c")
+            .expect("count column");
+        assert_eq!(count, 1, "exactly one row must be in orders after create");
+    }
+
+    /// VALIDATION #7 / SC#2: UPDATE patches only supplied fields on a non-deleted row.
+    #[tokio::test]
+    async fn crud_update_patches_row() {
+        let db = setup_db().await;
+
+        // Pre-insert a row.
+        let create = create_plan(vec![("status", json!("draft")), ("amount", json!("10.00"))]);
+        dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&create),
+        )
+        .await
+        .expect("pre-insert must succeed");
+
+        // Update only `amount`.
+        let upd = update_plan(1, vec![("amount", json!("55.00"))]);
+        let result = dispatch_write(
+            &crud_action("update_order"),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&upd),
+        )
+        .await
+        .expect("crud update must succeed");
+
+        // Returned record must reflect the patched amount.
+        assert_eq!(
+            result["amount"],
+            json!("55.00"),
+            "amount must be updated: {result:?}"
+        );
+        // Status must be unchanged.
+        assert_eq!(
+            result["status"],
+            json!("draft"),
+            "status must remain draft: {result:?}"
+        );
+    }
+
+    /// VALIDATION #8 / SC#2 + CRUD-03: UPDATE on a soft-deleted row → RecordNotFound.
+    #[tokio::test]
+    async fn crud_update_soft_deleted_not_found() {
+        let db = setup_db().await;
+
+        // Pre-insert then soft-delete.
+        let create = create_plan(vec![("status", json!("draft"))]);
+        dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&create),
+        )
+        .await
+        .expect("pre-insert must succeed");
+
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "UPDATE orders SET deleted_at = datetime('now') WHERE id = 1".to_string(),
+        ))
+        .await
+        .expect("manual soft-delete must succeed");
+
+        // Update must fail with RecordNotFound because deleted_at IS NOT NULL.
+        let upd = update_plan(1, vec![("status", json!("submitted"))]);
+        let result = dispatch_write(
+            &crud_action("update_order"),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&upd),
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(WriteError::RecordNotFound)),
+            "update on soft-deleted row must return RecordNotFound, got: {result:?}"
+        );
+    }
+
+    /// VALIDATION #9 / SC#2 + CRUD-03: DELETE sets deleted_at; row still physically present.
+    #[tokio::test]
+    async fn crud_delete_sets_deleted_at() {
+        let db = setup_db().await;
+
+        // Pre-insert.
+        let create = create_plan(vec![("status", json!("draft"))]);
+        dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&create),
+        )
+        .await
+        .expect("pre-insert must succeed");
+
+        // Confirmed delete.
+        let del = delete_plan(1);
+        let result = dispatch_write(
+            &crud_action("delete_order"),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            true,
+            Some(&del),
+        )
+        .await
+        .expect("confirmed delete must succeed");
+
+        assert_eq!(
+            result["deleted"],
+            json!(true),
+            "result must carry deleted:true: {result:?}"
+        );
+
+        // Row must still be physically present.
+        let count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM orders WHERE id = 1".to_string(),
+            ))
+            .await
+            .expect("count query")
+            .expect("count row")
+            .try_get::<i64>("", "c")
+            .expect("count column");
+        assert_eq!(
+            count, 1,
+            "row must still exist physically after soft-delete"
+        );
+
+        // deleted_at must be set.
+        let deleted_at: Option<String> = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT deleted_at FROM orders WHERE id = 1".to_string(),
+            ))
+            .await
+            .expect("deleted_at query")
+            .expect("deleted_at row")
+            .try_get::<Option<String>>("", "deleted_at")
+            .expect("deleted_at column");
+        assert!(
+            deleted_at.is_some(),
+            "deleted_at must be set after soft-delete"
+        );
+    }
+
+    /// VALIDATION #10 / CRUD-03: After soft-delete, `deleted_at IS NULL` filter hides the row.
+    #[tokio::test]
+    async fn crud_deleted_row_hidden_from_list() {
+        let db = setup_db().await;
+
+        let create = create_plan(vec![("status", json!("draft"))]);
+        dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&create),
+        )
+        .await
+        .expect("pre-insert must succeed");
+
+        let del = delete_plan(1);
+        dispatch_write(
+            &crud_action("delete_order"),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            true,
+            Some(&del),
+        )
+        .await
+        .expect("confirmed delete must succeed");
+
+        // The list predicate (`deleted_at IS NULL`) must hide this row.
+        let hidden_count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM orders WHERE id = 1 AND deleted_at IS NULL".to_string(),
+            ))
+            .await
+            .expect("hidden count query")
+            .expect("hidden count row")
+            .try_get::<i64>("", "c")
+            .expect("hidden count column");
+        assert_eq!(
+            hidden_count, 0,
+            "soft-deleted row must be hidden by deleted_at IS NULL filter"
+        );
+    }
+
+    /// VALIDATION #11 / CRUD-03: Bare DELETE without confirmation → ConfirmationRequired.
+    #[cfg(feature = "confirmation")]
+    #[tokio::test]
+    async fn crud_delete_requires_confirmation() {
+        let db = setup_db().await;
+
+        // Pre-insert so the row exists (confirmation seam fires before executor).
+        let create = create_plan(vec![("status", json!("draft"))]);
+        dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            false,
+            Some(&create),
+        )
+        .await
+        .expect("pre-insert must succeed");
+
+        let del = delete_plan(1);
+        let result = dispatch_write(
+            &crud_action("delete_order"),
+            &json!({"id": 1}),
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            false, // is_confirmed = false → seam must fire
+            Some(&del),
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(WriteError::ConfirmationRequired(_))),
+            "bare delete without confirmation must return ConfirmationRequired, got: {result:?}"
+        );
+    }
+
+    /// VALIDATION #12 / SC#3: Override hook runs after generic CRUD create; row still inserted.
+    #[tokio::test]
+    async fn crud_override_replaces_generic() {
+        let db = setup_db().await;
+        let hook_fired = Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new(|_, _, _, _| {
+                Box::pin(async { panic!("executor must NOT run on the CRUD path") })
+            }),
+            overrides: std::collections::HashMap::new(),
+        }
+        .with_override(
+            "create_order",
+            Box::new({
+                let flag = hook_fired.clone();
+                move |_action, _inputs, _tenant, _db, base_result: &Value| {
+                    // Override fires with the generic-created result.
+                    assert!(
+                        base_result.get("id").is_some(),
+                        "override receives the inserted record with id: {base_result:?}"
+                    );
+                    flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                    Box::pin(async { Ok(()) })
+                }
+            }),
+        );
+
+        let plan = create_plan(vec![("status", json!("draft"))]);
+        let result = dispatch_write(
+            &crud_action("create_order"),
+            &json!({}),
+            1,
+            &db,
+            &dispatcher,
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&plan),
+        )
+        .await
+        .expect("create with override must succeed");
+
+        assert!(
+            result.get("id").is_some(),
+            "result must have id: {result:?}"
+        );
+        assert!(
+            hook_fired.load(std::sync::atomic::Ordering::SeqCst),
+            "override hook must have fired"
+        );
+
+        // The generic insert must have run: row exists in DB.
+        let count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM orders".to_string(),
+            ))
+            .await
+            .expect("count query")
+            .expect("count row")
+            .try_get::<i64>("", "c")
+            .expect("count column");
+        assert_eq!(
+            count, 1,
+            "generic insert must have run alongside the override hook"
+        );
+    }
+
+    /// VALIDATION #13 / CRUD-06: Second create with the same idempotency_key returns
+    /// the stored result; the DB has exactly one row.
+    #[tokio::test]
+    async fn crud_create_idempotent() {
+        let db = setup_db().await;
+        let plan = create_plan(vec![("status", json!("draft"))]);
+
+        let inputs = json!({ "idempotency_key": "idem-create-1" });
+
+        let result1 = dispatch_write(
+            &crud_action("create_order"),
+            &inputs,
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&plan),
+        )
+        .await
+        .expect("first create must succeed");
+
+        let result2 = dispatch_write(
+            &crud_action("create_order"),
+            &inputs,
+            1,
+            &db,
+            &allow_dispatcher(),
+            None,
+            "mcp",
+            #[cfg(feature = "confirmation")]
+            false,
+            Some(&plan),
+        )
+        .await
+        .expect("second create (idempotent replay) must succeed");
+
+        assert_eq!(
+            result1, result2,
+            "idempotent replay must return the same result"
+        );
+
+        let count: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT COUNT(*) AS c FROM orders".to_string(),
+            ))
+            .await
+            .expect("count query")
+            .expect("count row")
+            .try_get::<i64>("", "c")
+            .expect("count column");
+        assert_eq!(count, 1, "idempotent replay must not insert a second row");
     }
 }

@@ -251,6 +251,7 @@ mod tests {
             "web",
             #[cfg(feature = "confirmation")]
             false,
+            None,
         )
         .await
     }

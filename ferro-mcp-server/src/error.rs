@@ -56,6 +56,11 @@ impl From<ferro_rs::write::WriteError> for Error {
             W::ActionNotFound(m) => Error::ActionNotFound(m),
             #[cfg(feature = "confirmation")]
             W::ConfirmationRequired(m) => Error::ConfirmationRequired(m),
+            // CRUD-specific variants: map to nearest semantic equivalents.
+            // CrudVerbNotEnabled is a caller configuration error (method not found);
+            // RecordNotFound is a validation-class rejection (addressability guard).
+            W::CrudVerbNotEnabled(m) => Error::ActionNotFound(m),
+            W::RecordNotFound => Error::Validation("record not found or already deleted".into()),
         }
     }
 }
