@@ -403,8 +403,12 @@ async fn execute_crud_plan(
             }
 
             // Fetch the updated record for the return value.
+            // Guard invariant: AND soft_delete_column IS NULL prevents returning a
+            // concurrently-deleted record if a soft-delete races between UPDATE and SELECT.
             let id_ph2 = placeholder(backend, 1);
-            let select_sql = format!("SELECT * FROM {table} WHERE {id_column} = {id_ph2}");
+            let select_sql = format!(
+                "SELECT * FROM {table} WHERE {id_column} = {id_ph2} AND {soft_delete_column} IS NULL"
+            );
             let select_stmt = Statement::from_sql_and_values(
                 backend,
                 &select_sql,
