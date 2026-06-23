@@ -90,6 +90,27 @@ pub struct ServiceDef {
     /// Plain metadata read by the app's MCP handler; no auth dependency here.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mcp_ability: Option<String>,
+    /// Whether `create_<svc>` is derived for this projection (Track A).
+    /// Enabling any CRUD write verb requires `mcp_write_ability` (see `validate`).
+    #[serde(default)]
+    pub creatable: bool,
+    /// Whether `update_<svc>` (data-field patch) is derived for this projection.
+    #[serde(default)]
+    pub updatable: bool,
+    /// Whether `delete_<svc>` (soft-delete, confirmation-gated) is derived.
+    #[serde(default)]
+    pub deletable: bool,
+    /// Gate ability required to call the create/update/delete tools.
+    /// Required when any of `creatable`/`updatable`/`deletable` is set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_write_ability: Option<String>,
+    /// Backing table name for derived CRUD dispatch (field→column binding).
+    /// When `None`, the dispatch layer derives it from the service name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub table: Option<String>,
+    /// Soft-delete column name. When `None`, the dispatch layer defaults to `deleted_at`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub soft_delete_column: Option<String>,
 }
 
 impl ServiceDef {
@@ -108,6 +129,12 @@ impl ServiceDef {
             mcp_exposed: false,
             tenant_column: None,
             mcp_ability: None,
+            creatable: false,
+            updatable: false,
+            deletable: false,
+            mcp_write_ability: None,
+            table: None,
+            soft_delete_column: None,
         }
     }
 
@@ -140,6 +167,43 @@ impl ServiceDef {
     /// Plain metadata read by the app's MCP handler; no auth dependency here.
     pub fn mcp_ability(mut self, ability: impl Into<String>) -> Self {
         self.mcp_ability = Some(ability.into());
+        self
+    }
+
+    /// Enables derivation of `create_<svc>`. Requires `mcp_write_ability` (Track A).
+    pub fn creatable(mut self, yes: bool) -> Self {
+        self.creatable = yes;
+        self
+    }
+
+    /// Enables derivation of `update_<svc>` (data-field patch). Requires `mcp_write_ability`.
+    pub fn updatable(mut self, yes: bool) -> Self {
+        self.updatable = yes;
+        self
+    }
+
+    /// Enables derivation of `delete_<svc>` (soft-delete, confirmation-gated).
+    /// Requires `mcp_write_ability`.
+    pub fn deletable(mut self, yes: bool) -> Self {
+        self.deletable = yes;
+        self
+    }
+
+    /// Declares the Gate ability required to call create/update/delete tools.
+    pub fn mcp_write_ability(mut self, ability: impl Into<String>) -> Self {
+        self.mcp_write_ability = Some(ability.into());
+        self
+    }
+
+    /// Declares the backing table for derived CRUD dispatch (field→column binding).
+    pub fn table(mut self, table: impl Into<String>) -> Self {
+        self.table = Some(table.into());
+        self
+    }
+
+    /// Declares the soft-delete column (defaults to `deleted_at` when unset).
+    pub fn soft_delete_column(mut self, col: impl Into<String>) -> Self {
+        self.soft_delete_column = Some(col.into());
         self
     }
 
@@ -366,6 +430,16 @@ impl ServiceDef {
     /// Returns `Ok(warnings)` for structural concerns (unused guards, missing state machine).
     pub fn validate(&self) -> Result<Vec<Warning>, crate::Error> {
         let mut warnings = Vec::new();
+
+        // 0. Track A: enabling any CRUD write verb requires a declared write ability.
+        // Fail-fast at registration rather than silently denying at call time.
+        if (self.creatable || self.updatable || self.deletable) && self.mcp_write_ability.is_none()
+        {
+            return Err(crate::Error::Validation(format!(
+                "projection '{}' enables create/update/delete but declares no mcp_write_ability",
+                self.name
+            )));
+        }
 
         // 1. Delegate to state machine validation if present
         if let Some(ref sm) = self.state_machine {
@@ -1838,5 +1912,92 @@ mod tests {
             !intents.is_empty(),
             "derive_intents must produce at least one intent score"
         );
+    }
+
+    // ── Track A: CRUD data-surface declaration ──────────────────────────────
+
+    #[test]
+    fn crud_flags_default_false() {
+        let def = ServiceDef::new("order");
+        assert!(!def.creatable);
+        assert!(!def.updatable);
+        assert!(!def.deletable);
+        assert!(def.mcp_write_ability.is_none());
+        assert!(def.table.is_none());
+        assert!(def.soft_delete_column.is_none());
+    }
+
+    #[test]
+    fn crud_builders_set_flags() {
+        let def = ServiceDef::new("order")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true);
+        assert!(def.creatable);
+        assert!(def.updatable);
+        assert!(def.deletable);
+    }
+
+    #[test]
+    fn write_surface_builders_set_fields() {
+        let def = ServiceDef::new("order")
+            .mcp_write_ability("manage-orders")
+            .table("orders")
+            .soft_delete_column("deleted_at");
+        assert_eq!(def.mcp_write_ability.as_deref(), Some("manage-orders"));
+        assert_eq!(def.table.as_deref(), Some("orders"));
+        assert_eq!(def.soft_delete_column.as_deref(), Some("deleted_at"));
+    }
+
+    #[test]
+    fn validate_rejects_creatable_without_write_ability() {
+        let def = ServiceDef::new("order").creatable(true);
+        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+    }
+
+    #[test]
+    fn validate_rejects_updatable_without_write_ability() {
+        let def = ServiceDef::new("order").updatable(true);
+        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+    }
+
+    #[test]
+    fn validate_rejects_deletable_without_write_ability() {
+        let def = ServiceDef::new("order").deletable(true);
+        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+    }
+
+    #[test]
+    fn validate_accepts_crud_with_write_ability() {
+        let def = ServiceDef::new("order")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .mcp_write_ability("manage-orders");
+        assert!(def.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_allows_read_only_without_write_ability() {
+        // A projection that enables no CRUD verb must not require a write ability.
+        let def = ServiceDef::new("order");
+        assert!(def.validate().is_ok());
+    }
+
+    #[test]
+    fn serde_round_trip_includes_crud_surface() {
+        let def = ServiceDef::new("order")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .mcp_write_ability("manage-orders")
+            .table("orders")
+            .soft_delete_column("deleted_at");
+        let json = serde_json::to_string(&def).unwrap();
+        let back: ServiceDef = serde_json::from_str(&json).unwrap();
+        assert!(back.creatable && back.updatable && back.deletable);
+        assert_eq!(back.mcp_write_ability.as_deref(), Some("manage-orders"));
+        assert_eq!(back.table.as_deref(), Some("orders"));
+        assert_eq!(back.soft_delete_column.as_deref(), Some("deleted_at"));
     }
 }
