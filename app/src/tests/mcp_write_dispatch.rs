@@ -127,6 +127,7 @@ mod tests {
                 status: Set("submitted".into()),
                 created_at: Set(now.into()),
                 tenant_id: Set(tid),
+                deleted_at: Set(None),
             }
             .insert(db)
             .await

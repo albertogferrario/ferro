@@ -212,6 +212,7 @@ async fn seed_dogfood_data() {
             status: Set("submitted".into()),
             created_at: Set(now.into()),
             tenant_id: Set(1),
+            deleted_at: Set(None),
         },
         OrderActive {
             id: Set(2),
@@ -220,6 +221,7 @@ async fn seed_dogfood_data() {
             status: Set("delivered".into()),
             created_at: Set(now.into()),
             tenant_id: Set(1),
+            deleted_at: Set(None),
         },
         // Globex orders (tenant_id = 2)
         OrderActive {
@@ -229,6 +231,7 @@ async fn seed_dogfood_data() {
             status: Set("draft".into()),
             created_at: Set(now.into()),
             tenant_id: Set(2),
+            deleted_at: Set(None),
         },
         OrderActive {
             id: Set(4),
@@ -237,6 +240,7 @@ async fn seed_dogfood_data() {
             status: Set("approved".into()),
             created_at: Set(now.into()),
             tenant_id: Set(2),
+            deleted_at: Set(None),
         },
     ];
 

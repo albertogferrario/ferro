@@ -16,6 +16,8 @@ pub struct Model {
     pub status: String,
     pub created_at: String,
     pub tenant_id: i64,
+    #[sea_orm(column_name = "deleted_at")]
+    pub deleted_at: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
