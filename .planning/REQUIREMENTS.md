@@ -33,7 +33,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 
 ### Authorization & Dispatch
 
-- [ ] **CRUD-05**: `create`/`update`/`delete` require `read_write` key scope and pass the
+- [x] **CRUD-05**: `create`/`update`/`delete` require `read_write` key scope and pass the
   `.mcp_write_ability` policy Gate; `tenant_id` is injected server-side and is never an agent
   input (the tenant column is excluded from every write schema). Cross-tenant / soft-deleted
   targets are indistinguishable from "not found" (non-disclosure).
@@ -64,7 +64,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 | CRUD-02 | Phase 240 | Complete |
 | CRUD-03 | Phase 241 | Complete |
 | CRUD-04 | Phase 240 | Complete |
-| CRUD-05 | Phase 242 | pending |
+| CRUD-05 | Phase 242 | Complete |
 | CRUD-06 | Phase 241 | Complete |
 | CRUD-07 | Phase 242 (verified) | done (5cb17d60) |
 

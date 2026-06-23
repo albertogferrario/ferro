@@ -3513,7 +3513,7 @@ fails fast at registration when a CRUD verb is enabled without `mcp_write_abilit
   4. A boot-time test confirms `ServiceDef::validate()` rejects a projection that enables
      any CRUD verb without `mcp_write_ability` (a config error at registration, never a
      silent deny at call time).
-**Plans:** TBD
+**Plans:** 1/4 plans executed
 
 #### Phase 243: App integration, e2e, envelope guard & catalog/docs
 **Goal:** Prove the whole Track A surface end-to-end against the sample app and bring the
@@ -3563,5 +3563,5 @@ validation respectively):
 | 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 4/4 | Complete    | 2026-06-23 |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 3/3 | Complete    | 2026-06-23 |
-| 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
+| 242. Write authorization, tenant injection & non-disclosure | 1/4 | In Progress|  |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
