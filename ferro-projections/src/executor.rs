@@ -702,8 +702,8 @@ mod tests {
     fn derive_crud_plan_delete_missing_id_is_validation_error() {
         let svc = crud_order_service();
         // id absent
-        let err = super::derive_crud_plan(&svc, CrudVerb::Delete, &serde_json::json!({}))
-            .unwrap_err();
+        let err =
+            super::derive_crud_plan(&svc, CrudVerb::Delete, &serde_json::json!({})).unwrap_err();
         assert!(
             matches!(err, crate::Error::Validation(_)),
             "expected Validation error for missing id on delete, got {err:?}"
