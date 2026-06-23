@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: planning
-stopped_at: v16.3 roadmap created (Phases 239–243) — awaiting plan-phase
-last_updated: "2026-06-23T00:00:00.000Z"
+stopped_at: Phase 239 context gathered
+last_updated: "2026-06-23T15:03:04.639Z"
 last_activity: 2026-06-23
 progress:
-  total_phases: 246
-  completed_phases: 222
-  total_plans: 705
-  completed_plans: 691
-  percent: 98
+  total_phases: 116
+  completed_phases: 101
+  total_plans: 417
+  completed_plans: 416
+  percent: 100
 ---
 
 # Project State
@@ -229,7 +229,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23
-Stopped at: All phases through 238 shipped; Track A (MCP CRUD) declaration surface committed (5cb17d60 on master).
-Resume file: None
+Last session: 2026-06-23T15:03:04.626Z
+Stopped at: Phase 239 context gathered
+Resume file: .planning/phases/239-soft-delete-data-model-deleted-at-migration/239-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
