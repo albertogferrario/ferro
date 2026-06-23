@@ -2291,4 +2291,41 @@ mod tests {
             "tenant column must be write-excluded regardless of SM flag"
         );
     }
+
+    /// CRUD-07 boot-time test: validate() must reject any projection that enables a write
+    /// verb without declaring mcp_write_ability. The rule ships at service.rs:502-510
+    /// (commit 5cb17d60). This test pins the fail-fast guarantee against regression.
+    #[test]
+    fn validate_rejects_crud_verb_without_write_ability() {
+        // creatable with no mcp_write_ability → Err
+        let svc = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .creatable(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        let err = svc.validate().unwrap_err();
+        assert!(matches!(err, crate::Error::Validation(_)));
+        assert!(err.to_string().contains("mcp_write_ability"));
+
+        // updatable with no mcp_write_ability → Err
+        let svc_u = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .updatable(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        assert!(svc_u.validate().is_err());
+
+        // deletable with no mcp_write_ability → Err
+        let svc_d = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .deletable(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        assert!(svc_d.validate().is_err());
+
+        // With mcp_write_ability → Ok
+        let svc_ok = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .creatable(true)
+            .mcp_write_ability("manage-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        assert!(svc_ok.validate().is_ok());
+    }
 }
