@@ -244,7 +244,9 @@ pub fn derive_crud_plan(
             Ok(CrudPlan::Create {
                 table,
                 columns,
-                tenant_column: None,
+                tenant_column: svc.tenant_column.as_ref().map(|col| TenantColumn {
+                    column: col.clone(),
+                }),
             })
         }
         CrudVerb::Update => {
@@ -269,7 +271,9 @@ pub fn derive_crud_plan(
                 id_value,
                 patch,
                 soft_delete_column: svc.resolved_soft_delete_column().to_string(),
-                tenant_column: None,
+                tenant_column: svc.tenant_column.as_ref().map(|col| TenantColumn {
+                    column: col.clone(),
+                }),
             })
         }
         CrudVerb::Delete => {
@@ -286,7 +290,9 @@ pub fn derive_crud_plan(
                 id_column: "id".into(),
                 id_value,
                 soft_delete_column: svc.resolved_soft_delete_column().to_string(),
-                tenant_column: None,
+                tenant_column: svc.tenant_column.as_ref().map(|col| TenantColumn {
+                    column: col.clone(),
+                }),
             })
         }
     }
@@ -747,22 +753,33 @@ mod tests {
         let inputs = serde_json::json!({ "amount": "100.00" });
         let plan = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap();
 
-        let CrudPlan::Create { ref tenant_column, .. } = plan else {
+        let CrudPlan::Create {
+            ref tenant_column, ..
+        } = plan
+        else {
             panic!("expected CrudPlan::Create, got {plan:?}");
         };
         assert_eq!(
             tenant_column,
-            &Some(TenantColumn { column: "tenant_id".into() }),
+            &Some(TenantColumn {
+                column: "tenant_id".into()
+            }),
             "create with tenant_column set must yield Some(TenantColumn)"
         );
 
         // WITHOUT tenant column → None (non-tenant projection stays unscoped)
         let svc_no_tenant = crud_order_service();
         let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Create, &inputs).unwrap();
-        let CrudPlan::Create { ref tenant_column, .. } = plan_no else {
+        let CrudPlan::Create {
+            ref tenant_column, ..
+        } = plan_no
+        else {
             panic!("expected CrudPlan::Create");
         };
-        assert_eq!(tenant_column, &None, "create without tenant_column must yield None");
+        assert_eq!(
+            tenant_column, &None,
+            "create without tenant_column must yield None"
+        );
     }
 
     #[test]
@@ -772,22 +789,33 @@ mod tests {
         let inputs = serde_json::json!({ "id": 1, "amount": "200.00" });
         let plan = super::derive_crud_plan(&svc, CrudVerb::Update, &inputs).unwrap();
 
-        let CrudPlan::Update { ref tenant_column, .. } = plan else {
+        let CrudPlan::Update {
+            ref tenant_column, ..
+        } = plan
+        else {
             panic!("expected CrudPlan::Update, got {plan:?}");
         };
         assert_eq!(
             tenant_column,
-            &Some(TenantColumn { column: "tenant_id".into() }),
+            &Some(TenantColumn {
+                column: "tenant_id".into()
+            }),
             "update with tenant_column set must yield Some(TenantColumn)"
         );
 
         // WITHOUT tenant column → None
         let svc_no_tenant = crud_order_service();
         let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Update, &inputs).unwrap();
-        let CrudPlan::Update { ref tenant_column, .. } = plan_no else {
+        let CrudPlan::Update {
+            ref tenant_column, ..
+        } = plan_no
+        else {
             panic!("expected CrudPlan::Update");
         };
-        assert_eq!(tenant_column, &None, "update without tenant_column must yield None");
+        assert_eq!(
+            tenant_column, &None,
+            "update without tenant_column must yield None"
+        );
     }
 
     #[test]
@@ -797,21 +825,32 @@ mod tests {
         let inputs = serde_json::json!({ "id": 7 });
         let plan = super::derive_crud_plan(&svc, CrudVerb::Delete, &inputs).unwrap();
 
-        let CrudPlan::Delete { ref tenant_column, .. } = plan else {
+        let CrudPlan::Delete {
+            ref tenant_column, ..
+        } = plan
+        else {
             panic!("expected CrudPlan::Delete, got {plan:?}");
         };
         assert_eq!(
             tenant_column,
-            &Some(TenantColumn { column: "tenant_id".into() }),
+            &Some(TenantColumn {
+                column: "tenant_id".into()
+            }),
             "delete with tenant_column set must yield Some(TenantColumn)"
         );
 
         // WITHOUT tenant column → None
         let svc_no_tenant = crud_order_service();
         let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Delete, &inputs).unwrap();
-        let CrudPlan::Delete { ref tenant_column, .. } = plan_no else {
+        let CrudPlan::Delete {
+            ref tenant_column, ..
+        } = plan_no
+        else {
             panic!("expected CrudPlan::Delete");
         };
-        assert_eq!(tenant_column, &None, "delete without tenant_column must yield None");
+        assert_eq!(
+            tenant_column, &None,
+            "delete without tenant_column must yield None"
+        );
     }
 }
