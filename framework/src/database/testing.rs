@@ -25,6 +25,10 @@ use super::connection::DbConnection;
 use crate::container::testing::{TestContainer, TestContainerGuard};
 use crate::error::FrameworkError;
 
+/// Monotonic counter giving each `TestDatabase::fresh()` a uniquely-named
+/// shared-cache in-memory database (cross-test isolation).
+static TEST_DB_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Test database wrapper that provides isolated database environments
 ///
 /// Each `TestDatabase` creates a fresh in-memory SQLite database with
@@ -95,10 +99,23 @@ impl TestDatabase {
         // 1. Create test container guard for isolation
         let guard = TestContainer::fake();
 
-        // 2. Create in-memory SQLite database
+        // 2. Create in-memory SQLite database.
+        //
+        // Shared-cache, uniquely-named :memory: DB with a multi-connection pool
+        // (mirrors a production pool). A plain single-connection `sqlite::memory:`
+        // pool deadlocks any code that holds an open transaction on the one
+        // connection and then acquires a fresh `DB::connection()` for a nested
+        // query (e.g. a webhook handler whose loader reads on a separate
+        // connection) — the second acquire blocks until the sqlx timeout.
+        // `cache=shared` makes every pooled connection see the same database;
+        // the unique name per `fresh()` keeps cross-test isolation; the unique
+        // name + min_connections(1) keeps the DB alive (a shared-cache :memory:
+        // DB is dropped when its last connection closes).
+        let seq = TEST_DB_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let url = format!("sqlite:file:ferro_testdb_{seq}?mode=memory&cache=shared");
         let config = DatabaseConfig::builder()
-            .url("sqlite::memory:")
-            .max_connections(1)
+            .url(url)
+            .max_connections(8)
             .min_connections(1)
             .logging(false)
             .build();
@@ -182,4 +199,122 @@ macro_rules! test_database {
             .await
             .expect("Failed to set up test database")
     };
+}
+
+#[cfg(test)]
+mod fresh_pool_tests {
+    use super::TestDatabase;
+    use crate::database::DB;
+    use sea_orm::{ConnectionTrait, DatabaseBackend, Statement, TransactionTrait};
+    use sea_orm_migration::{MigrationTrait, MigratorTrait};
+
+    /// Empty migrator — these tests build their own tables via raw SQL.
+    struct NoopMigrator;
+    impl MigratorTrait for NoopMigrator {
+        fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+            vec![]
+        }
+    }
+
+    /// Regression: a nested `DB::connection()` query MUST succeed while an outer
+    /// transaction is open. Production runs a multi-connection pool, so a handler
+    /// that holds a txn on one connection (writing table A) and reads a *different*
+    /// table on another connection works fine; the old single-connection
+    /// `sqlite::memory:` test pool deadlocked the second acquire until the sqlx
+    /// timeout. Shared-cache makes the second connection see data committed before
+    /// the txn. (Reads target a different table than the txn writes — exactly the
+    /// real webhook flow: the txn writes `payment_intents`, the loader reads
+    /// `orders` — so there is no SQLite table-lock contention.)
+    #[tokio::test]
+    async fn nested_connection_during_open_txn_does_not_deadlock() {
+        let _db = TestDatabase::fresh::<NoopMigrator>().await.unwrap();
+        let backend = DatabaseBackend::Sqlite;
+
+        let c = DB::connection().unwrap();
+        c.inner()
+            .execute(Statement::from_string(
+                backend,
+                "CREATE TABLE outer_t (id INTEGER PRIMARY KEY)",
+            ))
+            .await
+            .unwrap();
+        c.inner()
+            .execute(Statement::from_string(
+                backend,
+                "CREATE TABLE other_t (id INTEGER PRIMARY KEY, v TEXT)",
+            ))
+            .await
+            .unwrap();
+        c.inner()
+            .execute(Statement::from_string(
+                backend,
+                "INSERT INTO other_t (id, v) VALUES (1, 'committed')",
+            ))
+            .await
+            .unwrap();
+
+        // Open a write transaction on `outer_t` (mirrors the handler writing
+        // payment_intents).
+        let txn = DB::connection().unwrap().inner().clone().begin().await.unwrap();
+        txn.execute(Statement::from_string(
+            backend,
+            "INSERT INTO outer_t (id) VALUES (99)",
+        ))
+        .await
+        .unwrap();
+
+        // While the txn is open, a nested connection reads a DIFFERENT table
+        // (mirrors the loader reading `orders`). Must NOT deadlock on acquire and
+        // MUST see the committed row. A single-connection pool blocks here until
+        // the acquire timeout.
+        let nested = DB::connection().unwrap();
+        let rows = nested
+            .inner()
+            .query_all(Statement::from_string(
+                backend,
+                "SELECT id FROM other_t WHERE id = 1",
+            ))
+            .await
+            .unwrap();
+        assert_eq!(
+            rows.len(),
+            1,
+            "nested connection must read committed data without deadlocking"
+        );
+
+        txn.commit().await.unwrap();
+    }
+
+    /// Each `fresh()` must yield an isolated database (unique shared-cache name).
+    #[tokio::test]
+    async fn fresh_databases_are_isolated() {
+        let backend = DatabaseBackend::Sqlite;
+        {
+            let _db1 = TestDatabase::fresh::<NoopMigrator>().await.unwrap();
+            DB::connection()
+                .unwrap()
+                .inner()
+                .execute(Statement::from_string(
+                    backend,
+                    "CREATE TABLE iso_t (id INTEGER PRIMARY KEY)",
+                ))
+                .await
+                .unwrap();
+        }
+        // A new fresh DB must not see the previous DB's tables.
+        let _db2 = TestDatabase::fresh::<NoopMigrator>().await.unwrap();
+        let res = DB::connection()
+            .unwrap()
+            .inner()
+            .query_all(Statement::from_string(
+                backend,
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='iso_t'",
+            ))
+            .await
+            .unwrap();
+        assert!(
+            res.is_empty(),
+            "a fresh test DB must not see a prior DB's tables (isolation)"
+        );
+    }
 }
