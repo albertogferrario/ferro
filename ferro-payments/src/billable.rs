@@ -45,6 +45,24 @@ pub trait Billable: Send + Sync {
         txn: &DatabaseTransaction,
         amount_cents: i64,
     ) -> Result<(), PaymentError>;
+
+    /// Side effect after the payment layer auto-refunds a capture it could not
+    /// honor (the billable was loaded but `on_paid` failed with a non-transient
+    /// state conflict — e.g. the reservation was already released when the late
+    /// `checkout.session.completed` arrived). Carries the triggering Stripe
+    /// `event_id` and the auto-refunded amount so the consumer can write an audit
+    /// record / owner notification. Runs on a dedicated txn after the refund is
+    /// issued; a failure here is logged, never propagated (the money is already
+    /// refunded). Default is a no-op — only billables that surface auto-refunds to
+    /// an operator need override it.
+    async fn on_auto_refunded(
+        &self,
+        _txn: &DatabaseTransaction,
+        _event_id: &str,
+        _amount_cents: i64,
+    ) -> Result<(), PaymentError> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

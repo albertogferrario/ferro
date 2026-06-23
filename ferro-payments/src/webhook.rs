@@ -22,9 +22,11 @@ use ferro_stripe::{
     StripeChargeRefunded, StripeCheckoutCompleted, StripeCheckoutExpired, SyncDispatcher,
 };
 
+use crate::billable::Billable;
 use crate::error::{AutoRefundReason, PaymentError};
 use crate::intent::entity::{Column, Entity};
 use crate::intent::lifecycle;
+use crate::intent::status::PaymentIntentStatus;
 use crate::loader::BillableLoader;
 use crate::service::PaymentService;
 use crate::BillableKind;
@@ -143,7 +145,12 @@ impl<L: BillableLoader> PaymentService<L> {
             // was captured, so record the capture and auto-refund.
             txn.rollback().await.ok();
             return self
-                .capture_then_auto_refund(&event, intent.id, AutoRefundReason::SideStateConflict)
+                .capture_then_auto_refund(
+                    &event,
+                    intent.id,
+                    AutoRefundReason::SideStateConflict,
+                    None,
+                )
                 .await;
         }
 
@@ -156,13 +163,23 @@ impl<L: BillableLoader> PaymentService<L> {
         match self.loader.load(kind, intent.billable_id).await {
             Err(_) => {
                 txn.rollback().await.ok();
-                self.capture_then_auto_refund(&event, intent.id, AutoRefundReason::LoaderError)
-                    .await
+                self.capture_then_auto_refund(
+                    &event,
+                    intent.id,
+                    AutoRefundReason::LoaderError,
+                    None,
+                )
+                .await
             }
             Ok(None) => {
                 txn.rollback().await.ok();
-                self.capture_then_auto_refund(&event, intent.id, AutoRefundReason::BillableVanished)
-                    .await
+                self.capture_then_auto_refund(
+                    &event,
+                    intent.id,
+                    AutoRefundReason::BillableVanished,
+                    None,
+                )
+                .await
             }
             Ok(Some(billable)) => match billable.on_paid(&txn).await {
                 Ok(()) => {
@@ -179,10 +196,13 @@ impl<L: BillableLoader> PaymentService<L> {
                         return Err(e);
                     }
                     // Permanent business-state conflict — record capture + auto-refund.
+                    // The billable was loaded, so pass it through for the auto-refund
+                    // audit/notification side effect (on_auto_refunded).
                     self.capture_then_auto_refund(
                         &event,
                         intent.id,
                         AutoRefundReason::SideStateConflict,
+                        Some(billable.as_ref()),
                     )
                     .await
                 }
@@ -200,6 +220,7 @@ impl<L: BillableLoader> PaymentService<L> {
         event: &StripeCheckoutCompleted,
         intent_id: i64,
         reason: AutoRefundReason,
+        billable: Option<&dyn Billable>,
     ) -> Result<(), PaymentError> {
         lifecycle::mark_paid(intent_id, &self.db).await?;
         if let Some(ref pi_id) = event.payment_intent_id {
@@ -211,7 +232,33 @@ impl<L: BillableLoader> PaymentService<L> {
             intent_id,
             reason,
         )
-        .await
+        .await?;
+
+        // Consumer-side audit/notification side effect for the auto-refund. Only
+        // the on_paid-conflict path supplies a billable (the loader-error /
+        // vanished paths have nothing to notify). Fire-and-forget on its own txn —
+        // the refund already succeeded above, so a side-effect failure must never
+        // fail the handler or trigger a Stripe retry.
+        if let Some(billable) = billable {
+            match self.db.begin().await {
+                Ok(txn) => match billable
+                    .on_auto_refunded(&txn, &event.event_id, event.amount_total_cents)
+                    .await
+                {
+                    Ok(()) => {
+                        if let Err(e) = txn.commit().await {
+                            tracing::warn!("on_auto_refunded commit failed: {e:?}");
+                        }
+                    }
+                    Err(e) => {
+                        txn.rollback().await.ok();
+                        tracing::warn!("on_auto_refunded side effect failed: {e:?}");
+                    }
+                },
+                Err(e) => tracing::warn!("on_auto_refunded txn begin failed: {e:?}"),
+            }
+        }
+        Ok(())
     }
 
     /// Handle `checkout.session.expired` events.
@@ -312,11 +359,26 @@ impl<L: BillableLoader> PaymentService<L> {
         // WR-01: flip paid→refunded and run on_refunded atomically; a transient
         // failure rolls the row back to `paid` and un-marks the event so a Stripe
         // retry reprocesses (the reconcile reaper is the secondary backstop).
+        //
+        // Progressive / top-up refunds: a charge supports multiple partial
+        // refunds, each emitting a distinct `charge.refunded` (carrying the
+        // cumulative `amount_refunded`). The first flips the intent paid→refunded;
+        // a later top-up then finds it already `refunded`, where mark_refunded's
+        // `WHERE status=paid` guard no-ops — stranding the consumer's billable at
+        // `partially_refunded`. Since this event already cleared the
+        // `try_mark_processed` idempotency log (so it is NOT a duplicate delivery),
+        // let the already-`refunded` case through so on_refunded re-runs with the
+        // new cumulative amount and the consumer's state machine can advance to a
+        // full refund. A `reserved`/`released` intent is still rejected.
         let txn = self.db.begin().await.map_err(PaymentError::Db)?;
-        let marked = lifecycle::mark_refunded(intent.id, &txn).await?;
-        if !marked {
+        let proceed = if intent.status == PaymentIntentStatus::Refunded {
+            true
+        } else {
+            lifecycle::mark_refunded(intent.id, &txn).await?
+        };
+        if !proceed {
             txn.rollback().await.ok();
-            return Ok(()); // already refunded or wrong source state
+            return Ok(()); // wrong source state (reserved/released) — not refundable
         }
 
         // WR-05: persist the Stripe refund id so a later reconcile poll — and the
@@ -588,6 +650,7 @@ mod tests {
         on_paid_count: Arc<std::sync::atomic::AtomicUsize>,
         on_released_count: Arc<std::sync::atomic::AtomicUsize>,
         on_refunded_calls: Arc<Mutex<Vec<i64>>>,
+        on_auto_refunded_calls: Arc<Mutex<Vec<(String, i64)>>>,
         on_paid_error: bool,
     }
 
@@ -601,6 +664,9 @@ mod tests {
         }
         fn refunded_amounts(&self) -> Vec<i64> {
             self.on_refunded_calls.lock().unwrap().clone()
+        }
+        fn auto_refunded_calls(&self) -> Vec<(String, i64)> {
+            self.on_auto_refunded_calls.lock().unwrap().clone()
         }
     }
 
@@ -648,6 +714,18 @@ mod tests {
             amount_cents: i64,
         ) -> Result<(), PaymentError> {
             self.on_refunded_calls.lock().unwrap().push(amount_cents);
+            Ok(())
+        }
+        async fn on_auto_refunded(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+            event_id: &str,
+            amount_cents: i64,
+        ) -> Result<(), PaymentError> {
+            self.on_auto_refunded_calls
+                .lock()
+                .unwrap()
+                .push((event_id.to_string(), amount_cents));
             Ok(())
         }
     }
@@ -929,6 +1007,105 @@ mod tests {
         assert_eq!(calls.len(), 1, "auto-refund must fire exactly once");
         assert_eq!(calls[0].0, "pi_conflict");
         assert_eq!(calls[0].1, Some(1000));
+    }
+
+    /// Auto-refund (on_paid-conflict path) invokes `on_auto_refunded` with the
+    /// triggering event_id + amount, because the billable was loaded before
+    /// `on_paid` failed with a non-transient state conflict.
+    #[tokio::test]
+    async fn auto_refund_invokes_on_auto_refunded_hook() {
+        let db = fresh_db().await;
+        let billable = MockBillable {
+            on_paid_error: true,
+            ..Default::default()
+        };
+        let mock_stripe = Arc::new(MockStripeGateway::default());
+        let loader = ConfigurableMockLoader::returning_billable(billable.clone());
+
+        seed_reserved_with_session(&db, 1, "cs_autorefund_hook").await;
+
+        let svc = Arc::new(PaymentService::new(
+            db.clone(),
+            mock_stripe.clone(),
+            loader,
+            Arc::new(MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        ));
+
+        let event = make_completed_event("cs_autorefund_hook", Some("pi_autorefund"), 1000);
+        let event_id = event.event_id.clone();
+        svc.handle_session_completed(event)
+            .await
+            .expect("handle returns Ok");
+
+        // Auto-refund fired and the hook recorded the triggering event_id + amount.
+        assert_eq!(mock_stripe.pi_refund_calls().len(), 1, "auto-refund fires");
+        assert_eq!(
+            billable.auto_refunded_calls(),
+            vec![(event_id, 1000)],
+            "on_auto_refunded called once with the event_id + amount"
+        );
+    }
+
+    /// Progressive / top-up refund: a 2nd `charge.refunded` (distinct event_id) on
+    /// an already-`refunded` intent re-runs `on_refunded` with the new cumulative
+    /// amount, so the consumer's state machine can advance partial → full. Without
+    /// the progressive path the top-up no-ops at the `WHERE status=paid` guard.
+    #[tokio::test]
+    async fn handle_charge_refunded_progressive_topup_reruns_on_refunded() {
+        let db = fresh_db().await;
+        let billable = MockBillable::default();
+        let mock_stripe = Arc::new(MockStripeGateway::default());
+        let loader = ConfigurableMockLoader::returning_billable(billable.clone());
+
+        seed_paid_with_pi(&db, 1, "pi_topup", Some("ch_topup")).await;
+
+        let svc = Arc::new(PaymentService::new(
+            db.clone(),
+            mock_stripe.clone(),
+            loader,
+            Arc::new(MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/success".to_string(),
+                cancel_url: "https://example.com/cancel".to_string(),
+            },
+        ));
+
+        // Partial refund: paid → refunded, on_refunded(500).
+        let partial = StripeChargeRefunded {
+            event_id: "evt_partial".to_string(),
+            charge_id: "ch_topup".to_string(),
+            payment_intent_id: Some("pi_topup".to_string()),
+            refund_id: None,
+            amount_refunded_cents: 500,
+            metadata: HashMap::default(),
+        };
+        svc.handle_charge_refunded(partial)
+            .await
+            .expect("partial refund ok");
+
+        // Top-up refund: distinct event_id, cumulative 1000. Intent is already
+        // `refunded`; the progressive path still re-runs on_refunded.
+        let topup = StripeChargeRefunded {
+            event_id: "evt_topup".to_string(),
+            charge_id: "ch_topup".to_string(),
+            payment_intent_id: Some("pi_topup".to_string()),
+            refund_id: None,
+            amount_refunded_cents: 1000,
+            metadata: HashMap::default(),
+        };
+        svc.handle_charge_refunded(topup)
+            .await
+            .expect("top-up refund ok");
+
+        assert_eq!(
+            billable.refunded_amounts(),
+            vec![500, 1000],
+            "on_refunded re-runs with the cumulative amount for the top-up"
+        );
     }
 
     /// PAY-POLY-WH-03: session_expired happy path — mark_released + on_released.
