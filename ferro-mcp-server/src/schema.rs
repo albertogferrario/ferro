@@ -240,6 +240,131 @@ pub fn build_action_input_schema(
     }))
 }
 
+/// Builds the MCP tool `inputSchema` for a `create_<svc>` tool.
+///
+/// Iterates `service.fields`, excluding server-injected, UpdatedAt, Sensitive, list, and
+/// (when a StateMachine is present) Status fields via [`ServiceDef::is_write_excluded_field`].
+/// Fields marked `required` on the `FieldDef` populate the `required[]` array.
+/// The Identifier field is excluded — a new record has no id yet (D-03).
+pub fn build_create_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Value> {
+    let mut properties = serde_json::Map::new();
+    let mut required_fields: Vec<String> = Vec::new();
+    let exclude_sm_status = service.state_machine.is_some();
+
+    for field in &service.fields {
+        if service.is_write_excluded_field(field, exclude_sm_status) {
+            continue;
+        }
+        let mut prop = data_type_to_json_schema(field.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(field.name.clone()),
+            );
+        }
+        properties.insert(field.name.clone(), prop);
+        if field.required {
+            required_fields.push(field.name.clone());
+        }
+    }
+
+    Ok(serde_json::json!({
+        "type": "object",
+        "properties": properties,
+        "required": required_fields,
+    }))
+}
+
+/// Builds the MCP tool `inputSchema` for an `update_<svc>` tool (patch semantics).
+///
+/// Injects the service Identifier as the sole required parameter (the record to patch),
+/// then adds every non-excluded data field as optional — patch semantics mean the caller
+/// supplies only the fields they want to change (D-06). Exclusions are identical to
+/// `build_create_input_schema` via [`ServiceDef::is_write_excluded_field`].
+pub fn build_update_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Value> {
+    let mut properties = serde_json::Map::new();
+    let mut required_fields: Vec<String> = Vec::new();
+
+    // Inject the identifier (required) — the record to patch (T-240-05 / Pitfall 7).
+    if let Some(id_field) = service
+        .fields
+        .iter()
+        .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
+    {
+        let mut prop = data_type_to_json_schema(id_field.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(format!(
+                    "ID of the {} record to update",
+                    service.display_name.as_deref().unwrap_or(&service.name)
+                )),
+            );
+        }
+        properties.insert(id_field.name.clone(), prop);
+        required_fields.push(id_field.name.clone());
+    }
+
+    let exclude_sm_status = service.state_machine.is_some();
+    // Data fields: same exclusion predicate as create; all optional (patch semantics D-06).
+    for field in &service.fields {
+        if service.is_write_excluded_field(field, exclude_sm_status) {
+            continue;
+        }
+        let mut prop = data_type_to_json_schema(field.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(field.name.clone()),
+            );
+        }
+        properties.insert(field.name.clone(), prop);
+        // NOT added to required_fields — patch semantics.
+    }
+
+    Ok(serde_json::json!({
+        "type": "object",
+        "properties": properties,
+        "required": required_fields,
+    }))
+}
+
+/// Builds the MCP tool `inputSchema` for a `delete_<svc>` tool.
+///
+/// Requires the service Identifier (the record to delete). Adds an optional
+/// `confirmation_token` field whose enforcement is Phase 241/242 — the schema
+/// only advertises the parameter so the agent knows to request one first (D-08).
+pub fn build_delete_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Value> {
+    let mut properties = serde_json::Map::new();
+    let mut required_fields: Vec<String> = Vec::new();
+
+    // Identifier — required (the record to delete).
+    if let Some(id_field) = service
+        .fields
+        .iter()
+        .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
+    {
+        let prop = data_type_to_json_schema(id_field.data_type);
+        properties.insert(id_field.name.clone(), prop);
+        required_fields.push(id_field.name.clone());
+    }
+
+    // Confirmation token — optional; execution/enforcement is Phase 241/242 (D-08).
+    properties.insert(
+        "confirmation_token".to_string(),
+        serde_json::json!({
+            "type": "string",
+            "description": "Confirmation token from request_confirm_delete_<svc> (Phase 241)",
+        }),
+    );
+
+    Ok(serde_json::json!({
+        "type": "object",
+        "properties": properties,
+        "required": required_fields,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -563,7 +688,10 @@ mod tests {
         // Pagination params unchanged
         assert!(props.contains_key("limit"), "limit must still be present");
         assert!(props.contains_key("offset"), "offset must still be present");
-        assert_eq!(props["limit"]["default"], 25, "limit default must remain 25");
+        assert_eq!(
+            props["limit"]["default"], 25,
+            "limit default must remain 25"
+        );
 
         // Equality params still present (status is a filter field)
         assert!(
@@ -614,9 +742,7 @@ mod tests {
     }
 
     fn write_service_with_sm() -> ServiceDef {
-        write_service_no_sm().state_machine(
-            StateMachine::new("order_lifecycle").initial("pending"),
-        )
+        write_service_no_sm().state_machine(StateMachine::new("order_lifecycle").initial("pending"))
     }
 
     /// T-240-04: build_create_input_schema must exclude Identifier, CreatedAt,
@@ -628,7 +754,10 @@ mod tests {
         let props = schema["properties"].as_object().expect("properties object");
 
         // Excluded fields must be absent
-        assert!(!props.contains_key("id"), "Identifier 'id' must be excluded");
+        assert!(
+            !props.contains_key("id"),
+            "Identifier 'id' must be excluded"
+        );
         assert!(
             !props.contains_key("created_at"),
             "CreatedAt must be excluded"
@@ -647,7 +776,10 @@ mod tests {
         );
 
         // Writable field must be present
-        assert!(props.contains_key("notes"), "FreeText 'notes' must be present");
+        assert!(
+            props.contains_key("notes"),
+            "FreeText 'notes' must be present"
+        );
     }
 
     /// T-240-04: Status absent when SM present; Status present when no SM.
@@ -688,7 +820,10 @@ mod tests {
 
         // Data fields in properties
         assert!(props.contains_key("notes"), "notes must be in properties");
-        assert!(props.contains_key("status"), "status must be in properties (no SM)");
+        assert!(
+            props.contains_key("status"),
+            "status must be in properties (no SM)"
+        );
 
         // Data fields NOT in required
         assert!(
