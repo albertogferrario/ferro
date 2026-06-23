@@ -677,6 +677,130 @@ mod tests {
         );
     }
 
+    // -------------------------------------------------------------------------
+    // Phase 240 Plan 03 RED tests for CRUD verb tool emission.
+    //
+    // These tests assert behaviour that render_exposed_tools does NOT yet
+    // produce — currently there are no render_create/update/delete_tool helpers
+    // and the emission loop block is absent. The helpers + emission block are
+    // implemented in the GREEN commit; these tests turn GREEN there.
+    // -------------------------------------------------------------------------
+
+    /// Fixture: order service with all CRUD flags and mcp_write_ability set.
+    fn order_service_crud() -> ServiceDef {
+        ServiceDef::new("order")
+            .display_name("Order")
+            .mcp_exposed(true)
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .mcp_write_ability("manage-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("notes", DataType::String, FieldMeaning::FreeText)
+    }
+
+    /// Phase 240-03: create_/update_/delete_<svc> tools emitted when flags set.
+    #[test]
+    fn test_crud_tools_emitted_when_flags_set() {
+        let tools = render_exposed_tools(&[order_service_crud()], &McpContext::default())
+            .expect("render ok");
+
+        let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
+        assert!(
+            names.contains(&"create_order"),
+            "create_order must be present; got: {names:?}"
+        );
+        assert!(
+            names.contains(&"update_order"),
+            "update_order must be present; got: {names:?}"
+        );
+        assert!(
+            names.contains(&"delete_order"),
+            "delete_order must be present; got: {names:?}"
+        );
+    }
+
+    /// Phase 240-03: CRUD tools absent when flags are false (default service).
+    #[test]
+    fn test_crud_tools_not_emitted_when_flags_false() {
+        let service = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status);
+
+        let tools = render_exposed_tools(&[service], &McpContext::default()).expect("render ok");
+
+        let names: Vec<&str> = tools.iter().map(|t| t.name.as_ref()).collect();
+        assert!(
+            !names.iter().any(|n| n.starts_with("create_")),
+            "no create_ tool must be present when creatable=false; got: {names:?}"
+        );
+        assert!(
+            !names.iter().any(|n| n.starts_with("update_")),
+            "no update_ tool must be present when updatable=false; got: {names:?}"
+        );
+        assert!(
+            !names.iter().any(|n| n.starts_with("delete_")),
+            "no delete_ tool must be present when deletable=false; got: {names:?}"
+        );
+    }
+
+    /// Phase 240-03: delete_<svc> carries destructiveHint=true.
+    #[test]
+    fn test_delete_tool_has_destructive_hint_true() {
+        let tools = render_exposed_tools(&[order_service_crud()], &McpContext::default())
+            .expect("render ok");
+
+        let delete_tool = tools
+            .iter()
+            .find(|t| t.name.as_ref() == "delete_order")
+            .expect("delete_order must be present");
+
+        let ann = delete_tool
+            .annotations
+            .as_ref()
+            .expect("annotations must be present on delete tool");
+        assert_eq!(
+            ann.destructive_hint,
+            Some(true),
+            "delete_order destructiveHint must be true"
+        );
+        assert_eq!(
+            ann.read_only_hint,
+            Some(false),
+            "delete_order readOnlyHint must be false"
+        );
+    }
+
+    /// Phase 240-03: create_/update_ carry destructiveHint=false.
+    #[test]
+    fn test_create_update_tools_have_destructive_hint_false() {
+        let tools = render_exposed_tools(&[order_service_crud()], &McpContext::default())
+            .expect("render ok");
+
+        for name in &["create_order", "update_order"] {
+            let tool = tools
+                .iter()
+                .find(|t| t.name.as_ref() == *name)
+                .unwrap_or_else(|| panic!("{name} must be present"));
+            let ann = tool
+                .annotations
+                .as_ref()
+                .unwrap_or_else(|| panic!("annotations must be present on {name}"));
+            assert_eq!(
+                ann.destructive_hint,
+                Some(false),
+                "{name} destructiveHint must be false"
+            );
+            assert_eq!(
+                ann.read_only_hint,
+                Some(false),
+                "{name} readOnlyHint must be false"
+            );
+        }
+    }
+
     /// WR-01 regression: intra-service duplicate action names (authoring error)
     /// are NOT renamed by the cross-service pass — one distinct service means
     /// no cross-service collision by definition.
