@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
-status: executing
-stopped_at: Completed 239-02-PLAN.md (ServiceDef resolver accessors + server-injected classifier)
-last_updated: "2026-06-23T16:01:42.405Z"
+status: verifying
+stopped_at: "Completed 239-03-PLAN.md (dispatch soft-delete predicate + SC#3 unit test)"
+last_updated: "2026-06-23T16:27:59.978Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
-  completed_phases: 101
+  completed_phases: 102
   total_plans: 420
-  completed_plans: 418
+  completed_plans: 419
   percent: 100
 ---
 
@@ -32,7 +32,7 @@ Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 d
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Last activity: 2026-06-23
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
@@ -178,6 +178,7 @@ Progress: [██████████] 100%
 | Phase 237-actiongroup-component-dropdownmenu-replacement P01 | 25 | 2 tasks | 2 files |
 | Phase 239-soft-delete-data-model-deleted-at-migration P01 | 25 | 2 tasks | 7 files |
 | Phase 239 P02 | 124 | 2 tasks | 1 files |
+| Phase 239-soft-delete-data-model-deleted-at-migration P03 | 22 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -232,7 +233,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T16:01:42.396Z
-Stopped at: Completed 239-02-PLAN.md (ServiceDef resolver accessors + server-injected classifier)
+Last session: 2026-06-23T16:27:59.970Z
+Stopped at: Completed 239-03-PLAN.md (dispatch soft-delete predicate + SC#3 unit test)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.

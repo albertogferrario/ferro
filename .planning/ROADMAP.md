@@ -3396,7 +3396,7 @@ write-control surface ferro's conventions forbid.
 
 ### Phases
 
-- [ ] **Phase 239: Soft-delete data model + `deleted_at` migration** — Add a nullable `deleted_at` column substrate so soft-delete + non-disclosure can be enforced uniformly.
+- [x] **Phase 239: Soft-delete data model + `deleted_at` migration** — Add a nullable `deleted_at` column substrate so soft-delete + non-disclosure can be enforced uniformly. (completed 2026-06-23)
 - [ ] **Phase 240: CRUD input-schema derivation + `list_` query polish** — Auto-derive `create_`/`update_`/`delete_` input schemas from existing `field()` declarations and extend `list_` with range/sort/pagination.
 - [ ] **Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`** — Mirror `derive_transition_plan` with a CRUD plan and run it through the existing kernel (override registry / idempotency / audit / confirmation reused).
 - [ ] **Phase 242: Write authorization, tenant injection & non-disclosure** — Gate C/U/D on `read_write` scope + `.mcp_write_ability`; inject `tenant_id` server-side; make cross-tenant/soft-deleted targets indistinguishable from "not found".
@@ -3424,10 +3424,10 @@ consumed by CRUD-05 in Phase 242).
      test (the `deleted_at IS NULL` predicate is enforced at the data layer, not per-tool).
   4. `created_at` is set on insert and the tenant column is identified as server-injected
      (never an agent input) at the schema-derivation boundary.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 239-01-PLAN.md — additive deleted_at migration + orders entity sync (SC#1)
 - [x] 239-02-PLAN.md — ServiceDef resolver accessors + is_server_injected_field classifier (SC#2, SC#4)
-- [ ] 239-03-PLAN.md — dispatch resolved_table wiring + deleted_at IS NULL predicate + exclusion test (SC#3)
+- [x] 239-03-PLAN.md — dispatch resolved_table wiring + deleted_at IS NULL predicate + exclusion test (SC#3)
 
 #### Phase 240: CRUD input-schema derivation + `list_` query polish
 **Goal:** Derive correct, safe MCP input schemas for `create_`/`update_`/`delete_<svc>`
@@ -3553,7 +3553,7 @@ validation respectively):
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 239. Soft-delete data model + `deleted_at` migration | 2/3 | In Progress|  |
+| 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete   | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 0/0 | Not started | - |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 0/0 | Not started | - |
 | 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
