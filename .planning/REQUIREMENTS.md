@@ -37,7 +37,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
   `.mcp_write_ability` policy Gate; `tenant_id` is injected server-side and is never an agent
   input (the tenant column is excluded from every write schema). Cross-tenant / soft-deleted
   targets are indistinguishable from "not found" (non-disclosure).
-- [ ] **CRUD-06**: CRUD verbs dispatch through the shipped `framework::write` kernel via a
+- [x] **CRUD-06**: CRUD verbs dispatch through the shipped `framework::write` kernel via a
   derived `derive_crud_plan` (the CRUD analog of `derive_transition_plan`), reusing the
   existing override-hook registry, idempotency, channel-parameterized audit, and confirmation —
   single-source across the MCP and visual write surfaces. Does **not** rebuild the dispatcher.
@@ -65,7 +65,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 | CRUD-03 | Phase 241 | pending |
 | CRUD-04 | Phase 240 | Complete |
 | CRUD-05 | Phase 242 | pending |
-| CRUD-06 | Phase 241 | pending |
+| CRUD-06 | Phase 241 | Complete |
 | CRUD-07 | Phase 242 (verified) | done (5cb17d60) |
 
 **Foundation/integration phases (own no requirement uniquely):**
