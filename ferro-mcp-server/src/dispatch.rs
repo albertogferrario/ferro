@@ -373,6 +373,93 @@ mod tests {
         );
     }
 
+    // ---- Task 1 RED tests: split_op_key, __op filter loop, sort ----
+
+    /// split_op_key splits on the LAST `__` (rfind).
+    #[test]
+    fn test_split_op_key_basic() {
+        // This test verifies split_op_key exists and uses rfind:
+        // expected behavior — field__op
+        assert_eq!(split_op_key("total__gt"), Some(("total", "gt")));
+        assert_eq!(split_op_key("status__in"), Some(("status", "in")));
+        // no __ → None
+        assert_eq!(split_op_key("total"), None);
+        // field with embedded __ → split on LAST __
+        assert_eq!(split_op_key("my__field__lte"), Some(("my__field", "lte")));
+    }
+
+    /// dispatch rejects an unknown op suffix with InvalidFilter.
+    #[tokio::test]
+    async fn test_unknown_op_suffix_returns_error() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+        let result = dispatch(
+            &service,
+            serde_json::json!({"total__badop": 100.0}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "unknown op suffix must be an error");
+        match result.unwrap_err() {
+            crate::Error::InvalidFilter(msg) => {
+                assert!(msg.contains("unknown op suffix"), "msg: {msg}");
+            }
+            other => panic!("expected InvalidFilter, got: {other:?}"),
+        }
+    }
+
+    /// dispatch rejects __in with an empty array.
+    #[tokio::test]
+    async fn test_empty_in_array_returns_error() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+        let result = dispatch(
+            &service,
+            serde_json::json!({"status__in": []}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "empty __in must be an error");
+        match result.unwrap_err() {
+            crate::Error::InvalidFilter(_) => {}
+            other => panic!("expected InvalidFilter, got: {other:?}"),
+        }
+    }
+
+    /// dispatch rejects sort on a non-filterable field.
+    #[tokio::test]
+    async fn test_unknown_sort_field_returns_error() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+        let result = dispatch(
+            &service,
+            serde_json::json!({"sort": "customer_name"}), // EntityName — not is_filter_field
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await;
+        assert!(result.is_err(), "non-sortable field must be an error");
+        match result.unwrap_err() {
+            crate::Error::InvalidFilter(msg) => {
+                assert!(
+                    msg.contains("non-sortable") || msg.contains("non-filterable"),
+                    "msg: {msg}"
+                );
+            }
+            other => panic!("expected InvalidFilter, got: {other:?}"),
+        }
+    }
+
+    // ---- Task 1 RED tests end ----
+
     /// SC#3 / T-239-02: a soft-deleted row is excluded from dispatch results by construction.
     ///
     /// Uses a self-contained in-memory DB — does NOT modify setup_orders_db() — so the
