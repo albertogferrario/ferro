@@ -14,11 +14,22 @@ use rmcp::model::{Tool, ToolAnnotations};
 /// explicit `false` = deny (same semantics as `BaseContext`). Empty in 217.
 /// `scope`: credential scope. `None` = OAuth JWT path (full access);
 /// `"read"` = read-only key; `"read_write"` = full key.
+/// `write_authorized`: pre-evaluated write-ability authorization result set by
+/// the host (Phase 242 / CRUD-05). `Some(true)` = Gate passed; `Some(false)`
+/// = Gate denied; `None` = not evaluated (read-only tools). Enforced
+/// fail-closed in `handle_write_call`. Intentionally separate from
+/// `evaluated_guards` — that map is a visibility filter, not an auth gate.
 #[derive(Debug, Clone, Default)]
 pub struct McpContext {
     pub tenant_id: Option<i64>,
     pub evaluated_guards: HashMap<String, bool>,
     pub scope: Option<String>,
+    /// Phase 242: write-tool authorization result, evaluated by the host via the
+    /// policy Gate (mcp_write_ability). `Some(true)` = authorized; `Some(false)`/`None`
+    /// = deny (fail-closed). This is a DEDICATED authorization signal — it is NOT the
+    /// `evaluated_guards` visibility map (which is a visibility filter, not an auth gate).
+    /// Read tools never consult it.
+    pub write_authorized: Option<bool>,
 }
 
 /// Renders a `ServiceDef` projection into an MCP tool definition.
