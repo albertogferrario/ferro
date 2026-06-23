@@ -27,7 +27,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 
 ### Query
 
-- [ ] **CRUD-04**: `list_<svc>` supports range/comparison filters
+- [x] **CRUD-04**: `list_<svc>` supports range/comparison filters
   (`<field>__{gt,gte,lt,lte,ne,in}`), sort (`field` / `-field`), and `limit`/`offset`
   pagination — on top of the equality filters that already derive.
 
@@ -63,7 +63,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 | CRUD-01 | Phase 240 | partial (declaration surface done; tool + schema derivation pending) |
 | CRUD-02 | Phase 240 | Complete |
 | CRUD-03 | Phase 241 | pending |
-| CRUD-04 | Phase 240 | pending |
+| CRUD-04 | Phase 240 | Complete |
 | CRUD-05 | Phase 242 | pending |
 | CRUD-06 | Phase 241 | pending |
 | CRUD-07 | Phase 242 (verified) | done (5cb17d60) |
