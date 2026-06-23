@@ -436,8 +436,7 @@ mod tests {
             serde_json::Value::String("Alice".to_string())
         );
         assert_eq!(
-            result.total,
-            1,
+            result.total, 1,
             "total count must also exclude the soft-deleted row"
         );
     }
