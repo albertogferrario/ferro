@@ -207,6 +207,43 @@ impl ServiceDef {
         self
     }
 
+    /// Returns the backing table name: explicit `.table()` value or the
+    /// default `format!("{}s", name.to_lowercase())`.
+    ///
+    /// Matches the inline derivation previously at dispatch.rs:123 — the default
+    /// MUST stay byte-identical or existing projections query the wrong table.
+    pub fn resolved_table(&self) -> String {
+        self.table
+            .clone()
+            .unwrap_or_else(|| format!("{}s", self.name.to_lowercase()))
+    }
+
+    /// Returns the soft-delete column name: explicit `.soft_delete_column()` value
+    /// or the default `"deleted_at"`.
+    pub fn resolved_soft_delete_column(&self) -> &str {
+        self.soft_delete_column.as_deref().unwrap_or("deleted_at")
+    }
+
+    /// Returns true if the field must be server-injected and never an agent input.
+    ///
+    /// Covers:
+    /// - Identifier fields (primary key — set by DB auto-increment)
+    /// - CreatedAt fields (set by DB DEFAULT current_timestamp)
+    /// - The tenant column (injected from McpContext, never from agent payload)
+    ///
+    /// This is the schema-derivation boundary Phase 240 consumes to exclude these
+    /// fields from derived write input schemas (T-239-01 mitigation substrate).
+    pub fn is_server_injected_field(&self, field: &FieldDef) -> bool {
+        matches!(
+            field.meaning,
+            FieldMeaning::Identifier | FieldMeaning::CreatedAt
+        ) || self
+            .tenant_column
+            .as_deref()
+            .map(|tc| tc == field.name)
+            .unwrap_or(false)
+    }
+
     /// Adds a required read-write field.
     pub fn field(
         mut self,
@@ -1999,5 +2036,84 @@ mod tests {
         assert_eq!(back.mcp_write_ability.as_deref(), Some("manage-orders"));
         assert_eq!(back.table.as_deref(), Some("orders"));
         assert_eq!(back.soft_delete_column.as_deref(), Some("deleted_at"));
+    }
+
+    // ── Phase 239: resolver accessors ───────────────────────────────────────
+
+    #[test]
+    fn resolved_table_default() {
+        assert_eq!(ServiceDef::new("order").resolved_table(), "orders");
+    }
+
+    #[test]
+    fn resolved_table_default_lowercases() {
+        assert_eq!(ServiceDef::new("Order").resolved_table(), "orders");
+    }
+
+    #[test]
+    fn resolved_table_explicit_override() {
+        assert_eq!(
+            ServiceDef::new("order")
+                .table("purchase_orders")
+                .resolved_table(),
+            "purchase_orders"
+        );
+    }
+
+    #[test]
+    fn resolved_soft_delete_column_default() {
+        assert_eq!(
+            ServiceDef::new("order").resolved_soft_delete_column(),
+            "deleted_at"
+        );
+    }
+
+    #[test]
+    fn resolved_soft_delete_column_explicit_override() {
+        assert_eq!(
+            ServiceDef::new("order")
+                .soft_delete_column("removed_at")
+                .resolved_soft_delete_column(),
+            "removed_at"
+        );
+    }
+
+    // ── Phase 239: is_server_injected_field ─────────────────────────────────
+
+    fn mk_field(name: &str, meaning: FieldMeaning) -> FieldDef {
+        FieldDef {
+            name: name.to_string(),
+            data_type: DataType::String,
+            meaning,
+            required: false,
+            is_list: false,
+            readable: true,
+            writable: true,
+            render_hint: None,
+        }
+    }
+
+    #[test]
+    fn server_injected_identifier() {
+        assert!(ServiceDef::new("order")
+            .is_server_injected_field(&mk_field("id", FieldMeaning::Identifier)));
+    }
+
+    #[test]
+    fn server_injected_created_at() {
+        assert!(ServiceDef::new("order")
+            .is_server_injected_field(&mk_field("created_at", FieldMeaning::CreatedAt)));
+    }
+
+    #[test]
+    fn server_injected_tenant_column() {
+        let svc = ServiceDef::new("order").tenant_column("tenant_id");
+        assert!(svc.is_server_injected_field(&mk_field("tenant_id", FieldMeaning::ForeignKey)));
+    }
+
+    #[test]
+    fn server_injected_false_for_regular_field() {
+        let svc = ServiceDef::new("order").tenant_column("tenant_id");
+        assert!(!svc.is_server_injected_field(&mk_field("customer_name", FieldMeaning::EntityName)));
     }
 }
