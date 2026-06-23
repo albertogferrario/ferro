@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: verifying
-stopped_at: "Completed 239-03-PLAN.md (dispatch soft-delete predicate + SC#3 unit test)"
-last_updated: "2026-06-23T16:35:48.268Z"
+stopped_at: Phase 240 context gathered
+last_updated: "2026-06-23T16:53:22.875Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
@@ -234,7 +234,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T16:27:59.970Z
-Stopped at: Completed 239-03-PLAN.md (dispatch soft-delete predicate + SC#3 unit test)
-Resume file: None
+Last session: 2026-06-23T16:53:22.836Z
+Stopped at: Phase 240 context gathered
+Resume file: .planning/phases/240-crud-input-schema-derivation-list-query-polish/240-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
