@@ -418,6 +418,30 @@ pub async fn handle_request_confirm(
                 return json!({ "error": { "code": -32601, "message": "Method not found" } });
             }
         };
+        // Guard pre-check: mirror the transition-action path (lines 474-491).
+        // Phase 241: the synthesized CRUD delete verb has no preconditions, so this
+        // loop is a correct no-op. Phase 242 wires mcp_write_ability / per-record
+        // guards as preconditions here; this loop is the extension point.
+        let crud_guards: Vec<String> = vec![]; // Phase 242 populates from svc preconditions
+        let _ = svc; // svc used for .deletable + .mcp_exposed lookup and guard derivation above
+        for guard_name in &crud_guards {
+            let passes = match (dispatcher.guard_evaluator)(guard_name, tid, &args, db).await {
+                Ok(p) => p,
+                Err(e) => {
+                    return json!({ "result": write_tool_error_result(json!({
+                        "error_kind": "guard_denied",
+                        "message": format!("precondition '{guard_name}' error: {e}")
+                    })) });
+                }
+            };
+            if !passes {
+                return json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "guard_denied",
+                    "message": format!("precondition '{guard_name}' not met")
+                })) });
+            }
+        }
+
         let token = generate_confirmation_token();
         let record_id = args.get("id").cloned().unwrap_or(Value::Null);
         let binding_payload = json!({
@@ -441,7 +465,6 @@ pub async fn handle_request_confirm(
                 "message": "failed to store confirmation token"
             })) });
         }
-        let _ = svc; // used for the .deletable + .mcp_exposed lookup above
         let tool_result = CallToolResult::structured(json!({
             "confirmation_token": token,
             "expires_in_seconds": ttl_secs
