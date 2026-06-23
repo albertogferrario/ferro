@@ -114,10 +114,21 @@ pub async fn handle_write_call(
     #[cfg(feature = "confirmation")] config: &crate::McpServerConfig,
 ) -> Value {
     // Scope check already ran in handle_tools_call; we are here for the write path.
-    // Suppress unused ctx warning — ctx is available for future extensions (e.g. tracing).
-    let _ = ctx;
-
     let tool_name = call_params["name"].as_str().unwrap_or("").to_string();
+
+    // Phase 242 (CRUD-05, SC#1 second half): write-ability policy Gate, fail-closed.
+    // The host evaluates `.mcp_write_ability` via Gate::authorize_for and sets
+    // `write_authorized`. Absent/false denies. This is a DEDICATED authorization signal,
+    // intentionally separate from `evaluated_guards` (a visibility filter, not an auth gate).
+    // The scope gate (read-key rejects write tools) already ran upstream in handle_tools_call.
+    if ctx.write_authorized != Some(true) {
+        return json!({
+            "error": {
+                "code": -32603,
+                "message": "authorization: write ability denied"
+            }
+        });
+    }
 
     // Phase 220: confirmation tool prefix routing.
     // Check `request_confirm_` before `confirm_` (order matters — confirm_ is a
