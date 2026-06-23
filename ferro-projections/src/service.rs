@@ -244,6 +244,37 @@ impl ServiceDef {
             .unwrap_or(false)
     }
 
+    /// Returns `true` if a field must be excluded from write input schemas
+    /// (create and update). Composes [`Self::is_server_injected_field`] and adds
+    /// UpdatedAt, Sensitive, and list-field exclusions.
+    ///
+    /// `exclude_sm_status`: callers pass `self.state_machine.is_some()`; when `true`,
+    /// a `Status` field is also excluded because the StateMachine sets it server-side
+    /// to the initial state.
+    pub fn is_write_excluded_field(&self, field: &FieldDef, exclude_sm_status: bool) -> bool {
+        // Gate A: server-injected — Identifier, CreatedAt, tenant column (Phase 239)
+        if self.is_server_injected_field(field) {
+            return true;
+        }
+        // Gate B: UpdatedAt — server-managed timestamp (D-05)
+        if matches!(field.meaning, FieldMeaning::UpdatedAt) {
+            return true;
+        }
+        // Gate C: Sensitive — never an agent write input (D-03)
+        if matches!(field.meaning, FieldMeaning::Sensitive) {
+            return true;
+        }
+        // Gate D: list fields — not useful as scalar write inputs (D-03)
+        if field.is_list {
+            return true;
+        }
+        // Gate E: Status under a StateMachine — set server-side (D-04/D-07)
+        if exclude_sm_status && matches!(field.meaning, FieldMeaning::Status) {
+            return true;
+        }
+        false
+    }
+
     /// Adds a required read-write field.
     pub fn field(
         mut self,
@@ -2115,5 +2146,149 @@ mod tests {
     fn server_injected_false_for_regular_field() {
         let svc = ServiceDef::new("order").tenant_column("tenant_id");
         assert!(!svc.is_server_injected_field(&mk_field("customer_name", FieldMeaning::EntityName)));
+    }
+
+    // ── Phase 240: is_write_excluded_field ──────────────────────────────────
+
+    fn mk_field_typed(name: &str, dt: DataType, meaning: FieldMeaning, is_list: bool) -> FieldDef {
+        FieldDef {
+            name: name.to_string(),
+            data_type: dt,
+            meaning,
+            required: true,
+            is_list,
+            readable: true,
+            writable: true,
+            render_hint: None,
+        }
+    }
+
+    #[test]
+    fn is_write_excluded_field_gates() {
+        use crate::state::{StateDef as SD, StateMachine as SM, Transition as TR};
+
+        let minimal_sm = SM::new("lifecycle")
+            .initial("a")
+            .state(SD::new("a"))
+            .state(SD::new("b").final_state())
+            .transition(TR::new("a", "go", "b"));
+
+        // Cases: (field_name, data_type, meaning, is_list, sm_present, expected_excluded)
+        struct Case {
+            name: &'static str,
+            dt: DataType,
+            meaning: FieldMeaning,
+            is_list: bool,
+            sm_present: bool,
+            expected: bool,
+        }
+
+        let cases = [
+            // Gate A — Identifier (server-injected)
+            Case {
+                name: "id",
+                dt: DataType::Integer,
+                meaning: FieldMeaning::Identifier,
+                is_list: false,
+                sm_present: false,
+                expected: true,
+            },
+            // Gate A — CreatedAt (server-injected)
+            Case {
+                name: "created_at",
+                dt: DataType::DateTime,
+                meaning: FieldMeaning::CreatedAt,
+                is_list: false,
+                sm_present: false,
+                expected: true,
+            },
+            // Gate A — tenant column (server-injected); tested via tenant_column() below
+            // Gate B — UpdatedAt
+            Case {
+                name: "updated_at",
+                dt: DataType::DateTime,
+                meaning: FieldMeaning::UpdatedAt,
+                is_list: false,
+                sm_present: false,
+                expected: true,
+            },
+            // Gate C — Sensitive
+            Case {
+                name: "password",
+                dt: DataType::String,
+                meaning: FieldMeaning::Sensitive,
+                is_list: false,
+                sm_present: false,
+                expected: true,
+            },
+            // Gate D — list field (any meaning)
+            Case {
+                name: "tags",
+                dt: DataType::String,
+                meaning: FieldMeaning::Category,
+                is_list: true,
+                sm_present: false,
+                expected: true,
+            },
+            // Gate E — Status excluded when SM present
+            Case {
+                name: "status",
+                dt: DataType::String,
+                meaning: FieldMeaning::Status,
+                is_list: false,
+                sm_present: true,
+                expected: true,
+            },
+            // Gate E — Status NOT excluded when no SM
+            Case {
+                name: "status",
+                dt: DataType::String,
+                meaning: FieldMeaning::Status,
+                is_list: false,
+                sm_present: false,
+                expected: false,
+            },
+            // Ordinary writable field — never excluded (both SM flags)
+            Case {
+                name: "notes",
+                dt: DataType::String,
+                meaning: FieldMeaning::FreeText,
+                is_list: false,
+                sm_present: false,
+                expected: false,
+            },
+            Case {
+                name: "notes",
+                dt: DataType::String,
+                meaning: FieldMeaning::FreeText,
+                is_list: false,
+                sm_present: true,
+                expected: false,
+            },
+        ];
+
+        for c in &cases {
+            let field = mk_field_typed(c.name, c.dt, c.meaning.clone(), c.is_list);
+            let svc = if c.sm_present {
+                ServiceDef::new("order").state_machine(minimal_sm.clone())
+            } else {
+                ServiceDef::new("order")
+            };
+            let got = svc.is_write_excluded_field(&field, c.sm_present);
+            assert_eq!(
+                got, c.expected,
+                "field '{}' (meaning={:?}, is_list={}, sm_present={}): expected excluded={}, got={}",
+                c.name, c.meaning, c.is_list, c.sm_present, c.expected, got
+            );
+        }
+
+        // Gate A — tenant column case (requires tenant_column set on service)
+        let tenant_field =
+            mk_field_typed("org_id", DataType::Integer, FieldMeaning::ForeignKey, false);
+        let svc_with_tenant = ServiceDef::new("order").tenant_column("org_id");
+        assert!(
+            svc_with_tenant.is_write_excluded_field(&tenant_field, false),
+            "tenant column must be write-excluded regardless of SM flag"
+        );
     }
 }
