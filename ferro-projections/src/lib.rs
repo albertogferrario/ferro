@@ -14,7 +14,9 @@ mod state;
 pub use action::{ActionDef, GuardDef, InputDef};
 pub use derive::derive_intents;
 pub use error::Error;
-pub use executor::{derive_transition_plan, TransitionPlan};
+pub use executor::{
+    derive_crud_plan, derive_transition_plan, CrudPlan, CrudVerb, TenantColumn, TransitionPlan,
+};
 pub use field::{infer_meaning, DataType, FieldDef, FieldMeaning, RenderHint};
 pub use intent::{Intent, IntentHint, IntentScore};
 pub use relationship::{Cardinality, NavigationHint, RelationshipDef};

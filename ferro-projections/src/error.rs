@@ -30,6 +30,10 @@ pub enum Error {
     /// transitions; a `TransitionPlan` cannot pick one unambiguously.
     #[error("event '{event}' fans out to multiple target states — ambiguous transition plan")]
     AmbiguousTransition { event: String },
+    /// A CRUD verb was requested for a service that has not opted into it
+    /// (`.creatable(false)`, `.updatable(false)`, or `.deletable(false)`).
+    #[error("crud verb not enabled for service: {0}")]
+    VerbNotEnabled(String),
 }
 
 #[cfg(test)]

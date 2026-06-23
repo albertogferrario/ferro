@@ -1,16 +1,20 @@
-//! Pure, serializable derivation of state-transition write plans.
+//! Pure, serializable derivation of write plans.
 //!
 //! `derive_transition_plan` reads a declared [`StateMachine`](crate::StateMachine)
 //! plus an [`ActionDef`](crate::ActionDef) and produces a [`TransitionPlan`] — the
 //! transition facts (`from_states` → `event` → `to_state`, guard, effects) the
-//! consumer runtime needs to execute a write. The plan is **data, not behavior**:
-//! this crate touches no database and runs no I/O. The single source of truth for
-//! the target state is `Transition.to`, so the consumer no longer hand-writes a
-//! `match action_name => new_status`.
+//! consumer runtime needs to execute a write.
+//!
+//! `derive_crud_plan` reads a [`ServiceDef`](crate::ServiceDef) and a [`CrudVerb`]
+//! and produces a [`CrudPlan`] — the CRUD write facts (table, column set, soft-delete
+//! predicate) the `framework::write` kernel needs to execute a generic INSERT/UPDATE/
+//! soft-delete. Both plans are **data, not behavior**: this crate touches no database
+//! and runs no I/O.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::field::FieldMeaning;
 use crate::state::Transition;
 
 /// A serializable description of a state-transition write, derived from the
@@ -112,6 +116,171 @@ pub fn derive_transition_plan(
         guard,
         effects,
     })
+}
+
+/// The three generic CRUD write verbs derived from a projection's opt-in flags.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CrudVerb {
+    Create,
+    Update,
+    Delete,
+}
+
+/// Tenant-scope predicate slot. Phase 241 leaves this `None` on every plan;
+/// Phase 242 fills it (column name only — the runtime `tenant_id` is injected by
+/// the executor from the `dispatch_write` `tenant_id` parameter, never stored here).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TenantColumn {
+    pub column: String,
+}
+
+/// A pure, serializable CRUD write plan — the data-only analog of [`TransitionPlan`].
+///
+/// Carries no behavior: `framework::write::execute_crud_plan` interprets it into
+/// parameterized SQL. Values are [`serde_json::Value`] because this crate has no
+/// sea-orm dependency (the schema-only boundary); the framework executor coerces
+/// `serde_json::Value` to the SQL binding type at execution time.
+///
+/// # created_at contract
+///
+/// `created_at` is **not** included in `CrudPlan::Create.columns`. The framework
+/// executor injects it as a server-side `datetime('now')` / `NOW()` literal.
+/// This keeps the plan free of magic sentinels and matches the DB DEFAULT behavior.
+///
+/// # tenant_column contract (D-09)
+///
+/// Every variant carries `tenant_column: Option<TenantColumn>`, always `None` in
+/// Phase 241. Phase 242 sets `Some(TenantColumn { column })` so the executor can
+/// inject the runtime `tenant_id` without reworking the plan struct.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub enum CrudPlan {
+    /// Generic INSERT: user-supplied writable fields plus server-set initial
+    /// Status (when a StateMachine exists). `created_at` is server-injected by
+    /// the executor (not present in `columns`).
+    Create {
+        table: String,
+        /// Ordered (column, value) pairs: user-supplied writable fields first,
+        /// then server-set Status = initial state (if StateMachine declared).
+        columns: Vec<(String, serde_json::Value)>,
+        /// None in Phase 241; Phase 242 sets `Some(TenantColumn { .. })`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tenant_column: Option<TenantColumn>,
+    },
+    /// Generic UPDATE (patch semantics): only supplied writable fields change.
+    /// The executor always emits `AND <soft_delete_column> IS NULL` (CRUD-03 / SC#2).
+    Update {
+        table: String,
+        id_column: String,
+        id_value: serde_json::Value,
+        /// Only the supplied writable fields (patch semantics).
+        patch: Vec<(String, serde_json::Value)>,
+        /// Always present — executor emits `AND <col> IS NULL` so a soft-deleted
+        /// row is unaddressable (CRUD-03 / SC#2).
+        soft_delete_column: String,
+        /// None in Phase 241; Phase 242 sets `Some(TenantColumn { .. })`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tenant_column: Option<TenantColumn>,
+    },
+    /// Generic soft-DELETE: sets `soft_delete_column = now` (never a physical DELETE).
+    Delete {
+        table: String,
+        id_column: String,
+        id_value: serde_json::Value,
+        /// Set to `datetime('now')` / `NOW()` by the executor (soft-delete).
+        soft_delete_column: String,
+        /// None in Phase 241; Phase 242 sets `Some(TenantColumn { .. })`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tenant_column: Option<TenantColumn>,
+    },
+}
+
+/// Derives a pure [`CrudPlan`] for `verb` from the service declaration and agent inputs.
+///
+/// Mirrors `derive_transition_plan`: pure, side-effect-free, no I/O. Reuses the
+/// Phase 239/240 resolver accessors so the column sets are single-sourced with the
+/// schema builders.
+///
+/// Phase 241 leaves `tenant_column = None` on every variant (D-09); Phase 242 fills it.
+///
+/// # Errors
+/// - [`Error::VerbNotEnabled`](crate::Error::VerbNotEnabled) — the service has not
+///   opted into the requested verb (`.creatable(false)`, etc.).
+pub fn derive_crud_plan(
+    svc: &crate::ServiceDef,
+    verb: CrudVerb,
+    inputs: &serde_json::Value,
+) -> Result<CrudPlan, crate::Error> {
+    let table = svc.resolved_table();
+    let has_sm = svc.state_machine.is_some();
+
+    match verb {
+        CrudVerb::Create => {
+            if !svc.creatable {
+                return Err(crate::Error::VerbNotEnabled(format!("{}.create", svc.name)));
+            }
+            // Collect user-supplied writable fields (excludes Identifier, CreatedAt,
+            // UpdatedAt, Sensitive, list fields, and Status when SM exists).
+            let mut columns: Vec<(String, serde_json::Value)> = svc
+                .fields
+                .iter()
+                .filter(|f| !svc.is_write_excluded_field(f, has_sm))
+                .filter_map(|f| inputs.get(&f.name).map(|v| (f.name.clone(), v.clone())))
+                .collect();
+            // Server-set: Status = initial state when a StateMachine is declared.
+            if let Some(sm) = svc.state_machine.as_ref() {
+                if let Some(status_field) = svc
+                    .fields
+                    .iter()
+                    .find(|f| matches!(f.meaning, FieldMeaning::Status))
+                {
+                    columns.push((
+                        status_field.name.clone(),
+                        serde_json::json!(sm.initial_state),
+                    ));
+                }
+            }
+            // Note: created_at is NOT added here — the executor injects it server-side.
+            Ok(CrudPlan::Create {
+                table,
+                columns,
+                tenant_column: None,
+            })
+        }
+        CrudVerb::Update => {
+            if !svc.updatable {
+                return Err(crate::Error::VerbNotEnabled(format!("{}.update", svc.name)));
+            }
+            let id_value = inputs.get("id").cloned().unwrap_or(serde_json::Value::Null);
+            // Patch: only the supplied writable fields (Status excluded when SM exists).
+            let patch = svc
+                .fields
+                .iter()
+                .filter(|f| !svc.is_write_excluded_field(f, has_sm))
+                .filter_map(|f| inputs.get(&f.name).map(|v| (f.name.clone(), v.clone())))
+                .collect();
+            Ok(CrudPlan::Update {
+                table,
+                id_column: "id".into(),
+                id_value,
+                patch,
+                soft_delete_column: svc.resolved_soft_delete_column().to_string(),
+                tenant_column: None,
+            })
+        }
+        CrudVerb::Delete => {
+            if !svc.deletable {
+                return Err(crate::Error::VerbNotEnabled(format!("{}.delete", svc.name)));
+            }
+            Ok(CrudPlan::Delete {
+                table,
+                id_column: "id".into(),
+                id_value: inputs.get("id").cloned().unwrap_or(serde_json::Value::Null),
+                soft_delete_column: svc.resolved_soft_delete_column().to_string(),
+                tenant_column: None,
+            })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -248,5 +417,247 @@ mod tests {
         let json = serde_json::to_string(&plan).unwrap();
         let back: TransitionPlan = serde_json::from_str(&json).unwrap();
         assert_eq!(plan, back);
+    }
+
+    // ── CRUD plan derivation tests ──────────────────────────────────────────
+
+    use crate::field::{DataType, FieldMeaning};
+
+    /// CRUD-capable order service with an SM (status excluded from create/update)
+    /// and two writable data fields: `amount` (Money) and `note` (FreeText).
+    fn crud_order_service() -> ServiceDef {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .transition(Transition::new("draft", "submit", "submitted"));
+
+        ServiceDef::new("order")
+            .mcp_write_ability("manage-orders")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .state_machine(machine)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("amount", DataType::String, FieldMeaning::Money)
+            .field("note", DataType::String, FieldMeaning::FreeText)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+    }
+
+    /// Like crud_order_service but without a StateMachine (status is writable).
+    fn crud_order_service_no_sm() -> ServiceDef {
+        ServiceDef::new("order")
+            .mcp_write_ability("manage-orders")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("amount", DataType::String, FieldMeaning::Money)
+            .field("note", DataType::String, FieldMeaning::FreeText)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+    }
+
+    #[test]
+    fn derive_crud_plan_create() {
+        let svc = crud_order_service();
+        let inputs = serde_json::json!({ "amount": "100.00", "note": "rush order" });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap();
+
+        let CrudPlan::Create {
+            ref table,
+            ref columns,
+            ref tenant_column,
+        } = plan
+        else {
+            panic!("expected CrudPlan::Create, got {plan:?}");
+        };
+
+        assert_eq!(table, "orders"); // resolved_table(): "order" + "s"
+
+        // User-supplied writable fields present
+        assert!(
+            columns
+                .iter()
+                .any(|(col, val)| col == "amount" && val == &serde_json::json!("100.00")),
+            "expected amount in columns"
+        );
+        assert!(
+            columns
+                .iter()
+                .any(|(col, val)| col == "note" && val == &serde_json::json!("rush order")),
+            "expected note in columns"
+        );
+
+        // Server-set initial status (SM declared → status = "draft")
+        assert!(
+            columns
+                .iter()
+                .any(|(col, val)| col == "status" && val == &serde_json::json!("draft")),
+            "expected status=draft in columns when SM exists"
+        );
+
+        // Server-injected fields NOT present (id, created_at excluded)
+        assert!(
+            !columns.iter().any(|(col, _)| col == "id"),
+            "id must not be in columns"
+        );
+        assert!(
+            !columns.iter().any(|(col, _)| col == "created_at"),
+            "created_at must not be in columns (executor injects it)"
+        );
+
+        // D-09: tenant_column is None
+        assert_eq!(tenant_column, &None);
+    }
+
+    #[test]
+    fn derive_crud_plan_create_no_sm_status_included() {
+        // Without a StateMachine, Status IS a writable input field.
+        let svc = crud_order_service_no_sm();
+        let inputs = serde_json::json!({ "amount": "50.00", "status": "active", "note": "test" });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap();
+
+        let CrudPlan::Create { ref columns, .. } = plan else {
+            panic!("expected CrudPlan::Create");
+        };
+
+        // Status present because no SM (exclude_sm_status = false)
+        assert!(
+            columns
+                .iter()
+                .any(|(col, val)| col == "status" && val == &serde_json::json!("active")),
+            "status must be in columns when no SM"
+        );
+    }
+
+    #[test]
+    fn derive_crud_plan_update() {
+        let svc = crud_order_service();
+        let inputs = serde_json::json!({ "id": 42, "amount": "200.00" });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Update, &inputs).unwrap();
+
+        let CrudPlan::Update {
+            ref table,
+            ref id_column,
+            ref id_value,
+            ref patch,
+            ref soft_delete_column,
+            ref tenant_column,
+        } = plan
+        else {
+            panic!("expected CrudPlan::Update, got {plan:?}");
+        };
+
+        assert_eq!(table, "orders");
+        assert_eq!(id_column, "id");
+        assert_eq!(id_value, &serde_json::json!(42));
+
+        // Only supplied field in patch
+        assert!(
+            patch
+                .iter()
+                .any(|(col, val)| col == "amount" && val == &serde_json::json!("200.00")),
+            "expected amount in patch"
+        );
+        // Unsupplied field not in patch (patch semantics)
+        assert!(
+            !patch.iter().any(|(col, _)| col == "note"),
+            "note must not be in patch (not supplied)"
+        );
+        // Status excluded because SM exists
+        assert!(
+            !patch.iter().any(|(col, _)| col == "status"),
+            "status must not be in patch when SM exists"
+        );
+        // id not in patch (server-injected / Identifier)
+        assert!(
+            !patch.iter().any(|(col, _)| col == "id"),
+            "id must not be in patch"
+        );
+
+        // soft_delete_column from resolved_soft_delete_column() = "deleted_at"
+        assert_eq!(soft_delete_column, "deleted_at");
+
+        // D-09: tenant_column is None
+        assert_eq!(tenant_column, &None);
+    }
+
+    #[test]
+    fn derive_crud_plan_delete() {
+        let svc = crud_order_service();
+        let inputs = serde_json::json!({ "id": 7 });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Delete, &inputs).unwrap();
+
+        let CrudPlan::Delete {
+            ref table,
+            ref id_column,
+            ref id_value,
+            ref soft_delete_column,
+            ref tenant_column,
+        } = plan
+        else {
+            panic!("expected CrudPlan::Delete, got {plan:?}");
+        };
+
+        assert_eq!(table, "orders");
+        assert_eq!(id_column, "id");
+        assert_eq!(id_value, &serde_json::json!(7));
+        assert_eq!(soft_delete_column, "deleted_at");
+        assert_eq!(tenant_column, &None);
+    }
+
+    #[test]
+    fn derive_crud_plan_verb_not_enabled() {
+        // Service with creatable/updatable/deletable all false (defaults)
+        let svc = ServiceDef::new("product")
+            .mcp_write_ability("manage-products")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName);
+
+        let inputs = serde_json::json!({ "name": "Widget" });
+
+        let err_create = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap_err();
+        assert!(
+            matches!(err_create, crate::Error::VerbNotEnabled(ref s) if s.contains("product.create")),
+            "expected VerbNotEnabled for create, got {err_create:?}"
+        );
+
+        let err_update = super::derive_crud_plan(&svc, CrudVerb::Update, &inputs).unwrap_err();
+        assert!(
+            matches!(err_update, crate::Error::VerbNotEnabled(ref s) if s.contains("product.update")),
+            "expected VerbNotEnabled for update, got {err_update:?}"
+        );
+
+        let err_delete = super::derive_crud_plan(&svc, CrudVerb::Delete, &inputs).unwrap_err();
+        assert!(
+            matches!(err_delete, crate::Error::VerbNotEnabled(ref s) if s.contains("product.delete")),
+            "expected VerbNotEnabled for delete, got {err_delete:?}"
+        );
+    }
+
+    #[test]
+    fn crud_plan_serde_round_trip() {
+        let svc = crud_order_service();
+        let inputs = serde_json::json!({ "amount": "50.00" });
+
+        // Create round-trip
+        let create_plan = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap();
+        let json = serde_json::to_string(&create_plan).unwrap();
+        let back: CrudPlan = serde_json::from_str(&json).unwrap();
+        assert_eq!(create_plan, back);
+
+        // Update round-trip
+        let update_inputs = serde_json::json!({ "id": 1, "amount": "75.00" });
+        let update_plan = super::derive_crud_plan(&svc, CrudVerb::Update, &update_inputs).unwrap();
+        let json = serde_json::to_string(&update_plan).unwrap();
+        let back: CrudPlan = serde_json::from_str(&json).unwrap();
+        assert_eq!(update_plan, back);
+
+        // Delete round-trip
+        let delete_inputs = serde_json::json!({ "id": 3 });
+        let delete_plan = super::derive_crud_plan(&svc, CrudVerb::Delete, &delete_inputs).unwrap();
+        let json = serde_json::to_string(&delete_plan).unwrap();
+        let back: CrudPlan = serde_json::from_str(&json).unwrap();
+        assert_eq!(delete_plan, back);
     }
 }
