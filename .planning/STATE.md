@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: executing
-stopped_at: Completed 239-01-PLAN.md (deleted_at migration + entity sync)
-last_updated: "2026-06-23T15:57:11.022Z"
+stopped_at: Completed 239-02-PLAN.md (ServiceDef resolver accessors + server-injected classifier)
+last_updated: "2026-06-23T16:01:42.405Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
   completed_phases: 101
   total_plans: 420
-  completed_plans: 417
-  percent: 99
+  completed_plans: 418
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
 Phase: 239 (Soft-delete data model + deleted_at migration) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -177,6 +177,7 @@ Progress: [██████████] 100%
 | Phase 238 P04 | 420 | 2 tasks | 1 files |
 | Phase 237-actiongroup-component-dropdownmenu-replacement P01 | 25 | 2 tasks | 2 files |
 | Phase 239-soft-delete-data-model-deleted-at-migration P01 | 25 | 2 tasks | 7 files |
+| Phase 239 P02 | 124 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -231,7 +232,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T15:57:11.013Z
-Stopped at: Completed 239-01-PLAN.md (deleted_at migration + entity sync)
+Last session: 2026-06-23T16:01:42.396Z
+Stopped at: Completed 239-02-PLAN.md (ServiceDef resolver accessors + server-injected classifier)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
