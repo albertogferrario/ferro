@@ -139,7 +139,11 @@ pub async fn dispatch(
         None
     };
 
-    // Parse sort into (column, direction), validated against the is_filter_field allowlist.
+    // Parse sort into (column, direction). A field is sortable if it is eligible for
+    // equality (is_filter_field) OR range (is_range_filter_field) filtering — the latter
+    // admits ordered numeric meanings (Money/Quantity/Percentage) that the equality
+    // allowlist excludes but which the schema advertises range ops on, so a field that
+    // can be range-filtered can also be sorted.
     let parsed_sort: Option<(String, &'static str)> = match sort_param.as_deref() {
         None => None,
         Some(s) => {
@@ -149,7 +153,9 @@ pub async fn dispatch(
                 (s, "ASC")
             };
             match service.fields.iter().find(|f| f.name == col) {
-                Some(f) if is_filter_field(f) => Some((col.to_string(), dir)),
+                Some(f) if is_filter_field(f) || is_range_filter_field(f) => {
+                    Some((col.to_string(), dir))
+                }
                 _ => {
                     return Err(crate::Error::InvalidFilter(format!(
                         "unknown or non-sortable field: {col}"

@@ -477,4 +477,60 @@ mod tests {
             "NTI envelope structuredContent.error_kind must be 'not_yet_implemented'"
         );
     }
+
+    /// Phase 240-03 WR-04 regression: the NTI envelope must be gated on the matching
+    /// opt-in flag. A service that did NOT opt into create emits no `create_<svc>` tool,
+    /// so a `create_<svc>` call must fall through to the genuine -32601 "unknown tool"
+    /// path — returning a misleading not_yet_implemented envelope would advertise a tool
+    /// that does not exist.
+    #[tokio::test]
+    async fn crud_nti_not_returned_when_verb_flag_disabled() {
+        let db = setup_orders_db().await;
+
+        // creatable is NOT set (default false) — no create_order tool is emitted.
+        let service = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status);
+
+        let call_params = serde_json::json!({
+            "name": "create_order",
+            "arguments": { "status": "pending" }
+        });
+
+        let ctx = McpContext {
+            scope: Some("read_write".to_string()),
+            ..Default::default()
+        };
+
+        let noop_dispatcher = crate::WriteDispatcher::new(
+            Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+            Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        );
+
+        let response = handle_tools_call(
+            call_params,
+            &[service],
+            &db,
+            Some(1),
+            &ctx,
+            &noop_dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
+        )
+        .await;
+
+        // Must NOT be an NTI envelope — an unflagged verb has no tool, so this is -32601.
+        assert!(
+            response.get("result").is_none(),
+            "an unflagged CRUD verb must not return a not_yet_implemented result envelope"
+        );
+        assert_eq!(
+            response["error"]["code"].as_i64(),
+            Some(-32601),
+            "calling a non-emitted CRUD verb must return -32601 (unknown tool), not NTI"
+        );
+    }
 }

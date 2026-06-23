@@ -259,7 +259,7 @@ pub fn build_create_input_schema(service: &ServiceDef) -> crate::Result<serde_js
         if let serde_json::Value::Object(ref mut m) = prop {
             m.insert(
                 "description".into(),
-                serde_json::Value::String(field.name.clone()),
+                serde_json::Value::String(format!("Value for the {} field", field.name)),
             );
         }
         properties.insert(field.name.clone(), prop);
@@ -308,6 +308,12 @@ pub fn build_update_input_schema(service: &ServiceDef) -> crate::Result<serde_js
     let exclude_sm_status = service.state_machine.is_some();
     // Data fields: same exclusion predicate as create; all optional (patch semantics D-06).
     for field in &service.fields {
+        // Explicitly skip the identifier — it was already injected above as the required
+        // target. is_write_excluded_field also drops it (Gate A), but skipping here makes
+        // the patch loop robust to any future relaxation of that gate (no duplicate id prop).
+        if matches!(field.meaning, FieldMeaning::Identifier) {
+            continue;
+        }
         if service.is_write_excluded_field(field, exclude_sm_status) {
             continue;
         }
@@ -315,7 +321,7 @@ pub fn build_update_input_schema(service: &ServiceDef) -> crate::Result<serde_js
         if let serde_json::Value::Object(ref mut m) = prop {
             m.insert(
                 "description".into(),
-                serde_json::Value::String(field.name.clone()),
+                serde_json::Value::String(format!("New value for the {} field", field.name)),
             );
         }
         properties.insert(field.name.clone(), prop);
@@ -344,7 +350,16 @@ pub fn build_delete_input_schema(service: &ServiceDef) -> crate::Result<serde_js
         .iter()
         .find(|f| matches!(f.meaning, FieldMeaning::Identifier))
     {
-        let prop = data_type_to_json_schema(id_field.data_type);
+        let mut prop = data_type_to_json_schema(id_field.data_type);
+        if let serde_json::Value::Object(ref mut m) = prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(format!(
+                    "ID of the {} record to delete",
+                    service.display_name.as_deref().unwrap_or(&service.name)
+                )),
+            );
+        }
         properties.insert(id_field.name.clone(), prop);
         required_fields.push(id_field.name.clone());
     }
