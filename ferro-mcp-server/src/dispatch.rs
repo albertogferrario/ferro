@@ -172,7 +172,7 @@ pub async fn dispatch(
     // IS NULL has no bound value.
     if service.soft_delete_column.is_some() {
         let col = service.resolved_soft_delete_column();
-        where_clauses.push(format!("\"{}\" IS NULL", col));
+        where_clauses.push(format!("\"{col}\" IS NULL"));
         // No values.push() — IS NULL takes no bound parameter.
         // idx is NOT incremented: LIMIT/OFFSET placeholders keep correct indices on Postgres.
     }
@@ -370,6 +370,75 @@ mod tests {
             result.rows.len(),
             4,
             "non-tenant projection returns all 4 rows"
+        );
+    }
+
+    /// SC#3 / T-239-02: a soft-deleted row is excluded from dispatch results by construction.
+    ///
+    /// Uses a self-contained in-memory DB — does NOT modify setup_orders_db() — so the
+    /// existing tenant tests remain coupling-free.
+    #[tokio::test]
+    async fn soft_delete_excluded() {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("sqlite connect");
+
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_name TEXT NOT NULL,
+                total REAL NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                tenant_id INTEGER NOT NULL,
+                deleted_at TEXT NULL
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create table");
+
+        // Seed: 1 active row (deleted_at NULL), 1 soft-deleted row (deleted_at non-NULL).
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "INSERT INTO orders (customer_name, total, status, tenant_id, deleted_at) VALUES
+                ('Alice', 100.0, 'pending', 1, NULL),
+                ('Bob',   200.0, 'shipped', 1, '2026-06-23 12:00:00')"
+                .to_string(),
+        ))
+        .await
+        .expect("seed rows");
+
+        let service = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .soft_delete_column("deleted_at")
+            .tenant_column("tenant_id")
+            .mcp_ability("view-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+            .field("tenant_id", DataType::Integer, FieldMeaning::ForeignKey);
+
+        let result = dispatch(&service, serde_json::json!({}), 10, 0, &db, Some(1))
+            .await
+            .expect("dispatch ok");
+
+        assert_eq!(
+            result.rows.len(),
+            1,
+            "soft-deleted row must be excluded; only 1 active row"
+        );
+        assert_eq!(
+            result.rows[0]["customer_name"],
+            serde_json::Value::String("Alice".to_string())
+        );
+        assert_eq!(
+            result.total,
+            1,
+            "total count must also exclude the soft-deleted row"
         );
     }
 }
