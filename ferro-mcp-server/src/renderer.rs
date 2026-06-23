@@ -86,6 +86,26 @@ pub fn render_exposed_tools(
                 tagged.push((service.name.clone(), tool));
             }
         }
+
+        // Phase 240: CRUD verb emission — schema only; execution wired in Phase 241.
+        // Gated on the per-flag fields; disambiguation is safe because CRUD verb names
+        // embed the service name (create_order, update_order, delete_order) and can
+        // never collide across services.
+        if service.creatable {
+            if let Some(tool) = render_create_tool(service)? {
+                tagged.push((service.name.clone(), tool));
+            }
+        }
+        if service.updatable {
+            if let Some(tool) = render_update_tool(service)? {
+                tagged.push((service.name.clone(), tool));
+            }
+        }
+        if service.deletable {
+            if let Some(tool) = render_delete_tool(service)? {
+                tagged.push((service.name.clone(), tool));
+            }
+        }
     }
 
     // D-01 collision pass: write tools whose bare action.name collides across services
@@ -211,6 +231,86 @@ fn render_action_tool(
         .read_only(false)
         .destructive(action.transition_trigger.is_some()); // D-04
 
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders the `create_<svc>` CRUD verb tool derived from the service's field set.
+///
+/// Schema comes from [`crate::schema::build_create_input_schema`] — no separately
+/// declared schema. `destructiveHint=false`; `readOnlyHint=false`. Returns `None`
+/// only on schema-build error propagated via `ProjError::Render`.
+fn render_create_tool(service: &ServiceDef) -> std::result::Result<Option<Tool>, ProjError> {
+    let name = format!("create_{}", service.name);
+    let display_name = service.display_name.as_deref().unwrap_or(&service.name);
+    let description = format!("Create a new {display_name} record");
+
+    let schema_value = crate::schema::build_create_input_schema(service)
+        .map_err(|e| ProjError::Render(e.to_string()))?;
+    let schema_map = match schema_value {
+        serde_json::Value::Object(m) => m,
+        _ => {
+            return Err(ProjError::Render(
+                "create inputSchema must be an object".into(),
+            ))
+        }
+    };
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(false);
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders the `update_<svc>` CRUD verb tool (patch semantics).
+///
+/// Schema comes from [`crate::schema::build_update_input_schema`] — identifier
+/// injected as sole required param; all data fields optional. `destructiveHint=false`.
+fn render_update_tool(service: &ServiceDef) -> std::result::Result<Option<Tool>, ProjError> {
+    let name = format!("update_{}", service.name);
+    let display_name = service.display_name.as_deref().unwrap_or(&service.name);
+    let description = format!("Update an existing {display_name} record (patch semantics)");
+
+    let schema_value = crate::schema::build_update_input_schema(service)
+        .map_err(|e| ProjError::Render(e.to_string()))?;
+    let schema_map = match schema_value {
+        serde_json::Value::Object(m) => m,
+        _ => {
+            return Err(ProjError::Render(
+                "update inputSchema must be an object".into(),
+            ))
+        }
+    };
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(false);
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders the `delete_<svc>` CRUD verb tool (soft-delete).
+///
+/// Schema comes from [`crate::schema::build_delete_input_schema`] — identifier
+/// required; `confirmation_token` advertised but not enforced until Phase 241/242.
+/// `destructiveHint=true` because the operation removes a record.
+fn render_delete_tool(service: &ServiceDef) -> std::result::Result<Option<Tool>, ProjError> {
+    let name = format!("delete_{}", service.name);
+    let display_name = service.display_name.as_deref().unwrap_or(&service.name);
+    let description = format!("Soft-delete a {display_name} record");
+
+    let schema_value = crate::schema::build_delete_input_schema(service)
+        .map_err(|e| ProjError::Render(e.to_string()))?;
+    let schema_map = match schema_value {
+        serde_json::Value::Object(m) => m,
+        _ => {
+            return Err(ProjError::Render(
+                "delete inputSchema must be an object".into(),
+            ))
+        }
+    };
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(true);
     Ok(Some(
         Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
     ))
