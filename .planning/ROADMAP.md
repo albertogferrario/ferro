@@ -3424,8 +3424,8 @@ consumed by CRUD-05 in Phase 242).
      test (the `deleted_at IS NULL` predicate is enforced at the data layer, not per-tool).
   4. `created_at` is set on insert and the tenant column is identified as server-injected
      (never an agent input) at the schema-derivation boundary.
-**Plans:** 3 plans (2 waves)
-- [ ] 239-01-PLAN.md — additive deleted_at migration + orders entity sync (SC#1)
+**Plans:** 1/3 plans executed
+- [x] 239-01-PLAN.md — additive deleted_at migration + orders entity sync (SC#1)
 - [ ] 239-02-PLAN.md — ServiceDef resolver accessors + is_server_injected_field classifier (SC#2, SC#4)
 - [ ] 239-03-PLAN.md — dispatch resolved_table wiring + deleted_at IS NULL predicate + exclusion test (SC#3)
 
@@ -3553,7 +3553,7 @@ validation respectively):
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 239. Soft-delete data model + `deleted_at` migration | 0/0 | Not started | - |
+| 239. Soft-delete data model + `deleted_at` migration | 1/3 | In Progress|  |
 | 240. CRUD input-schema derivation + `list_` query polish | 0/0 | Not started | - |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 0/0 | Not started | - |
 | 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
