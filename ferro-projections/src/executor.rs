@@ -717,4 +717,101 @@ mod tests {
             "expected Validation error for null id on delete, got {err_null:?}"
         );
     }
+
+    // ── Task 1: tenant_column derivation tests (RED → GREEN in Task 1 impl) ──
+
+    /// Build a CRUD-capable service WITH a tenant column declared.
+    fn crud_order_service_with_tenant() -> ServiceDef {
+        let machine = StateMachine::new("order_lifecycle")
+            .initial("draft")
+            .transition(Transition::new("draft", "submit", "submitted"));
+
+        ServiceDef::new("order")
+            .mcp_write_ability("manage-orders")
+            .creatable(true)
+            .updatable(true)
+            .deletable(true)
+            .tenant_column("tenant_id")
+            .state_machine(machine)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status)
+            .field("amount", DataType::String, FieldMeaning::Money)
+            .field("note", DataType::String, FieldMeaning::FreeText)
+            .field("created_at", DataType::String, FieldMeaning::CreatedAt)
+    }
+
+    #[test]
+    fn derive_crud_plan_create_tenant_column() {
+        // WITH tenant column → Some(TenantColumn { column: "tenant_id" })
+        let svc = crud_order_service_with_tenant();
+        let inputs = serde_json::json!({ "amount": "100.00" });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Create, &inputs).unwrap();
+
+        let CrudPlan::Create { ref tenant_column, .. } = plan else {
+            panic!("expected CrudPlan::Create, got {plan:?}");
+        };
+        assert_eq!(
+            tenant_column,
+            &Some(TenantColumn { column: "tenant_id".into() }),
+            "create with tenant_column set must yield Some(TenantColumn)"
+        );
+
+        // WITHOUT tenant column → None (non-tenant projection stays unscoped)
+        let svc_no_tenant = crud_order_service();
+        let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Create, &inputs).unwrap();
+        let CrudPlan::Create { ref tenant_column, .. } = plan_no else {
+            panic!("expected CrudPlan::Create");
+        };
+        assert_eq!(tenant_column, &None, "create without tenant_column must yield None");
+    }
+
+    #[test]
+    fn derive_crud_plan_update_tenant_column() {
+        // WITH tenant column → Some(TenantColumn { column: "tenant_id" })
+        let svc = crud_order_service_with_tenant();
+        let inputs = serde_json::json!({ "id": 1, "amount": "200.00" });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Update, &inputs).unwrap();
+
+        let CrudPlan::Update { ref tenant_column, .. } = plan else {
+            panic!("expected CrudPlan::Update, got {plan:?}");
+        };
+        assert_eq!(
+            tenant_column,
+            &Some(TenantColumn { column: "tenant_id".into() }),
+            "update with tenant_column set must yield Some(TenantColumn)"
+        );
+
+        // WITHOUT tenant column → None
+        let svc_no_tenant = crud_order_service();
+        let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Update, &inputs).unwrap();
+        let CrudPlan::Update { ref tenant_column, .. } = plan_no else {
+            panic!("expected CrudPlan::Update");
+        };
+        assert_eq!(tenant_column, &None, "update without tenant_column must yield None");
+    }
+
+    #[test]
+    fn derive_crud_plan_delete_tenant_column() {
+        // WITH tenant column → Some(TenantColumn { column: "tenant_id" })
+        let svc = crud_order_service_with_tenant();
+        let inputs = serde_json::json!({ "id": 7 });
+        let plan = super::derive_crud_plan(&svc, CrudVerb::Delete, &inputs).unwrap();
+
+        let CrudPlan::Delete { ref tenant_column, .. } = plan else {
+            panic!("expected CrudPlan::Delete, got {plan:?}");
+        };
+        assert_eq!(
+            tenant_column,
+            &Some(TenantColumn { column: "tenant_id".into() }),
+            "delete with tenant_column set must yield Some(TenantColumn)"
+        );
+
+        // WITHOUT tenant column → None
+        let svc_no_tenant = crud_order_service();
+        let plan_no = super::derive_crud_plan(&svc_no_tenant, CrudVerb::Delete, &inputs).unwrap();
+        let CrudPlan::Delete { ref tenant_column, .. } = plan_no else {
+            panic!("expected CrudPlan::Delete");
+        };
+        assert_eq!(tenant_column, &None, "delete without tenant_column must yield None");
+    }
 }
