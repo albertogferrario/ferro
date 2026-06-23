@@ -251,7 +251,11 @@ pub fn derive_crud_plan(
             if !svc.updatable {
                 return Err(crate::Error::VerbNotEnabled(format!("{}.update", svc.name)));
             }
-            let id_value = inputs.get("id").cloned().unwrap_or(serde_json::Value::Null);
+            let id_value = inputs
+                .get("id")
+                .filter(|v| !v.is_null())
+                .cloned()
+                .ok_or_else(|| crate::Error::Validation("update requires an 'id' field".into()))?;
             // Patch: only the supplied writable fields (Status excluded when SM exists).
             let patch = svc
                 .fields
@@ -272,10 +276,15 @@ pub fn derive_crud_plan(
             if !svc.deletable {
                 return Err(crate::Error::VerbNotEnabled(format!("{}.delete", svc.name)));
             }
+            let id_value = inputs
+                .get("id")
+                .filter(|v| !v.is_null())
+                .cloned()
+                .ok_or_else(|| crate::Error::Validation("delete requires an 'id' field".into()))?;
             Ok(CrudPlan::Delete {
                 table,
                 id_column: "id".into(),
-                id_value: inputs.get("id").cloned().unwrap_or(serde_json::Value::Null),
+                id_value,
                 soft_delete_column: svc.resolved_soft_delete_column().to_string(),
                 tenant_column: None,
             })
@@ -659,5 +668,53 @@ mod tests {
         let json = serde_json::to_string(&delete_plan).unwrap();
         let back: CrudPlan = serde_json::from_str(&json).unwrap();
         assert_eq!(delete_plan, back);
+    }
+
+    // WR-02: missing or null id is rejected at derivation time, not deferred to SQL.
+    #[test]
+    fn derive_crud_plan_update_missing_id_is_validation_error() {
+        let svc = crud_order_service();
+        // id absent
+        let err = super::derive_crud_plan(
+            &svc,
+            CrudVerb::Update,
+            &serde_json::json!({ "amount": "50.00" }),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(err, crate::Error::Validation(_)),
+            "expected Validation error for missing id on update, got {err:?}"
+        );
+        // id explicitly null
+        let err_null = super::derive_crud_plan(
+            &svc,
+            CrudVerb::Update,
+            &serde_json::json!({ "id": null, "amount": "50.00" }),
+        )
+        .unwrap_err();
+        assert!(
+            matches!(err_null, crate::Error::Validation(_)),
+            "expected Validation error for null id on update, got {err_null:?}"
+        );
+    }
+
+    #[test]
+    fn derive_crud_plan_delete_missing_id_is_validation_error() {
+        let svc = crud_order_service();
+        // id absent
+        let err = super::derive_crud_plan(&svc, CrudVerb::Delete, &serde_json::json!({}))
+            .unwrap_err();
+        assert!(
+            matches!(err, crate::Error::Validation(_)),
+            "expected Validation error for missing id on delete, got {err:?}"
+        );
+        // id explicitly null
+        let err_null =
+            super::derive_crud_plan(&svc, CrudVerb::Delete, &serde_json::json!({ "id": null }))
+                .unwrap_err();
+        assert!(
+            matches!(err_null, crate::Error::Validation(_)),
+            "expected Validation error for null id on delete, got {err_null:?}"
+        );
     }
 }
