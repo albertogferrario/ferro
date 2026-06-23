@@ -370,6 +370,130 @@ mod tests {
         );
     }
 
+    // -------------------------------------------------------------------------
+    // Phase 240 Plan 02 Task 1: RED tests for is_range_filter_field and extended
+    // build_input_schema (range/ne/in/sort params).
+    // -------------------------------------------------------------------------
+
+    /// Service with numeric and datetime fields for range/ne/in/sort tests.
+    fn range_service() -> ServiceDef {
+        ServiceDef::new("order")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("total", DataType::Float, FieldMeaning::Money)
+            .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
+            .field("status", DataType::String, FieldMeaning::Status)
+    }
+
+    /// Range params: numeric (Float) and DateTime fields must produce __gt/__gte/__lt/__lte;
+    /// a String/Status field must NOT get range params.
+    #[test]
+    fn test_range_params_in_schema() {
+        let service = range_service();
+        let schema = build_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+
+        // Float field (total) gets range params
+        assert!(
+            props.contains_key("total__gt"),
+            "total__gt must be present for Float field"
+        );
+        assert!(
+            props.contains_key("total__gte"),
+            "total__gte must be present for Float field"
+        );
+        assert!(
+            props.contains_key("total__lt"),
+            "total__lt must be present for Float field"
+        );
+        assert!(
+            props.contains_key("total__lte"),
+            "total__lte must be present for Float field"
+        );
+
+        // DateTime field (created_at) gets range params — Money/Quantity pass even though
+        // is_filter_field excludes them by meaning; DataType gate is the criterion
+        assert!(
+            props.contains_key("created_at__gt"),
+            "created_at__gt must be present for DateTime field"
+        );
+
+        // String/Status field must NOT get range params (DataType gate)
+        assert!(
+            !props.contains_key("status__gt"),
+            "status__gt must NOT be present for String/Status field"
+        );
+    }
+
+    /// ne/in params: every is_filter_field field (id/Identifier, status/Status) must get
+    /// <field>__ne and <field>__in params; __in must be an array type.
+    #[test]
+    fn test_ne_in_params_in_schema() {
+        let service = range_service();
+        let schema = build_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+
+        // Identifier field (id) passes is_filter_field → gets __ne and __in
+        assert!(
+            props.contains_key("id__ne"),
+            "id__ne must be present (Identifier passes is_filter_field)"
+        );
+        assert!(
+            props.contains_key("id__in"),
+            "id__in must be present (Identifier passes is_filter_field)"
+        );
+        assert_eq!(
+            props["id__in"]["type"].as_str(),
+            Some("array"),
+            "id__in must have type: array"
+        );
+
+        // Status field passes is_filter_field → gets __ne and __in
+        assert!(
+            props.contains_key("status__ne"),
+            "status__ne must be present (Status passes is_filter_field)"
+        );
+        assert!(
+            props.contains_key("status__in"),
+            "status__in must be present (Status passes is_filter_field)"
+        );
+    }
+
+    /// Sort param: inputSchema must contain a `sort` key of type string.
+    #[test]
+    fn test_sort_param_in_schema() {
+        let service = range_service();
+        let schema = build_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+        assert!(
+            props.contains_key("sort"),
+            "sort param must be present in inputSchema"
+        );
+        assert_eq!(
+            props["sort"]["type"].as_str(),
+            Some("string"),
+            "sort param must have type: string"
+        );
+    }
+
+    /// Back-compat: existing equality params and limit/offset must remain unchanged.
+    #[test]
+    fn test_existing_params_backcompat() {
+        let service = range_service();
+        let schema = build_input_schema(&service).expect("schema ok");
+        let props = schema["properties"].as_object().expect("properties object");
+
+        // Pagination params unchanged
+        assert!(props.contains_key("limit"), "limit must still be present");
+        assert!(props.contains_key("offset"), "offset must still be present");
+        assert_eq!(props["limit"]["default"], 25, "limit default must remain 25");
+
+        // Equality params still present (status is a filter field)
+        assert!(
+            props.contains_key("status"),
+            "bare equality param 'status' must still be present"
+        );
+    }
+
     /// SC#2: When the service has no Identifier field, identifier injection is
     /// silently skipped. The schema is still valid and contains any declared inputs.
     #[test]
