@@ -3452,7 +3452,11 @@ under an SM), CRUD-04 (`list_` range/comparison filters `__{gt,gte,lt,lte,ne,in}
      `limit`/`offset`, while the pre-existing equality params remain unchanged (back-compat).
   4. Field-set and query-param derivation are covered by table tests asserting Status
      inclusion/exclusion with vs without an SM and the full range/sort/pagination param set.
-**Plans:** TBD
+**Plans:** 4 plans (3 waves)
+- [ ] 240-01-PLAN.md — ServiceDef::is_write_excluded_field shared predicate (CRUD-01/02)
+- [ ] 240-02-PLAN.md — is_range_filter_field + create/update/delete schema builders + list_ range/sort schema (CRUD-01/02/04)
+- [ ] 240-03-PLAN.md — CRUD tool emission + NTI envelope + Phase 205 guard extension (CRUD-01/02)
+- [ ] 240-04-PLAN.md — list_ dispatch __op filters + sort read execution (CRUD-04)
 
 #### Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`
 **Goal:** Add the CRUD analog of `derive_transition_plan` —
