@@ -196,13 +196,15 @@ declaration, every modality, exactly as transitions already do.
   echoing a `request_confirm_delete_<svc>` affordance.
 - Read scope calling a write tool → scope-denied.
 
-## `tools/call` `content[]` fix — in-scope prerequisite
+## Tool-result envelope (already structured — extend coverage, not a fix)
 
-Every new tool returns through `tools/call`. The current response builds a
-bare-object `content[]` (missing `type`) that MCP clients Zod-reject. Track A is
-worthless if its tool results cannot be consumed, so fixing the `CallToolResult`
-content shape is an in-scope prerequisite task, with a regression test asserting
-well-formed `content[]` on every verb. This also unblocks the existing read path.
+The `content[]` bare-object bug was already fixed in **Phase 205**: `handle_tools_call`
+emits `CallToolResult::structured(payload)` → one `type:text` block + `structuredContent`
++ `isError:false` (`ferro-mcp-server/src/jsonrpc.rs:144`), with a regression guard
+(`jsonrpc.rs:215` `tools_call_result_parses_as_valid_mcp_content`). So this is **not** an
+open prerequisite. The only Track A obligation is to route the new `create_/update_/delete_`
+results through the same `structured` envelope and extend the regression guard to assert a
+well-formed `content[]` for each new verb.
 
 ## Testing strategy
 
@@ -223,16 +225,16 @@ well-formed `content[]` on every verb. This also unblocks the existing read path
 
 ## Within-Track sequencing (each a plan/phase)
 
-1. `tools/call` `content[]` fix + regression (unblocks everything)
-2. Data model + `deleted_at` migration
-3. `ServiceDef` declaration surface + `validate()` extension (write-ability check)
-4. Schema derivation (C/U/D inputSchema + query polish)
-5. `derive_crud_plan` in `ferro-projections` + wire CRUD verbs into the existing
+1. Data model + `deleted_at` migration
+2. `ServiceDef` declaration surface + `validate()` extension (write-ability check)
+3. Schema derivation (C/U/D inputSchema + query polish)
+4. `derive_crud_plan` in `ferro-projections` + wire CRUD verbs into the existing
    `framework::write` kernel (reusing override registry / idempotency / audit /
    confirmation) — **extends 231/232, does not rebuild the dispatcher**
-6. Authorization wiring (scope + write-ability Gate + tenant injection + delete confirmation)
-7. App integration + e2e (both MCP and visual surfaces, since the kernel is shared)
-   + `ferro-mcp` catalog/docs
+5. Authorization wiring (scope + write-ability Gate + tenant injection + delete confirmation)
+6. App integration + e2e (both MCP and visual surfaces, since the kernel is shared) +
+   extend the `tools/call` structured-envelope regression guard to the new CRUD verbs +
+   `ferro-mcp` catalog/docs
 
 ## Non-goals (YAGNI)
 
