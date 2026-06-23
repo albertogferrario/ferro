@@ -3553,7 +3553,7 @@ validation respectively):
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete   | 2026-06-23 |
+| 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 0/0 | Not started | - |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 0/0 | Not started | - |
 | 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
