@@ -119,8 +119,7 @@ pub async fn dispatch(
     // pass an arbitrary `u64`; without this clamp `u64::MAX as i64` wraps negative.
     let limit = limit.min(MAX_LIMIT);
     let offset = offset.min(MAX_OFFSET);
-    // TODO: ServiceDef.table field for irregular plurals / custom table names
-    let table = format!("{}s", service.name.to_lowercase());
+    let table = service.resolved_table();
 
     let mut where_clauses: Vec<String> = Vec::new();
     let mut values: Vec<sea_orm::Value> = Vec::new();
@@ -164,6 +163,18 @@ pub async fn dispatch(
                 ));
             }
         }
+    }
+
+    // Soft-delete predicate — injected AFTER tenant predicate, BEFORE WHERE assembly.
+    // Gated ONLY on the projection having explicitly declared a soft-delete column
+    // (`.soft_delete_column(...)`), so tables without a deleted_at column — including any
+    // projection that flips `.deletable(true)` without declaring the column — are unaffected.
+    // IS NULL has no bound value.
+    if service.soft_delete_column.is_some() {
+        let col = service.resolved_soft_delete_column();
+        where_clauses.push(format!("\"{}\" IS NULL", col));
+        // No values.push() — IS NULL takes no bound parameter.
+        // idx is NOT incremented: LIMIT/OFFSET placeholders keep correct indices on Postgres.
     }
 
     let where_str = if where_clauses.is_empty() {
