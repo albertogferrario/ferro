@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: verifying
-stopped_at: Completed 240-04-PLAN.md
-last_updated: "2026-06-23T17:57:44.097Z"
+stopped_at: Phase 241 context gathered
+last_updated: "2026-06-23T18:27:25.315Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
@@ -239,7 +239,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T17:43:24.610Z
-Stopped at: Completed 240-04-PLAN.md
-Resume file: None
+Last session: 2026-06-23T18:27:25.284Z
+Stopped at: Phase 241 context gathered
+Resume file: .planning/phases/241-derive-crud-plan-wire-crud-verbs-into-framework-write/241-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
