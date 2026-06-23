@@ -18,7 +18,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
   declarations (excludes Identifier, CreatedAt, and the tenant column; `Status` is set to
   the StateMachine initial state when an SM exists; `Sensitive` excluded).
   *(Declaration surface shipped in `5cb17d60`; tool + schema derivation pending.)*
-- [ ] **CRUD-02**: A projection opts into update via `.updatable(true)`, deriving
+- [x] **CRUD-02**: A projection opts into update via `.updatable(true)`, deriving
   `update_<svc>` (patch semantics, all fields optional) for **data fields only** — when a
   StateMachine exists, `Status` is never an update input (state changes go through action tools).
 - [ ] **CRUD-03**: A projection opts into delete via `.deletable(true)`, deriving
@@ -61,7 +61,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
 | CRUD-01 | Phase 240 | partial (declaration surface done; tool + schema derivation pending) |
-| CRUD-02 | Phase 240 | pending |
+| CRUD-02 | Phase 240 | Complete |
 | CRUD-03 | Phase 241 | pending |
 | CRUD-04 | Phase 240 | pending |
 | CRUD-05 | Phase 242 | pending |

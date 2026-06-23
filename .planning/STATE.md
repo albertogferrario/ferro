@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: executing
-stopped_at: Phase 240 context gathered
-last_updated: "2026-06-23T17:15:10.349Z"
-last_activity: 2026-06-23 -- Phase 240 planning complete
+stopped_at: Completed 240-01-PLAN.md
+last_updated: "2026-06-23T17:20:21.710Z"
+last_activity: 2026-06-23
 progress:
   total_phases: 116
   completed_phases: 102
   total_plans: 424
-  completed_plans: 419
+  completed_plans: 420
   percent: 99
 ---
 
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 239 — Soft-delete data model + deleted_at migration
+**Current focus:** Phase 240 — crud-input-schema-derivation-list-query-polish
 
 ## Current Position
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 240
-Plan: Not started
+Phase: 240 (crud-input-schema-derivation-list-query-polish) — EXECUTING
+Plan: 2 of 4
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
 Status: Ready to execute
 
-Last activity: 2026-06-23 -- Phase 240 planning complete
+Last activity: 2026-06-23
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -180,6 +180,7 @@ Progress: [██████████] 100%
 | Phase 239-soft-delete-data-model-deleted-at-migration P01 | 25 | 2 tasks | 7 files |
 | Phase 239 P02 | 124 | 2 tasks | 1 files |
 | Phase 239-soft-delete-data-model-deleted-at-migration P03 | 22 | 2 tasks | 1 files |
+| Phase 240 P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -234,7 +235,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T16:53:22.836Z
-Stopped at: Phase 240 context gathered
-Resume file: .planning/phases/240-crud-input-schema-derivation-list-query-polish/240-CONTEXT.md
+Last session: 2026-06-23T17:20:21.702Z
+Stopped at: Completed 240-01-PLAN.md
+Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
