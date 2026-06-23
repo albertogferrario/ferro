@@ -60,12 +60,14 @@ hand-written tool code. Foundational track of the broader MCP capability program
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| CRUD-01 | — | partial (declaration surface done) |
-| CRUD-02 | — | pending |
-| CRUD-03 | — | pending |
-| CRUD-04 | — | pending |
-| CRUD-05 | — | pending |
-| CRUD-06 | — | pending |
-| CRUD-07 | — | done (5cb17d60) |
+| CRUD-01 | Phase 240 | partial (declaration surface done; tool + schema derivation pending) |
+| CRUD-02 | Phase 240 | pending |
+| CRUD-03 | Phase 241 | pending |
+| CRUD-04 | Phase 240 | pending |
+| CRUD-05 | Phase 242 | pending |
+| CRUD-06 | Phase 241 | pending |
+| CRUD-07 | Phase 242 (verified) | done (5cb17d60) |
 
-*(Phase column filled by the roadmap.)*
+**Foundation/integration phases (own no requirement uniquely):**
+- Phase 239 — soft-delete data model + `deleted_at` migration (substrate for CRUD-03 + CRUD-05).
+- Phase 243 — app integration + e2e + envelope guard + catalog/docs (validates CRUD-01..07 end-to-end).

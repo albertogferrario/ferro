@@ -69,6 +69,7 @@
 - ✅ [**v15.0 Agent-Operable App (Consumer MCP)**](milestones/v15.0-ROADMAP.md) — Phases 217-221 (shipped 2026-06-14). Extends the projection/intent abstraction to a write-and-act MCP surface: per-tenant API-key auth, `ActionDef`-derived write tools (guard-filtered), server-side guard re-enforcement at execution, `ferro-ai` confirmation gating for destructive actions, and an inbound natural-language intent loop with a replay/smoke CI path (CI-testable without live-LLM spend). Validated against gestiscilo via synthetic fixtures; consumer adoption is a separate follow-up.
 - ✅ [**v16.0 Write-Boundary AX**](milestones/v16.0-ROADMAP.md) — Phases 231-232 (shipped 2026-06-16). The projection write path now derives transitions from the `StateMachine` the framework owns — `TransitionPlan` + `derive_transition_plan` (no hand-written `match`), server-side guard re-eval, post-persist override hook, registration-time drift gate, and one `framework::write` kernel backing both the MCP and the new visual `POST /{service}/{action}` write surfaces (single-source, no per-channel executor).
 - ✅ **v16.2 ferro-inertia First-Load HTML Shell** — Phase 238 (completed 2026-06-21). `ferro-inertia` emits a complete first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env` plumbing, a configurable root template (title/head_extras/mount_id), and same-origin + Vite `server.proxy` docs. Verified live (dev hydration + prod manifest tags). Promoted from the downstream `u` app's deferred first-load shell.
+- 🚧 **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 (in progress, started 2026-06-23). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
 
 ---
 
@@ -3360,3 +3361,197 @@ zero-ferro-dep leaf crate.
 - [x] 238-04-PLAN.md — Docs: fix drift + First-Load HTML Shell (same-origin + Vite proxy) section (Wave 3)
 
 **Closeout:** verified (5/5 SC), code-reviewed (4 warnings fixed), threat-secure (7/7 closed), UAT 5/5 (live dev hydration + prod manifest). See `238-VERIFICATION.md`, `238-REVIEW-FIX.md`, `238-SECURITY.md`, `238-UAT.md`.
+
+---
+
+## 🚧 v16.3 MCP CRUD Data Surface (Track A) (Phases 239–243)
+
+**Goal:** A projection that opts in derives a complete, safe, tenant-scoped CRUD
+interface — create / read+query / update / soft-delete — as MCP tools with zero
+hand-written tool code. Foundational track (highest compression) of the four-track
+MCP capability program (A–D).
+
+**Anchor spec:** `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`
+(see its "Within-Track sequencing" section — the phase skeleton below mirrors it).
+
+**Builds on shipped work:**
+- v16.0 (Phases 231/232) — `derive_transition_plan` + the channel-agnostic
+  `framework::write` kernel (`dispatch_write`, `ExecutorFn`, `OverrideFn`,
+  `WriteDispatcher`, idempotency, channel-parameterized audit, confirmation,
+  guard re-eval, tenant isolation).
+- Phase 212 — `TenantScoped` + `find_for_tenant(id, tenant_id)`.
+- Phase 205 — the `tools/call` `CallToolResult::structured` `content[]` envelope.
+
+**Already shipped (do NOT re-plan):** CRUD-07 and the CRUD-01 *declaration surface*
+(`.creatable`/`.updatable`/`.deletable`/`.mcp_write_ability`/`.table`/`.soft_delete_column`
+builders + the `ServiceDef::validate()` write-ability fail-fast rule) landed in
+`5cb17d60`. The remaining CRUD-01 work is the `create_<svc>` tool + its schema derivation.
+
+**Architectural constraint (encoded in every phase goal):** the CRUD dispatch
+**extends** the `framework::write` kernel via a new `derive_crud_plan` (the CRUD analog of
+`derive_transition_plan`). It MUST NOT rebuild the `WriteDispatcher`/override-hook/idempotency/
+audit/confirmation machinery — those already exist. Update/delete targeting reuses
+`TenantScoped` + `find_for_tenant`. Rebuilding the dispatcher would create the duplicate
+write-control surface ferro's conventions forbid.
+
+### Phases
+
+- [ ] **Phase 239: Soft-delete data model + `deleted_at` migration** — Add a nullable `deleted_at` column substrate so soft-delete + non-disclosure can be enforced uniformly.
+- [ ] **Phase 240: CRUD input-schema derivation + `list_` query polish** — Auto-derive `create_`/`update_`/`delete_` input schemas from existing `field()` declarations and extend `list_` with range/sort/pagination.
+- [ ] **Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`** — Mirror `derive_transition_plan` with a CRUD plan and run it through the existing kernel (override registry / idempotency / audit / confirmation reused).
+- [ ] **Phase 242: Write authorization, tenant injection & non-disclosure** — Gate C/U/D on `read_write` scope + `.mcp_write_ability`; inject `tenant_id` server-side; make cross-tenant/soft-deleted targets indistinguishable from "not found".
+- [ ] **Phase 243: App integration, e2e, envelope guard & catalog/docs** — Flip the app's `order` projection to CRUD, drive create→list→update→delete over `:8090/mcp` and the visual surface, extend the structured-envelope regression guard, update `ferro-mcp` catalog/docs.
+
+### Phase Details
+
+#### Phase 239: Soft-delete data model + `deleted_at` migration
+**Goal:** Establish the soft-delete data substrate every CRUD read/update/delete path
+depends on — a nullable `deleted_at` column on soft-deletable tables plus the
+`field->column` binding the kernel needs — so a deleted row becomes invisible by
+construction rather than by ad-hoc filtering. `created_at`-on-create and the
+tenant-column-as-server-injected contract are fixed here at the data layer.
+**Depends on:** Phase 232 (the `framework::write` kernel this milestone extends) and the
+shipped declaration surface (`5cb17d60`).
+**Requirements:** (foundation phase — no v1 requirement uniquely owned; provides the
+`deleted_at` substrate consumed by CRUD-03 in Phase 241 and the non-disclosure substrate
+consumed by CRUD-05 in Phase 242).
+**Success Criteria** (what must be TRUE):
+  1. A backend-portable migration adds a nullable `deleted_at` to the soft-deletable
+     table(s); a fresh `db:migrate` applies clean on both SQLite and Postgres.
+  2. The `table()`/`soft_delete_column()` binding resolves a projection's field set to its
+     concrete columns (default `deleted_at`, explicit override honored).
+  3. A row with a non-null `deleted_at` is excluded from a baseline read query in a unit
+     test (the `deleted_at IS NULL` predicate is enforced at the data layer, not per-tool).
+  4. `created_at` is set on insert and the tenant column is identified as server-injected
+     (never an agent input) at the schema-derivation boundary.
+**Plans:** TBD
+
+#### Phase 240: CRUD input-schema derivation + `list_` query polish
+**Goal:** Derive correct, safe MCP input schemas for `create_`/`update_`/`delete_<svc>`
+from the *existing* `field()` declarations (single source of truth) and extend the
+already-derived `list_<svc>` equality filters with range/comparison ops, sort, and
+pagination — so a projection authored for reads yields correct write schemas and a
+richer query surface for free.
+**Depends on:** Phase 239.
+**Requirements:** CRUD-01 (create_<svc> tool + auto-derived input schema — excludes
+Identifier, CreatedAt, tenant column, Sensitive; Status set to SM initial state when an SM
+exists), CRUD-02 (update_<svc> patch schema, data fields only; Status never an update input
+under an SM), CRUD-04 (`list_` range/comparison filters `__{gt,gte,lt,lte,ne,in}`, `sort`
+`field`/`-field`, `limit`/`offset` atop existing equality filters).
+**Success Criteria** (what must be TRUE):
+  1. An opted-in projection lists a `create_<svc>` tool whose input schema contains exactly
+     the creatable data fields — Identifier, CreatedAt, the tenant column, and `Sensitive`
+     fields are absent; when an SM exists, `Status` is absent (set server-side to the
+     initial state) and present as a writable field only when no SM exists.
+  2. The `update_<svc>` tool requires the identifier and exposes the data fields as optional
+     (patch semantics); under an SM, `Status` is never an update input.
+  3. `list_<svc>` accepts `<field>__gt/gte/lt/lte/ne/in`, `sort=field` / `sort=-field`, and
+     `limit`/`offset`, while the pre-existing equality params remain unchanged (back-compat).
+  4. Field-set and query-param derivation are covered by table tests asserting Status
+     inclusion/exclusion with vs without an SM and the full range/sort/pagination param set.
+**Plans:** TBD
+
+#### Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`
+**Goal:** Add the CRUD analog of `derive_transition_plan` —
+`derive_crud_plan(svc, verb, inputs)` in `ferro-projections` producing a pure,
+serializable INSERT/UPDATE/soft-delete plan — and teach the existing `framework::write`
+kernel a CRUD verb alongside the transition path, so create/update/soft-delete execute
+through the *same* dispatcher, override registry, idempotency, audit, and confirmation
+that transitions already use. The kernel is extended, never forked.
+**Depends on:** Phase 240.
+**Requirements:** CRUD-06 (CRUD verbs dispatch through `framework::write` via
+`derive_crud_plan`, reusing override-hook/idempotency/audit/confirmation — single-source
+across MCP and visual surfaces; does NOT rebuild the dispatcher), CRUD-03 (`delete_<svc>`
+soft-deletes by setting `deleted_at`, is confirmation-gated, and is filtered out of
+`list_` and every read/update/delete path).
+**Success Criteria** (what must be TRUE):
+  1. A `create_<svc>` call inserts a row with the creatable columns plus server-set
+     `created_at` and (under an SM) the initial `Status`, returning the created record.
+  2. An `update_<svc>` call applies a patch via `UPDATE … WHERE id=? AND deleted_at IS NULL`,
+     and a `delete_<svc>` call sets `deleted_at` (soft-delete) rather than removing the row;
+     a soft-deleted row no longer appears in `list_<svc>`.
+  3. Registering `with_override("create_order", …)` (or update/delete) replaces the generic
+     derived plan for that verb with no new mechanism — the generic plan is the default when
+     no override is registered.
+  4. A grep/structural check confirms exactly one `dispatch_write` kernel with no second CRUD
+     dispatcher and no transition `match` re-encoded on the CRUD path; the same derived plan
+     drives both the MCP and the visual/form surface (channel the only divergence).
+**Plans:** TBD
+
+#### Phase 242: Write authorization, tenant injection & non-disclosure
+**Goal:** Make every CRUD write require `read_write` key scope and pass the
+`.mcp_write_ability` policy Gate, inject `tenant_id` from context (never an agent input),
+and ensure cross-tenant or soft-deleted targets are indistinguishable from "not found" —
+closing the safety envelope so an agent can only create/update/delete within its own tenant
+and can never set or read across the tenant boundary. The shipped `validate()` write-ability
+fail-fast rule (CRUD-07) is verified at this boundary.
+**Depends on:** Phase 241.
+**Requirements:** CRUD-05 (`create`/`update`/`delete` require `read_write` scope + the
+`.mcp_write_ability` Gate; `tenant_id` server-injected and excluded from every write schema;
+cross-tenant / soft-deleted targets non-disclosing), CRUD-07 (`ServiceDef::validate()`
+fails fast at registration when a CRUD verb is enabled without `mcp_write_ability` —
+*shipped in `5cb17d60`*; verified here at the authz/boot boundary).
+**Success Criteria** (what must be TRUE):
+  1. A `read`-scope key calling any `create_`/`update_`/`delete_` tool is rejected
+     (scope-denied) before dispatch; a `read_write` key that fails the `.mcp_write_ability`
+     Gate is denied.
+  2. `tenant_id` is injected from context on create and predicated (`AND tenant_id = ctx`)
+     on update/delete; the tenant column is absent from every write input schema, so an
+     agent cannot set or override it.
+  3. An update/delete targeting another tenant's row, or a soft-deleted row, returns the
+     same non-disclosing "not found / denied" envelope — no row/column/filter leakage.
+  4. A boot-time test confirms `ServiceDef::validate()` rejects a projection that enables
+     any CRUD verb without `mcp_write_ability` (a config error at registration, never a
+     silent deny at call time).
+**Plans:** TBD
+
+#### Phase 243: App integration, e2e, envelope guard & catalog/docs
+**Goal:** Prove the whole Track A surface end-to-end against the sample app and bring the
+introspection surface to the same quality bar as the Rust API — flip the app's `order`
+projection to `.creatable/.updatable/.deletable`, drive a create→list→update→delete cycle
+over both the MCP endpoint and the visual surface, extend the `tools/call`
+structured-envelope regression guard to each new verb, and update `ferro-mcp`
+`json_ui_catalog`/`code_templates` and the docs.
+**Depends on:** Phase 242.
+**Requirements:** (integration phase — exercises CRUD-01..07 end-to-end; no requirement
+uniquely owned here, all are delivered by Phases 240–242 and validated in this phase).
+**Success Criteria** (what must be TRUE):
+  1. With the app's `order` projection flipped to CRUD, an agent drives
+     create → list → update → delete through `:8090/mcp` with a seeded `read_write` bearer
+     key, and the same CRUD plan succeeds on the visual/form surface (shared kernel).
+  2. Each `create_`/`update_`/`delete_` result is returned through the Phase 205
+     `CallToolResult::structured` envelope, and the regression guard asserts a well-formed
+     `content[]` for every new verb.
+  3. A `delete_<svc>` without a valid confirmation token returns `confirmation_required`
+     echoing the `request_confirm_delete_<svc>` affordance; with a valid token it soft-deletes.
+  4. `ferro-mcp` `json_ui_catalog`/`code_templates` and `docs/src/` reflect the new CRUD
+     tools (create/update/delete/query polish) accurately.
+**Plans:** TBD
+
+### Coverage
+
+All 7 v16.3 requirements map to exactly one phase (foundation phase 239 and integration
+phase 243 own no requirement uniquely — they provide the substrate and the end-to-end
+validation respectively):
+
+| Requirement | Phase |
+|-------------|-------|
+| CRUD-01 (create tool + schema derivation) | Phase 240 |
+| CRUD-02 (update schema, data fields only) | Phase 240 |
+| CRUD-03 (delete soft-delete + confirmation + filtering) | Phase 241 |
+| CRUD-04 (list query polish: range/sort/pagination) | Phase 240 |
+| CRUD-05 (write authz + tenant injection + non-disclosure) | Phase 242 |
+| CRUD-06 (derive_crud_plan + framework::write wiring) | Phase 241 |
+| CRUD-07 (validate() write-ability fail-fast — shipped `5cb17d60`) | Phase 242 (verified) |
+
+✓ 7/7 requirements mapped, no orphans, no duplicates.
+
+### Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 239. Soft-delete data model + `deleted_at` migration | 0/0 | Not started | - |
+| 240. CRUD input-schema derivation + `list_` query polish | 0/0 | Not started | - |
+| 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 0/0 | Not started | - |
+| 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
+| 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
