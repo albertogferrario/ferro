@@ -37,6 +37,37 @@ pub fn is_filter_field(field: &FieldDef) -> bool {
     )
 }
 
+/// Returns `true` if this field should receive `__gt/__gte/__lt/__lte` range params.
+///
+/// Gate order:
+/// 1. Must be readable.
+/// 2. Must not be a list.
+/// 3. Must not carry `Sensitive` meaning.
+/// 4. DataType must not be `Json` or `Binary`.
+/// 5. DataType must be ordered/comparable: Integer, Float, DateTime, or Date.
+///
+/// Gate 5 is DataType-based (Integer/Float/DateTime/Date), NOT meaning-based, so
+/// Money/Quantity/Percentage fields — excluded by `is_filter_field`'s meaning gate —
+/// still get range params.
+pub fn is_range_filter_field(field: &FieldDef) -> bool {
+    if !field.readable {
+        return false;
+    } // gate 1
+    if field.is_list {
+        return false;
+    } // gate 2
+    if matches!(field.meaning, FieldMeaning::Sensitive) {
+        return false;
+    } // gate 3
+    if matches!(field.data_type, DataType::Json | DataType::Binary) {
+        return false;
+    } // gate 4
+    matches!(
+        field.data_type,
+        DataType::Integer | DataType::Float | DataType::DateTime | DataType::Date
+    )
+}
+
 /// Maps a `DataType` to its JSON Schema type fragment.
 ///
 /// Returns a JSON object with at minimum a `"type"` key; date/time/uuid types
@@ -97,6 +128,53 @@ pub fn build_input_schema(service: &ServiceDef) -> crate::Result<serde_json::Val
         }
         properties.insert(field.name.clone(), prop);
     }
+
+    // __ne and __in for every is_filter_field field (D-09)
+    for field in service.fields.iter().filter(|f| is_filter_field(f)) {
+        let scalar = data_type_to_json_schema(field.data_type);
+        // __ne: same scalar type, not-equal filter
+        let mut ne_prop = scalar.clone();
+        if let serde_json::Value::Object(ref mut m) = ne_prop {
+            m.insert(
+                "description".into(),
+                serde_json::Value::String(format!("Filter by {} (not equal)", field.name)),
+            );
+        }
+        properties.insert(format!("{}__{}", field.name, "ne"), ne_prop);
+        // __in: array of the same scalar type
+        properties.insert(
+            format!("{}__{}", field.name, "in"),
+            serde_json::json!({
+                "type": "array",
+                "items": scalar,
+                "description": format!("Filter by {} (any of)", field.name),
+            }),
+        );
+    }
+
+    // __gt/__gte/__lt/__lte for ordered (numeric + date/time) fields (D-10)
+    for field in service.fields.iter().filter(|f| is_range_filter_field(f)) {
+        let scalar = data_type_to_json_schema(field.data_type);
+        for op in &["gt", "gte", "lt", "lte"] {
+            let mut prop = scalar.clone();
+            if let serde_json::Value::Object(ref mut m) = prop {
+                m.insert(
+                    "description".into(),
+                    serde_json::Value::String(format!("Filter by {} ({})", field.name, op)),
+                );
+            }
+            properties.insert(format!("{}__{}", field.name, op), prop);
+        }
+    }
+
+    // sort param (D-11): prefix with '-' for descending
+    properties.insert(
+        "sort".into(),
+        serde_json::json!({
+            "type": "string",
+            "description": "Sort field. Prefix with '-' for descending (e.g. 'created_at', '-total')",
+        }),
+    );
 
     Ok(serde_json::json!({ "type": "object", "properties": properties }))
 }
