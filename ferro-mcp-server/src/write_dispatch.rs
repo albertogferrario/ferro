@@ -399,17 +399,60 @@ pub async fn handle_request_confirm(
         }
     };
 
+    let args = call_params
+        .get("arguments")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+
+    // CRUD delete path: find_action returns None for CRUD verbs (they are not ActionDefs).
+    // Locate the ServiceDef by stripping the "delete_" prefix instead.
+    if let Some(svc_name) = action_name.strip_prefix("delete_") {
+        let svc = match services
+            .iter()
+            .find(|s| s.mcp_exposed && s.name == svc_name && s.deletable)
+        {
+            Some(s) => s,
+            None => {
+                return json!({ "error": { "code": -32601, "message": "Method not found" } });
+            }
+        };
+        let token = generate_confirmation_token();
+        let record_id = args.get("id").cloned().unwrap_or(Value::Null);
+        let binding_payload = json!({
+            "_binding": {
+                "tenant_id": tid,
+                "action_name": action_name,
+                "record_id": record_id
+            },
+            "inputs": args
+        });
+        if let Err(_e) = store
+            .request_confirmation(
+                &token,
+                binding_payload,
+                std::time::Duration::from_secs(ttl_secs),
+            )
+            .await
+        {
+            return json!({ "result": write_tool_error_result(json!({
+                "error_kind": "execution_error",
+                "message": "failed to store confirmation token"
+            })) });
+        }
+        let _ = svc; // used for the .deletable + .mcp_exposed lookup above
+        let tool_result = CallToolResult::structured(json!({
+            "confirmation_token": token,
+            "expires_in_seconds": ttl_secs
+        }));
+        return json!({ "result": tool_result });
+    }
+
     let (svc, action) = match find_action(services, action_name) {
         Some(pair) => pair,
         None => {
             return json!({ "error": { "code": -32601, "message": "Method not found" } });
         }
     };
-
-    let args = call_params
-        .get("arguments")
-        .cloned()
-        .unwrap_or_else(|| json!({}));
 
     if let Err(msg) = validate_action_inputs(action, &args) {
         return json!({ "result": write_tool_error_result(json!({
@@ -573,7 +616,74 @@ pub async fn handle_confirm(
 
     let stored_inputs = &stored_payload["inputs"];
 
-    // Find action for guard re-evaluation.
+    // CRUD delete path: find_action returns None for CRUD verbs.
+    // Locate the ServiceDef by stripping the "delete_" prefix instead.
+    if let Some(svc_name) = action_name.strip_prefix("delete_") {
+        let svc = match services
+            .iter()
+            .find(|s| s.mcp_exposed && s.name == svc_name && s.deletable)
+        {
+            Some(s) => s,
+            None => {
+                return json!({ "error": { "code": -32601, "message": "Method not found" } });
+            }
+        };
+
+        let crud_plan = match derive_crud_plan(svc, CrudVerb::Delete, stored_inputs) {
+            Ok(p) => p,
+            Err(e) => {
+                return json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "validation",
+                    "message": e.to_string()
+                })) });
+            }
+        };
+
+        let crud_action = ferro_projections::ActionDef::new(action_name);
+        return match dispatch_write(
+            &crud_action,
+            stored_inputs,
+            tid,
+            db,
+            dispatcher,
+            None, // transition_guard: CRUD has none
+            "mcp",
+            true, // is_confirmed=true — token was validated above
+            Some(&crud_plan),
+        )
+        .await
+        {
+            Ok(result) => {
+                let payload = json!({
+                    "status": "ok",
+                    "action": action_name,
+                    "result": result
+                });
+                let tool_result = CallToolResult::structured(payload);
+                json!({ "result": tool_result })
+            }
+            Err(WriteError::RecordNotFound) => {
+                json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "not_found",
+                    "message": "record not found or already deleted"
+                })) })
+            }
+            Err(WriteError::GuardFailed(ref msg)) => {
+                json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "guard_denied",
+                    "message": msg
+                })) })
+            }
+            Err(_) => {
+                json!({ "result": write_tool_error_result(json!({
+                    "error_kind": "execution_error",
+                    "message": "write operation failed"
+                })) })
+            }
+        };
+    }
+
+    // Find action for guard re-evaluation (transition path).
     let (svc, action) = match find_action(services, action_name) {
         Some(pair) => pair,
         None => {

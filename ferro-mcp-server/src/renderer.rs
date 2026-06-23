@@ -152,6 +152,22 @@ pub fn render_exposed_tools(
                 tagged.push((svc_name.clone(), cfm_tool));
             }
         }
+
+        // Phase 241: synthesize request_confirm_delete_<svc> + confirm_delete_<svc>
+        // for every .deletable mcp-exposed service. Mirrors the transition loop above.
+        // base_name = "delete_<svc>" (e.g. "delete_order") — strip_prefix("request_confirm_")
+        // in handle_write_call routes to handle_request_confirm with action_name="delete_order".
+        for svc in services.iter().filter(|s| s.mcp_exposed && s.deletable) {
+            let base_name = format!("delete_{}", svc.name);
+            if let Some(req_tool) =
+                render_crud_delete_request_confirm_tool(&base_name, svc, ctx)?
+            {
+                tagged.push((svc.name.clone(), req_tool));
+            }
+            if let Some(cfm_tool) = render_crud_delete_confirm_tool(&base_name, svc)? {
+                tagged.push((svc.name.clone(), cfm_tool));
+            }
+        }
     }
 
     Ok(tagged.into_iter().map(|(_, t)| t).collect())
@@ -421,6 +437,77 @@ fn render_confirm_tool(
 
     let annotations = ToolAnnotations::new().read_only(false).destructive(true); // confirm step executes the destructive action
 
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema)).annotate(annotations),
+    ))
+}
+
+/// Renders `request_confirm_delete_<svc>` for a `.deletable` service.
+///
+/// Schema is `build_delete_input_schema` (id required, confirmation_token optional).
+/// `destructiveHint=false` — this step only issues a token; the confirm step executes.
+#[cfg(feature = "confirmation")]
+fn render_crud_delete_request_confirm_tool(
+    base_name: &str,
+    service: &ferro_projections::ServiceDef,
+    _ctx: &McpContext,
+) -> std::result::Result<Option<Tool>, ProjError> {
+    let name = format!("request_confirm_{base_name}");
+    let display_name = service.display_name.as_deref().unwrap_or(&service.name);
+    let description = format!("Request a confirmation token to soft-delete a {display_name} record");
+
+    let schema_value = crate::schema::build_delete_input_schema(service)
+        .map_err(|e| ProjError::Render(e.to_string()))?;
+    let schema_map = match schema_value {
+        serde_json::Value::Object(m) => m,
+        _ => {
+            return Err(ProjError::Render(
+                "delete inputSchema must be an object".into(),
+            ))
+        }
+    };
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(false);
+    Ok(Some(
+        Tool::new(name, description, Arc::new(schema_map)).annotate(annotations),
+    ))
+}
+
+/// Renders `confirm_delete_<svc>` for a `.deletable` service.
+///
+/// Schema: `{ "confirmation_token": string, "id": integer }` — the agent supplies
+/// the token from `request_confirm_delete_<svc>` and the record id for the binding
+/// check. `destructiveHint=true` — this step executes the soft-delete.
+#[cfg(feature = "confirmation")]
+fn render_crud_delete_confirm_tool(
+    base_name: &str,
+    service: &ferro_projections::ServiceDef,
+) -> std::result::Result<Option<Tool>, ProjError> {
+    let name = format!("confirm_{base_name}");
+    let display_name = service.display_name.as_deref().unwrap_or(&service.name);
+    let description = format!(
+        "Confirm and execute soft-delete of a {display_name} record. \
+         Supply the confirmation_token from request_confirm_{base_name}."
+    );
+
+    let mut schema = serde_json::Map::new();
+    schema.insert("type".to_string(), serde_json::json!("object"));
+    let mut props = serde_json::Map::new();
+    props.insert(
+        "confirmation_token".to_string(),
+        serde_json::json!({ "type": "string", "description": "Token returned by request_confirm_delete" }),
+    );
+    props.insert(
+        "id".to_string(),
+        serde_json::json!({ "type": "integer", "description": "Record id (must match the one used in request_confirm)" }),
+    );
+    schema.insert("properties".to_string(), serde_json::Value::Object(props));
+    schema.insert(
+        "required".to_string(),
+        serde_json::json!(["confirmation_token", "id"]),
+    );
+
+    let annotations = ToolAnnotations::new().read_only(false).destructive(true);
     Ok(Some(
         Tool::new(name, description, Arc::new(schema)).annotate(annotations),
     ))
