@@ -17,8 +17,10 @@ and the classification helper builds directly on the `FieldMeaning` enum already
 The only mechanical risk is wiring `resolved_table()` into `dispatch.rs` while keeping
 the behavior identical for existing projections. The default `format!("{}s", name.to_lowercase())`
 lives at exactly dispatch.rs:123 and the resolver must produce the same string when
-`service.table` is `None`. The predicate gate must be `service.soft_delete_column.is_some() || service.deletable`
-— not unconditional — so non-soft-deletable projections are unaffected.
+`service.table` is `None`. The predicate gate must be `service.soft_delete_column.is_some()`
+(the explicit `.soft_delete_column(...)` opt-in) — not unconditional and not `|| service.deletable`
+— so non-soft-deletable projections (and projections that flip `.deletable(true)` without
+declaring a soft-delete column) are unaffected.
 
 **Primary recommendation:** Follow the `m20260611_add_tenant_id_to_users.rs` migration
 idiom exactly; add `resolved_table()` and `resolved_soft_delete_column()` to `service.rs`
@@ -224,14 +226,16 @@ from `self.soft_delete_column` or returns a `'static` literal).
 ### Pattern 3: `deleted_at IS NULL` Predicate Injection
 
 **What:** After the tenant predicate block in `dispatch()`, inject a literal `IS NULL`
-predicate for the soft-delete column when the projection is soft-deletable.
-**Gate signal:** `service.soft_delete_column.is_some() || service.deletable` — see
-Pitfall 3 for the rationale. This mirrors the tenant gate `if let Some(ref col) = service.tenant_column`.
+predicate for the soft-delete column when the projection has explicitly declared a
+soft-delete column.
+**Gate signal:** `service.soft_delete_column.is_some()` — the explicit `.soft_delete_column(...)`
+opt-in only. See Pitfall 1 for the rationale. This mirrors the tenant gate
+`if let Some(ref col) = service.tenant_column`.
 
 ```rust
 // Source: dispatch.rs (to be added; mirrors tenant block at lines 151–167)
 // NOTE: IS NULL uses no bound value; idx does NOT increment.
-if service.deletable || service.soft_delete_column.is_some() {
+if service.soft_delete_column.is_some() {
     let col = service.resolved_soft_delete_column();
     where_clauses.push(format!("\"{}\" IS NULL", col));
     // No values.push() — IS NULL has no bound parameter.
@@ -297,6 +301,7 @@ The planner should include this as a task step regardless of the chosen approach
 ### Anti-Patterns to Avoid
 
 - **Hardcoding `"deleted_at"` in dispatch.rs:** D-06 requires using `resolved_soft_delete_column()`. If a projection sets `.soft_delete_column("removed_at")`, the predicate must use `"removed_at"`.
+- **Gating the predicate on `service.deletable`:** Do not emit `deleted_at IS NULL` based on `service.deletable` (alone or as an `||` branch). A projection that flips `.deletable(true)` without declaring `.soft_delete_column(...)` may sit on a table that has no soft-delete column — the query would fail at runtime. Gate on the explicit `service.soft_delete_column.is_some()` opt-in only.
 - **Unconditional predicate injection:** Do not emit `deleted_at IS NULL` for every projection. Non-soft-deletable projections' tables may not have the column — the query would fail at runtime.
 - **Editing the shipped migration:** `m20260611_create_orders_table.rs` is append-only. Never add `deleted_at` there.
 - **`idx` increment after IS NULL:** `IS NULL` takes no bound value. Do not increment `idx` after pushing this clause, or LIMIT/OFFSET placeholders shift off by one.
@@ -317,27 +322,31 @@ The planner should include this as a task step regardless of the chosen approach
 
 ### Pitfall 1: Wrong Gate Signal for the `deleted_at` Predicate
 
-**What goes wrong:** Using `service.deletable` as the sole gate means a projection that sets
-`.soft_delete_column("removed_at")` without `.deletable(true)` would not get the predicate,
-but a projection with `.deletable(true)` on a table that hasn't had `deleted_at` added to
-it yet would inject a predicate for a column that doesn't exist, causing a runtime SQL error.
+**What goes wrong:** Using `service.deletable` as a gate (alone, or as a `|| service.deletable`
+branch) means a projection that flips `.deletable(true)` on a table that hasn't had
+`deleted_at` added to it yet would inject a predicate for a column that doesn't exist,
+causing a runtime SQL error. `service.deletable` controls whether `delete_<svc>` is derived;
+it does not directly control whether the column exists on the table.
 
-**Why it happens:** `service.deletable` controls whether `delete_<svc>` is derived; it does
-not directly control whether the column exists on the table.
+**Why it happens:** `service.deletable` and "the table physically has a soft-delete column"
+are independent facts. Only the explicit `.soft_delete_column(...)` declaration ties the
+projection to a real column.
 
-**How to avoid:** Gate on `service.deletable || service.soft_delete_column.is_some()`. This
-means: "this projection has some soft-delete relationship." In v16.3, `orders` has neither
-flag set yet (`.deletable(true)` is flipped in Phase 243). The migration lands the column
-first. The predicate is only active once the projection declares it.
+**How to avoid:** Gate on `service.soft_delete_column.is_some()` — the explicit opt-in.
+This means: "this projection has declared which column carries soft-delete state." In v16.3,
+`orders` declares `.soft_delete_column("deleted_at")` once the column lands; the predicate is
+only active once the projection declares it. A `.deletable(true)`-only projection (no column
+declared) gets no predicate, so it cannot SQL-error against a missing column.
 
 **Warning signs:** A projection's `list_<svc>` returns rows that should be invisible; or a
-SQL error "no such column: deleted_at" on a non-orders projection.
+SQL error "no such column: deleted_at" on a projection that set `.deletable(true)` without a
+soft-delete column.
 
-**Recommended safest gate:** `service.soft_delete_column.is_some()`. Explicit opt-in via
-`.soft_delete_column("deleted_at")` on the projection is the clearest signal. Phase 243
-sets `.deletable(true)` + `.soft_delete_column("deleted_at")` on the orders projection —
-the test in SC#3 can use `service.soft_delete_column = Some("deleted_at".into())` without
-needing `.deletable(true)`.
+**Recommended (and adopted) safest gate:** `service.soft_delete_column.is_some()`. Explicit
+opt-in via `.soft_delete_column("deleted_at")` on the projection is the clearest signal and
+the only safe one. Phase 243 sets `.deletable(true)` + `.soft_delete_column("deleted_at")` on
+the orders projection — the test in SC#3 uses `service.soft_delete_column = Some("deleted_at".into())`
+(via `.soft_delete_column("deleted_at")`) without needing `.deletable(true)`.
 
 ### Pitfall 2: Resolver Default Behavior Drift
 
@@ -433,7 +442,7 @@ if let Some(ref col) = service.tenant_column {
     }
 }
 // New block follows same placement, simpler (no bound value):
-if service.soft_delete_column.is_some() || service.deletable {
+if service.soft_delete_column.is_some() {
     let col = service.resolved_soft_delete_column();
     where_clauses.push(format!("\"{}\" IS NULL", col));
     // No values.push() — IS NULL has no bound parameter.
@@ -529,17 +538,17 @@ No missing dependencies.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`deleted_at` as a `FieldDef` in the projection or not?**
    - What we know: The spec says "all read/update/delete paths filter `deleted_at IS NULL`". The `infer_meaning("deleted_at")` returns `DateTime`, not a special meaning. Nothing in the current `orders` projection declares a `deleted_at` field.
    - What's unclear: Should `deleted_at` appear as a declared field in the projection (for read output) or is it a framework-managed column invisible in the field list?
-   - Recommendation: Do NOT add `deleted_at` as a `field()` in the projection for this phase. The dispatch predicate is column-name-driven (from `resolved_soft_delete_column()`), not field-driven. Phase 240/241 can decide if `deleted_at` should be readable back.
+   - **RESOLVED:** `deleted_at` is a framework-managed column and is NEVER declared as a projection `field()`. The dispatch `IS NULL` predicate is driven by the resolved soft-delete column name (`resolved_soft_delete_column()`), not by a `FieldDef`. This is also why `is_server_injected_field` does not need to classify `deleted_at`: the column never enters the field list, so it never reaches the write-schema derivation that helper feeds. Phase 240/241 can decide separately if `deleted_at` should be readable back.
 
 2. **Entity regeneration: `ferro db:sync` vs manual edit?**
    - What we know: `app/src/models/entities/orders.rs` says "AUTO-GENERATED - DO NOT EDIT". The `deleted_at` column must appear in the `Model` for ORM to work.
    - What's unclear: Whether the ferro CLI `db:sync` command re-reads the live DB schema; whether it is safe to run mid-phase.
-   - Recommendation: The planner should include a step to run `db:sync` after the migration, OR manually add the field and annotate clearly. Either is acceptable.
+   - **RESOLVED:** Either approach is acceptable and safe. Plan 01 handles the orders entity sync — adopt the manual-edit-or-`db:sync` approach Plan 01 already specifies (add `pub deleted_at: Option<String>` to the `Model` + a `DeletedAt` variant to the `Column` enum, or regenerate via `db:sync` after the migration). Both produce an entity consistent with the migrated schema.
 
 ---
 
