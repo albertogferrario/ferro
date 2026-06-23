@@ -3483,9 +3483,9 @@ soft-deletes by setting `deleted_at`, is confirmation-gated, and is filtered out
   4. A grep/structural check confirms exactly one `dispatch_write` kernel with no second CRUD
      dispatcher and no transition `match` re-encoded on the CRUD path; the same derived plan
      drives both the MCP and the visual/form surface (channel the only divergence).
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [x] 241-01-PLAN.md — `CrudPlan`/`CrudVerb`/`TenantColumn` + pure `derive_crud_plan` + re-exports + 6 derivation/serde tests in `ferro-projections` (CRUD-06, Wave 1, no deps)
-- [ ] 241-02-PLAN.md — `execute_crud_plan` + `dispatch_write` CRUD param + confirmation-seam extension + 8 sqlite-in-memory dispatch tests in `framework::write` (CRUD-06, CRUD-03, Wave 2, depends_on 01)
+- [x] 241-02-PLAN.md — `execute_crud_plan` + `dispatch_write` CRUD param + confirmation-seam extension + 8 sqlite-in-memory dispatch tests in `framework::write` (CRUD-06, CRUD-03, Wave 2, depends_on 01)
 - [ ] 241-03-PLAN.md — replace NTI block with derive→dispatch + structured envelope, synthesize delete confirm tools, CRUD confirm handlers + framing tests in `ferro-mcp-server` (CRUD-06, CRUD-03, Wave 3, depends_on 01+02)
 
 #### Phase 242: Write authorization, tenant injection & non-disclosure
@@ -3562,6 +3562,6 @@ validation respectively):
 |-------|----------------|--------|-----------|
 | 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 4/4 | Complete    | 2026-06-23 |
-| 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 1/3 | In Progress|  |
+| 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 2/3 | In Progress|  |
 | 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |

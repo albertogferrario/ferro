@@ -21,7 +21,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 - [x] **CRUD-02**: A projection opts into update via `.updatable(true)`, deriving
   `update_<svc>` (patch semantics, all fields optional) for **data fields only** — when a
   StateMachine exists, `Status` is never an update input (state changes go through action tools).
-- [ ] **CRUD-03**: A projection opts into delete via `.deletable(true)`, deriving
+- [x] **CRUD-03**: A projection opts into delete via `.deletable(true)`, deriving
   `delete_<svc>` that **soft-deletes** (sets `deleted_at`), is **confirmation-gated**, and is
   filtered out of `list_<svc>` and all read/update/delete paths.
 
@@ -62,7 +62,7 @@ hand-written tool code. Foundational track of the broader MCP capability program
 |--------|-------|--------|
 | CRUD-01 | Phase 240 | partial (declaration surface done; tool + schema derivation pending) |
 | CRUD-02 | Phase 240 | Complete |
-| CRUD-03 | Phase 241 | pending |
+| CRUD-03 | Phase 241 | Complete |
 | CRUD-04 | Phase 240 | Complete |
 | CRUD-05 | Phase 242 | pending |
 | CRUD-06 | Phase 241 | Complete |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: executing
-stopped_at: Completed 241-01-PLAN.md
-last_updated: "2026-06-23T19:05:21.608Z"
+stopped_at: Completed 241-02-PLAN.md
+last_updated: "2026-06-23T19:22:13.309Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
   completed_phases: 103
   total_plans: 427
-  completed_plans: 424
-  percent: 99
+  completed_plans: 425
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
 Phase: 241 (derive-crud-plan-wire-crud-verbs-into-framework-write) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -186,6 +186,7 @@ Progress: [██████████] 100%
 | Phase 240 P03 | 5 | 2 tasks | 3 files |
 | Phase 240 P04 | 5 | 2 tasks | 1 files |
 | Phase 241 P01 | 4 | 2 tasks | 3 files |
+| Phase 241-derive-crud-plan-wire-crud-verbs-into-framework-write P02 | 45 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -240,7 +241,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T19:05:21.600Z
-Stopped at: Completed 241-01-PLAN.md
+Last session: 2026-06-23T19:22:13.300Z
+Stopped at: Completed 241-02-PLAN.md
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
