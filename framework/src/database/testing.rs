@@ -255,7 +255,13 @@ mod fresh_pool_tests {
 
         // Open a write transaction on `outer_t` (mirrors the handler writing
         // payment_intents).
-        let txn = DB::connection().unwrap().inner().clone().begin().await.unwrap();
+        let txn = DB::connection()
+            .unwrap()
+            .inner()
+            .clone()
+            .begin()
+            .await
+            .unwrap();
         txn.execute(Statement::from_string(
             backend,
             "INSERT INTO outer_t (id) VALUES (99)",
