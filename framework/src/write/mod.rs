@@ -254,12 +254,12 @@ fn row_to_json(row: &sea_orm::QueryResult) -> serde_json::Value {
 ///
 /// # SQL shapes
 ///
-/// - `Create` → `INSERT INTO <table> (<cols>, created_at) VALUES (<ph>, datetime('now')/NOW())`
+/// - `Create` → `INSERT INTO <table> (<cols>, created_at[, tenant_col]) VALUES (<ph>, datetime('now')/NOW()[, ?])`
 ///   followed by `SELECT * FROM <table> WHERE id = last_insert_rowid()` (SQLite) or
 ///   `INSERT … RETURNING *` (Postgres). Returns the inserted record including its `id`.
-/// - `Update` → `UPDATE <table> SET <col>=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL`.
+/// - `Update` → `UPDATE <table> SET <col>=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL[AND tenant_col=?]`.
 ///   Zero rows affected → [`WriteError::RecordNotFound`].
-/// - `Delete` → `UPDATE <table> SET <soft_delete_column>=<now> WHERE <id_column>=? AND <soft_delete_column> IS NULL`.
+/// - `Delete` → `UPDATE <table> SET <soft_delete_column>=<now> WHERE <id_column>=? AND <soft_delete_column> IS NULL[AND tenant_col=?]`.
 ///   Zero rows affected → [`WriteError::RecordNotFound`]. Returns `{"id": <id_value>, "deleted": true}`.
 ///
 /// # Security
@@ -267,11 +267,14 @@ fn row_to_json(row: &sea_orm::QueryResult) -> serde_json::Value {
 /// - T-241-05: all values are bound parameters — no string interpolation of values.
 /// - T-241-06: Update and Delete predicates include `AND <soft_delete_column> IS NULL`
 ///   so a soft-deleted row is unaddressable.
-/// - D-09: `tenant_column` is `None` in Phase 241; the executor adds no tenant predicate.
-///   A `Some(tc)` tenant-column slot is left as an extension point for Phase 242.
+/// - T-242-02: When `tenant_column` is `Some`, `tenant_id` is injected into INSERT (Create)
+///   or appended to the WHERE predicate (Update/Delete) as a bound parameter. A foreign-tenant
+///   row yields 0 affected rows → existing `WriteError::RecordNotFound` path (D-08 non-disclosure).
+/// - T-242-03: The post-update SELECT also carries the tenant predicate to prevent a concurrent
+///   cross-tenant reassignment race from returning foreign data (Pitfall 5).
 async fn execute_crud_plan(
     plan: &CrudPlan,
-    _tenant_id: i64,
+    tenant_id: i64,
     db: &DatabaseConnection,
 ) -> WriteResult<Value> {
     let backend = db.get_database_backend();
@@ -287,24 +290,38 @@ async fn execute_crud_plan(
         CrudPlan::Create {
             table,
             columns,
-            tenant_column: _,
+            tenant_column,
         } => {
             // Build column list and placeholder list.
             // `created_at` is NOT in the plan (Plan 01 contract) — inject it here
             // as a SQL literal expression so the server sets it, not the agent.
             let mut col_names: Vec<String> = columns.iter().map(|(c, _)| c.clone()).collect();
             col_names.push("created_at".to_string());
+            // Phase 242: inject tenant column after created_at.
+            if let Some(ref tc) = tenant_column {
+                col_names.push(tc.column.clone());
+            }
 
             let mut ph_parts: Vec<String> = (1..=columns.len())
                 .map(|i| placeholder(backend, i))
                 .collect();
             ph_parts.push(now_expr.to_string()); // literal, not a bound param
+                                                 // Phase 242: tenant placeholder index = columns.len() + 1.
+                                                 // created_at is a SQL literal (now_expr) and does NOT consume a placeholder
+                                                 // slot, so the tenant index is columns.len() + 1, NOT + 2.
+            if tenant_column.is_some() {
+                ph_parts.push(placeholder(backend, columns.len() + 1));
+            }
 
             let col_list = col_names.join(", ");
             let ph_list = ph_parts.join(", ");
 
-            let values: Vec<sea_orm::Value> =
+            let mut values: Vec<sea_orm::Value> =
                 columns.iter().map(|(_, v)| json_to_sea_value(v)).collect();
+            // Phase 242: tenant_id comes last in bound values (after all column values).
+            if tenant_column.is_some() {
+                values.push(sea_orm::Value::BigInt(Some(tenant_id)));
+            }
 
             match backend {
                 DatabaseBackend::Postgres => {
@@ -369,7 +386,7 @@ async fn execute_crud_plan(
             id_value,
             patch,
             soft_delete_column,
-            tenant_column: _,
+            tenant_column,
         } => {
             if patch.is_empty() {
                 return Err(WriteError::Validation(
@@ -377,6 +394,7 @@ async fn execute_crud_plan(
                 ));
             }
             // UPDATE <table> SET col1=?, col2=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL
+            // Phase 242: append AND <tenant_column>=? when tenant_column is Some.
             let set_clauses: Vec<String> = patch
                 .iter()
                 .enumerate()
@@ -384,13 +402,27 @@ async fn execute_crud_plan(
                 .collect();
             let set_sql = set_clauses.join(", ");
             let id_ph = placeholder(backend, patch.len() + 1);
-            let sql = format!(
-                "UPDATE {table} SET {set_sql} WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
-            );
+            let sql = if let Some(ref tc) = tenant_column {
+                // tenant placeholder index = patch.len() + 2 (id is patch.len() + 1)
+                let tenant_ph = placeholder(backend, patch.len() + 2);
+                format!(
+                    "UPDATE {table} SET {set_sql} WHERE {id_column} = {id_ph} \
+                     AND {soft_delete_column} IS NULL AND {tc_col} = {tenant_ph}",
+                    tc_col = tc.column
+                )
+            } else {
+                format!(
+                    "UPDATE {table} SET {set_sql} WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
+                )
+            };
 
             let mut values: Vec<sea_orm::Value> =
                 patch.iter().map(|(_, v)| json_to_sea_value(v)).collect();
             values.push(json_to_sea_value(id_value));
+            // Phase 242: tenant_id after id_value in the bound values vec.
+            if tenant_column.is_some() {
+                values.push(sea_orm::Value::BigInt(Some(tenant_id)));
+            }
 
             let stmt = Statement::from_sql_and_values(backend, &sql, values);
             let exec_result = db
@@ -403,17 +435,30 @@ async fn execute_crud_plan(
             }
 
             // Fetch the updated record for the return value.
-            // Guard invariant: AND soft_delete_column IS NULL prevents returning a
-            // concurrently-deleted record if a soft-delete races between UPDATE and SELECT.
+            // Phase 242 (Pitfall 5): also add the tenant predicate to the post-update
+            // SELECT — prevents a concurrent cross-tenant reassignment race from returning
+            // foreign data between UPDATE and SELECT. The tenant_id bound below matches
+            // the UPDATE that just succeeded.
             let id_ph2 = placeholder(backend, 1);
-            let select_sql = format!(
-                "SELECT * FROM {table} WHERE {id_column} = {id_ph2} AND {soft_delete_column} IS NULL"
-            );
-            let select_stmt = Statement::from_sql_and_values(
-                backend,
-                &select_sql,
-                vec![json_to_sea_value(id_value)],
-            );
+            let (select_sql, select_values) = if let Some(ref tc) = tenant_column {
+                let t_ph2 = placeholder(backend, 2);
+                let sql = format!(
+                    "SELECT * FROM {table} WHERE {id_column} = {id_ph2} \
+                     AND {soft_delete_column} IS NULL AND {tc_col} = {t_ph2}",
+                    tc_col = tc.column
+                );
+                let vals = vec![
+                    json_to_sea_value(id_value),
+                    sea_orm::Value::BigInt(Some(tenant_id)),
+                ];
+                (sql, vals)
+            } else {
+                let sql = format!(
+                    "SELECT * FROM {table} WHERE {id_column} = {id_ph2} AND {soft_delete_column} IS NULL"
+                );
+                (sql, vec![json_to_sea_value(id_value)])
+            };
+            let select_stmt = Statement::from_sql_and_values(backend, &select_sql, select_values);
             let row = db
                 .query_one(select_stmt)
                 .await
@@ -429,17 +474,34 @@ async fn execute_crud_plan(
             id_column,
             id_value,
             soft_delete_column,
-            tenant_column: _,
+            tenant_column,
         } => {
             // Soft-delete: UPDATE <table> SET <soft_delete_column>=now WHERE <id_column>=?
             //              AND <soft_delete_column> IS NULL
+            // Phase 242: append AND <tenant_column>=? when tenant_column is Some.
             // Soft-delete only — no physical row removal (CRUD-03).
             let id_ph = placeholder(backend, 1);
-            let sql = format!(
-                "UPDATE {table} SET {soft_delete_column} = {now_expr} WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
-            );
-            let stmt =
-                Statement::from_sql_and_values(backend, &sql, vec![json_to_sea_value(id_value)]);
+            let sql = if let Some(ref tc) = tenant_column {
+                // tenant placeholder index = 2 (id is 1)
+                let tenant_ph = placeholder(backend, 2);
+                format!(
+                    "UPDATE {table} SET {soft_delete_column} = {now_expr} \
+                     WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL \
+                     AND {tc_col} = {tenant_ph}",
+                    tc_col = tc.column
+                )
+            } else {
+                format!(
+                    "UPDATE {table} SET {soft_delete_column} = {now_expr} \
+                     WHERE {id_column} = {id_ph} AND {soft_delete_column} IS NULL"
+                )
+            };
+            let mut stmt_values = vec![json_to_sea_value(id_value)];
+            // Phase 242: tenant_id after id_value in the bound values vec.
+            if tenant_column.is_some() {
+                stmt_values.push(sea_orm::Value::BigInt(Some(tenant_id)));
+            }
+            let stmt = Statement::from_sql_and_values(backend, &sql, stmt_values);
             let exec_result = db
                 .execute(stmt)
                 .await
