@@ -571,6 +571,167 @@ mod tests {
 
     // ---- Task 1 RED tests end ----
 
+    // ---- Task 2 RED tests: range/__in/sort integration + equality back-compat ----
+
+    /// `total__gt` and `total__lte` return the correct subset of rows.
+    ///
+    /// Seed: Alice=100, Bob=200, Carol=150, Dave=250.
+    /// `total__gt 150` → Bob(200) + Dave(250) = 2 rows.
+    /// `total__lte 150` → Alice(100) + Carol(150) = 2 rows.
+    #[tokio::test]
+    async fn range_filter_returns_correct_rows() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+
+        // gt: strictly greater than 150 → Bob(200) + Dave(250)
+        let result = dispatch(
+            &service,
+            serde_json::json!({"total__gt": 150.0}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("total__gt dispatch ok");
+        assert_eq!(result.rows.len(), 2, "total__gt 150: Bob + Dave");
+
+        // lte: less-than-or-equal 150 → Alice(100) + Carol(150)
+        let result = dispatch(
+            &service,
+            serde_json::json!({"total__lte": 150.0}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("total__lte dispatch ok");
+        assert_eq!(result.rows.len(), 2, "total__lte 150: Alice + Carol");
+    }
+
+    /// `status__in` returns exactly the rows whose status is in the array.
+    /// An empty `__in` array returns an `InvalidFilter` error.
+    ///
+    /// Seed: Alice=pending, Bob=shipped, Carol=pending, Dave=shipped.
+    #[tokio::test]
+    async fn in_filter_returns_correct_rows() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+
+        // in ["pending"] → Alice + Carol
+        let result = dispatch(
+            &service,
+            serde_json::json!({"status__in": ["pending"]}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("status__in dispatch ok");
+        assert_eq!(result.rows.len(), 2, "status__in [pending]: Alice + Carol");
+        for row in &result.rows {
+            assert_eq!(
+                row["status"],
+                serde_json::Value::String("pending".to_string())
+            );
+        }
+
+        // empty array → Err(InvalidFilter)
+        let err_result = dispatch(
+            &service,
+            serde_json::json!({"status__in": []}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await;
+        assert!(err_result.is_err(), "empty __in must be an error");
+        match err_result.unwrap_err() {
+            crate::Error::InvalidFilter(_) => {}
+            other => panic!("expected InvalidFilter for empty __in, got: {other:?}"),
+        }
+    }
+
+    /// `sort=id` (ASC) and `sort=-id` (DESC) order rows correctly.
+    ///
+    /// Uses `id` (Identifier meaning → passes `is_filter_field`) so sort validation passes.
+    /// Seed inserts in order Alice(1), Bob(2), Carol(3), Dave(4).
+    #[tokio::test]
+    async fn sort_orders_rows() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+
+        // sort=id → ascending by id: 1,2,3,4
+        let asc = dispatch(
+            &service,
+            serde_json::json!({"sort": "id"}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("sort=id dispatch ok");
+        assert_eq!(asc.rows.len(), 4);
+        let ids_asc: Vec<i64> = asc.rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
+        assert_eq!(ids_asc, vec![1, 2, 3, 4], "asc by id");
+
+        // sort=-id → descending: 4,3,2,1
+        let desc = dispatch(
+            &service,
+            serde_json::json!({"sort": "-id"}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("sort=-id dispatch ok");
+        assert_eq!(desc.rows.len(), 4);
+        let ids_desc: Vec<i64> = desc
+            .rows
+            .iter()
+            .map(|r| r["id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(ids_desc, vec![4, 3, 2, 1], "desc by id");
+    }
+
+    /// Equality filter `{"status": "pending"}` returns the same rows as before
+    /// the `__op`/`sort` extension (back-compat).
+    ///
+    /// Seed: Alice=pending, Bob=shipped, Carol=pending, Dave=shipped.
+    /// Expected: Alice + Carol (2 rows, both pending).
+    #[tokio::test]
+    async fn equality_filter_backcompat() {
+        let db = setup_orders_db().await;
+        let service = order_service_no_tenant();
+
+        let result = dispatch(
+            &service,
+            serde_json::json!({"status": "pending"}),
+            10,
+            0,
+            &db,
+            None,
+        )
+        .await
+        .expect("equality filter dispatch ok");
+
+        assert_eq!(result.rows.len(), 2, "equality filter: Alice + Carol");
+        for row in &result.rows {
+            assert_eq!(
+                row["status"],
+                serde_json::Value::String("pending".to_string()),
+                "all rows must have status=pending"
+            );
+        }
+    }
+
+    // ---- Task 2 RED tests end ----
+
     /// SC#3 / T-239-02: a soft-deleted row is excluded from dispatch results by construction.
     ///
     /// Uses a self-contained in-memory DB — does NOT modify setup_orders_db() — so the
