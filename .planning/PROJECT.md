@@ -53,6 +53,20 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v13.1 CRUD Handler Proc Macros complete (Phase 212, CRUD-01–06): `#[resource_get]` / `#[resource_post]` fold the tenant-scoped CRUD prelude (typed param + `current_tenant()` + tenant-scoped lookup + 404/303-on-miss) into one route attribute while keeping tenant + resource as real typed params; they inline the handler/action boilerplate (no nested attribute). Backed by a `TenantScoped` trait (cross-tenant reads impossible by construction) and `Validator::validate_or_redirect(url)`. trybuild suite (pass + compile-fail fixtures), facade exports, 0.2.56 bump. With this, the v13.x batch scoped so far (v13.0/v13.1/v13.2/v13.3) is complete; nothing in v13.x is published yet beyond v13.2's 0.2.55.
 - v14.0 Channel Projection complete (Phases 215–216, CHAN-01–04): the first production non-visual `Renderer` ships. Phase 215 extended the renderer-free surface (`BaseContext.evaluated_guards` + `verbosity`, `Intent::label()`, `Error::NoIntents`); Phase 216 added `FieldDef.render_hint` (`AltText`/`Skip`, additive, serde-backward-compatible) and a new `ferro-text` output crate whose `TextRenderer` projects the *same* `ServiceDef` to deterministic conversational text — per-intent strategies for Browse/Collect/Process/Summarize/Track, guard-filtered (absent key renders, explicit `false` hides), verbosity-aware, with a defined Focus/Analyze fallback. Re-exported via the `ferro` facade behind the `projections` feature; registered in publish.yml Wave 1b; `insta` snapshots over the COMP-05 `approval_workflow` anchor pin both guard states. The projection/intent abstraction is now validated against a non-screen modality. ~27 workspace crates.
 
+## Current Milestone: v16.3 MCP CRUD Data Surface (Track A)
+
+**Goal:** A projection that opts in derives a complete, safe, tenant-scoped CRUD interface (create / read+query / update / soft-delete) as MCP tools with zero hand-written tool code — the foundational track of the broader MCP capability program (Tracks A–D).
+
+**Target features:**
+- Opt-in CRUD derivation (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) — declaration surface + `validate()` write-ability rule shipped (`5cb17d60`).
+- `create_`/`update_`/`delete_<svc>` tools with auto-derived field-set rules (exclude Identifier/CreatedAt/tenant; `Status` workflow-only under a StateMachine).
+- Query polish on `list_`: range/comparison filters, sort, pagination (atop existing equality filters).
+- Soft-delete (`deleted_at`) + confirmation gating.
+- Write authz: `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection.
+- `derive_crud_plan` extending the shipped `framework::write` kernel (231/232) — not a rebuild.
+
+**Active requirements:** CRUD-01..07 (`.planning/REQUIREMENTS.md`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. Builds on shipped v16.0 (231/232) + the Phase 205 `content[]` structured envelope.
+
 ## Shipped Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor (shipped 2026-06-16)
 
 **Goal:** Eliminate the "declare twice" duplication on the projection write path — derive a default write executor from the `ServiceDef` StateMachine the framework already knows, with an override hook for the app-specific 20% (side effects, related-record writes, custom guards).
@@ -266,7 +280,7 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - [ ] Case-study diversification across application domains
 - [ ] Synthetic canonical-app-class catalog
 
-## Current Milestone: v12.6 Consumer App MCP (Browser Login)
+## Shipped Milestone: v12.6 Consumer App MCP (Browser Login)
 
 **Goal:** A deployed ferro application serves its own OAuth-protected MCP endpoint so a consumer agent can authenticate through the browser and use the application's projections as per-tenant tools.
 
