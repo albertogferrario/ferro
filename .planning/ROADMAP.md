@@ -3452,10 +3452,10 @@ under an SM), CRUD-04 (`list_` range/comparison filters `__{gt,gte,lt,lte,ne,in}
      `limit`/`offset`, while the pre-existing equality params remain unchanged (back-compat).
   4. Field-set and query-param derivation are covered by table tests asserting Status
      inclusion/exclusion with vs without an SM and the full range/sort/pagination param set.
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 - [x] 240-01-PLAN.md — ServiceDef::is_write_excluded_field shared predicate (CRUD-01/02)
 - [x] 240-02-PLAN.md — is_range_filter_field + create/update/delete schema builders + list_ range/sort schema (CRUD-01/02/04)
-- [ ] 240-03-PLAN.md — CRUD tool emission + NTI envelope + Phase 205 guard extension (CRUD-01/02)
+- [x] 240-03-PLAN.md — CRUD tool emission + NTI envelope + Phase 205 guard extension (CRUD-01/02)
 - [ ] 240-04-PLAN.md — list_ dispatch __op filters + sort read execution (CRUD-04)
 
 #### Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`
@@ -3558,7 +3558,7 @@ validation respectively):
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
-| 240. CRUD input-schema derivation + `list_` query polish | 2/4 | In Progress|  |
+| 240. CRUD input-schema derivation + `list_` query polish | 3/4 | In Progress|  |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 0/0 | Not started | - |
 | 242. Write authorization, tenant injection & non-disclosure | 0/0 | Not started | - |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
