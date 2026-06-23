@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: executing
-stopped_at: "Completed Phase 242 Plan 01: derive_crud_plan fills tenant_column from svc.tenant_column"
-last_updated: "2026-06-23T23:38:31.491Z"
+stopped_at: "Completed Phase 242 Plan 04: CRUD-07 boot-time validate() test"
+last_updated: "2026-06-23T23:42:02.911Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
   completed_phases: 104
   total_plans: 431
-  completed_plans: 427
+  completed_plans: 428
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
 Phase: 242 (write-authorization-tenant-injection-non-disclosure) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -190,6 +190,7 @@ Progress: [██████████] 100%
 | Phase 241-derive-crud-plan-wire-crud-verbs-into-framework-write P02 | 45 | 2 tasks | 6 files |
 | Phase 241 P03 | closeout | 3 tasks | 2 files |
 | Phase 242 P01 | 780 | 2 tasks | 1 files |
+| Phase 242 P04 | 65 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -244,7 +245,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-23T23:38:31.482Z
-Stopped at: Completed Phase 242 Plan 01: derive_crud_plan fills tenant_column from svc.tenant_column
+Last session: 2026-06-23T23:42:02.903Z
+Stopped at: Completed Phase 242 Plan 04: CRUD-07 boot-time validate() test
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
