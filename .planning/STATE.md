@@ -4,7 +4,7 @@ milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
 status: verifying
 stopped_at: Completed 240-04-PLAN.md
-last_updated: "2026-06-23T17:43:24.619Z"
+last_updated: "2026-06-23T17:57:44.097Z"
 last_activity: 2026-06-23
 progress:
   total_phases: 116
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 240 (crud-input-schema-derivation-list-query-polish) — EXECUTING
-Plan: 4 of 4
+Phase: 241
+Plan: Not started
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
 Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -110,6 +110,7 @@ Progress: [██████████] 100%
 | 236 | 7 | - | - |
 | 238 | 4 | - | - |
 | 239 | 3 | - | - |
+| 240 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
