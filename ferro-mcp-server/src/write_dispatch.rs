@@ -152,6 +152,21 @@ pub async fn handle_write_call(
         .await;
     }
 
+    // Phase 240: CRUD verb tools are listed but not yet executable (Phase 241 wires execution).
+    // Return a structured NTI envelope so the Phase 205 regression guard stays green (D-01).
+    // Detection runs BEFORE find_action so a CRUD verb call never falls through to -32601.
+    for prefix in &["create_", "update_", "delete_"] {
+        if let Some(svc_name) = tool_name.strip_prefix(prefix) {
+            if services.iter().any(|s| s.mcp_exposed && s.name == svc_name) {
+                let tool_result = CallToolResult::structured(serde_json::json!({
+                    "error_kind": "not_yet_implemented",
+                    "message": format!("{} execution is not yet wired (Phase 241)", tool_name)
+                }));
+                return json!({ "result": tool_result });
+            }
+        }
+    }
+
     // Fail-closed: writes always require an authenticated tenant.
     // tenant_id is the unwrapped authenticated principal — never from the payload.
     let tid = match tenant_id {
