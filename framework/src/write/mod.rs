@@ -1830,4 +1830,286 @@ mod tests {
             .expect("count column");
         assert_eq!(count, 1, "idempotent replay must not insert a second row");
     }
+
+    // ── Phase 242 tenant injection tests (CRUD-05 / T-242-02 / T-242-03) ──────
+
+    /// In-memory SQLite with a `tenanted_orders` table that includes a `tenant_id`
+    /// column, plus the standard idempotency and audit tables.
+    async fn setup_tenant_db() -> sea_orm::DatabaseConnection {
+        let db = Database::connect("sqlite::memory:")
+            .await
+            .expect("in-memory SQLite connect failed");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS mcp_idempotency_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id INTEGER NOT NULL,
+                idempotency_key TEXT NOT NULL,
+                result TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (tenant_id, idempotency_key)
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create mcp_idempotency_keys table");
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS audit_log (
+                id TEXT PRIMARY KEY NOT NULL,
+                tenant_id TEXT,
+                actor_kind TEXT NOT NULL,
+                actor_id TEXT,
+                action TEXT NOT NULL,
+                target_kind TEXT,
+                target_id TEXT,
+                before TEXT,
+                after TEXT,
+                reason TEXT,
+                correlation_id TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create audit_log table");
+        // tenanted_orders: same shape as orders plus tenant_id column for Phase 242 tests.
+        db.execute(Statement::from_string(
+            DatabaseBackend::Sqlite,
+            "CREATE TABLE IF NOT EXISTS tenanted_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
+                amount TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                deleted_at TEXT
+            )"
+            .to_string(),
+        ))
+        .await
+        .expect("create tenanted_orders table");
+        db
+    }
+
+    fn tenanted_create_plan(columns: Vec<(&str, serde_json::Value)>) -> CrudPlan {
+        use ferro_projections::TenantColumn;
+        CrudPlan::Create {
+            table: "tenanted_orders".to_string(),
+            columns: columns
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect(),
+            tenant_column: Some(TenantColumn {
+                column: "tenant_id".to_string(),
+            }),
+        }
+    }
+
+    fn tenanted_update_plan(id: i64, patch: Vec<(&str, serde_json::Value)>) -> CrudPlan {
+        use ferro_projections::TenantColumn;
+        CrudPlan::Update {
+            table: "tenanted_orders".to_string(),
+            id_column: "id".to_string(),
+            id_value: serde_json::json!(id),
+            patch: patch.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            soft_delete_column: "deleted_at".to_string(),
+            tenant_column: Some(TenantColumn {
+                column: "tenant_id".to_string(),
+            }),
+        }
+    }
+
+    fn tenanted_delete_plan(id: i64) -> CrudPlan {
+        use ferro_projections::TenantColumn;
+        CrudPlan::Delete {
+            table: "tenanted_orders".to_string(),
+            id_column: "id".to_string(),
+            id_value: serde_json::json!(id),
+            soft_delete_column: "deleted_at".to_string(),
+            tenant_column: Some(TenantColumn {
+                column: "tenant_id".to_string(),
+            }),
+        }
+    }
+
+    /// Seed a row in `tenanted_orders` with the given tenant_id and status.
+    /// Returns the inserted row id.
+    async fn seed_tenanted_row(
+        db: &sea_orm::DatabaseConnection,
+        tenant_id: i64,
+        status: &str,
+    ) -> i64 {
+        db.execute(Statement::from_sql_and_values(
+            DatabaseBackend::Sqlite,
+            "INSERT INTO tenanted_orders (tenant_id, status) VALUES (?, ?)",
+            vec![
+                sea_orm::Value::BigInt(Some(tenant_id)),
+                sea_orm::Value::String(Some(Box::new(status.to_string()))),
+            ],
+        ))
+        .await
+        .expect("seed tenanted row");
+
+        let id_row = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT last_insert_rowid() AS id".to_string(),
+            ))
+            .await
+            .expect("last_insert_rowid query")
+            .expect("last_insert_rowid row");
+        id_row.try_get::<i64>("", "id").expect("last_insert_rowid")
+    }
+
+    /// CRUD-05 / T-242-02: CREATE with tenant_column Some + tenant_id=7 →
+    /// the inserted row's tenant_id column equals 7.
+    #[tokio::test]
+    async fn crud_create_injects_tenant() {
+        let db = setup_tenant_db().await;
+        let plan = tenanted_create_plan(vec![("status", json!("draft"))]);
+
+        execute_crud_plan(&plan, 7, &db)
+            .await
+            .expect("tenant-aware create must succeed");
+
+        // Verify the row's tenant_id was set to 7 (injected, not from agent input).
+        let tid: i64 = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                "SELECT tenant_id FROM tenanted_orders WHERE id = 1".to_string(),
+            ))
+            .await
+            .expect("select query")
+            .expect("row must exist")
+            .try_get::<i64>("", "tenant_id")
+            .expect("tenant_id column");
+        assert_eq!(
+            tid, 7,
+            "CREATE must inject tenant_id=7 into the row, got: {tid}"
+        );
+    }
+
+    /// CRUD-05 / T-242-02: Same-tenant UPDATE succeeds (1 row affected, row mutated).
+    #[tokio::test]
+    async fn crud_update_tenant_predicate() {
+        let db = setup_tenant_db().await;
+        let row_id = seed_tenanted_row(&db, 7, "draft").await;
+
+        let plan = tenanted_update_plan(row_id, vec![("status", json!("approved"))]);
+        let result = execute_crud_plan(&plan, 7, &db)
+            .await
+            .expect("same-tenant update must succeed");
+
+        assert_eq!(
+            result["status"],
+            json!("approved"),
+            "status must be updated for same-tenant row: {result:?}"
+        );
+    }
+
+    /// CRUD-05 / T-242-02: Same-tenant DELETE succeeds (deleted_at set).
+    #[tokio::test]
+    async fn crud_delete_tenant_predicate() {
+        let db = setup_tenant_db().await;
+        let row_id = seed_tenanted_row(&db, 7, "draft").await;
+
+        let plan = tenanted_delete_plan(row_id);
+        let result = execute_crud_plan(&plan, 7, &db)
+            .await
+            .expect("same-tenant delete must succeed");
+
+        assert_eq!(
+            result["deleted"],
+            json!(true),
+            "same-tenant delete must return deleted:true: {result:?}"
+        );
+
+        // deleted_at must be set on the row.
+        let deleted_at: Option<String> = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT deleted_at FROM tenanted_orders WHERE id = {row_id}"),
+            ))
+            .await
+            .expect("deleted_at query")
+            .expect("row")
+            .try_get::<Option<String>>("", "deleted_at")
+            .expect("deleted_at column");
+        assert!(
+            deleted_at.is_some(),
+            "deleted_at must be set after same-tenant delete"
+        );
+    }
+
+    /// CRUD-05 / T-242-03: Cross-tenant UPDATE → RecordNotFound; row is UNCHANGED.
+    ///
+    /// Non-disclosure: a row owned by tenant 2 is unaddressable to tenant 7 —
+    /// the error is indistinguishable from a missing row (D-08).
+    #[tokio::test]
+    async fn crud_cross_tenant_update_not_found() {
+        let db = setup_tenant_db().await;
+        // Seed a row owned by tenant 2.
+        let row_id = seed_tenanted_row(&db, 2, "original").await;
+
+        // Attempt to update it as tenant 7.
+        let plan = tenanted_update_plan(row_id, vec![("status", json!("tampered"))]);
+        let result = execute_crud_plan(&plan, 7, &db).await;
+
+        assert!(
+            matches!(result, Err(WriteError::RecordNotFound)),
+            "cross-tenant update must return RecordNotFound, got: {result:?}"
+        );
+
+        // Verify the row is UNCHANGED (non-disclosure: no partial write or leakage).
+        let status: String = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT status FROM tenanted_orders WHERE id = {row_id}"),
+            ))
+            .await
+            .expect("status query")
+            .expect("row must still exist")
+            .try_get::<String>("", "status")
+            .expect("status column");
+        assert_eq!(
+            status, "original",
+            "cross-tenant update must leave the row completely unchanged; got status: {status}"
+        );
+    }
+
+    /// CRUD-05 / T-242-03: Cross-tenant DELETE → RecordNotFound; deleted_at stays NULL.
+    ///
+    /// Non-disclosure: a row owned by tenant 2 is unaddressable to tenant 7 —
+    /// the error is indistinguishable from a missing row (D-08).
+    #[tokio::test]
+    async fn crud_cross_tenant_delete_not_found() {
+        let db = setup_tenant_db().await;
+        // Seed a row owned by tenant 2.
+        let row_id = seed_tenanted_row(&db, 2, "draft").await;
+
+        // Attempt to delete it as tenant 7.
+        let plan = tenanted_delete_plan(row_id);
+        let result = execute_crud_plan(&plan, 7, &db).await;
+
+        assert!(
+            matches!(result, Err(WriteError::RecordNotFound)),
+            "cross-tenant delete must return RecordNotFound, got: {result:?}"
+        );
+
+        // Verify deleted_at is still NULL (no partial write or leakage).
+        let deleted_at: Option<String> = db
+            .query_one(Statement::from_string(
+                DatabaseBackend::Sqlite,
+                format!("SELECT deleted_at FROM tenanted_orders WHERE id = {row_id}"),
+            ))
+            .await
+            .expect("deleted_at query")
+            .expect("row must still exist")
+            .try_get::<Option<String>>("", "deleted_at")
+            .expect("deleted_at column");
+        assert!(
+            deleted_at.is_none(),
+            "cross-tenant delete must leave deleted_at NULL; row is untouched"
+        );
+    }
 }
