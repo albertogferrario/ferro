@@ -10,7 +10,7 @@
 //! `"mcp"` into the kernel so the success-path audit reads `mcp.action.{name}`.
 
 use ferro_audit::{AuditActor, AuditEntry, AuditTarget};
-use ferro_projections::{derive_transition_plan, ActionDef, ServiceDef};
+use ferro_projections::{derive_crud_plan, derive_transition_plan, ActionDef, CrudVerb, ServiceDef};
 use ferro_rs::write::{dispatch_write, WriteDispatcher, WriteError};
 // merged_guards is only consulted by the confirmation handlers' pre-check loop.
 #[cfg(feature = "confirmation")]
@@ -152,12 +152,10 @@ pub async fn handle_write_call(
         .await;
     }
 
-    // Phase 240: CRUD verb tools are listed but not yet executable (Phase 241 wires execution).
-    // Return a structured NTI envelope so the Phase 205 regression guard stays green (D-01).
-    // Detection runs BEFORE find_action so a CRUD verb call never falls through to -32601.
-    // Gate each prefix on the matching opt-in flag so the NTI envelope only answers for verbs
-    // that are actually emitted as tools — an unflagged service has no such tool, so its call
-    // must fall through to the genuine -32601 "unknown tool" path, not a misleading NTI reply.
+    // Phase 241: CRUD verb tools — detection runs BEFORE find_action so a CRUD verb call
+    // never falls through to -32601. Gate each prefix on the matching opt-in flag so this
+    // path only answers for verbs that are actually emitted as tools — an unflagged service
+    // has no such tool, so its call falls through to the genuine -32601 "unknown tool" path.
     let crud_verb_opted_in = |s: &ServiceDef, prefix: &str| match prefix {
         "create_" => s.creatable,
         "update_" => s.updatable,
@@ -166,15 +164,97 @@ pub async fn handle_write_call(
     };
     for prefix in ["create_", "update_", "delete_"] {
         if let Some(svc_name) = tool_name.strip_prefix(prefix) {
-            if services
+            if let Some(svc) = services
                 .iter()
-                .any(|s| s.mcp_exposed && s.name == svc_name && crud_verb_opted_in(s, prefix))
+                .find(|s| s.mcp_exposed && s.name == svc_name && crud_verb_opted_in(s, prefix))
             {
-                let tool_result = CallToolResult::structured(serde_json::json!({
-                    "error_kind": "not_yet_implemented",
-                    "message": format!("{} execution is not yet wired (Phase 241)", tool_name)
-                }));
-                return json!({ "result": tool_result });
+                // Fail-closed: writes require an authenticated tenant.
+                let tid = match tenant_id {
+                    Some(t) => t,
+                    None => {
+                        return json!({ "error": { "code": -32603, "message": "auth: tenant required" } });
+                    }
+                };
+
+                let args = call_params
+                    .get("arguments")
+                    .cloned()
+                    .unwrap_or_else(|| json!({}));
+
+                let verb = match prefix {
+                    "create_" => CrudVerb::Create,
+                    "update_" => CrudVerb::Update,
+                    _ => CrudVerb::Delete,
+                };
+
+                let plan = match derive_crud_plan(svc, verb, &args) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        return json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "validation",
+                            "message": e.to_string()
+                        })) });
+                    }
+                };
+
+                // CRUD verbs are not ActionDefs; synthesize a minimal ActionDef whose
+                // name is the tool name — drives the audit label + override-hook lookup
+                // (e.g. "create_order"). The confirmation seam gates on CrudPlan::Delete
+                // so create_/update_ execute immediately; delete_ returns
+                // ConfirmationRequired unless called via the confirm_ handler.
+                let crud_action = ferro_projections::ActionDef::new(&tool_name);
+
+                return match dispatch_write(
+                    &crud_action,
+                    &args,
+                    tid,
+                    db,
+                    dispatcher,
+                    None, // transition_guard: CRUD has none
+                    "mcp",
+                    #[cfg(feature = "confirmation")]
+                    false, // is_confirmed=false; bare delete triggers ConfirmationRequired
+                    Some(&plan),
+                )
+                .await
+                {
+                    Ok(result) => {
+                        let payload = json!({
+                            "status": "ok",
+                            "action": tool_name,
+                            "result": result
+                        });
+                        let tool_result = CallToolResult::structured(payload);
+                        json!({ "result": tool_result })
+                    }
+                    #[cfg(feature = "confirmation")]
+                    Err(WriteError::ConfirmationRequired(ref name)) => {
+                        json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "confirmation_required",
+                            "message": format!("use request_confirm_{name} first"),
+                            "request_tool": format!("request_confirm_{name}")
+                        })) })
+                    }
+                    Err(WriteError::RecordNotFound) => {
+                        json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "not_found",
+                            "message": "record not found or already deleted"
+                        })) })
+                    }
+                    Err(ref e @ WriteError::Validation(_))
+                    | Err(ref e @ WriteError::ActionNotFound(_)) => {
+                        json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "execution_error",
+                            "message": e.to_string()
+                        })) })
+                    }
+                    Err(_) => {
+                        json!({ "result": write_tool_error_result(json!({
+                            "error_kind": "execution_error",
+                            "message": "write operation failed"
+                        })) })
+                    }
+                };
             }
         }
     }
