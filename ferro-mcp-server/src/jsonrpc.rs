@@ -397,4 +397,84 @@ mod tests {
             "update_notes (non-transition) destructiveHint must be false"
         );
     }
+
+    // -------------------------------------------------------------------------
+    // Phase 240 Plan 03 RED test: CRUD verb tool call returns structured NTI
+    // envelope (not -32601). Extends the Phase 205 regression guard.
+    //
+    // This test is RED now: calling create_order routes to find_action which
+    // returns None, producing a -32601 JSON-RPC error. The NTI detection block
+    // in write_dispatch.rs (GREEN commit) intercepts it before find_action and
+    // returns a structured CallToolResult envelope.
+    // -------------------------------------------------------------------------
+
+    /// Phase 240-03 / D-01: calling a CRUD verb tool must return a structured
+    /// NTI envelope (error_kind=not_yet_implemented, is_error=false) — NOT a
+    /// JSON-RPC -32601 error — keeping the Phase 205 regression guard green.
+    #[tokio::test]
+    async fn crud_tool_call_nti_parses_as_valid_mcp_content() {
+        let db = setup_orders_db().await;
+
+        // Service with creatable=true and mcp_write_ability declared (Track A flags).
+        let service = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .creatable(true)
+            .mcp_write_ability("write-orders")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("status", DataType::String, FieldMeaning::Status);
+
+        let call_params = serde_json::json!({
+            "name": "create_order",
+            "arguments": { "status": "pending" }
+        });
+
+        // read_write scope so the write-path scope gate passes.
+        let ctx = McpContext {
+            scope: Some("read_write".to_string()),
+            ..Default::default()
+        };
+
+        let noop_dispatcher = crate::WriteDispatcher::new(
+            Box::new(|_, _, _, _| Box::pin(async { Ok(serde_json::json!({})) })),
+            Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+        );
+
+        let response = handle_tools_call(
+            call_params,
+            &[service],
+            &db,
+            Some(1),
+            &ctx,
+            &noop_dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &test_config(),
+        )
+        .await;
+
+        // Load-bearing: NTI response must parse as CallToolResult (not a -32601 error object).
+        let parsed: CallToolResult = serde_json::from_value(response["result"].clone())
+            .expect("NTI result must parse as CallToolResult — NOT a -32601 error");
+
+        assert_eq!(
+            parsed.is_error,
+            Some(false),
+            "NTI envelope must have is_error=false"
+        );
+        assert_eq!(
+            parsed.content.len(),
+            1,
+            "structured() produces exactly one content block"
+        );
+
+        let sc = parsed
+            .structured_content
+            .expect("structuredContent must be present in NTI envelope");
+        assert_eq!(
+            sc["error_kind"].as_str(),
+            Some("not_yet_implemented"),
+            "NTI envelope structuredContent.error_kind must be 'not_yet_implemented'"
+        );
+    }
 }
