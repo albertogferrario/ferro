@@ -272,6 +272,12 @@ impl ServiceDef {
         if exclude_sm_status && matches!(field.meaning, FieldMeaning::Status) {
             return true;
         }
+        // Gate F: read-only field — declared non-writable (e.g. read_only_field for a
+        // derived/computed value like an order total). Never an agent write input;
+        // the `writable` flag is the single source of truth for write eligibility.
+        if !field.writable {
+            return true;
+        }
         false
     }
 
@@ -2305,6 +2311,25 @@ mod tests {
             svc_with_tenant.is_write_excluded_field(&tenant_field, false),
             "tenant column must be write-excluded regardless of SM flag"
         );
+    }
+
+    /// Gate F: a field with `writable: false` must be excluded from write input schemas.
+    ///
+    /// Added for Phase 243.1 — derived/computed fields (like `order.total`) are
+    /// declared via `.read_only_field()` and must never appear in create_/update_ inputs.
+    #[test]
+    fn is_write_excluded_field_excludes_read_only() {
+        let svc = ServiceDef::new("order")
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .read_only_field("total", DataType::Float, FieldMeaning::Money);
+
+        let writable = &svc.fields[0];
+        let read_only = &svc.fields[1];
+
+        // Writable data field is NOT excluded.
+        assert!(!svc.is_write_excluded_field(writable, false));
+        // Read-only (writable: false) field IS excluded from write input.
+        assert!(svc.is_write_excluded_field(read_only, false));
     }
 
     /// CRUD-07 boot-time test: validate() must reject any projection that enables a write
