@@ -15,7 +15,7 @@ findings:
   warning: 2
   info: 1
   total: 5
-status: issues_found
+status: fixes_applied
 ---
 
 # Phase 242: Code Review Report
