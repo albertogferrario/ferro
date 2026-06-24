@@ -673,16 +673,18 @@ The assumptions log is provided for completeness; both items are verified.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the CRUD parity assertion use a real DB write or just assert `WriteResult::Ok`?**
-   - What we know: `single_source.rs` asserts the persisted state (reads back the DB row). The CRUD parity can do the same.
-   - What's unclear: whether `create_order` on the visual channel needs a different seed to avoid id collision with the MCP channel's create.
-   - Recommendation: Use separate orders for each channel (seed a new one for visual) and assert both have the same `status = "draft"` and the same `customer_name`.
+1. **CRUD parity assertion: real DB write vs `WriteResult::Ok`** — RESOLVED: use a real DB
+   read-back (`load_order`), seeding separate rows for the MCP vs visual channel to avoid id
+   collision, and assert `status == "draft"` + identical `customer_name` on both. Mirrors
+   `single_source.rs` persisted-state assertions. Implemented in Plan 02 Task 2
+   (`crud_mcp_visual_single_source_parity`).
 
-2. **Does `list_order` already filter soft-deleted records?**
-   - What we know: CRUD-03 states "filtered out of `list_<svc>`". This was shipped in Phase 239/240.
-   - Recommendation: The e2e must include a post-delete list assertion to regression-pin this behavior. If the filter is absent, the test will catch it.
+2. **Does `list_order` already filter soft-deleted records?** — RESOLVED: shipped in Phases
+   239/240 (CRUD-03 "filtered out of `list_<svc>`"). Regression-pinned by the post-delete
+   `list_order` assertion in Plan 02 Task 1 (`crud_cycle_create_list_update_delete`); if the
+   filter were absent the test would fail.
 
 ---
 
