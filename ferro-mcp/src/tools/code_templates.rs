@@ -75,6 +75,9 @@ fn build_templates() -> Vec<CodeTemplate> {
     // API scaffold templates
     templates.extend(api_templates());
 
+    // Projection CRUD templates
+    templates.extend(projection_crud_templates());
+
     templates
 }
 
@@ -1629,6 +1632,56 @@ pub async fn openapi_json() -> Response {
     ]
 }
 
+fn projection_crud_templates() -> Vec<CodeTemplate> {
+    vec![
+        CodeTemplate {
+            name: "projection_crud_service_def".to_string(),
+            category: "projection_crud".to_string(),
+            description: "ServiceDef with CRUD opt-in: derives create_/update_/delete_/list_ MCP tools and a soft-delete gate. Requires a deleted_at column and mcp_write_ability for the write gate.".to_string(),
+            code: r#"use ferro::{
+    ActionDef, DataType, FieldMeaning, GuardDef, ServiceDef,
+    StateDef, StateMachine, Transition,
+};
+
+pub fn {{service}}_service_def() -> ServiceDef {
+    ServiceDef::new("{{service}}")
+        .mcp_exposed(true)
+        .tenant_column("tenant_id")
+        .mcp_ability("view-{{service}}s")        // read gate
+        .mcp_write_ability("manage-{{service}}s") // write gate: create/update/delete tools
+        .creatable(true)    // derives create_{{service}} tool
+        .updatable(true)    // derives update_{{service}} tool
+        .deletable(true)    // derives delete_{{service}} tool (confirmation-gated); requires deleted_at column
+        .soft_delete_column("deleted_at") // required: list_{{service}} excludes soft-deleted rows
+        .display_name("{{Service}}")
+        .field("id", DataType::Integer, FieldMeaning::Identifier)
+        // Add your fields here; status is excluded from write inputs when a StateMachine exists
+        .field("name", DataType::String, FieldMeaning::EntityName)
+    // Derived tools:
+    //   create_{{service}}  — INSERT; status set server-side when StateMachine is defined
+    //   update_{{service}}  — UPDATE writable fields; status/id/created_at/tenant_id excluded
+    //   delete_{{service}}  — soft-delete (sets deleted_at); confirmation-gated when confirmation feature enabled
+    //   list_{{service}}    — read tool (no write-auth required); excludes soft-deleted rows
+}"#.to_string(),
+            imports: vec![
+                "use ferro::{ActionDef, DataType, FieldMeaning, ServiceDef};".to_string(),
+            ],
+            placeholders: vec![
+                Placeholder {
+                    name: "{{service}}".to_string(),
+                    description: "Service name in snake_case (used as MCP tool prefix: create_{{service}}, update_{{service}}, delete_{{service}}, list_{{service}})".to_string(),
+                    example: "order".to_string(),
+                },
+                Placeholder {
+                    name: "{{Service}}".to_string(),
+                    description: "Service display name in PascalCase".to_string(),
+                    example: "Order".to_string(),
+                },
+            ],
+        },
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1673,6 +1726,10 @@ mod tests {
             "Should have broadcasting templates"
         );
         assert!(categories.contains("api"), "Should have api templates");
+        assert!(
+            categories.contains("projection_crud"),
+            "Should have projection_crud templates"
+        );
     }
 
     #[test]

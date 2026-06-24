@@ -77,7 +77,8 @@ pub fn execute() -> GenerationContext {
             views: "src/views/{name}.json (v2 flat spec) + handler in src/controllers/{name}.rs".to_string(),
         },
         common_patterns: CommonPatterns {
-            crud_handler: r#"#[handler]
+            crud_handler: r#"// Option A: Traditional REST handler (web surface)
+#[handler]
 pub async fn show(req: Request, id: Path<i32>) -> Response {
     let db = req.db();
     let entity = Entity::find_by_id(*id)
@@ -85,7 +86,19 @@ pub async fn show(req: Request, id: Path<i32>) -> Response {
         .await?
         .ok_or_else(|| not_found("Resource not found"))?;
     Ok(json!(entity))
-}"#.to_string(),
+}
+
+// Option B: Projection-derived MCP CRUD tools (agent surface)
+// Add to your ServiceDef in src/projections/<service>.rs:
+//   .mcp_write_ability("manage-<service>s")  // write gate
+//   .creatable(true)   // derives create_<service> MCP tool
+//   .updatable(true)   // derives update_<service> MCP tool
+//   .deletable(true)   // derives delete_<service> MCP tool (soft-delete via deleted_at)
+//   .soft_delete_column("deleted_at") // required: list_<svc> excludes soft-deleted rows
+// Requires: deleted_at column in migration, tenant_column set, mcp_ability for reads.
+// Derived tools: create_<svc>, update_<svc>, delete_<svc>, list_<svc> with query polish.
+// status is excluded from write inputs when a StateMachine is defined (set server-side)."#
+                .to_string(),
             validation: r#"let data = req.input::<CreateRequest>().await?;
 Validator::new(&data)
     .rules("email", rules![required(), email()])
