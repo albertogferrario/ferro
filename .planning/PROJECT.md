@@ -69,6 +69,31 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 
 **Progress:** Phases 239, 240, and 241 complete. Phase 239 added the soft-delete substrate (`deleted_at` migration, `resolved_table`/`resolved_soft_delete_column`, `is_server_injected_field`, read-path `deleted_at IS NULL`); Phase 240 added CRUD input-schema derivation + `list_` query polish (CRUD-01/02/04 — `is_write_excluded_field`, `build_create/update/delete_input_schema`, `is_range_filter_field`, `<field>__{gt,gte,lt,lte,ne,in}` + `sort`). **Phase 241 (CRUD-03/06) made the `create_/update_/delete_` tools executable**: `derive_crud_plan(svc, verb, inputs) -> CrudPlan` (pure serializable enum, mirrors `derive_transition_plan`/`TransitionPlan`) in `ferro-projections`; the single `framework::write::dispatch_write` kernel extended with one `crud_plan: Option<&CrudPlan>` parameter + a framework-provided generic `execute_crud_plan` (parameterized SQL, INSERT/UPDATE/soft-delete) — no second dispatcher, reusing guards/idempotency/audit/override-hook/confirmation unchanged. The `not_yet_implemented` stub is replaced with real derive→dispatch through the Phase 205 `structured` envelope; `delete_<svc>` soft-deletes (`deleted_at`), is confirmation-gated via synthesized `request_confirm_delete_<svc>`/`confirm_delete_<svc>` (reusing `ConfirmationStore` + token binding), and is filtered from `list_`. `CrudPlan` carries a `tenant_column: Option<TenantColumn> = None` slot (the Phase 242 extension point). Code review: 0 critical, 4 advisory warnings (WR-01..04). Remaining: 242 (write authz + tenant injection + non-disclosure), 243 (app flip + e2e + structured-envelope regression-guard extension + catalog/docs).
 
+## Next Milestone (queued): v16.4 Work Distribution — `#[offload]` Service Methods
+
+**Status:** Queued behind v16.3 Phase 243. v16.3 stays current until 243 closes; v16.4 is
+phases 244–249 (planned/executed after).
+
+**Goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable unit of work
+with zero hand-written queue plumbing — the framework derives the `ferro-queue` Job, serializable
+payload, and a typed result handle from the method signature, runs it on a horizontally scalable
+worker, and streams the result back via the read-model + broadcast path. Work distribution as the
+operational analog of projection/intent: one trait declaration is the in-process contract, the
+wire payload, the result-path, and the MCP spec.
+
+**Target features:**
+- `#[offload]` macro deriving the `ferro-queue` Job + serializable payload from the method signature.
+- Typed result handle + compile-time serializable-contract enforcement (which doubles as the module-isolation boundary).
+- Fire-and-forward result path: worker → `ferro-projection` snapshot → `ferro-broadcast` delta (request never blocks).
+- Deployable `ferro worker` runtime, runnable at N replicas — capacity scales by running more workers.
+- `ferro-mcp` introspection of offloadable methods + scaling docs.
+
+**Scope decision (CTO):** build the scalable primitive, defer the auto-deciding. Autonomous
+machine lifecycle / scale-to-zero (KEDA, CRIU, Nomad, WASM isolates) is cost-optimization, not
+capacity — parked as a 2.0 direction. The many-user requirement is met by stateless replicas +
+data-tier scaling + cache + replicable workers, not by a framework autoscaler. Anchor spec:
+`docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`.
+
 ## Shipped Milestone: v16.0 Write-Boundary AX — StateMachine-Derived Executor (shipped 2026-06-16)
 
 **Goal:** Eliminate the "declare twice" duplication on the projection write path — derive a default write executor from the `ServiceDef` StateMachine the framework already knows, with an override hook for the app-specific 20% (side effects, related-record writes, custom guards).

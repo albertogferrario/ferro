@@ -43,6 +43,11 @@ local path; `#[offload]` governs the distributed path.
   Alternatives).
 - **A general service mesh / synchronous RPC layer.**
 - **Data-tier scaling** (sharding, replicas, connection pooling) — orthogonal.
+- **Autonomous machine lifecycle / scale-to-zero.** This milestone ships a
+  horizontally scalable worker run at N replicas, managed externally (by an
+  operator, a platform, or a cluster scheduler). The framework deciding *when*
+  to wake or sleep machines is cost-optimization, not capacity, and is deferred
+  (see Future direction).
 
 ## Design
 
@@ -82,15 +87,25 @@ awaiting a worker holds connections and does not scale. Returning immediately
 and streaming the result when ready does. The handle is the projection key the
 client subscribes to.
 
-### Topology
+### Scaling model
 
-"Running separately" is expressed as worker-fleet configuration — how many
-workers, where, and which job types each fleet serves — not as a per-call-site
-local/remote choice. Fleets are independent scaling units and independent fault
-domains: a saturated media-processing fleet does not affect the web tier or an
-unrelated fleet. This delivers the operational properties associated with
-service decomposition (independent scaling, blast-radius containment) without
-the latency and availability cost of synchronous decomposition.
+Capacity scales by running more workers. The worker is a deployable consumer
+process — the same application binary under a `worker` subcommand with a
+job-class selector — run at N replicas against the shared queue. N is managed
+externally (an operator, a platform, or a cluster scheduler); the framework does
+not decide it.
+
+This is the distinction that matters for serving many users: the *capability* to
+absorb growing background load comes from the ability to run more workers, not
+from the framework deciding when to run them. A fixed fleet of workers serves
+high load; autonomously sizing that fleet is cost-optimization layered on top
+(see Future direction), not capacity.
+
+Each worker class is an independent fault domain — a saturated media-processing
+class does not affect the web tier or an unrelated class — which delivers the
+operational properties associated with service decomposition (independent
+scaling, blast-radius containment) without the latency and availability cost of
+synchronous decomposition.
 
 ### Introspection
 
@@ -127,9 +142,11 @@ in-process contract, the wire payload schema, and the agent-readable spec.
 4. **Read-model delta → broadcast streaming.** Stream the snapshot delta to the
    subscribed client over `ferro-broadcast`; document the subscribe/await
    client pattern.
-5. **Worker-fleet topology / independent-scaling config.** Configuration for
-   fleet count, placement, and per-fleet job-type routing; fault-domain
-   isolation between fleets.
+5. **Deployable `ferro worker` runtime.** A consumer process (the same app binary
+   under a `worker` subcommand with a job-class selector) runnable at N replicas
+   against the shared queue — horizontally scalable background work, managed by
+   any external scheduler. No autoscaler; capacity scales by running more workers.
+   Independent fault domain per worker class.
 6. **`ferro-mcp` introspection + docs.** Surface offloadable methods through
    `list_services`; document the authoring surface, the result path, and the
    non-goals.
@@ -151,3 +168,25 @@ in-process contract, the wire payload schema, and the agent-readable spec.
   response.
 - Queue-backend throughput bounds total offload rate; very high rates require
   partitioning the backend.
+
+## Future direction (2.0+)
+
+Deferred — not built in this milestone. The queue-consumer worker model above
+does not preclude any of it:
+
+- **Elastic scale-to-zero.** Delegate autoscaling to the deployment platform:
+  derive a KEDA `ScaledObject` from queue depth so worker replicas scale 0→N
+  (and back to zero when idle) on Kubernetes. The framework emits the manifest;
+  the orchestrator actuates.
+- **Warm-start workers.** Checkpoint/restore (CRIU-style, as in Lambda
+  SnapStart) to make scale-from-zero cold starts sub-second rather than
+  pod-boot-bound.
+- **Non-Kubernetes actuation.** A `WorkerFleetProvider` port with adapters (e.g.
+  Nomad for process-level scheduling) for environments without a container
+  orchestrator.
+- **Lighter execution unit.** WASM/WASI isolates as a fast-scheduling,
+  sub-process worker unit.
+
+These are operational-efficiency and elasticity layers — they reduce idle cost
+and ops toil. They do not add the capability to serve many users, which the
+deployable worker already provides.

@@ -3565,3 +3565,141 @@ validation respectively):
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 3/3 | Complete    | 2026-06-23 |
 | 242. Write authorization, tenant injection & non-disclosure | 4/4 | Complete    | 2026-06-24 |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
+
+## v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249)
+
+**Status:** Queued behind v16.3 Phase 243 (v16.3 stays the current milestone until 243
+closes; these phases continue the numbering and are planned/executed after it).
+
+**Goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable unit of
+work with zero hand-written queue plumbing — the framework derives the `ferro-queue` Job,
+its serializable payload, and a typed result handle from the method signature, runs it on a
+horizontally scalable worker, and streams the result back via the read-model + broadcast
+path. Work distribution as the operational analog of projection/intent: declare once, the
+job / worker / result-path / MCP spec are all derived from the single trait declaration.
+
+**Anchor spec:** `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`
+(scope, alternatives rejected — sync RPC / actors —, scaling model, and the parked 2.0
+elastic direction).
+
+**Builds on shipped work:**
+- `ferro-queue` — the Job/worker substrate this layer derives onto (no rebuild).
+- `ferro-projection` — per-key snapshot read models that hold offloaded results.
+- `ferro-broadcast` — delta streaming that delivers results to subscribed clients.
+- `#[service]` / `#[injectable]` container — the trait that stays single source of truth.
+
+**Architectural constraint (encoded in every phase goal):** `#[offload]` **derives onto**
+`ferro-queue`; it must not introduce a second job/worker mechanism. The serializable-contract
+requirement doubles as the module-isolation boundary (no non-serializable internals cross the
+offload edge). The result path is fire-and-forward (request never blocks). Capacity scales by
+running more workers; the framework does **not** autonomously size machines — autoscaling /
+scale-to-zero is explicitly deferred (spec "Future direction").
+
+### Phases
+
+- [ ] **Phase 244: `#[offload]` macro → Job + payload derivation** — Mark a `#[service]`
+  trait method offloadable; derive the `ferro-queue` Job and its serializable payload from
+  the method signature. No hand-written Job struct.
+- [ ] **Phase 245: Typed result handle + serializable-contract enforcement** — Calling an
+  offloaded method returns a typed handle; non-serializable parameter/return types fail at
+  compile time with a clear diagnostic (this enforcement is the isolation boundary).
+- [ ] **Phase 246: Result → read-model snapshot** — The worker persists the method's return
+  value as a `ferro-projection` snapshot keyed by the handle, retrievable after completion.
+- [ ] **Phase 247: Read-model delta → broadcast streaming** — A client subscribed to a
+  handle receives the result as a `ferro-broadcast` delta on completion; the originating
+  request never blocks awaiting it.
+- [ ] **Phase 248: Deployable `ferro worker` runtime** — A consumer process (same app binary,
+  `worker` subcommand, job-class selector) runnable at N replicas against the shared queue;
+  capacity scales by adding replicas; independent fault domain per worker class.
+- [ ] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through
+  `list_services`; document the authoring surface, result path, scaling model, and non-goals.
+
+### Phase Details
+
+#### Phase 244: `#[offload]` macro → Job + payload derivation
+**Goal:** Turn a single `#[offload]` annotation on a `#[service]` trait method into a derived
+`ferro-queue` Job plus a serializable payload struct built from the method's parameters — so
+the work is declared once (as the method) and never re-authored as a Job wrapper.
+**Depends on:** `ferro-queue` Job/worker substrate; the `#[service]` macro (`ferro-macros`).
+**Requirements:** OFFLOAD-01.
+**Success Criteria** (what must be TRUE):
+  1. A `#[offload]` method on a `#[service]` trait expands to a registered `ferro-queue` Job
+     whose payload carries the method's parameters.
+  2. Enqueuing the derived Job runs the original method body on a worker (round-trip in a test).
+  3. No hand-written Job struct or manual enqueue call is required at the call site.
+
+#### Phase 245: Typed result handle + serializable-contract enforcement
+**Goal:** Make the offload call site ergonomic and the contract honest — return a typed handle
+identifying where the result will land, and reject at compile time any method whose parameters
+or return type are not serializable, with a diagnostic that names the offending type.
+**Depends on:** Phase 244.
+**Requirements:** OFFLOAD-02.
+**Success Criteria** (what must be TRUE):
+  1. Calling an offloaded method returns a typed result handle (not the bare value).
+  2. A `#[offload]` method with a non-`Serialize`/`DeserializeOwned` parameter or return type
+     fails to compile (trybuild) with a clear, type-naming message.
+  3. The serializable boundary is documented as the module-isolation guarantee.
+
+#### Phase 246: Result → read-model snapshot
+**Goal:** Give offloaded work a result path — the worker writes the method's return value into
+a `ferro-projection` snapshot keyed by the handle, so the result is durably retrievable after
+completion without the request having waited on it.
+**Depends on:** Phase 245.
+**Requirements:** OFFLOAD-03.
+**Success Criteria** (what must be TRUE):
+  1. On worker completion, the return value is persisted as a projection snapshot keyed by the
+     handle.
+  2. The snapshot is retrievable by handle after completion in a test.
+  3. A failed/panicking offloaded method records a terminal error state on the handle (not a
+     silent drop).
+
+#### Phase 247: Read-model delta → broadcast streaming
+**Goal:** Deliver results live — stream the snapshot delta to a client subscribed to the handle
+over `ferro-broadcast`, completing the fire-and-forward loop so the originating request returns
+immediately and the answer arrives when ready.
+**Depends on:** Phase 246.
+**Requirements:** OFFLOAD-04.
+**Success Criteria** (what must be TRUE):
+  1. A client subscribed to a handle receives a broadcast delta carrying the result on completion.
+  2. The originating request returns before the worker finishes (non-blocking, asserted in a test).
+  3. The subscribe-then-await-result client pattern is documented.
+
+#### Phase 248: Deployable `ferro worker` runtime
+**Goal:** Make background capacity horizontally scalable — a deployable consumer process (the
+same application binary under a `worker` subcommand with a job-class selector) runnable at N
+replicas against the shared queue, so a Ferro app absorbs growing background load by adding
+workers, with each worker class an independent fault domain.
+**Depends on:** Phase 244 (the derived Jobs the worker consumes).
+**Requirements:** OFFLOAD-05.
+**Success Criteria** (what must be TRUE):
+  1. `ferro worker --class <name>` runs a process that consumes only that job class's queue.
+  2. Two worker replicas against one queue split the work without double-processing a job
+     (at-least-once with idempotent ack, verified in a test).
+  3. Saturating one worker class does not stall an unrelated class (fault-domain isolation).
+  4. No framework-managed autoscaling is introduced; N is an external concern (documented).
+
+#### Phase 249: `ferro-mcp` introspection + docs
+**Goal:** Close the single-source loop — surface offloadable methods through `ferro-mcp` so an
+agent reads the same trait as the in-process contract, the wire payload, and the offload spec;
+and document the authoring surface, result path, scaling model, and non-goals.
+**Depends on:** Phases 244–248.
+**Requirements:** OFFLOAD-06.
+**Success Criteria** (what must be TRUE):
+  1. `list_services` marks offloadable methods and exposes their derived payload schema.
+  2. Docs cover: authoring an `#[offload]` method, the result handle + streaming pattern, the
+     deployable worker / scaling model, and the deferred elastic direction.
+  3. The "many-user" scaling answer (stateless tier + replicable workers + cache + queue) is
+     documented as the framework's capacity story.
+
+### Requirement → Phase Mapping (v16.4)
+
+| Requirement | Phase |
+|-------------|-------|
+| OFFLOAD-01 (`#[offload]` macro → Job + payload) | Phase 244 |
+| OFFLOAD-02 (typed result handle + serializable enforcement) | Phase 245 |
+| OFFLOAD-03 (result → read-model snapshot) | Phase 246 |
+| OFFLOAD-04 (read-model delta → broadcast streaming) | Phase 247 |
+| OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248 |
+| OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 |
+
+✓ 6/6 requirements mapped, no orphans, no duplicates.
