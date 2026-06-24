@@ -517,9 +517,11 @@ mod tests {
             "arguments": { "status": "pending" }
         });
 
-        // read_write scope so the write-path scope gate passes.
+        // read_write scope + write_authorized: Some(true) so the scope gate and the
+        // write-ability gate (Phase 242) both pass — this test exercises CRUD dispatch.
         let ctx = McpContext {
             scope: Some("read_write".to_string()),
+            write_authorized: Some(true),
             ..Default::default()
         };
 
@@ -587,8 +589,11 @@ mod tests {
             "arguments": { "status": "pending" }
         });
 
+        // write_authorized: Some(true) so the write-ability gate (Phase 242) passes and the
+        // CRUD prefix loop runs. The loop finds no matching service (creatable=false) → -32601.
         let ctx = McpContext {
             scope: Some("read_write".to_string()),
+            write_authorized: Some(true),
             ..Default::default()
         };
 

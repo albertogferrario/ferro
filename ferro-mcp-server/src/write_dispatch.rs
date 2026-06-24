@@ -904,7 +904,11 @@ mod tests {
     async fn write_tool_result_parses_as_valid_mcp_content() {
         let db = setup_db().await;
         let services = vec![order_service_with_actions()];
-        let ctx = crate::McpContext::default();
+        // write_authorized: Some(true) — this test exercises dispatch behavior, not auth.
+        let ctx = crate::McpContext {
+            write_authorized: Some(true),
+            ..Default::default()
+        };
 
         // --- success case: guard passes, executor returns Ok ---
         let success_dispatcher = WriteDispatcher {
@@ -1586,7 +1590,11 @@ mod confirmation_tests {
         let dispatcher = allow_dispatcher(exec_count);
         let store = InMemoryConfirmationStore::new();
         let services = vec![crud_order_service()];
-        let ctx = crate::McpContext::default();
+        // write_authorized: Some(true) — this test exercises CRUD dispatch, not the auth gate.
+        let ctx = crate::McpContext {
+            write_authorized: Some(true),
+            ..Default::default()
+        };
 
         let response = handle_write_call(
             json!({ "name": "create_order", "arguments": { "amount": "10.00" } }),
@@ -1624,7 +1632,11 @@ mod confirmation_tests {
         let dispatcher = allow_dispatcher(exec_count);
         let store = InMemoryConfirmationStore::new();
         let services = vec![crud_order_service()];
-        let ctx = crate::McpContext::default();
+        // write_authorized: Some(true) — this test exercises the confirmation seam, not auth.
+        let ctx = crate::McpContext {
+            write_authorized: Some(true),
+            ..Default::default()
+        };
 
         let response = handle_write_call(
             json!({ "name": "delete_order", "arguments": { "id": 1 } }),
@@ -1775,6 +1787,160 @@ mod confirmation_tests {
                 .unwrap_or(""),
             "confirmation_mismatch",
             "wrong-record token must return confirmation_mismatch; got: {mismatch_response:?}"
+        );
+    }
+
+    // ── Phase 242-03: write_authorized framing tests (CRUD-05 / SC#1 second half) ──
+
+    /// SC#1 second half: write_authorized=None → fail-closed deny before any dispatch.
+    ///
+    /// The scope gate (SC#1 first half, jsonrpc.rs:77 / mcp_tenant_isolation.rs) already
+    /// enforces that a read-scoped key cannot call write tools. This test verifies the
+    /// policy-Gate layer: when the host has not set write_authorized (None), handle_write_call
+    /// must deny unconditionally before reaching any CRUD or action lookup.
+    #[tokio::test]
+    async fn write_authorized_none_denies() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        // write_authorized: None — host did not evaluate the Gate (or evaluation is absent).
+        let ctx = crate::McpContext {
+            tenant_id: Some(1),
+            scope: Some("read_write".into()),
+            write_authorized: None,
+            ..Default::default()
+        };
+
+        let response = handle_write_call(
+            json!({ "name": "create_order", "arguments": { "amount": "10.00" } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        assert_eq!(
+            response["error"]["code"].as_i64(),
+            Some(-32603),
+            "write_authorized=None must return -32603; got: {response:?}"
+        );
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .unwrap_or("")
+                .contains("write ability denied"),
+            "error message must contain 'write ability denied'; got: {response:?}"
+        );
+        assert!(
+            response.get("result").is_none(),
+            "denied response must not have a 'result' key; got: {response:?}"
+        );
+        assert_eq!(
+            exec_count.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "executor must NOT run when write_authorized=None"
+        );
+    }
+
+    /// SC#1 second half: write_authorized=Some(false) → fail-closed deny before any dispatch.
+    #[tokio::test]
+    async fn write_authorized_false_denies() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        // write_authorized: Some(false) — Gate explicitly denied.
+        let ctx = crate::McpContext {
+            tenant_id: Some(1),
+            scope: Some("read_write".into()),
+            write_authorized: Some(false),
+            ..Default::default()
+        };
+
+        let response = handle_write_call(
+            json!({ "name": "update_order", "arguments": { "id": 1, "status": "processing" } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        assert_eq!(
+            response["error"]["code"].as_i64(),
+            Some(-32603),
+            "write_authorized=Some(false) must return -32603; got: {response:?}"
+        );
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .unwrap_or("")
+                .contains("write ability denied"),
+            "error message must contain 'write ability denied'; got: {response:?}"
+        );
+        assert!(
+            response.get("result").is_none(),
+            "denied response must not have a 'result' key; got: {response:?}"
+        );
+        assert_eq!(
+            exec_count.load(std::sync::atomic::Ordering::SeqCst),
+            0,
+            "executor must NOT run when write_authorized=Some(false)"
+        );
+    }
+
+    /// SC#1 second half: write_authorized=Some(true) → write-ability gate passes,
+    /// request proceeds to CRUD/tenant handling (does NOT return the write-ability deny).
+    #[tokio::test]
+    async fn write_authorized_true_proceeds() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        let dispatcher = allow_dispatcher(exec_count.clone());
+        let store = InMemoryConfirmationStore::new();
+        let services = vec![crud_order_service()];
+        // write_authorized: Some(true) — Gate passed; request must reach CRUD dispatch.
+        let ctx = crate::McpContext {
+            tenant_id: Some(1),
+            scope: Some("read_write".into()),
+            write_authorized: Some(true),
+            ..Default::default()
+        };
+
+        let response = handle_write_call(
+            json!({ "name": "create_order", "arguments": { "amount": "10.00" } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            &store,
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        // The write-ability gate must NOT have fired.
+        let msg = response["error"]["message"].as_str().unwrap_or("");
+        assert!(
+            !msg.contains("write ability denied"),
+            "write_authorized=Some(true) must NOT return 'write ability denied'; got: {response:?}"
+        );
+        // The response must be a result envelope (ok or a downstream error — not the auth deny).
+        // Either a success result OR a downstream error (tenant/db/validation) is acceptable —
+        // the point is the write-ability gate did not block it.
+        assert!(
+            response.get("result").is_some() || response["error"]["code"].as_i64() != Some(-32603)
+                || !msg.contains("write ability denied"),
+            "write_authorized=Some(true) must reach CRUD dispatch; got: {response:?}"
         );
     }
 }
