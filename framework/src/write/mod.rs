@@ -362,12 +362,31 @@ async fn execute_crud_plan(
                         .map_err(|e| WriteError::Database(e.to_string()))?;
 
                     // Fetch the full inserted record.
-                    let select_sql = format!("SELECT * FROM {table} WHERE id = ?");
-                    let select_stmt = Statement::from_sql_and_values(
-                        backend,
-                        &select_sql,
-                        vec![sea_orm::Value::BigInt(Some(inserted_id))],
-                    );
+                    // Phase 242 (Pitfall 5 / T-242-03): also add the tenant predicate to the
+                    // post-INSERT SELECT — mirrors the post-UPDATE SELECT pattern. In a shared
+                    // connection pool, last_insert_rowid() is per-connection and reliable, but
+                    // the predicate ensures a stale/raced id from another tenant yields no row
+                    // rather than leaking foreign data to the caller.
+                    let (select_sql, select_values) = if let Some(ref tc) = tenant_column {
+                        let t_ph = placeholder(backend, 2);
+                        (
+                            format!(
+                                "SELECT * FROM {table} WHERE id = ? AND {tc_col} = {t_ph}",
+                                tc_col = tc.column
+                            ),
+                            vec![
+                                sea_orm::Value::BigInt(Some(inserted_id)),
+                                sea_orm::Value::BigInt(Some(tenant_id)),
+                            ],
+                        )
+                    } else {
+                        (
+                            format!("SELECT * FROM {table} WHERE id = ?"),
+                            vec![sea_orm::Value::BigInt(Some(inserted_id))],
+                        )
+                    };
+                    let select_stmt =
+                        Statement::from_sql_and_values(backend, &select_sql, select_values);
                     let record_row = db
                         .query_one(select_stmt)
                         .await
