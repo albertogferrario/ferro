@@ -19,7 +19,10 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Orders::CustomerName).string().not_null())
-                    .col(ColumnDef::new(Orders::Total).double().not_null())
+                    // Derived field: excluded from CRUD write input (read-only), so the
+                    // INSERT omits it. Default 0 lets an order be created with no line
+                    // items; the recompute hook updates it as line items are added.
+                    .col(ColumnDef::new(Orders::Total).double().not_null().default(0.0))
                     .col(ColumnDef::new(Orders::Status).string().not_null())
                     .col(
                         ColumnDef::new(Orders::CreatedAt)
