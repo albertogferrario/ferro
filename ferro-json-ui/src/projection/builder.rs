@@ -644,6 +644,7 @@ fn emit_relationships(
                     key: "name".to_string(),
                     label: field_display_name(&rel.target),
                     format: None,
+                    align: None,
                 };
                 serde_json::to_value(TableProps {
                     columns: vec![col],

@@ -286,6 +286,7 @@ pub fn build_column_for_field(field: &FieldDef) -> Column {
         key: field.name.clone(),
         label: field_display_name(&field.name),
         format,
+        align: None,
     }
 }
 
