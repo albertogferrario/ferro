@@ -49,3 +49,22 @@ pub fn service_def() -> ServiceDef {
         .belongs_to("customer", "user")
         .has_many("line_items", "line_item")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::service_def;
+
+    /// CRUD-07: a write-enabled projection MUST carry mcp_write_ability, else
+    /// ServiceDef::validate() rejects it at boot. The order flip sets
+    /// .mcp_write_ability("manage-orders") alongside .creatable/.updatable/.deletable,
+    /// so validate() passes. This pins the boot-time contract for the flipped projection.
+    #[test]
+    fn order_projection_validates_after_crud_flip() {
+        let svc = service_def();
+        assert!(svc.creatable, "order must be creatable after the flip");
+        assert!(svc.updatable, "order must be updatable after the flip");
+        assert!(svc.deletable, "order must be deletable after the flip");
+        svc.validate()
+            .expect("CRUD-07: write flags + mcp_write_ability must pass validate() at boot");
+    }
+}
