@@ -19,4 +19,5 @@ pub fn service_def() -> ServiceDef {
         .read_only_field("id", DataType::Integer, FieldMeaning::Identifier)
         .field("order_id", DataType::Integer, FieldMeaning::ForeignKey)
         .field("amount", DataType::Float, FieldMeaning::Money)
+        .read_only_field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
 }

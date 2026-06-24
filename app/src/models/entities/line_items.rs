@@ -10,6 +10,7 @@ pub struct Model {
     pub order_id: i64,
     pub amount: f64,
     pub tenant_id: i64,
+    pub created_at: String,
     #[sea_orm(column_name = "deleted_at")]
     pub deleted_at: Option<String>,
 }

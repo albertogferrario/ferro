@@ -85,12 +85,11 @@ fn recompute_order_total_hook() -> ferro::write::OverrideFn {
                 Some(oid) => oid,
                 None => {
                     let li_id = inputs.get("id").and_then(|v| {
-                        v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok()))
+                        v.as_i64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok()))
                     });
                     let li_id = li_id.ok_or_else(|| {
-                        ferro::write::WriteError::Database(
-                            "recompute: missing line item id".into(),
-                        )
+                        ferro::write::WriteError::Database("recompute: missing line item id".into())
                     })?;
                     let row = db
                         .query_one(Statement::from_sql_and_values(

@@ -21,6 +21,14 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(LineItems::OrderId).big_integer().not_null())
                     .col(ColumnDef::new(LineItems::Amount).double().not_null())
                     .col(ColumnDef::new(LineItems::TenantId).big_integer().not_null())
+                    // created_at: injected by the CRUD Create kernel (execute_crud_plan always
+                    // adds this column); required for INSERT … RETURNING * to succeed.
+                    .col(
+                        ColumnDef::new(LineItems::CreatedAt)
+                            .timestamp()
+                            .not_null()
+                            .default(Expr::current_timestamp()),
+                    )
                     .col(ColumnDef::new(LineItems::DeletedAt).timestamp().null())
                     .to_owned(),
             )
@@ -41,5 +49,6 @@ enum LineItems {
     OrderId,
     Amount,
     TenantId,
+    CreatedAt,
     DeletedAt,
 }
