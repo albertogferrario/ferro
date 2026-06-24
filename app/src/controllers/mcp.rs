@@ -247,21 +247,18 @@ pub async fn handle(req: Request) -> Response {
             let tool_name = params["name"].as_str().unwrap_or("");
             let services = exposed_services();
 
-            // Authorization boundary split:
+            // Authorization boundary split (Phase 242 / CRUD-05 closes the write gap):
             //
             // READ tools (name starts with "list_"):
-            //   Gate::authorize_for checks the service-level ability declared in ServiceDef.
+            //   Gate::authorize_for checks the service-level mcp_ability declared in ServiceDef.
             //   Service is resolved by stripping "list_" to get the service name.
             //
             // WRITE tools (all other names):
-            //   Authorization is enforced by two layers already inside handle_tools_call:
-            //     1. Scope gate (Phase 217) — API-key "read_only" scope rejects write tools.
-            //     2. dispatch_write guard re-evaluation (D-02) — live DB guard checks.
-            //   The app Gate is service-oriented (reads ServiceDef.mcp_ability) and is not
-            //   applicable here because write tools do not map 1:1 to a service name.
-            //   Adding a Gate check for write tools would require resolving the owning service
-            //   via find_action; the scope gate + live guards cover the write authorization
-            //   surface (SC#1 / T-219-02), so Gate is intentionally skipped for write tools.
+            //   Two layers enforce authorization:
+            //     1. Scope gate (Phase 217) — API-key "read" scope rejects write tools upstream.
+            //     2. Policy Gate (Phase 242) — Gate::authorize_for on mcp_write_ability;
+            //        result stored as write_authorized in McpContext; enforced fail-closed in
+            //        handle_write_call before any CRUD/confirm routing (SC#1 second half).
             if let Some(service_name) = tool_name.strip_prefix("list_") {
                 // Read tool: apply Gate check before dispatching.
                 let service = match services
@@ -315,12 +312,55 @@ pub async fn handle(req: Request) -> Response {
                 }
             }
 
-            // Allowed — forward tenant context and resolved scope to dispatch (SC-1, D-06).
-            // For read tools: Gate passed above. For write tools: scope gate + guards enforce.
+            // Phase 242 (CRUD-05): write tools run the policy Gate on mcp_write_ability.
+            // Resolve the owning service by stripping verb / confirmation prefixes:
+            //   create_<svc> / update_<svc> / delete_<svc>
+            //   request_confirm_delete_<svc> / confirm_delete_<svc>
+            // Fail-closed: unknown service or absent mcp_write_ability → Some(false) → deny
+            // in handle_write_call. Read tools (list_) get None (write_authorized unused there).
+            let write_authorized: Option<bool> = if tool_name.starts_with("list_") {
+                None // read tool — write_authorized is not consulted on the read path
+            } else {
+                let svc_name = tool_name
+                    .strip_prefix("request_confirm_")
+                    .or_else(|| tool_name.strip_prefix("confirm_"))
+                    .unwrap_or(tool_name)
+                    .trim_start_matches("create_")
+                    .trim_start_matches("update_")
+                    .trim_start_matches("delete_");
+                match services.iter().find(|s| s.name == svc_name && s.mcp_exposed) {
+                    // Fail-closed: a write-enabled projection without mcp_write_ability is
+                    // rejected at boot by validate() (CRUD-07); at runtime None still denies.
+                    Some(svc) => match svc.mcp_write_ability.as_deref() {
+                        Some(ability) => {
+                            let user = crate::models::users::User::find_by_id(user_id)
+                                .await
+                                .map_err(|e| {
+                                    HttpResponse::json(json!({
+                                        "jsonrpc": "2.0", "id": id.clone(),
+                                        "error": { "code": -32603, "message": e.to_string() }
+                                    }))
+                                })?
+                                .ok_or_else(|| HttpResponse::new().status(401))?;
+                            Some(
+                                ferro::authorization::Gate::authorize_for(&user, ability, None)
+                                    .is_ok(),
+                            )
+                        }
+                        None => Some(false),
+                    },
+                    None => Some(false),
+                }
+            };
+
+            // Forward tenant context, scope, and write authorization to dispatch (SC-1, D-06).
+            // For read tools: Gate passed above; write_authorized=None is unused.
+            // For write tools: scope gate + write_authorized (enforced in handle_write_call).
             let tenant_id = ferro::current_tenant().map(|t| t.id);
             let ctx = McpContext {
                 tenant_id,
                 scope: key_scope,
+                write_authorized,
                 ..Default::default()
             };
             let dispatcher = make_write_dispatcher();
