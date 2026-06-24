@@ -254,9 +254,10 @@ fn row_to_json(row: &sea_orm::QueryResult) -> serde_json::Value {
 ///
 /// # SQL shapes
 ///
-/// - `Create` → `INSERT INTO <table> (<cols>, created_at[, tenant_col]) VALUES (<ph>, datetime('now')/NOW()[, ?])`
-///   followed by `SELECT * FROM <table> WHERE id = last_insert_rowid()` (SQLite) or
-///   `INSERT … RETURNING *` (Postgres). Returns the inserted record including its `id`.
+/// - `Create` → `INSERT INTO <table> (<cols>, created_at[, tenant_col]) VALUES (<ph>, datetime('now')/NOW()[, ?]) RETURNING *`
+///   for both backends (SQLite 3.35+ and Postgres). A single round-trip returns the inserted
+///   record — including its auto-generated `id` — from the same connection, avoiding the
+///   pooled-connection `last_insert_rowid()` hazard.
 /// - `Update` → `UPDATE <table> SET <col>=? … WHERE <id_column>=? AND <soft_delete_column> IS NULL[AND tenant_col=?]`.
 ///   Zero rows affected → [`WriteError::RecordNotFound`].
 /// - `Delete` → `UPDATE <table> SET <soft_delete_column>=<now> WHERE <id_column>=? AND <soft_delete_column> IS NULL[AND tenant_col=?]`.
@@ -323,80 +324,27 @@ async fn execute_crud_plan(
                 values.push(sea_orm::Value::BigInt(Some(tenant_id)));
             }
 
-            match backend {
-                DatabaseBackend::Postgres => {
-                    // Postgres: INSERT … RETURNING * in a single round-trip.
-                    let sql =
-                        format!("INSERT INTO {table} ({col_list}) VALUES ({ph_list}) RETURNING *");
-                    let stmt = Statement::from_sql_and_values(backend, &sql, values);
-                    let row = db
-                        .query_one(stmt)
-                        .await
-                        .map_err(|e| WriteError::Database(e.to_string()))?
-                        .ok_or_else(|| {
-                            WriteError::Database("INSERT RETURNING returned no row".to_string())
-                        })?;
-                    Ok(row_to_json(&row))
-                }
-                _ => {
-                    // SQLite: INSERT then SELECT last_insert_rowid() then SELECT *.
-                    let sql = format!("INSERT INTO {table} ({col_list}) VALUES ({ph_list})");
-                    let stmt = Statement::from_sql_and_values(backend, &sql, values);
-                    db.execute(stmt)
-                        .await
-                        .map_err(|e| WriteError::Database(e.to_string()))?;
-
-                    // Retrieve the auto-generated id.
-                    let id_row = db
-                        .query_one(Statement::from_string(
-                            backend,
-                            "SELECT last_insert_rowid() AS id".to_string(),
-                        ))
-                        .await
-                        .map_err(|e| WriteError::Database(e.to_string()))?
-                        .ok_or_else(|| {
-                            WriteError::Database("last_insert_rowid() returned no row".to_string())
-                        })?;
-                    let inserted_id: i64 = id_row
-                        .try_get("", "id")
-                        .map_err(|e| WriteError::Database(e.to_string()))?;
-
-                    // Fetch the full inserted record.
-                    // Phase 242 (Pitfall 5 / T-242-03): also add the tenant predicate to the
-                    // post-INSERT SELECT — mirrors the post-UPDATE SELECT pattern. In a shared
-                    // connection pool, last_insert_rowid() is per-connection and reliable, but
-                    // the predicate ensures a stale/raced id from another tenant yields no row
-                    // rather than leaking foreign data to the caller.
-                    let (select_sql, select_values) = if let Some(ref tc) = tenant_column {
-                        let t_ph = placeholder(backend, 2);
-                        (
-                            format!(
-                                "SELECT * FROM {table} WHERE id = ? AND {tc_col} = {t_ph}",
-                                tc_col = tc.column
-                            ),
-                            vec![
-                                sea_orm::Value::BigInt(Some(inserted_id)),
-                                sea_orm::Value::BigInt(Some(tenant_id)),
-                            ],
-                        )
-                    } else {
-                        (
-                            format!("SELECT * FROM {table} WHERE id = ?"),
-                            vec![sea_orm::Value::BigInt(Some(inserted_id))],
-                        )
-                    };
-                    let select_stmt =
-                        Statement::from_sql_and_values(backend, &select_sql, select_values);
-                    let record_row = db
-                        .query_one(select_stmt)
-                        .await
-                        .map_err(|e| WriteError::Database(e.to_string()))?
-                        .ok_or_else(|| {
-                            WriteError::Database("SELECT after INSERT returned no row".to_string())
-                        })?;
-                    Ok(row_to_json(&record_row))
-                }
-            }
+            // Both Postgres and SQLite (3.35+, 2021) support `INSERT … RETURNING *`: a single
+            // round-trip that returns the just-inserted row — including its auto-generated id —
+            // from the SAME connection that performed the INSERT.
+            //
+            // This deliberately avoids a follow-up `SELECT last_insert_rowid()`. On a pooled
+            // `DatabaseConnection` (default DB_MAX_CONNECTIONS=10) the INSERT and a separate
+            // `last_insert_rowid()` query may execute on DIFFERENT physical connections, and
+            // `last_insert_rowid()` is per-connection in SQLite — so it would return 0 and the
+            // post-INSERT SELECT would find no row, failing every create on a real pool. RETURNING
+            // is also leak-safe: it yields exactly the row inserted by this statement (carrying the
+            // tenant_id we set), so no cross-tenant predicate is needed (T-242-03).
+            let sql = format!("INSERT INTO {table} ({col_list}) VALUES ({ph_list}) RETURNING *");
+            let stmt = Statement::from_sql_and_values(backend, &sql, values);
+            let row = db
+                .query_one(stmt)
+                .await
+                .map_err(|e| WriteError::Database(e.to_string()))?
+                .ok_or_else(|| {
+                    WriteError::Database("INSERT RETURNING returned no row".to_string())
+                })?;
+            Ok(row_to_json(&row))
         }
 
         CrudPlan::Update {
