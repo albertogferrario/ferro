@@ -97,6 +97,20 @@ pub async fn register() {
             .unwrap_or_else(AuthResponse::deny_silent)
     });
 
+    // Gate ability "manage-orders" — the write gate the order projection declares via
+    // .mcp_write_ability("manage-orders") (Phase 243-01). The /mcp controller evaluates this
+    // for every CRUD verb (create_/update_/delete_order) to compute write_authorized; an
+    // authenticated user may manage their tenant's orders. Tenant scoping is enforced by
+    // dispatch (D-02), so this gate only decides whether the CRUD write tools are reachable.
+    // Without it, Gate::authorize_for hits an undefined ability → deny → every live write
+    // returns -32603 (Phase 243 SC#1 live drive). CRUD-05.
+    Gate::define("manage-orders", |user, _resource| {
+        user.as_any()
+            .downcast_ref::<crate::models::users::User>()
+            .map(|_u| AuthResponse::allow())
+            .unwrap_or_else(AuthResponse::deny_silent)
+    });
+
     // Build and register the global DbTenantLookup (shared with route middleware).
     let tenant_lookup = crate::tenant_lookup::build();
     crate::tenant_lookup::init(tenant_lookup);
