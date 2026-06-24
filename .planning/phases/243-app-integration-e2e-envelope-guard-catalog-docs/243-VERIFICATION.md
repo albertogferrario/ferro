@@ -1,13 +1,14 @@
 ---
 phase: 243-app-integration-e2e-envelope-guard-catalog-docs
-verified: 2026-06-24T12:00:00Z
-status: human_needed
+verified: 2026-06-24T14:55:00Z
+status: verified
 score: 4/4
 overrides_applied: 0
 human_verification:
   - test: "Drive create → list → update → delete against the live :8090/mcp endpoint using a seeded read_write bearer key"
     expected: "Each verb returns a well-formed Phase 205 structured envelope; the create returns a new id >= 5; list excludes the soft-deleted row after delete"
     why_human: "SC#1 names a live :8090/mcp drive explicitly. Per D-01/D-02 in 243-CONTEXT.md, the live drive was intentionally designated as a manual UAT smoke rather than a CI gate (the in-process harness gates CI). The live surface cannot be exercised without a running server and a seeded bearer key."
+    resolved: "2026-06-24 — driven live against the running app on :8090 (10-conn pool, file SQLite) with a minted HS256 JWT (sub=901/alice, tenant_id=1/acme). Full create→list→update→delete + confirmation flow passes end-to-end; see 243-HUMAN-UAT.md. The drive surfaced and FIXED two defects the in-process harness had masked: (1) missing manage-orders Gate definition in app/bootstrap.rs (writes denied -32603); (2) execute_crud_plan SQLite create relied on cross-connection last_insert_rowid()=0 on a real pool — fixed with INSERT … RETURNING * in framework/src/write/mod.rs."
 ---
 
 # Phase 243: App Integration, E2E, Envelope Guard & Catalog/Docs — Verification Report
