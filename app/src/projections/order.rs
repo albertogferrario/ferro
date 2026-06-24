@@ -20,7 +20,9 @@ pub fn service_def() -> ServiceDef {
         .display_name("Order")
         .field("id", DataType::Integer, FieldMeaning::Identifier)
         .field("customer_name", DataType::String, FieldMeaning::EntityName)
-        .field("total", DataType::Float, FieldMeaning::Money)
+        // Derived from line_items (SUM of amount); recomputed server-side by the
+        // post-persist hook. Read-only → excluded from create_/update_order input.
+        .read_only_field("total", DataType::Float, FieldMeaning::Money)
         .field("status", DataType::String, FieldMeaning::Status)
         .field("created_at", DataType::DateTime, FieldMeaning::CreatedAt)
         .state_machine(

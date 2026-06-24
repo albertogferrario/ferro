@@ -1,5 +1,6 @@
 pub mod api_key;
 pub mod feedback_form;
+pub mod line_item;
 pub mod order;
 pub mod product;
 pub mod revenue_dashboard;

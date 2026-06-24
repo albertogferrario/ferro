@@ -30,7 +30,10 @@ pub(crate) fn confirmation_store() -> &'static ferro_ai::InMemoryConfirmationSto
 /// The MCP-exposed projections served at this endpoint.
 /// Phase 198: explicit slice; a registry can replace this later.
 pub(crate) fn exposed_services() -> Vec<ServiceDef> {
-    vec![crate::projections::order::service_def()]
+    vec![
+        crate::projections::order::service_def(),
+        crate::projections::line_item::service_def(),
+    ]
 }
 
 /// Perform a live DB check for the `is_manager` guard.
