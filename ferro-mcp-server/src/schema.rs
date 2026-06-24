@@ -863,6 +863,31 @@ mod tests {
         );
     }
 
+    /// Phase 243.1 Gate F: a read-only (writable: false) field must be absent
+    /// from both create and update input schemas. Regression guard for the
+    /// `is_write_excluded_field` Gate F added in ferro-projections.
+    #[test]
+    fn read_only_field_absent_from_write_schemas() {
+        let svc = ServiceDef::new("order")
+            .field("customer_name", DataType::String, FieldMeaning::EntityName)
+            .read_only_field("total", DataType::Float, FieldMeaning::Money);
+
+        let create = build_create_input_schema(&svc).expect("create schema");
+        let create_props = create["properties"].as_object().expect("create properties");
+        assert!(create_props.contains_key("customer_name"));
+        assert!(
+            !create_props.contains_key("total"),
+            "read-only `total` must not appear in create_order input"
+        );
+
+        let update = build_update_input_schema(&svc).expect("update schema");
+        let update_props = update["properties"].as_object().expect("update properties");
+        assert!(
+            !update_props.contains_key("total"),
+            "read-only `total` must not appear in update_order input"
+        );
+    }
+
     /// build_delete_input_schema — required is ["id"], properties contains id and
     /// confirmation_token (type string); confirmation_token NOT in required.
     #[test]
