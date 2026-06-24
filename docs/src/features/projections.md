@@ -637,3 +637,64 @@ Five MCP tools support Service Projections development: listing, inspection, ren
 
 - **Returns:** A summary of which models have corresponding `ServiceDef` projections and which do not, along with suggestions for field meanings based on column names
 - **When to use:** Identify models that could benefit from projection-based UIs; plan which services to define next
+
+---
+
+## MCP CRUD Opt-In
+
+A `ServiceDef` can expose CRUD write tools (`create_<svc>`, `update_<svc>`, `delete_<svc>`) to agents on the MCP surface in addition to the read tool (`list_<svc>`). This is an additive opt-in on the `ServiceDef` — it does not affect the visual/form write path, which uses the same `dispatch_write` kernel independently.
+
+### Enabling CRUD tools
+
+Add four builder calls to your service definition:
+
+```rust
+ServiceDef::new("order")
+    .mcp_exposed(true)
+    .tenant_column("tenant_id")
+    .mcp_ability("view-orders")          // read gate (existing)
+    .mcp_write_ability("manage-orders")  // write gate: scopes create/update/delete
+    .creatable(true)                     // derives create_order tool
+    .updatable(true)                     // derives update_order tool
+    .deletable(true)                     // derives delete_order tool (soft-delete)
+    .soft_delete_column("deleted_at")    // required: list_order excludes soft-deleted rows
+    // ... fields, state_machine, actions unchanged ...
+```
+
+**Prerequisites:**
+
+| Requirement | Why |
+|-------------|-----|
+| `tenant_column` set | `tenant_id` is injected into every write; never accepted from the agent's input body |
+| `deleted_at` column in the table | `deletable(true)` performs a soft-delete (sets `deleted_at`); hard-delete is not supported |
+| `mcp_write_ability` present when any write flag is true | `ServiceDef::validate()` fails at boot otherwise (CRUD-07) |
+
+### Derived tool set
+
+| Tool | Behavior |
+|------|----------|
+| `create_<svc>` | INSERT a new row; `status` excluded from input when a StateMachine is defined (set server-side to initial state) |
+| `update_<svc>` | UPDATE writable fields; `status`, `id`, `created_at`, `tenant_id` excluded from input |
+| `delete_<svc>` | Soft-delete (sets `deleted_at`); confirmation-gated when the `confirmation` feature is enabled |
+| `list_<svc>` | Read tool (unchanged); excludes soft-deleted rows from results |
+
+### Authorization
+
+A `read_write`-scoped MCP session with `write_authorized: Some(true)` is required for `create_`/`update_`/`delete_` tools. Without it the call returns a `-32603` transport error before reaching the executor. The `list_` tool has no write-authorization requirement.
+
+### Confirmation flow for delete
+
+When the `confirmation` feature is enabled, a bare `delete_<svc>` call returns:
+
+```json
+{
+  "error_kind": "confirmation_required",
+  "request_tool": "request_confirm_delete_<svc>"
+}
+```
+
+The agent must call `request_confirm_delete_<svc>` to obtain a token, then `confirm_delete_<svc>` with the token to execute the soft-delete. Tokens are single-use.
+
+### Separation from developer-MCP CRUD tools
+
+`ferro-mcp/src/tools/crud_operations.rs` is a separate developer-facing tool (`ferro mcp` CLI) that provides SQL-level model introspection. It is not related to the projection-derived consumer-MCP CRUD tools described here. Do not conflate them.
