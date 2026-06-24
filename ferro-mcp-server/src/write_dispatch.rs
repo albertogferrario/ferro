@@ -1768,7 +1768,7 @@ mod confirmation_tests {
             .expect("row must exist");
         let deleted_at: Option<String> = row.try_get("", "deleted_at").ok();
         assert!(
-            deleted_at.is_some() && deleted_at.as_deref().unwrap_or("") != "",
+            deleted_at.as_deref().is_some_and(|s| !s.is_empty()),
             "deleted_at must be set after soft-delete; got: {deleted_at:?}"
         );
     }
