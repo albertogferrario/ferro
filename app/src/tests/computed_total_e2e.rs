@@ -157,8 +157,12 @@ mod tests {
             seed_two_tenants(&db).await;
 
             // Create an order — no `total` supplied; server defaults it to 0.
-            let created =
-                call_write(&db, "create_order", json!({ "customer_name": "Mario Rossi" })).await;
+            let created = call_write(
+                &db,
+                "create_order",
+                json!({ "customer_name": "Mario Rossi" }),
+            )
+            .await;
             let order_id = created["result"]["structuredContent"]["result"]["id"]
                 .as_i64()
                 .unwrap_or_else(|| panic!("order id missing; got: {created}"));
@@ -169,10 +173,18 @@ mod tests {
             );
 
             // Add two line items.
-            call_write(&db, "create_line_item", json!({ "order_id": order_id, "amount": 10.0 }))
-                .await;
-            call_write(&db, "create_line_item", json!({ "order_id": order_id, "amount": 5.5 }))
-                .await;
+            call_write(
+                &db,
+                "create_line_item",
+                json!({ "order_id": order_id, "amount": 10.0 }),
+            )
+            .await;
+            call_write(
+                &db,
+                "create_line_item",
+                json!({ "order_id": order_id, "amount": 5.5 }),
+            )
+            .await;
 
             // Read the order back — total must equal the sum (read-your-writes).
             let listed = call_read(&db, "list_order", json!({ "id": order_id })).await;
