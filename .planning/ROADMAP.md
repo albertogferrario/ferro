@@ -3563,5 +3563,5 @@ validation respectively):
 | 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 4/4 | Complete    | 2026-06-23 |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 3/3 | Complete    | 2026-06-23 |
-| 242. Write authorization, tenant injection & non-disclosure | 4/4 | Complete   | 2026-06-24 |
+| 242. Write authorization, tenant injection & non-disclosure | 4/4 | Complete    | 2026-06-24 |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
