@@ -6,6 +6,7 @@ use crate::middleware::{Middleware, Next};
 use crate::Request;
 use async_trait::async_trait;
 use rand::Rng;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -17,6 +18,18 @@ use super::store::{SessionData, SessionStore};
 // This is async-safe unlike thread_local which can lose data across await points
 tokio::task_local! {
     pub(crate) static SESSION_CONTEXT: Arc<RwLock<Option<SessionData>>>;
+    // Set true the first time `session()` / `session_mut()` is called within a
+    // request. Lets the middleware persist + set the session cookie ONLY when the
+    // handler actually used the session — anonymous requests that never touch it
+    // (e.g. static asset fetches) get no `Set-Cookie`, so a CDN/Cloudflare can
+    // cache them, and no needless session-store write happens per asset.
+    pub(crate) static SESSION_ACCESSED: Arc<AtomicBool>;
+}
+
+/// Flag the current session as accessed (read or written) so the middleware
+/// persists it and emits the cookie. No-op outside a request scope.
+fn mark_session_accessed() {
+    let _ = SESSION_ACCESSED.try_with(|flag| flag.store(true, Ordering::Relaxed));
 }
 
 /// Get the current session (read-only)
@@ -33,6 +46,7 @@ tokio::task_local! {
 /// }
 /// ```
 pub fn session() -> Option<SessionData> {
+    mark_session_accessed();
     SESSION_CONTEXT
         .try_with(|ctx| {
             // Use try_read to avoid blocking - if locked, return None
@@ -57,6 +71,7 @@ pub fn session_mut<F, R>(f: F) -> Option<R>
 where
     F: FnOnce(&mut SessionData) -> R,
 {
+    mark_session_accessed();
     SESSION_CONTEXT
         .try_with(|ctx| {
             // Use try_write to avoid blocking
@@ -170,31 +185,42 @@ impl Middleware for SessionMiddleware {
         // Create task-local context and store session in it
         let ctx = Arc::new(RwLock::new(Some(session)));
 
-        // Process the request within the task-local scope
-        // This makes session() and session_mut() work correctly across await points
-        let response = SESSION_CONTEXT
-            .scope(ctx.clone(), async { next(request).await })
+        // Process the request within the task-local scopes.
+        // SESSION_CONTEXT makes session()/session_mut() work across await points;
+        // SESSION_ACCESSED records whether the handler actually touched the session.
+        let accessed_flag = Arc::new(AtomicBool::new(false));
+        let response = SESSION_ACCESSED
+            .scope(
+                accessed_flag.clone(),
+                SESSION_CONTEXT.scope(ctx.clone(), async move { next(request).await }),
+            )
             .await;
 
         // Get the potentially modified session from the context
         let session = take_session_internal(&ctx);
 
-        // Save session and add cookie to response
-        if let Some(session) = session {
-            // Always save to update last_activity
-            if let Err(e) = self.store.write(&session).await {
-                eprintln!("Session write error: {e}");
-            }
+        // Lazy persistence: only write the store and emit the Set-Cookie when the
+        // session was actually used — accessed via session()/session_mut(), or left
+        // dirty by a mutation. A request that never touches the session (e.g. a
+        // static asset fetch) returns NO Set-Cookie, so Cloudflare / a CDN can edge-
+        // cache it, and no per-request session-store write is incurred. Auth flows
+        // (login/logout/CSRF/is_authenticated) all go through session()/session_mut(),
+        // so they continue to persist and refresh the cookie exactly as before.
+        let used = accessed_flag.load(Ordering::Relaxed)
+            || session.as_ref().map(SessionData::is_dirty).unwrap_or(false);
 
-            // Add session cookie to response
-            let cookie = self.create_session_cookie(&session.id);
-
-            match response {
-                Ok(res) => Ok(res.cookie(cookie)),
-                Err(res) => Err(res.cookie(cookie)),
+        match session {
+            Some(session) if used => {
+                if let Err(e) = self.store.write(&session).await {
+                    eprintln!("Session write error: {e}");
+                }
+                let cookie = self.create_session_cookie(&session.id);
+                match response {
+                    Ok(res) => Ok(res.cookie(cookie)),
+                    Err(res) => Err(res.cookie(cookie)),
+                }
             }
-        } else {
-            response
+            _ => response,
         }
     }
 }
@@ -264,4 +290,80 @@ pub async fn invalidate_all_for_user(
     except_session_id: Option<&str>,
 ) -> Result<u64, crate::error::FrameworkError> {
     store.destroy_for_user(user_id, except_session_id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scope() -> Arc<RwLock<Option<SessionData>>> {
+        Arc::new(RwLock::new(Some(SessionData::new(
+            "sid".into(),
+            "csrf".into(),
+        ))))
+    }
+
+    // The middleware persists + sets the cookie iff this flag (or `dirty`) is set.
+    // These prove the flag is set ONLY when the handler touches the session — so a
+    // request that never calls session()/session_mut() (a static asset) yields no
+    // Set-Cookie and stays CDN-cacheable.
+    #[tokio::test]
+    async fn untouched_session_is_not_marked_accessed() {
+        let flag = Arc::new(AtomicBool::new(false));
+        SESSION_ACCESSED
+            .scope(
+                flag.clone(),
+                SESSION_CONTEXT.scope(scope(), async {
+                    // simulate a static-asset request: never touches the session
+                }),
+            )
+            .await;
+        assert!(
+            !flag.load(Ordering::Relaxed),
+            "a request that never touches the session must not be marked accessed"
+        );
+    }
+
+    #[tokio::test]
+    async fn session_read_marks_accessed() {
+        let flag = Arc::new(AtomicBool::new(false));
+        SESSION_ACCESSED
+            .scope(
+                flag.clone(),
+                SESSION_CONTEXT.scope(scope(), async {
+                    let _ = session();
+                }),
+            )
+            .await;
+        assert!(
+            flag.load(Ordering::Relaxed),
+            "session() must mark the session accessed"
+        );
+    }
+
+    #[tokio::test]
+    async fn session_mut_marks_accessed_and_dirties() {
+        let ctx = scope();
+        let flag = Arc::new(AtomicBool::new(false));
+        SESSION_ACCESSED
+            .scope(
+                flag.clone(),
+                SESSION_CONTEXT.scope(ctx.clone(), async {
+                    session_mut(|s| s.put("k", "v"));
+                }),
+            )
+            .await;
+        assert!(
+            flag.load(Ordering::Relaxed),
+            "session_mut must mark accessed"
+        );
+        let data = take_session_internal(&ctx).expect("session present");
+        assert!(data.is_dirty(), "put() must dirty the session");
+    }
+
+    #[test]
+    fn mark_session_accessed_outside_scope_is_noop() {
+        // Must not panic when called with no active request scope.
+        mark_session_accessed();
+    }
 }
