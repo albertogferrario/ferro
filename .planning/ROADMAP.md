@@ -3400,7 +3400,7 @@ write-control surface ferro's conventions forbid.
 - [x] **Phase 240: CRUD input-schema derivation + `list_` query polish** — Auto-derive `create_`/`update_`/`delete_` input schemas from existing `field()` declarations and extend `list_` with range/sort/pagination. (completed 2026-06-23)
 - [x] **Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`** — Mirror `derive_transition_plan` with a CRUD plan and run it through the existing kernel (override registry / idempotency / audit / confirmation reused). (completed 2026-06-23)
 - [x] **Phase 242: Write authorization, tenant injection & non-disclosure** — Gate C/U/D on `read_write` scope + `.mcp_write_ability`; inject `tenant_id` server-side; make cross-tenant/soft-deleted targets indistinguishable from "not found". (completed 2026-06-24)
-- [ ] **Phase 243: App integration, e2e, envelope guard & catalog/docs** — Flip the app's `order` projection to CRUD, drive create→list→update→delete over `:8090/mcp` and the visual surface, extend the structured-envelope regression guard, update `ferro-mcp` catalog/docs.
+- [x] **Phase 243: App integration, e2e, envelope guard & catalog/docs** — Flip the app's `order` projection to CRUD, drive create→list→update→delete over `:8090/mcp` and the visual surface, extend the structured-envelope regression guard, update `ferro-mcp` catalog/docs. (completed 2026-06-24)
 
 ### Phase Details
 
@@ -3536,11 +3536,11 @@ uniquely owned here, all are delivered by Phases 240–242 and validated in this
      echoing the `request_confirm_delete_<svc>` affordance; with a valid token it soft-deletes.
   4. `ferro-mcp` `json_ui_catalog`/`code_templates` and `docs/src/` reflect the new CRUD
      tools (create/update/delete/query polish) accurately.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 243-01-PLAN.md — Flip the app order projection to CRUD (.creatable/.updatable/.deletable + .mcp_write_ability) + boot-validate (CRUD-01/05/07)
 - [x] 243-02-PLAN.md — In-process MCP e2e: create→list→update→delete + per-verb envelope guard + MCP↔visual parity + confirmation flow (CRUD-01/02/03/05/06)
-- [ ] 243-03-PLAN.md — ferro-mcp code_templates + generation_context + docs/src CRUD opt-in; full BLOCKING workspace gate (SC#4)
+- [x] 243-03-PLAN.md — ferro-mcp code_templates + generation_context + docs/src CRUD opt-in; full BLOCKING workspace gate (SC#4)
 
 ### Coverage
 
@@ -3568,7 +3568,7 @@ validation respectively):
 | 240. CRUD input-schema derivation + `list_` query polish | 4/4 | Complete    | 2026-06-23 |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 3/3 | Complete    | 2026-06-23 |
 | 242. Write authorization, tenant injection & non-disclosure | 4/4 | Complete    | 2026-06-24 |
-| 243. App integration, e2e, envelope guard & catalog/docs | 2/3 | In Progress|  |
+| 243. App integration, e2e, envelope guard & catalog/docs | 3/3 | Complete   | 2026-06-24 |
 
 ## v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249)
 
