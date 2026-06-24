@@ -61,6 +61,72 @@ pub(crate) async fn check_is_manager(tenant_id: i64, db: &sea_orm::DatabaseConne
         .unwrap_or(false)
 }
 
+/// Post-persist recompute hook for `order.total` (Approach C — derived field).
+///
+/// Registered for `create_line_item` / `update_line_item` / `delete_line_item`.
+/// Runs AFTER the line-item write is durable (WR-01: no surrounding transaction),
+/// resolves the affected `order_id`, and sets `orders.total` to the live sum of
+/// the order's non-soft-deleted line items. Tenant-scoped on both reads and the
+/// update. Returns a freshly boxed closure per call so it can be registered for
+/// multiple action names.
+fn recompute_order_total_hook() -> ferro::write::OverrideFn {
+    Box::new(|_action_name, inputs, tenant_id, db, base_result| {
+        // Owned copies so the async block can move them (no 'static borrow trap).
+        let inputs = inputs.clone();
+        let base_result = base_result.clone();
+        let db = db.clone();
+        Box::pin(async move {
+            use sea_orm::{ConnectionTrait, Statement};
+
+            // Resolve order_id. create/update return the full row (order_id present);
+            // delete returns {"id","deleted":true}, so look it up by the line-item id
+            // (the row is now soft-deleted but still present).
+            let order_id: i64 = match base_result.get("order_id").and_then(|v| v.as_i64()) {
+                Some(oid) => oid,
+                None => {
+                    let li_id = inputs.get("id").and_then(|v| {
+                        v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok()))
+                    });
+                    let li_id = li_id.ok_or_else(|| {
+                        ferro::write::WriteError::Database(
+                            "recompute: missing line item id".into(),
+                        )
+                    })?;
+                    let row = db
+                        .query_one(Statement::from_sql_and_values(
+                            db.get_database_backend(),
+                            "SELECT order_id FROM line_items WHERE id = ? AND tenant_id = ?",
+                            [li_id.into(), tenant_id.into()],
+                        ))
+                        .await
+                        .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?
+                        .ok_or_else(|| {
+                            ferro::write::WriteError::Database(
+                                "recompute: line item not found".into(),
+                            )
+                        })?;
+                    row.try_get_by::<i64, _>("order_id")
+                        .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?
+                }
+            };
+
+            // Recompute the parent total from live, non-deleted line items. Tenant-scoped.
+            db.execute(Statement::from_sql_and_values(
+                db.get_database_backend(),
+                "UPDATE orders SET total = (\
+                    SELECT COALESCE(SUM(amount), 0) FROM line_items \
+                    WHERE order_id = ? AND deleted_at IS NULL\
+                 ) WHERE id = ? AND tenant_id = ?",
+                [order_id.into(), order_id.into(), tenant_id.into()],
+            ))
+            .await
+            .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?;
+
+            Ok(())
+        })
+    })
+}
+
 /// Build the concrete `WriteDispatcher` for the MCP endpoint.
 ///
 /// Executor: find-then-mutate via `find_for_tenant` (cross-tenant denial, D-03).
@@ -148,6 +214,9 @@ pub(crate) fn make_write_dispatcher() -> WriteDispatcher {
             })
         }),
     )
+    .with_override("create_line_item", recompute_order_total_hook())
+    .with_override("update_line_item", recompute_order_total_hook())
+    .with_override("delete_line_item", recompute_order_total_hook())
 }
 
 /// Build the RFC 9728 / RFC 6750 unauthenticated challenge response.
