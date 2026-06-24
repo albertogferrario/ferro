@@ -2020,19 +2020,34 @@ mod tests {
     #[test]
     fn validate_rejects_creatable_without_write_ability() {
         let def = ServiceDef::new("order").creatable(true);
-        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+        let err = def.validate().unwrap_err();
+        assert!(matches!(err, crate::Error::Validation(_)));
+        assert!(
+            err.to_string().contains("mcp_write_ability"),
+            "error message must mention 'mcp_write_ability'; got: {err}"
+        );
     }
 
     #[test]
     fn validate_rejects_updatable_without_write_ability() {
         let def = ServiceDef::new("order").updatable(true);
-        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+        let err = def.validate().unwrap_err();
+        assert!(matches!(err, crate::Error::Validation(_)));
+        assert!(
+            err.to_string().contains("mcp_write_ability"),
+            "error message must mention 'mcp_write_ability'; got: {err}"
+        );
     }
 
     #[test]
     fn validate_rejects_deletable_without_write_ability() {
         let def = ServiceDef::new("order").deletable(true);
-        assert!(matches!(def.validate(), Err(crate::Error::Validation(_))));
+        let err = def.validate().unwrap_err();
+        assert!(matches!(err, crate::Error::Validation(_)));
+        assert!(
+            err.to_string().contains("mcp_write_ability"),
+            "error message must mention 'mcp_write_ability'; got: {err}"
+        );
     }
 
     #[test]
