@@ -3536,7 +3536,11 @@ uniquely owned here, all are delivered by Phases 240–242 and validated in this
      echoing the `request_confirm_delete_<svc>` affordance; with a valid token it soft-deletes.
   4. `ferro-mcp` `json_ui_catalog`/`code_templates` and `docs/src/` reflect the new CRUD
      tools (create/update/delete/query polish) accurately.
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 243-01-PLAN.md — Flip the app order projection to CRUD (.creatable/.updatable/.deletable + .mcp_write_ability) + boot-validate (CRUD-01/05/07)
+- [ ] 243-02-PLAN.md — In-process MCP e2e: create→list→update→delete + per-verb envelope guard + MCP↔visual parity + confirmation flow (CRUD-01/02/03/05/06)
+- [ ] 243-03-PLAN.md — ferro-mcp code_templates + generation_context + docs/src CRUD opt-in; full BLOCKING workspace gate (SC#4)
 
 ### Coverage
 
