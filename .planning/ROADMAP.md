@@ -3399,7 +3399,7 @@ write-control surface ferro's conventions forbid.
 - [x] **Phase 239: Soft-delete data model + `deleted_at` migration** — Add a nullable `deleted_at` column substrate so soft-delete + non-disclosure can be enforced uniformly. (completed 2026-06-23)
 - [x] **Phase 240: CRUD input-schema derivation + `list_` query polish** — Auto-derive `create_`/`update_`/`delete_` input schemas from existing `field()` declarations and extend `list_` with range/sort/pagination. (completed 2026-06-23)
 - [x] **Phase 241: `derive_crud_plan` + wire CRUD verbs into `framework::write`** — Mirror `derive_transition_plan` with a CRUD plan and run it through the existing kernel (override registry / idempotency / audit / confirmation reused). (completed 2026-06-23)
-- [ ] **Phase 242: Write authorization, tenant injection & non-disclosure** — Gate C/U/D on `read_write` scope + `.mcp_write_ability`; inject `tenant_id` server-side; make cross-tenant/soft-deleted targets indistinguishable from "not found".
+- [x] **Phase 242: Write authorization, tenant injection & non-disclosure** — Gate C/U/D on `read_write` scope + `.mcp_write_ability`; inject `tenant_id` server-side; make cross-tenant/soft-deleted targets indistinguishable from "not found". (completed 2026-06-24)
 - [ ] **Phase 243: App integration, e2e, envelope guard & catalog/docs** — Flip the app's `order` projection to CRUD, drive create→list→update→delete over `:8090/mcp` and the visual surface, extend the structured-envelope regression guard, update `ferro-mcp` catalog/docs.
 
 ### Phase Details
@@ -3513,7 +3513,7 @@ fails fast at registration when a CRUD verb is enabled without `mcp_write_abilit
   4. A boot-time test confirms `ServiceDef::validate()` rejects a projection that enables
      any CRUD verb without `mcp_write_ability` (a config error at registration, never a
      silent deny at call time).
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 #### Phase 243: App integration, e2e, envelope guard & catalog/docs
 **Goal:** Prove the whole Track A surface end-to-end against the sample app and bring the
@@ -3563,5 +3563,5 @@ validation respectively):
 | 239. Soft-delete data model + `deleted_at` migration | 3/3 | Complete    | 2026-06-23 |
 | 240. CRUD input-schema derivation + `list_` query polish | 4/4 | Complete    | 2026-06-23 |
 | 241. `derive_crud_plan` + wire CRUD verbs into `framework::write` | 3/3 | Complete    | 2026-06-23 |
-| 242. Write authorization, tenant injection & non-disclosure | 3/4 | In Progress|  |
+| 242. Write authorization, tenant injection & non-disclosure | 4/4 | Complete   | 2026-06-24 |
 | 243. App integration, e2e, envelope guard & catalog/docs | 0/0 | Not started | - |
