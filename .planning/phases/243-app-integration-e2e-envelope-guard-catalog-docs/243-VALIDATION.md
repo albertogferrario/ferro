@@ -1,10 +1,11 @@
 ---
 phase: 243
 slug: app-integration-e2e-envelope-guard-catalog-docs
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-24
+validated: 2026-06-24
 ---
 
 # Phase 243 — Validation Strategy
@@ -38,12 +39,12 @@ created: 2026-06-24
 
 | Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------------|-----------|-------------------|-------------|--------|
-| 243-01-* | 01 | 1 | CRUD-01/05/07 | order projection flips to CRUD; validate() passes at boot (mcp_write_ability present) | unit/boot | `cargo test -p app order` | ✅ | ⬜ pending |
-| 243-02-* | 02 | 2 | CRUD-01/02/03/06 | create→list→update→delete e2e through MCP with read_write McpContext (write_authorized: Some(true)) | app in-process e2e | `cargo test -p app crud_e2e` | ✅ | ⬜ pending |
-| 243-02-* | 02 | 2 | CRUD-06 | same CrudPlan succeeds on visual surface (MCP↔visual parity, shared kernel) | parity | `cargo test -p app crud_e2e` | ✅ | ⬜ pending |
-| 243-02-* | 02 | 2 | CRUD-01/02/03 | each create/update/delete result is a well-formed Phase 205 content[] envelope | envelope guard | `cargo test -p app crud_e2e` | ✅ | ⬜ pending |
-| 243-02-* | 02 | 2 | CRUD-03 | delete without token → confirmation_required (+request_tool); with token → soft-delete, gone from list_ | confirm e2e (feature-gated) | `cargo test -p app --features confirmation crud_e2e` | ✅ | ⬜ pending |
-| 243-03-* | 03 | 3 | CRUD-01..07 (docs) | ferro-mcp code_templates + generation_context + docs/src document the CRUD opt-in + derived tools; component drift-guards unchanged | doc-accuracy | `cargo test -p ferro-mcp code_templates` | ✅ | ⬜ pending |
+| 243-01-* | 01 | 1 | CRUD-01/05/07 | order projection flips to CRUD; validate() passes at boot (mcp_write_ability present) | unit/boot | `cargo test -p app order` → `order_projection_validates_after_crud_flip` | ✅ | ✅ green |
+| 243-02-* | 02 | 2 | CRUD-01/02/03/06 | create→list→update→delete e2e through MCP with read_write McpContext (write_authorized: Some(true)) | app in-process e2e | `cargo test -p app crud_e2e` → `crud_cycle_create_list_update_delete` | ✅ | ✅ green |
+| 243-02-* | 02 | 2 | CRUD-06 | same CrudPlan succeeds on visual surface (MCP↔visual parity, shared kernel) | parity | `cargo test -p app crud_e2e` → `crud_mcp_visual_single_source_parity` | ✅ | ✅ green |
+| 243-02-* | 02 | 2 | CRUD-01/02/03 | each create/update/delete result is a well-formed Phase 205 content[] envelope + write-auth gate (`crud_write_requires_write_authorization`) + cross-tenant non-disclosure (`crud_cross_tenant_non_disclosure`) | envelope/auth/tenant guard | `cargo test -p app crud_e2e` | ✅ | ✅ green |
+| 243-02-* | 02 | 2 | CRUD-03 | delete without token → confirmation_required (+request_tool); with token → soft-delete, gone from list_ | confirm e2e (feature-gated) | `cargo test -p app --features confirmation crud_e2e` → `delete_order_confirmation_flow` | ✅ | ✅ green |
+| 243-03-* | 03 | 3 | CRUD-01..07 (docs) | ferro-mcp code_templates + generation_context + docs/src document the CRUD opt-in + derived tools; component drift-guards unchanged at 47 | doc-accuracy | `cargo test -p ferro-mcp code_templates` → `test_all_categories_present` (asserts `projection_crud`) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -68,11 +69,30 @@ the envelope-assertion pattern (`mcp_tenant_isolation.rs`), and the MCP↔visual
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 300s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 300s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-06-24 — all 6 mapped requirements COVERED by existing green automated tests; the single live-`:8090/mcp` item remains Manual-Only by design (D-02).
+
+---
+
+## Validation Audit 2026-06-24
+
+| Metric | Count |
+|--------|-------|
+| Requirements audited | 6 |
+| COVERED (green automated) | 6 |
+| PARTIAL | 0 |
+| MISSING (gaps filled) | 0 |
+| Manual-only (by design) | 1 (live `:8090/mcp` drive — CRUD-05 SC#1) |
+
+All mapped test functions were cross-referenced against the source tree and exist:
+`order_projection_validates_after_crud_flip` (order.rs), `crud_cycle_create_list_update_delete` /
+`crud_write_requires_write_authorization` / `crud_cross_tenant_non_disclosure` /
+`crud_mcp_visual_single_source_parity` / `delete_order_confirmation_flow` (crud_e2e.rs), and
+`test_all_categories_present` asserting the `projection_crud` category (code_templates.rs). The full
+`cargo test --all-features` gate ran green at phase execution; no new tests needed (no auditor spawn).
