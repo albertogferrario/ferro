@@ -106,6 +106,9 @@ pub enum BadgeVariant {
     Default,
     Secondary,
     Destructive,
+    /// Amber/warning tone for pending or attention states that are not errors
+    /// (e.g. incomplete onboarding). Maps to the `--color-warning` token.
+    Warning,
     Outline,
 }
 
@@ -139,6 +142,16 @@ pub enum ColumnFormat {
     Image,
 }
 
+/// Horizontal text alignment for a table column (header + cells).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ColumnAlign {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
 /// Table column definition.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Column {
@@ -146,6 +159,10 @@ pub struct Column {
     pub label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub format: Option<ColumnFormat>,
+    /// Horizontal alignment of the header and cells. Defaults to left.
+    /// Use `right` for numeric/currency columns so magnitudes line up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub align: Option<ColumnAlign>,
 }
 
 /// Select option (value + label pair).

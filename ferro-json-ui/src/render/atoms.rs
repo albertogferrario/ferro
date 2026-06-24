@@ -264,6 +264,7 @@ pub(crate) fn badge_inline_html(variant: BadgeVariant, label: &str) -> String {
         BadgeVariant::Default => "bg-primary/10 text-primary",
         BadgeVariant::Secondary => "bg-secondary/10 text-secondary-foreground",
         BadgeVariant::Destructive => "bg-destructive/10 text-destructive",
+        BadgeVariant::Warning => "bg-warning/10 text-warning",
         BadgeVariant::Outline => "border border-border text-text",
     };
     // Inline `justify-self: start` keeps the pill at its natural width when

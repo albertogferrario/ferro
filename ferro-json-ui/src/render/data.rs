@@ -17,8 +17,8 @@
 use serde_json::Value;
 
 use crate::component::{
-    BadgeVariant, Column, ColumnFormat, DataTableProps, DropdownMenuAction, MediaCardGridProps,
-    TableProps,
+    BadgeVariant, Column, ColumnAlign, ColumnFormat, DataTableProps, DropdownMenuAction,
+    MediaCardGridProps, TableProps,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -128,6 +128,15 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
 /// index) and the row's `id` field respectively. Any other `{column_key}`
 /// placeholder is substituted against the matching column value on each
 /// row before emission.
+/// Tailwind text-alignment class for a column. Defaults to left.
+fn col_align_class(align: Option<ColumnAlign>) -> &'static str {
+    match align {
+        Some(ColumnAlign::Right) => "text-right",
+        Some(ColumnAlign::Center) => "text-center",
+        _ => "text-left",
+    }
+}
+
 pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth: usize) -> String {
     let props: DataTableProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -176,7 +185,8 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         html.push_str("<thead><tr class=\"bg-surface\">");
         for col in &props.columns {
             html.push_str(&format!(
-                "<th class=\"px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
+                "<th class=\"px-4 py-2 {} text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
+                col_align_class(col.align),
                 html_escape(&col.label)
             ));
         }
@@ -215,7 +225,8 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             ));
             for col in &props.columns {
                 html.push_str(&format!(
-                    "<td class=\"px-4 py-2 text-sm text-text\">{}</td>",
+                    "<td class=\"px-4 py-2 text-sm text-text {}\">{}</td>",
+                    col_align_class(col.align),
                     render_cell(col, row.get(&col.key))
                 ));
             }
@@ -268,20 +279,38 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 )
             };
             html.push_str(&open_tag);
-            for col in &props.columns {
+            // Mobile list-item: the first column is the prominent title (with
+            // the row action on the same line); the remaining columns form a
+            // compact muted meta block beneath it. This replaces the prior
+            // fully-transposed label/value stack, which gave the entity name no
+            // more weight than its metadata and produced tall, low-scannability
+            // cards.
+            html.push_str("<div class=\"flex items-start justify-between gap-3\">");
+            if let Some(first) = props.columns.first() {
                 html.push_str(&format!(
-                    "<div class=\"flex justify-between\"><span class=\"text-xs font-semibold text-text-muted uppercase\">{}</span><span class=\"text-sm text-text\">{}</span></div>",
-                    html_escape(&col.label),
-                    render_cell(col, row.get(&col.key))
+                    "<div class=\"min-w-0 flex-1 text-sm font-semibold text-text truncate\">{}</div>",
+                    render_cell(first, row.get(&first.key))
                 ));
             }
             if let Some(ref actions) = props.row_actions {
                 let templated = template_actions(actions, row, &row_key_value);
-                html.push_str("<div class=\"pt-2 border-t border-border flex justify-end\">");
+                html.push_str("<div class=\"shrink-0 -mt-1 -mr-1\">");
                 html.push_str(&render_inline_dropdown(
                     &format!("dt-m-{row_key_value}"),
                     &templated,
                 ));
+                html.push_str("</div>");
+            }
+            html.push_str("</div>");
+            if props.columns.len() > 1 {
+                html.push_str("<div class=\"mt-2 space-y-1\">");
+                for col in props.columns.iter().skip(1) {
+                    html.push_str(&format!(
+                        "<div class=\"flex justify-between gap-3 text-xs\"><span class=\"text-text-muted\">{}</span><span class=\"text-text text-right\">{}</span></div>",
+                        html_escape(&col.label),
+                        render_cell(col, row.get(&col.key))
+                    ));
+                }
                 html.push_str("</div>");
             }
             html.push_str(&close_tag);
