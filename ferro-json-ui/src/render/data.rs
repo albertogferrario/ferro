@@ -397,7 +397,39 @@ fn render_cell(col: &Column, value: Option<&Value>) -> String {
             }
         }
     }
+    if let Some(ColumnFormat::Icon) = col.format {
+        // Cell value is a built-in icon name; rendered as an inline outline SVG
+        // that inherits currentColor. Unknown/empty names render nothing (no
+        // raw HTML from the cell value — the name only selects a fixed SVG, so
+        // there is no injection surface).
+        let name = cell_string(value);
+        return match builtin_icon_svg(&name) {
+            Some(svg) => format!(
+                "<span class=\"inline-flex items-center text-text-muted\" aria-hidden=\"true\">{svg}</span>"
+            ),
+            None => String::new(),
+        };
+    }
     html_escape(&cell_string(value))
+}
+
+/// Built-in outline icons for `ColumnFormat::Icon`. Lucide-derived, 20×20,
+/// `currentColor` stroke so they match the surrounding text color. Returns
+/// `None` for unknown names (renders an empty cell). The cell value selects an
+/// entry by name — it is never interpolated as markup, so this is injection-safe.
+fn builtin_icon_svg(name: &str) -> Option<&'static str> {
+    match name {
+        "folder" => Some(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z\"/></svg>",
+        ),
+        "file" => Some(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/></svg>",
+        ),
+        "image" => Some(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\"/></svg>",
+        ),
+        _ => None,
+    }
 }
 
 /// Substitute placeholders in a URL template against a row.

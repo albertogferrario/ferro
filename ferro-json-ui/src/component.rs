@@ -140,6 +140,11 @@ pub enum ColumnFormat {
     Badge,
     /// Cell value is an image URL string; rendered as an `<img>` thumbnail.
     Image,
+    /// Cell value is a built-in icon name (e.g. `folder`, `file`); rendered as
+    /// an inline outline SVG that inherits `currentColor`. Unknown names render
+    /// an empty cell. Use for type/status glyphs that should match the line-icon
+    /// system rather than emoji.
+    Icon,
 }
 
 /// Horizontal text alignment for a table column (header + cells).
