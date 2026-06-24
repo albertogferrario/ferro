@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.3
 milestone_name: MCP CRUD Data Surface (Track A)
-status: verifying
-stopped_at: Completed 243.1-01-PLAN.md
-last_updated: "2026-06-24T15:18:00.798Z"
-last_activity: 2026-06-24
+status: idle
+stopped_at: Phase 243.1 complete (verified 4/4)
+last_updated: "2026-06-24T15:30:00.000Z"
+last_activity: 2026-06-24 -- Phase 243.1 verified complete
 progress:
   total_phases: 117
-  completed_phases: 106
-  total_plans: 434
-  completed_plans: 433
+  completed_phases: 107
+  total_plans: 435
+  completed_plans: 435
   percent: 100
 ---
 
@@ -26,13 +26,13 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 243.1 (projection-computed-derived-fields) — EXECUTING
-Plan: 1 of 1
-Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07). CRUD-07 + the CRUD-01 declaration surface already shipped (`5cb17d60` on master); remaining = tool/schema derivation, query polish, derive_crud_plan + kernel wiring, authz, soft-delete, app integration.
-Next: `/gsd-plan-phase 239` (the first phase). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md`. (v16.1/v16.2 remain shipped-but-unarchived — archive later via `/gsd-complete-milestone`.)
+Phase: 243.1 (projection-computed-derived-fields) — ✅ COMPLETE (verified 4/4, code review resolved)
+Plan: 1 of 1 complete
+Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
+Next: v16.3 (Track A, Phases 239–243 + 243.1) all complete but NOT archived. Options: `/gsd-complete-milestone` (archive v16.3) or `/gsd-plan-phase 244` (start v16.4 Work Distribution). Local commits unpushed — the framework `INSERT … RETURNING` fix (243-era) + 243.1 ship in the next crates.io release. (v16.0/v16.1/v16.2 also remain shipped-but-unarchived.)
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Phase complete — ready for verification
+Status: Phase 243.1 verified complete — idle
 
 Last activity: 2026-06-24
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
