@@ -76,11 +76,20 @@ fn recompute_order_total_hook() -> ferro::write::OverrideFn {
         let base_result = base_result.clone();
         let db = db.clone();
         Box::pin(async move {
-            use sea_orm::{ConnectionTrait, Statement};
+            use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
+
+            // Backend-aware placeholders (SQLite `?`, Postgres `$N`) — SeaORM does NOT
+            // auto-translate `?`; mirrors the check_is_manager pattern so the recompute
+            // works on both backends.
+            let backend = db.get_database_backend();
+            let (p1, p2, p3, p4) = match backend {
+                DatabaseBackend::Postgres => ("$1", "$2", "$3", "$4"),
+                _ => ("?", "?", "?", "?"),
+            };
 
             // Resolve order_id. create/update return the full row (order_id present);
             // delete returns {"id","deleted":true}, so look it up by the line-item id
-            // (the row is now soft-deleted but still present).
+            // (the row is now soft-deleted but still present), tenant-scoped.
             let order_id: i64 = match base_result.get("order_id").and_then(|v| v.as_i64()) {
                 Some(oid) => oid,
                 None => {
@@ -91,10 +100,13 @@ fn recompute_order_total_hook() -> ferro::write::OverrideFn {
                     let li_id = li_id.ok_or_else(|| {
                         ferro::write::WriteError::Database("recompute: missing line item id".into())
                     })?;
+                    let lookup_sql = format!(
+                        "SELECT order_id FROM line_items WHERE id = {p1} AND tenant_id = {p2}"
+                    );
                     let row = db
                         .query_one(Statement::from_sql_and_values(
-                            db.get_database_backend(),
-                            "SELECT order_id FROM line_items WHERE id = ? AND tenant_id = ?",
+                            backend,
+                            &lookup_sql,
                             [li_id.into(), tenant_id.into()],
                         ))
                         .await
@@ -109,14 +121,24 @@ fn recompute_order_total_hook() -> ferro::write::OverrideFn {
                 }
             };
 
-            // Recompute the parent total from live, non-deleted line items. Tenant-scoped.
-            db.execute(Statement::from_sql_and_values(
-                db.get_database_backend(),
+            // Recompute the parent total from live, non-deleted line items. BOTH the
+            // inner SUM and the outer UPDATE are tenant-scoped (defence in depth: the
+            // SUM never includes a foreign-tenant row even if FK integrity is violated).
+            let update_sql = format!(
                 "UPDATE orders SET total = (\
                     SELECT COALESCE(SUM(amount), 0) FROM line_items \
-                    WHERE order_id = ? AND deleted_at IS NULL\
-                 ) WHERE id = ? AND tenant_id = ?",
-                [order_id.into(), order_id.into(), tenant_id.into()],
+                    WHERE order_id = {p1} AND tenant_id = {p2} AND deleted_at IS NULL\
+                 ) WHERE id = {p3} AND tenant_id = {p4}"
+            );
+            db.execute(Statement::from_sql_and_values(
+                backend,
+                &update_sql,
+                [
+                    order_id.into(),
+                    tenant_id.into(),
+                    order_id.into(),
+                    tenant_id.into(),
+                ],
             ))
             .await
             .map_err(|e| ferro::write::WriteError::Database(e.to_string()))?;

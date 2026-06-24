@@ -30,6 +30,11 @@ impl MigrationTrait for Migration {
                             .default(Expr::current_timestamp()),
                     )
                     .col(ColumnDef::new(LineItems::DeletedAt).timestamp().null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .from(LineItems::Table, LineItems::OrderId)
+                            .to(Orders::Table, Orders::Id),
+                    )
                     .to_owned(),
             )
             .await
@@ -51,4 +56,11 @@ enum LineItems {
     TenantId,
     CreatedAt,
     DeletedAt,
+}
+
+// FK target reference (mirrors the orders → tenants pattern).
+#[derive(DeriveIden)]
+enum Orders {
+    Table,
+    Id,
 }
