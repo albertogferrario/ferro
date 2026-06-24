@@ -16,6 +16,7 @@ pub fn service_def() -> ServiceDef {
         .creatable(true) // derives create_order tool (CRUD-01)
         .updatable(true) // derives update_order tool (CRUD-02)
         .deletable(true) // derives delete_order tool, confirmation-gated (CRUD-03)
+        .soft_delete_column("deleted_at") // CRUD-03/04: list_order excludes soft-deleted rows
         .display_name("Order")
         .field("id", DataType::Integer, FieldMeaning::Identifier)
         .field("customer_name", DataType::String, FieldMeaning::EntityName)

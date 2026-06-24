@@ -44,3 +44,5 @@ http-body-util = "0.1"
 # Drives the real form-urlencoded decode path (`req.input::<Value>()`) in the
 # WR-01 regression test, matching `framework::http::body::parse_form`.
 serde_urlencoded = "0.7"
+# CRUD visual-parity test: derive_crud_plan + CrudVerb (not re-exported by ferro).
+ferro-projections = { path = "../ferro-projections" }
