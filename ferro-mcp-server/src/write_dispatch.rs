@@ -1938,7 +1938,8 @@ mod confirmation_tests {
         // Either a success result OR a downstream error (tenant/db/validation) is acceptable —
         // the point is the write-ability gate did not block it.
         assert!(
-            response.get("result").is_some() || response["error"]["code"].as_i64() != Some(-32603)
+            response.get("result").is_some()
+                || response["error"]["code"].as_i64() != Some(-32603)
                 || !msg.contains("write ability denied"),
             "write_authorized=Some(true) must reach CRUD dispatch; got: {response:?}"
         );

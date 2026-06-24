@@ -265,9 +265,12 @@ mod tests {
         dispatcher: &WriteDispatcher,
     ) -> ferro::serde_json::Value {
         let services = vec![order_service()];
+        // write_authorized: Some(true) — dispatch tests exercise the write path, not the auth gate.
+        // The write_authorized check (Phase 242 / CRUD-05) is tested separately in ferro-mcp-server.
         let ctx = McpContext {
             tenant_id,
             scope: Some("read_write".to_string()),
+            write_authorized: Some(true),
             ..Default::default()
         };
         let params = json!({ "name": tool_name, "arguments": arguments });
@@ -498,9 +501,11 @@ mod tests {
         let args = json!({ "id": 2, "idempotency_key": "e2e-idem-key-001" });
 
         let services = vec![order_service()];
+        // write_authorized: Some(true) — idempotency test exercises dispatch, not the auth gate.
         let ctx = McpContext {
             tenant_id: Some(1),
             scope: Some("read_write".to_string()),
+            write_authorized: Some(true),
             ..Default::default()
         };
 

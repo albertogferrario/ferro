@@ -328,7 +328,10 @@ pub async fn handle(req: Request) -> Response {
                     .trim_start_matches("create_")
                     .trim_start_matches("update_")
                     .trim_start_matches("delete_");
-                match services.iter().find(|s| s.name == svc_name && s.mcp_exposed) {
+                match services
+                    .iter()
+                    .find(|s| s.name == svc_name && s.mcp_exposed)
+                {
                     // Fail-closed: a write-enabled projection without mcp_write_ability is
                     // rejected at boot by validate() (CRUD-07); at runtime None still denies.
                     Some(svc) => match svc.mcp_write_ability.as_deref() {
