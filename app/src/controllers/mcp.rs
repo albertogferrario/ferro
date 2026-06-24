@@ -312,30 +312,49 @@ pub async fn handle(req: Request) -> Response {
                 }
             }
 
-            // Phase 242 (CRUD-05): write tools run the policy Gate on mcp_write_ability.
-            // Resolve the owning service by stripping verb / confirmation prefixes:
-            //   create_<svc> / update_<svc> / delete_<svc>
-            //   request_confirm_delete_<svc> / confirm_delete_<svc>
-            // Fail-closed: unknown service or absent mcp_write_ability → Some(false) → deny
-            // in handle_write_call. Read tools (list_) get None (write_authorized unused there).
+            // Phase 242 (CRUD-05 / anchor spec §authz): write-ability Gate applies ONLY to
+            // CRUD verb tools (create_/update_/delete_<svc> and their delete-confirmation
+            // variants). Transition-action writes keep scope + dispatch-guard authz and are
+            // NOT gated here — their tool names do not map 1:1 to a service.
+            //
+            // Return value semantics:
+            //   Some(true)  — CRUD tool, Gate passed
+            //   Some(false) — CRUD tool, Gate denied (or mcp_write_ability missing)
+            //   None        — read tool or transition-action tool (not gated here)
+            //
+            // handle_write_call checks is_crud_write_tool && write_authorized != Some(true)
+            // so None is safe for transition actions (gate skipped) and fail-closed for CRUD
+            // (None on a matched CRUD tool means the host failed to evaluate — deny).
             let write_authorized: Option<bool> = if tool_name.starts_with("list_") {
                 None // read tool — write_authorized is not consulted on the read path
             } else {
-                let svc_name = tool_name
+                // Strip optional delete-confirmation prefix first.
+                let base = tool_name
                     .strip_prefix("request_confirm_")
                     .or_else(|| tool_name.strip_prefix("confirm_"))
-                    .unwrap_or(tool_name)
-                    .trim_start_matches("create_")
-                    .trim_start_matches("update_")
-                    .trim_start_matches("delete_");
-                match services
-                    .iter()
-                    .find(|s| s.name == svc_name && s.mcp_exposed)
-                {
-                    // Fail-closed: a write-enabled projection without mcp_write_ability is
-                    // rejected at boot by validate() (CRUD-07); at runtime None still denies.
+                    .unwrap_or(tool_name);
+
+                // Try a single CRUD verb prefix (exactly one strip — not chained).
+                let crud_svc = ["create_", "update_", "delete_"].iter().find_map(|p| {
+                    base.strip_prefix(p).and_then(|svc_name| {
+                        services.iter().find(|s| {
+                            s.mcp_exposed
+                                && s.name == svc_name
+                                && match *p {
+                                    "create_" => s.creatable,
+                                    "update_" => s.updatable,
+                                    "delete_" => s.deletable,
+                                    _ => false,
+                                }
+                        })
+                    })
+                });
+
+                match crud_svc {
                     Some(svc) => match svc.mcp_write_ability.as_deref() {
                         Some(ability) => {
+                            // Fail-closed: a write-enabled projection without mcp_write_ability is
+                            // rejected at boot by validate() (CRUD-07); at runtime None still denies.
                             let user = crate::models::users::User::find_by_id(user_id)
                                 .await
                                 .map_err(|e| {
@@ -350,9 +369,9 @@ pub async fn handle(req: Request) -> Response {
                                     .is_ok(),
                             )
                         }
-                        None => Some(false),
+                        None => Some(false), // CRUD verb but no ability (boot-rejected by CRUD-07) — deny
                     },
-                    None => Some(false),
+                    None => None, // transition-action tool or unrecognised — not gated by write-ability
                 }
             };
 

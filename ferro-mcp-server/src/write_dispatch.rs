@@ -121,7 +121,40 @@ pub async fn handle_write_call(
     // `write_authorized`. Absent/false denies. This is a DEDICATED authorization signal,
     // intentionally separate from `evaluated_guards` (a visibility filter, not an auth gate).
     // The scope gate (read-key rejects write tools) already ran upstream in handle_tools_call.
-    if ctx.write_authorized != Some(true) {
+    //
+    // Phase 242 (anchor spec §authz): the write-ability Gate applies ONLY to CRUD verb tools
+    // (create_/update_/delete_<svc> and their delete-confirmation variants). Transition-action
+    // writes keep their existing authorization (scope gate + dispatch_write guard re-eval) and
+    // are NOT gated here — their tool names do not map 1:1 to a service (no CRUD prefix).
+    // The host signals this by setting write_authorized = None for non-CRUD tools; Some(true/false)
+    // only for CRUD verb tools. None on a CRUD tool is still fail-closed (deny).
+    let is_crud_write_tool = {
+        let base = tool_name
+            .strip_prefix("request_confirm_")
+            .or_else(|| tool_name.strip_prefix("confirm_"))
+            .unwrap_or(tool_name.as_str());
+        ["create_", "update_", "delete_"].iter().any(|p| {
+            base.strip_prefix(p).is_some_and(|svc_name| {
+                services.iter().any(|s| {
+                    s.mcp_exposed
+                        && s.name == svc_name
+                        && match *p {
+                            "create_" => s.creatable,
+                            "update_" => s.updatable,
+                            "delete_" => s.deletable,
+                            _ => false,
+                        }
+                })
+            })
+        })
+    };
+    // IN-01 (by design): the write-ability denial uses a transport-level -32603 error envelope,
+    // intentionally consistent with the other authorization denials (scope gate in jsonrpc.rs,
+    // tenant fail-closed). Execution-level outcomes (guard/validation/not-found) use the
+    // tool-error result shape (`write_tool_error_result`). Authorization denials are uniformly
+    // transport-level so clients can distinguish auth failures from application errors without
+    // inspecting the body.
+    if is_crud_write_tool && ctx.write_authorized != Some(true) {
         return json!({
             "error": {
                 "code": -32603,
@@ -1896,6 +1929,89 @@ mod confirmation_tests {
             exec_count.load(std::sync::atomic::Ordering::SeqCst),
             0,
             "executor must NOT run when write_authorized=Some(false)"
+        );
+    }
+
+    /// CR-01 regression: a transition-action write tool (e.g. "submit") with
+    /// write_authorized=None MUST NOT be denied by the write-ability Gate.
+    ///
+    /// The Gate applies only to CRUD verb tools (create_/update_/delete_<svc>).
+    /// Transition-action tools have no CRUD prefix so `is_crud_write_tool` is false
+    /// and the Gate is bypassed; the call proceeds to find_action / dispatch_write.
+    /// The executor here returns Ok so the overall result must be a success envelope,
+    /// not the "write ability denied" -32603 error.
+    #[tokio::test]
+    async fn transition_action_not_denied_by_write_ability_gate() {
+        let db = setup_db().await;
+        let exec_count = Arc::new(AtomicUsize::new(0));
+        // Use a service with actions (submit, approve) but also CRUD flags off — the
+        // submit tool has no CRUD prefix, so is_crud_write_tool is false for it.
+        let services = vec![{
+            use ferro_projections::{DataType, FieldMeaning, StateMachine, Transition};
+            ServiceDef::new("order")
+                .mcp_exposed(true)
+                // No CRUD flags — no create_/update_/delete_ tools emitted.
+                // write_authorized=None must NOT gate the "submit" action tool.
+                .field("id", DataType::Integer, FieldMeaning::Identifier)
+                .field("status", DataType::String, FieldMeaning::Status)
+                .state_machine(
+                    StateMachine::new("order_lifecycle")
+                        .initial("draft")
+                        .transition(Transition::new("draft", "submit", "submitted")),
+                )
+                .action(ActionDef::new("submit").transition_trigger("submit"))
+        }];
+
+        let dispatcher = WriteDispatcher {
+            guard_evaluator: Box::new(|_, _, _, _| Box::pin(async { Ok(true) })),
+            executor: Box::new({
+                let count = exec_count.clone();
+                move |_, _, _, _| {
+                    count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    Box::pin(async { Ok(json!({ "status": "submitted" })) })
+                }
+            }),
+            overrides: std::collections::HashMap::new(),
+        };
+
+        // write_authorized=None — no CRUD verb tool → Gate must NOT fire.
+        let ctx = crate::McpContext {
+            tenant_id: Some(1),
+            scope: Some("read_write".into()),
+            write_authorized: None,
+            ..Default::default()
+        };
+
+        let response = handle_write_call(
+            json!({ "name": "submit", "arguments": { "id": 1 } }),
+            &services,
+            &db,
+            Some(1),
+            &ctx,
+            &dispatcher,
+            #[cfg(feature = "confirmation")]
+            &ferro_ai::InMemoryConfirmationStore::new(),
+            #[cfg(feature = "confirmation")]
+            &crate::McpServerConfig::default(),
+        )
+        .await;
+
+        // The write-ability gate must NOT have fired (no "write ability denied" error).
+        let err_msg = response["error"]["message"].as_str().unwrap_or("");
+        assert!(
+            !err_msg.contains("write ability denied"),
+            "transition-action tool with write_authorized=None must NOT be denied by the \
+             write-ability Gate; got: {response:?}"
+        );
+        // The response may be a confirmation_required or a success result — either is
+        // acceptable. The point is the -32603 write-ability gate did not block it.
+        // (The confirmation seam fires because submit has transition_trigger; that is
+        //  correct and expected on the feature = "confirmation" build.)
+        let is_denied_by_gate = response["error"]["code"].as_i64() == Some(-32603)
+            && err_msg.contains("write ability denied");
+        assert!(
+            !is_denied_by_gate,
+            "write-ability Gate must not deny transition actions; got: {response:?}"
         );
     }
 
