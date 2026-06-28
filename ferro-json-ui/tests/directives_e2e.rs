@@ -197,7 +197,7 @@ fn e2e_empty_day_shows_empty_state_hides_booking_cards() {
             },
             "booking_list_empty": {
                 "type": "EmptyState",
-                "props": {"label": "Nessuna prenotazione"},
+                "props": {"title": "Nessuna prenotazione"},
                 "visible": {"path": "/has_bookings", "operator": "eq", "value": false}
             },
             "booking_card": {

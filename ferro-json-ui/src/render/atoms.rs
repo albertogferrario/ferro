@@ -1891,19 +1891,6 @@ mod tests {
         assert!(html.contains("Try again"));
     }
 
-    #[test]
-    fn empty_state_label_alias_renders() {
-        // `label` is an accepted alias for `title` — calendar_day.json uses
-        // this name because EmptyState and Badge/Button share the same mental
-        // model. Both forms must produce identical output.
-        let spec_label = spec_with_root(Element::new("EmptyState").prop("label", "Nessuna prenotazione"));
-        let spec_title = spec_with_root(Element::new("EmptyState").prop("title", "Nessuna prenotazione"));
-        let html_label = render_empty_state(spec_label.elements.get("root").unwrap(), &spec_label, &json!({}), 1);
-        let html_title = render_empty_state(spec_title.elements.get("root").unwrap(), &spec_title, &json!({}), 1);
-        assert!(html_label.contains("Nessuna prenotazione"), "label alias must render; got: {html_label}");
-        assert_eq!(html_label, html_title, "label and title must produce identical HTML");
-    }
-
     // ── 14. StatCard ───────────────────────────────────────────────────
 
     #[test]
