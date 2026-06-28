@@ -905,6 +905,7 @@ pub struct CollapsibleProps {
 /// Props for EmptyState component — standardized empty view.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct EmptyStateProps {
+    #[serde(alias = "label")]
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,

@@ -177,3 +177,49 @@ fn e2e_static_spec_unchanged_by_expand_directives() {
         "no-directive spec must be unchanged by expand_directives"
     );
 }
+
+/// Test 5: calendar-day empty-day scenario.
+///
+/// When `bookings` is empty, the `$each`-templated booking card produces no
+/// clones. The visibility-gated EmptyState (`has_bookings eq false`) must
+/// still render its label text. This is the regression that `label` alias +
+/// visibility interaction must satisfy end-to-end.
+#[test]
+fn e2e_empty_day_shows_empty_state_hides_booking_cards() {
+    let spec = build_spec(json!({
+        "$schema": "ferro-json-ui/v2",
+        "root": "root",
+        "elements": {
+            "root": {
+                "type": "Grid",
+                "props": {"columns": 1, "gap": "md"},
+                "children": ["booking_list_empty", "booking_card"]
+            },
+            "booking_list_empty": {
+                "type": "EmptyState",
+                "props": {"label": "Nessuna prenotazione"},
+                "visible": {"path": "/has_bookings", "operator": "eq", "value": false}
+            },
+            "booking_card": {
+                "type": "Card",
+                "$each": {"path": "/bookings", "as": "b"},
+                "props": {"title": {"$data": "/b/guest_name"}}
+            }
+        },
+        "data": {
+            "has_bookings": false,
+            "bookings": []
+        }
+    }));
+
+    let html = render(spec);
+
+    assert!(
+        html.contains("Nessuna prenotazione"),
+        "EmptyState label must render on an empty day; got: {html}"
+    );
+    assert!(
+        !html.contains("<!-- ferro-json-ui:"),
+        "no diagnostic comments expected; got: {html}"
+    );
+}
