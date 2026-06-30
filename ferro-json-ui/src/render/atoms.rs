@@ -1174,9 +1174,12 @@ pub(crate) fn render_calendar_cell(
     } else {
         " cursor-pointer"
     };
+    // A closed (unavailable) day is marked with a thin neutral diagonal line;
+    // `relative` anchors the absolutely-positioned overlay <svg>.
+    let closed_pos = if props.closed { " relative" } else { "" };
 
     let mut html = format!(
-        "<div class=\"flex flex-col min-h-[5rem] p-2 border border-border -mt-px -ml-px{opacity}{hover}\">",
+        "<div class=\"flex flex-col min-h-[5rem] p-2 border border-border -mt-px -ml-px{opacity}{hover}{closed_pos}\">",
     );
 
     if props.is_today {
@@ -1215,6 +1218,17 @@ pub(crate) fn render_calendar_cell(
         html.push_str(&format!(
             "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{total} prenot.</span>"
         ));
+    }
+
+    // Closed-day marker: a neutral diagonal hatch (repeating stripes) — the
+    // availability-calendar convention for "unavailable". `currentColor` keeps
+    // it theme-aware (muted tone); `relative` on the cell anchors the overlay.
+    if props.closed {
+        html.push_str(
+            "<div class=\"pointer-events-none absolute inset-0 text-text-muted\" \
+             style=\"opacity:0.14;background-image:repeating-linear-gradient(45deg,transparent 0,transparent 5px,currentColor 5px,currentColor 6px)\" \
+             aria-hidden=\"true\"></div>",
+        );
     }
 
     html.push_str("</div>");
@@ -1981,6 +1995,38 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_calendar_cell(el, &spec, &json!({}), 1);
         assert!(html.contains(">15<"), "got: {html}");
+    }
+
+    #[test]
+    fn calendar_cell_closed_draws_hatch() {
+        let spec = spec_with_root(
+            Element::new("CalendarCell")
+                .prop("day", 9)
+                .prop("closed", true),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_calendar_cell(el, &spec, &json!({}), 1);
+        // Neutral diagonal hatch overlay — no destructive tone, no text label.
+        assert!(
+            html.contains("repeating-linear-gradient"),
+            "diagonal hatch missing: {html}"
+        );
+        assert!(html.contains(" relative"), "overlay anchor missing: {html}");
+        assert!(
+            !html.contains("destructive"),
+            "closed marker should be neutral, not destructive: {html}"
+        );
+    }
+
+    #[test]
+    fn calendar_cell_open_has_no_hatch() {
+        let spec = spec_with_root(Element::new("CalendarCell").prop("day", 9));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_calendar_cell(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("repeating-linear-gradient"),
+            "unexpected hatch: {html}"
+        );
     }
 
     // ── 22. ActionCard ─────────────────────────────────────────────────

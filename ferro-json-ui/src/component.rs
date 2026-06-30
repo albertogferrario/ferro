@@ -1290,6 +1290,11 @@ pub struct CalendarCellProps {
     /// When non-empty, colored dots are rendered instead of plain primary dots.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dot_colors: Vec<String>,
+    /// When true the day is marked closed (unavailable): a neutral diagonal hatch
+    /// (repeating stripes) is drawn across the cell. Independent of `event_count`
+    /// — a closed day may still carry existing bookings, so the dots still render.
+    #[serde(default)]
+    pub closed: bool,
 }
 
 /// Visual variant for action cards.
