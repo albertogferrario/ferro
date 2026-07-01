@@ -30,9 +30,12 @@ pub struct ReturnUrls {
     pub cancel_url: String,
 }
 
-/// The hosted Stripe Checkout URL returned by `start_checkout`.
+/// The result of `start_checkout`: `.0` is the hosted Stripe Checkout URL,
+/// `.1` is the id of the `payment_intents` row the crate reserved for it — the
+/// caller persists this as its billable→intent link (so later refund/cancel
+/// paths can resolve the intent without a reverse lookup).
 #[derive(Debug)]
-pub struct CheckoutUrl(pub String);
+pub struct CheckoutUrl(pub String, pub i64);
 
 // ---------------------------------------------------------------------------
 // RefundStatus
@@ -396,7 +399,7 @@ impl<L: BillableLoader> PaymentService<L> {
             );
         }
 
-        Ok(CheckoutUrl(resp.intent.url))
+        Ok(CheckoutUrl(resp.intent.url, row.id))
     }
 
     // -----------------------------------------------------------------------
