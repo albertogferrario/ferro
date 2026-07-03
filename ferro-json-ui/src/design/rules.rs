@@ -39,6 +39,27 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &["collect", "focus"],
         check: check_breadcrumb_on_subpages,
     },
+    DesignRule {
+        id: "process-kanban",
+        title: "Status-workflow pages use a KanbanBoard",
+        rationale: "A KanbanBoard with per-column count badges is the canonical view for status workflows.",
+        intents: &["process"],
+        check: check_process_kanban,
+    },
+    DesignRule {
+        id: "card-actions-in-menu",
+        title: "Kanban card actions belong in the menu, destructive last",
+        rationale: "Consistent action order (detail first, destructive last) inside the ActionGroup prevents mis-clicks on cards.",
+        intents: &["process"],
+        check: check_card_actions_in_menu,
+    },
+    DesignRule {
+        id: "create-separate-page",
+        title: "Entity creation is a dedicated page, not a Modal",
+        rationale: "A separate create/edit page is linkable, refresh-safe, and leaves room for validation feedback.",
+        intents: &["collect"],
+        check: check_create_separate_page,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -187,6 +208,77 @@ fn check_breadcrumb_on_subpages(spec: &Spec, _intent: Option<&str>) -> Vec<Findi
     } else {
         vec![]
     }
+}
+
+fn check_process_kanban(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    if spec.elements.values().any(|e| e.type_name == "KanbanBoard") {
+        vec![]
+    } else {
+        vec![Finding {
+            rule: "process-kanban",
+            element_id: None,
+            severity: Severity::Warning,
+            message: "Process page has no KanbanBoard.".into(),
+            suggestion: "Use a KanbanBoard with per-column count badges for status workflows."
+                .into(),
+        }]
+    }
+}
+
+fn check_card_actions_in_menu(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for (id, el) in &spec.elements {
+        if el.type_name != "KanbanBoard" {
+            continue;
+        }
+        let Some(acts) = el.props.get("row_actions").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for (i, act) in acts.iter().enumerate() {
+            if act.get("destructive").and_then(|v| v.as_bool()) == Some(true) && i != acts.len() - 1
+            {
+                findings.push(Finding {
+                    rule: "card-actions-in-menu",
+                    element_id: Some(id.clone()),
+                    severity: Severity::Warning,
+                    message: "A destructive card action is not last in the menu.".into(),
+                    suggestion: "Order card actions: detail/view first, destructive last, all \
+                         inside the ActionGroup."
+                        .into(),
+                });
+                break; // one warning per offending KanbanBoard
+            }
+        }
+    }
+    findings
+}
+
+fn check_create_separate_page(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for (id, el) in &spec.elements {
+        if el.type_name != "Modal" {
+            continue;
+        }
+        let has_form_child = el.children.iter().any(|c| {
+            spec.elements
+                .get(c.as_str())
+                .map(|e| e.type_name == "Form")
+                .unwrap_or(false)
+        });
+        if has_form_child {
+            findings.push(Finding {
+                rule: "create-separate-page",
+                element_id: Some(id.clone()),
+                severity: Severity::Warning,
+                message: "Modal contains a Form — entity creation should be a dedicated page."
+                    .into(),
+                suggestion: "Move the form to a separate /nuovo or /modifica page instead of a \
+                     Modal."
+                    .into(),
+            });
+        }
+    }
+    findings
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────
