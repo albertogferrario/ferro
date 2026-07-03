@@ -69,7 +69,8 @@
 - ✅ [**v15.0 Agent-Operable App (Consumer MCP)**](milestones/v15.0-ROADMAP.md) — Phases 217-221 (shipped 2026-06-14). Extends the projection/intent abstraction to a write-and-act MCP surface: per-tenant API-key auth, `ActionDef`-derived write tools (guard-filtered), server-side guard re-enforcement at execution, `ferro-ai` confirmation gating for destructive actions, and an inbound natural-language intent loop with a replay/smoke CI path (CI-testable without live-LLM spend). Validated against gestiscilo via synthetic fixtures; consumer adoption is a separate follow-up.
 - ✅ [**v16.0 Write-Boundary AX**](milestones/v16.0-ROADMAP.md) — Phases 231-232 (shipped 2026-06-16). The projection write path now derives transitions from the `StateMachine` the framework owns — `TransitionPlan` + `derive_transition_plan` (no hand-written `match`), server-side guard re-eval, post-persist override hook, registration-time drift gate, and one `framework::write` kernel backing both the MCP and the new visual `POST /{service}/{action}` write surfaces (single-source, no per-channel executor).
 - ✅ **v16.2 ferro-inertia First-Load HTML Shell** — Phase 238 (completed 2026-06-21). `ferro-inertia` emits a complete first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env` plumbing, a configurable root template (title/head_extras/mount_id), and same-origin + Vite `server.proxy` docs. Verified live (dev hydration + prod manifest tags). Promoted from the downstream `u` app's deferred first-load shell.
-- 🚧 **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 (in progress, started 2026-06-23). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
+- ✅ **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 + 243.1 (completed 2026-06-24, shipped in 0.2.80; not yet archived). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
+- 🚧 **v16.5 JSON-UI Design System** — Phases 250-253 (in progress, started 2026-07-03; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). The design system is enforced at the agent-authoring boundary — an agent reads the system through ferro-mcp, authors a spec, and `design_lint` validates conformance before human review. Single publish at Phase 253. Independent of v16.4 (reserved 244–249). Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
 
 ---
 
@@ -3364,7 +3365,7 @@ zero-ferro-dep leaf crate.
 
 ---
 
-## 🚧 v16.3 MCP CRUD Data Surface (Track A) (Phases 239–243)
+## ✅ v16.3 MCP CRUD Data Surface (Track A) (Phases 239–243)
 
 **Goal:** A projection that opts in derives a complete, safe, tenant-scoped CRUD
 interface — create / read+query / update / soft-delete — as MCP tools with zero
@@ -3709,9 +3710,9 @@ and document the authoring surface, result path, scaling model, and non-goals.
 
 ✓ 6/6 requirements mapped, no orphans, no duplicates.
 
-## v16.5 JSON-UI Design System (Phases 250–253) [CONSUMER-PAIRED with gestiscilo Phase 232]
+## 🚧 v16.5 JSON-UI Design System (Phases 250–253) [CONSUMER-PAIRED with gestiscilo Phase 232]
 
-**Status:** Queued (v16.3 stays the current milestone; numbering continues after v16.4's
+**Status:** In progress (started 2026-07-03; numbering continues after v16.4's
 reserved 244–249). Independent of v16.4 — the two milestones share no code surface and
 can be planned/executed in either order.
 

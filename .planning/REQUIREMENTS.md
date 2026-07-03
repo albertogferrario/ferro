@@ -139,3 +139,80 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 | OFFLOAD-04 | Phase 247 | Not started |
 | OFFLOAD-05 | Phase 248 | Not started |
 | OFFLOAD-06 | Phase 249 | Not started |
+
+---
+
+# Requirements — v16.5 JSON-UI Design System — IN PROGRESS
+
+**Status:** Started 2026-07-03 (current milestone). Independent of v16.4 (reserved
+244–249); the two share no code surface. Consumer-paired with gestiscilo Phase 232.
+
+**Milestone goal:** Complete the design system above the token layer — density/motion/
+focus-ring tokens with opinionated defaults, a canonical variant vocabulary across all
+47 builtin components, and composition patterns codified as machine-readable,
+intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
+`docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
+
+## v16.5 Requirements
+
+### Token Vocabulary v2
+
+- [ ] **DS-01**: The fixed token vocabulary grows from 23 to 30 slots — density
+  (`--spacing`), motion (`--motion-duration-fast/base/slow`, `--motion-ease`), focus ring
+  (`--color-ring`), display font (`--font-display`) — every new slot with a default in the
+  base CSS and `default.css` (light + dark), so **every valid v1 theme remains a valid v2
+  theme unchanged**. Regenerated `ferro-base.css` exposes the new utilities as `var()`
+  references and collapses motion durations under `prefers-reduced-motion`.
+- [ ] **DS-02**: `default.css` is refreshed to the documented design language (cool-tinted
+  neutrals in both modes, a single accent used sparingly, separation via spacing and
+  contrast before borders, small consistent radii, one elevation treatment);
+  `docs/src/features/themes.md` documents v2 plus the root-font-size type-scaling recipe.
+
+### Component Variant Discipline
+
+- [ ] **DS-03**: All 47 builtin components use the canonical `variant`
+  (primary/secondary/outline/ghost/destructive), `tone` (neutral/success/warning/
+  destructive), and `size` (sm/md/lg) enums; catalog prop schemas enforce them; drift
+  guards extend to the enum sets; a migration table lists every rename for consumers.
+- [ ] **DS-04**: Every interactive component has hover, `focus-visible` (ring from
+  `--color-ring`), and disabled states; transitions use the motion tokens at
+  frequency-appropriate tiers; `ferro-base.css` regenerated after class changes.
+
+### Pattern Layer
+
+- [ ] **DS-05**: `Spec` gains an optional `design` field (`intent` + `allow`); a pure
+  `design::lint(&Spec)` engine implements the ~10 intent-keyed rules (intent inferred
+  with info-level finding when undeclared); lint never affects rendering or validation;
+  each rule ships a violating/conforming unit-test pair.
+- [ ] **DS-06**: `ferro design:lint [path] [--json] [--deny]` CLI — recursive over spec
+  JSON files, human-readable + `--json` output, exit 0 always unless `--deny`.
+
+### Agent Surface & Docs
+
+- [ ] **DS-07**: ferro-mcp gains a `design_lint` tool (inline spec or path);
+  `json_ui_catalog` extends with the canonical variant vocabulary and per-component
+  design guidance; `generation_context` gains a design-system summary.
+- [ ] **DS-08**: New `docs/src/design-system/` chapter (principles, token v2 reference,
+  variant vocabulary, pattern catalog, linting guide); single crates.io publish at the
+  end of the milestone.
+
+## Out of Scope (v16.5)
+
+- New crates — pattern rules live in ferro-json-ui; tokens stay in ferro-theme.
+- Hard validation — rendering never rejects a spec on design grounds.
+- Per-size type tokens or font-weight tokens (root `font-size` is the type-scale mechanism).
+- Retroactive redesign of intent templates (`ThemeTemplates`).
+- Consumer adoption (gestiscilo Phase 232) — separate repo, gated on the Phase 253 publish.
+
+## Traceability (v16.5)
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| DS-01 | Phase 250 | Not started |
+| DS-02 | Phase 250 | Not started |
+| DS-03 | Phase 251 | Not started |
+| DS-04 | Phase 251 | Not started |
+| DS-05 | Phase 252 | Not started |
+| DS-06 | Phase 252 | Not started |
+| DS-07 | Phase 253 | Not started |
+| DS-08 | Phase 253 | Not started |

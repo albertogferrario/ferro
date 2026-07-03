@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v16.3
-milestone_name: MCP CRUD Data Surface (Track A)
+milestone: v16.5
+milestone_name: JSON-UI Design System
 status: idle
 stopped_at: Phase 243.1 complete (verified 4/4)
 last_updated: "2026-06-24T15:30:00.000Z"
@@ -29,7 +29,7 @@ Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also ship
 Phase: 243.1 (projection-computed-derived-fields) — ✅ COMPLETE (verified 4/4, code review resolved)
 Plan: 1 of 1 complete
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
-Next: v16.3 (Track A, Phases 239–243 + 243.1) all complete but NOT archived. Options: `/gsd-complete-milestone` (archive v16.3) or `/gsd-plan-phase 244` (start v16.4 Work Distribution). Local commits unpushed — the framework `INSERT … RETURNING` fix (243-era) + 243.1 ship in the next crates.io release. (v16.0/v16.1/v16.2 also remain shipped-but-unarchived.)
+Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
 Status: Phase 243.1 verified complete — idle
