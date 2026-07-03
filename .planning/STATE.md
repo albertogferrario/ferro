@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
 status: executing
-stopped_at: Completed 251-01-PLAN.md (canonical vocabulary)
-last_updated: "2026-07-03T12:44:08.145Z"
+stopped_at: Completed 251-02-PLAN.md (interactive-state pass)
+last_updated: "2026-07-03T13:21:08.689Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 126
   completed_phases: 107
   total_plans: 441
-  completed_plans: 437
+  completed_plans: 438
   percent: 99
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
 Phase: 251 (Component variant discipline + interactive-state pass) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -204,6 +204,7 @@ Progress: [██████████] 100%
 | Phase 250-token-vocabulary-v2-default-theme-refresh P02 | 344 | 2 tasks | 3 files |
 | Phase 250-token-vocabulary-v2-default-theme-refresh P03 | 5737s (~95m) | 2 tasks | 1 files |
 | Phase 251-component-variant-discipline-interactive-state-pass P01 | 26m | 3 tasks | 15 files |
+| Phase 251-component-variant-discipline-interactive-state-pass P02 | 18m | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.5 Phase 251 Plan 02] Interactive-state pass shipped (DS-04): shared class constants in `render/classes.rs` (FOCUS_RING, MOTION_FAST, MOTION_BASE, DISABLED_BASE, INTERACTIVE_BASE) with a composition drift-guard test; every render/layout/runtime site migrated to `focus-visible:ring-ring` + `duration-fast`/`duration-base` + `ease-base`; `motion-reduce:transition-none` deleted everywhere tokens take over (D-15). Discretion calls: SegmentedControl ring is INSET (offset would clip in overflow-hidden cluster); Collapsible chevron = `transition-transform duration-base ease-base`; compact icon buttons gained `rounded-md` with the ring. D-16: disabled GET-action Button skips the anchor wrap (aria-disabled + `pointer-events-none opacity-50`); form controls use `disabled:pointer-events-none`. OQ-5: toast dismissal via `transitionend` + 500ms fallback; OQ-4: NO modal/dropdown animation added (explicit non-addition). StatCard tone renderer accent shipped (Plan 01 Known Stub resolved; neutral = untinted default). Form error rings (`ring-destructive`, Switch `peer-focus:ring-destructive/30`) preserved. `ferro-base.css` regen deferred to Plan 04 (D-04). New literals for the Plan 04 regen: `focus-visible:ring-ring`, `focus-visible:ring-inset`, `peer-focus:ring-ring/30`, `duration-fast/base`, `ease-base`, `disabled:pointer-events-none`.
 - [v16.5 Phase 251 Plan 01] Canonical `Variant`/`Tone`/`Size`/`CardAppearance` enums shipped in ferro-json-ui; all nine old enums (ButtonVariant, AlertVariant, BadgeVariant, ToastVariant, CardVariant, ActionCardVariant, old Size, DialogVariant, NotifyVariant) deleted with no aliases — retired values (`xs`, `default`, `link`, `info`, `error`) proven rejected at serde parse. Discretion calls: neutral badge = outlined (`border-border`); Alert neutral = `bg-surface` tint (plan's `bg-muted` adjusted — no `--color-muted` token exists); Toast neutral keeps Info classes (zero visual change, class pass is Plan 02); relationship buttons `link`→`ghost` (D-07); projection badge tones all collapse to neutral (D-09). OQ-1 normalized (ConfirmDialog/Notify carry `tone: Tone`, Notify absent-tone default stays success); OQ-2 StatCard `tone` added schema-only (renderer accent = Plan 02), CalendarCell skipped; OQ-3 `dot_colors` raw-Tailwind note handed to Plan 04. Known handoff: retired prop NAMES on renamed fields (Alert `variant`) are serde-ignored, not rejected — D-19 guard (Plan 03) should decide stale-prop detection scope.
 - [v16.5 Phase 250 Plan 03] Default theme visual sign-off approved with zero oklch nudges — `default.css` ships exactly as refreshed in Plan 02 (cool-tinted hue-250 neutrals, single harmonized accent, dark-not-gloomy). Focus rings are not visually checkable until Phase 251 (no component emits ring classes yet); the `--color-ring` token + default ship in 250. Full CI-exact gate green (fmt 0 / clippy --all-features 0 / test --all-features 0). Phase 250 complete: 3/3 plans.
 - [v16.0 Phase 232 Plan 03] Single-source PROVEN (EXEC-05 / Phase 232 complete): `single_source_both_channels` drives ONE declared `submit` transition through BOTH the MCP framing (`handle_tools_call` → `dispatch_write(.., "mcp")`) and the visual handler (`dispatch_write(.., "web")`) and asserts the IDENTICAL persisted derived `to_state`, with the audit channel (`mcp.action.submit` vs `web.action.submit`) the ONLY divergence; `single_source_guard_rejects_both` proves the guard re-eval is the same kernel gate on both channels. SC4 structural grep confirms exactly one `dispatch_write` definition (`framework/src/write/mod.rs`) and no `match action_name`/transition-target match on the write path (the `match find_action`/`match action.execute` hits are action resolution / `Result` matching, not transition re-encoding). The WriteDispatcher envelope is intact (relocated, not deleted). Full workspace gate green (fmt + clippy `--all --all-targets -D warnings` + test `--all-features`, exit 0). v16.0 write-boundary milestone closed.
@@ -262,7 +264,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-03T12:44:08.136Z
-Stopped at: Completed 251-01-PLAN.md (canonical vocabulary)
+Last session: 2026-07-03T13:21:08.681Z
+Stopped at: Completed 251-02-PLAN.md (interactive-state pass)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.

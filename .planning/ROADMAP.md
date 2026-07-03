@@ -3799,9 +3799,9 @@ ring, disabled treatment, frequency-tiered motion.
      disabled states; transitions use the motion tokens at frequency-appropriate tiers.
   3. A migration table lists every renamed prop/value for consumers.
   4. `ferro-base.css` regenerated after class changes; workspace gate green.
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 - [x] 251-01-PLAN.md — Enum consolidation: shared `Variant`/`Tone`/`Size`/`CardAppearance`, compiler-driven rename ripple (Wave 1)
-- [ ] 251-02-PLAN.md — Interactive-state + motion pass: shared class constants, ring-ring/duration-token migration, disabled uniformity, JS/SSR lockstep (Wave 2)
+- [x] 251-02-PLAN.md — Interactive-state + motion pass: shared class constants, ring-ring/duration-token migration, disabled uniformity, JS/SSR lockstep (Wave 2)
 - [ ] 251-03-PLAN.md — Enforcement + agent surface: D-19 schema-walking drift guard, catalog prose, ferro-mcp vocabulary (Wave 3)
 - [ ] 251-04-PLAN.md — Migration docs (D-17), ferro-base.css regen, full workspace gate, Chrome MCP visual pass (Wave 4)
 

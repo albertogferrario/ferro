@@ -174,7 +174,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
   (primary/secondary/outline/ghost/destructive), `tone` (neutral/success/warning/
   destructive), and `size` (sm/md/lg) enums; catalog prop schemas enforce them; drift
   guards extend to the enum sets; a migration table lists every rename for consumers.
-- [ ] **DS-04**: Every interactive component has hover, `focus-visible` (ring from
+- [x] **DS-04**: Every interactive component has hover, `focus-visible` (ring from
   `--color-ring`), and disabled states; transitions use the motion tokens at
   frequency-appropriate tiers; `ferro-base.css` regenerated after class changes.
 
