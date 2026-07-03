@@ -751,4 +751,220 @@ mod tests {
             "no Modal should be conforming for create-separate-page, got: {findings:#?}"
         );
     }
+
+    // ── form-default-values ──────────────────────────────────────────────────
+
+    #[test]
+    fn form_default_values_violating_edit_form_missing_default() {
+        // Collect intent, one Input has $data default_value (edit form detected),
+        // another Input has no default_value → 1 Warning on the latter.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Form"},
+                    "name": {"type": "Input", "props": {
+                        "field": "name",
+                        "default_value": {"$data": "/record/name"}
+                    }},
+                    "email": {"type": "Input", "props": {
+                        "field": "email"
+                    }}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "form-default-values");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 form-default-values finding on the field missing default_value, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert_eq!(findings[0].element_id.as_deref(), Some("email"));
+    }
+
+    #[test]
+    fn form_default_values_conforming_all_fields_prefilled() {
+        // Collect intent, all fields have $data default_value → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Form"},
+                    "name": {"type": "Input", "props": {
+                        "field": "name",
+                        "default_value": {"$data": "/record/name"}
+                    }},
+                    "email": {"type": "Input", "props": {
+                        "field": "email",
+                        "default_value": {"$data": "/record/email"}
+                    }}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "form-default-values");
+        assert!(
+            findings.is_empty(),
+            "all fields pre-filled should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn form_default_values_conforming_pure_create_form_login_shape() {
+        // Collect intent, pure create form (no field binds $data for default_value)
+        // — this is the login.json shape: Input has data_path and error but no default_value.
+        // The rule must produce 0 findings (pure create form → skip entirely).
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "layout": "auth",
+                "elements": {
+                    "r": {"type": "Form"},
+                    "email": {"type": "Input", "props": {
+                        "field": "email",
+                        "data_path": "/email",
+                        "error": {"$data": "/error"}
+                    }}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "form-default-values");
+        assert!(
+            findings.is_empty(),
+            "pure create form (no $data default_value on any field) must produce 0 findings, got: {findings:#?}"
+        );
+    }
+
+    // ── destructive-confirmation ──────────────────────────────────────────────
+
+    #[test]
+    fn destructive_confirmation_violating_button_no_confirm() {
+        // Button with variant=destructive and action without confirm → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Button", "props": {"label": "Delete", "variant": "destructive"},
+                          "action": {"handler": "items.destroy", "method": "DELETE"}}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 destructive-confirmation finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn destructive_confirmation_conforming_button_with_confirm() {
+        // Button with variant=destructive and action.confirm present → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Button", "props": {"label": "Delete", "variant": "destructive"},
+                          "action": {"handler": "items.destroy", "method": "DELETE",
+                                     "confirm": {"title": "Delete item?", "tone": "destructive"}}}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert!(
+            findings.is_empty(),
+            "destructive Button with confirm should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn destructive_confirmation_violating_row_action_no_confirm() {
+        // Element with row_actions containing a destructive entry without confirm → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "KanbanBoard", "props": {
+                        "row_actions": [
+                            {"label": "Delete", "destructive": true}
+                        ]
+                    }}
+                },
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 destructive-confirmation finding for row_action without confirm, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn destructive_confirmation_conforming_row_action_with_confirm() {
+        // row_action with destructive=true and confirm key present → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "KanbanBoard", "props": {
+                        "row_actions": [
+                            {"label": "Delete", "destructive": true,
+                             "confirm": {"title": "Delete?", "tone": "destructive"}}
+                        ]
+                    }}
+                },
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert!(
+            findings.is_empty(),
+            "row_action with confirm should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn destructive_confirmation_conforming_non_destructive_button() {
+        // Button with variant=primary (not destructive) with no confirm → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Button", "props": {"label": "Save", "variant": "primary"},
+                          "action": {"handler": "items.store", "method": "POST"}}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert!(
+            findings.is_empty(),
+            "non-destructive Button should be conforming, got: {findings:#?}"
+        );
+    }
 }
