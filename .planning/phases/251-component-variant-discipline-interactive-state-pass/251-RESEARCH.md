@@ -488,7 +488,15 @@ This is a rename/refactor phase — categories answered explicitly:
 
 All other claims are [VERIFIED] against the tree this session.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All 5 questions were resolved during planning by adopting the recommendations below;
+each adoption is recorded in the corresponding plan's `<decisions_adopted>` block:
+- OQ-1 — RESOLVED: normalize action-level variants to shared `Tone` (adopted in 251-01, restated in 251-03)
+- OQ-2 — RESOLVED: StatCard gains `tone` (neutral default, zero visual change); CalendarCell documented as audit-assessed-and-skipped (adopted in 251-01)
+- OQ-3 — RESOLVED: `dot_colors` raw-Tailwind pre-existing violation noted for backlog / Phase 252 lint, out of this phase's scope (adopted in 251-01)
+- OQ-4 — RESOLVED: no new modal/dropdown animation; existing transitions migrate to tokens, non-addition documented (adopted in 251-02)
+- OQ-5 — RESOLVED: toast dismissal switches to `transitionend` listener with fallback timeout (adopted in 251-02)
 
 1. **Action-level `variant` props (`ConfirmDialog.variant: DialogVariant`, `Notify.variant: NotifyVariant`) — in or out?**
    - What we know: D-06's invariant says "*any* prop named `variant`/`tone`/`size` in the catalog schema — no exceptions"; D-19's guard walks "component schemas", but ActionGroup's props schema transitively contains the Action schema (`ActionItem.action`), so a correct transitive walker WILL reach both fields. The variants barely reach markup (ConfirmDialog emits only title/message attrs today).

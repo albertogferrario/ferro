@@ -1,8 +1,8 @@
 ---
 phase: 251
 slug: component-variant-discipline-interactive-state-pass
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-03
 ---
@@ -38,13 +38,18 @@ created: 2026-07-03
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| (filled by planner) | | | DS-03 | — | old enum values rejected at spec-parse | unit | `cargo test -p ferro-json-ui component::` | ✅ existing modules updated in place | ⬜ pending |
-| (filled by planner) | | | DS-03 | — | N/A | unit (new drift guard) | `cargo test -p ferro-json-ui catalog::tests::` | ❌ W0 | ⬜ pending |
-| (filled by planner) | | | DS-03 | — | N/A | unit | `cargo test -p ferro-json-ui variant_enums_strum` | ✅ pattern at component.rs:1845 — extend | ⬜ pending |
-| (filled by planner) | | | DS-03 | — | N/A | unit | `cargo test -p ferro-json-ui projection::` | ✅ existing tests updated | ⬜ pending |
-| (filled by planner) | | | DS-04 | — | N/A | unit (render class-string assertions) | `cargo test -p ferro-json-ui render::` | ✅ existing (layout INT-07, form ring tests) — flip expected strings | ⬜ pending |
-| (filled by planner) | | | DS-04 | — | N/A | structural grep | `grep -rn "duration-150\|duration-300\|focus-visible:ring-primary\|motion-reduce:transition-none" ferro-json-ui/src framework/src` → 0 hits | ❌ verification-step gap | ⬜ pending |
-| (filled by planner) | | | DS-04 | — | N/A | smoke | `grep -c "ring-ring\|duration-fast" ferro-json-ui/assets/ferro-base.css` ≥ 1 | ✅ trivially checkable | ⬜ pending |
+| 251-01-01 | 01 | 1 | DS-03 | — | old enum values rejected at spec-parse | build + grep | `cargo build -p ferro-json-ui` + retired-identifier grep | ✅ | ⬜ pending |
+| 251-01-02 | 01 | 1 | DS-03 | — | N/A | build | `cargo build --workspace` | ✅ | ⬜ pending |
+| 251-01-03 | 01 | 1 | DS-03 | — | N/A | unit | `cargo test -p ferro-json-ui component::` / `variant_enums_strum` | ✅ | ⬜ pending |
+| 251-02-01 | 02 | 2 | DS-04 | — | N/A | build + grep | `cargo build -p ferro-json-ui` + ring greps | ✅ | ⬜ pending |
+| 251-02-02 | 02 | 2 | DS-04 | — | N/A | build + grep | build + retired-class grep | ✅ | ⬜ pending |
+| 251-02-03 | 02 | 2 | DS-04 | — | N/A | unit | `cargo test -p ferro-json-ui` | ✅ | ⬜ pending |
+| 251-03-01 | 03 | 3 | DS-03 | — | N/A | unit (new drift guard) | `cargo test -p ferro-json-ui variant_tone_size_enum_sets_drift_guard` | ❌ authored in-task | ⬜ pending |
+| 251-03-02 | 03 | 3 | DS-03 | — | N/A | unit + grep | `cargo test -p ferro-json-ui catalog::` + prose grep | ✅ | ⬜ pending |
+| 251-03-03 | 03 | 3 | DS-03 | — | N/A | unit + grep | `cargo test -p ferro-mcp json_ui` + grep | ✅ | ⬜ pending |
+| 251-04-01 | 04 | 4 | DS-03 | — | N/A | grep sweep | docs old-vocabulary grep sweep → 0 hits | ✅ | ⬜ pending |
+| 251-04-02 | 04 | 4 | DS-04 | — | N/A | smoke | `scripts/gen-ferro-base-css.sh` + `grep -c "ring-ring\|duration-fast" ferro-json-ui/assets/ferro-base.css` ≥ 1 | ✅ | ⬜ pending |
+| 251-04-03 | 04 | 4 | DS-03/04 | — | N/A | checkpoint:human-verify | Chrome MCP light+dark before/after screenshots | N/A | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,8 +57,8 @@ created: 2026-07-03
 
 ## Wave 0 Requirements
 
-- [ ] D-19 schema-walking drift-guard test in `ferro-json-ui/src/catalog.rs` tests module (new; model: `builtin_types_count_drift_guard` at catalog.rs:1101)
-- [ ] OQ-1 scope decision (action-level `variant` normalization) settled before the walker is written — determines ref-resolution boundary
+- [x] D-19 schema-walking drift-guard test — authored and executed within 251-03 Task 1 itself (no separate Wave 0 stub required; no `MISSING` verify references exist in any plan)
+- [x] OQ-1 scope decision (action-level `variant` normalization) — RESOLVED: normalized to shared `Tone`; recorded in 251-01/251-03 `<decisions_adopted>`
 
 *No framework install needed; all other coverage exists and is updated in place.*
 
@@ -63,17 +68,17 @@ created: 2026-07-03
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Visual parity + intended deltas, light + dark | DS-03/DS-04 | Rendered visual quality (hover/focus/disabled/motion feel) is not assertable as strings | Chrome MCP screenshots of the sample `app/` before/after, light + dark, per Phase 250 practice |
+| Visual parity + intended deltas, light + dark | DS-03/DS-04 | Rendered visual quality (hover/focus/disabled/motion feel) is not assertable as strings | Chrome MCP screenshots of the sample `app/` before/after, light + dark, per Phase 250 practice (251-04 Task 3 checkpoint) |
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (vacuously — no MISSING markers; D-19 guard authored in 251-03-01)
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-03 (plan-checker Dimension 8 PASS, checks 8a–8e)
