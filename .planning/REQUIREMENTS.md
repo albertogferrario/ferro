@@ -180,7 +180,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 
 ### Pattern Layer
 
-- [ ] **DS-05**: `Spec` gains an optional `design` field (`intent` + `allow`); a pure
+- [x] **DS-05**: `Spec` gains an optional `design` field (`intent` + `allow`); a pure
   `design::lint(&Spec)` engine implements the ~10 intent-keyed rules (intent inferred
   with info-level finding when undeclared); lint never affects rendering or validation;
   each rule ships a violating/conforming unit-test pair.
