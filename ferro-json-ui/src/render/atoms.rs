@@ -1558,6 +1558,56 @@ mod tests {
         );
     }
 
+    /// D-16 disabled contract: the native button carries the uniform
+    /// disabled classes plus aria-disabled, and a disabled GET-action Button
+    /// is never anchor-wrapped (an `<a>` would still navigate).
+    #[test]
+    fn button_disabled_skips_anchor_wrap_and_carries_aria_disabled() {
+        let el_builder = Element::new("Button")
+            .prop("label", "Go")
+            .prop("disabled", true)
+            .action(Action {
+                handler: "users.list".into(),
+                url: Some("/users".into()),
+                method: HttpMethod::Get,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            });
+        let spec = spec_with_root(el_builder);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("<a href"),
+            "disabled Button must not be anchor-wrapped; got: {html}"
+        );
+        assert!(
+            html.contains("aria-disabled=\"true\""),
+            "aria-disabled on the disabled button; got: {html}"
+        );
+        assert!(
+            html.contains("pointer-events-none opacity-50"),
+            "literal disabled classes for non-native contexts; got: {html}"
+        );
+        assert!(
+            html.contains("disabled:pointer-events-none"),
+            "uniform DISABLED_BASE on the button base; got: {html}"
+        );
+    }
+
+    /// INT-pass (251-02): the Button base sources the `--color-ring` token
+    /// and the fast motion tier from the shared constants.
+    #[test]
+    fn button_carries_token_focus_ring_and_fast_motion() {
+        let spec = spec_with_root(Element::new("Button").prop("label", "Go"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(html.contains("focus-visible:ring-ring"), "got: {html}");
+        assert!(html.contains("duration-fast"), "got: {html}");
+        assert!(html.contains("ease-base"), "got: {html}");
+    }
+
     #[test]
     fn button_post_action_does_not_wrap_in_anchor() {
         let el_builder = Element::new("Button").prop("label", "Save").action(Action {
@@ -1926,6 +1976,29 @@ mod tests {
         assert!(html.contains("Try again"));
     }
 
+    /// INT-pass (251-02): the EmptyState CTA (previously hover-only) carries
+    /// the token focus ring and fast motion tier.
+    #[test]
+    fn empty_state_cta_carries_token_focus_ring() {
+        let spec = spec_with_root(
+            Element::new("EmptyState")
+                .prop("title", "No data")
+                .prop(
+                    "action",
+                    json!({"handler": "items.create", "url": "/items/new", "method": "GET"}),
+                )
+                .prop("action_label", "Create"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_empty_state(el, &spec, &json!({}), 1);
+        assert!(html.contains("Create"), "got: {html}");
+        assert!(
+            html.contains("focus-visible:ring-ring"),
+            "CTA must carry the token focus ring; got: {html}"
+        );
+        assert!(html.contains("duration-fast"), "got: {html}");
+    }
+
     // ── 14. StatCard ───────────────────────────────────────────────────
 
     #[test]
@@ -1939,6 +2012,39 @@ mod tests {
         let html = render_stat_card(el, &spec, &json!({}), 1);
         assert!(html.contains("42"));
         assert!(html.contains("Users"));
+    }
+
+    /// OQ-2 (251-01 handoff): StatCard `tone` accents the value; `neutral`
+    /// (the default) reproduces the untinted look exactly.
+    #[test]
+    fn stat_card_tone_accents_value() {
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "Errors")
+                .prop("value", "3")
+                .prop("tone", "destructive"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_stat_card(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("text-2xl font-bold text-destructive"),
+            "destructive tone must accent the value; got: {html}"
+        );
+    }
+
+    #[test]
+    fn stat_card_neutral_tone_keeps_default_value_color() {
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "Users")
+                .prop("value", "42"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_stat_card(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("text-2xl font-bold text-text"),
+            "neutral (default) tone keeps the untinted value; got: {html}"
+        );
     }
 
     // ── 15. Checklist ──────────────────────────────────────────────────
@@ -1969,6 +2075,20 @@ mod tests {
         let html = render_toast(el, &spec, &json!({}), 1);
         assert!(html.contains("Saved"));
         assert!(html.contains("data-toast-tone=\"success\""));
+    }
+
+    /// D-03 base tier: the Toast fade uses the duration-base token (in
+    /// lockstep with runtime/toasts.rs), never a raw duration.
+    #[test]
+    fn toast_uses_base_motion_tier() {
+        let spec = spec_with_root(Element::new("Toast").prop("message", "Saved"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_toast(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("transition-opacity duration-base ease-base"),
+            "Toast must use the base motion tier; got: {html}"
+        );
+        assert!(!html.contains("duration-300"), "got: {html}");
     }
 
     // ── 17. NotificationDropdown ───────────────────────────────────────
@@ -2079,6 +2199,28 @@ mod tests {
     }
 
     // ── 23. ProductTile ────────────────────────────────────────────────
+
+    /// INT-pass (251-02): ProductTile +/- buttons migrated to the ring token.
+    #[test]
+    fn product_tile_buttons_carry_token_focus_ring() {
+        let spec = spec_with_root(
+            Element::new("ProductTile")
+                .prop("product_id", "1")
+                .prop("name", "Caffè")
+                .prop("price", "€1,20")
+                .prop("field", "qty_1"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_product_tile(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("focus-visible:ring-ring"),
+            "+/- buttons must carry the token ring; got: {html}"
+        );
+        assert!(
+            !html.contains("focus-visible:ring-primary"),
+            "retired ring-primary must not survive; got: {html}"
+        );
+    }
 
     #[test]
     fn product_tile_emits_name_and_price() {

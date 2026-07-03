@@ -2327,6 +2327,30 @@ mod tests {
         );
     }
 
+    /// INT-pass (251-02): segments carry an INSET token ring — an offset ring
+    /// would be clipped by the cluster's overflow-hidden container.
+    #[test]
+    fn segmented_control_segments_carry_inset_token_ring() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SegmentedControl").prop(
+                "items",
+                json!([{"label": "Giorno", "href": "?view=day", "active": true}]),
+            ),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_segmented_control(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("focus-visible:ring-ring"),
+            "segments must carry the ring token; got: {html}"
+        );
+        assert!(
+            html.contains("focus-visible:ring-inset"),
+            "segment ring must be inset (overflow-hidden cluster); got: {html}"
+        );
+        assert!(html.contains("duration-fast"), "got: {html}");
+    }
+
     #[test]
     fn segmented_control_aria_label_adds_tablist_role() {
         let spec = build_spec(vec![(

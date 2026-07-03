@@ -923,6 +923,51 @@ mod tests {
         );
     }
 
+    /// INT-pass (251-02): the non-error focus ring sources the `--color-ring`
+    /// token and the disabled treatment is the uniform D-16 pair.
+    #[test]
+    fn input_non_error_carries_token_ring_and_disabled_base() {
+        let el = mk_element("Input", json!({"field": "email", "label": "Email"}));
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("focus-visible:ring-ring"),
+            "non-error input must carry the ring token; got: {html}"
+        );
+        assert!(
+            !html.contains("focus-visible:ring-destructive"),
+            "no error ring without error; got: {html}"
+        );
+        assert!(
+            html.contains("disabled:pointer-events-none"),
+            "uniform disabled treatment (D-16); got: {html}"
+        );
+        assert!(
+            !html.contains("disabled:cursor-not-allowed"),
+            "retired disabled cursor class must not survive; got: {html}"
+        );
+        assert!(
+            html.contains("duration-fast"),
+            "fast motion tier on form controls; got: {html}"
+        );
+    }
+
+    /// INT-pass (251-02): Switch non-error peer ring sources the ring token.
+    #[test]
+    fn switch_non_error_carries_token_peer_ring() {
+        let el = mk_element("Switch", json!({"field": "notify", "label": "Notify"}));
+        let spec = mk_spec("root", el.clone());
+        let html = render_switch(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("peer-focus:ring-ring/30"),
+            "non-error Switch must carry peer-focus:ring-ring/30; got: {html}"
+        );
+        assert!(
+            !html.contains("peer-focus:ring-destructive/30"),
+            "no error peer ring without error; got: {html}"
+        );
+    }
+
     // ── Checkbox ─────────────────────────────────────────────────────────
 
     #[test]
@@ -1081,14 +1126,15 @@ mod tests {
             "aria-describedby must be on the hidden <input>; tag: {input_tag}"
         );
 
-        // The visible pill <div> must carry peer-focus:ring-destructive/30, NOT primary.
+        // The visible pill <div> must carry peer-focus:ring-destructive/30,
+        // NOT the non-error `--color-ring` token ring.
         assert!(
             html.contains("peer-focus:ring-destructive/30"),
             "pill must carry peer-focus:ring-destructive/30; got: {html}"
         );
         assert!(
-            !html.contains("peer-focus:ring-primary/30"),
-            "pill must NOT carry peer-focus:ring-primary/30 when has_error; got: {html}"
+            !html.contains("peer-focus:ring-ring/30"),
+            "pill must NOT carry peer-focus:ring-ring/30 when has_error; got: {html}"
         );
 
         // Locked error <p> DOM shape per UI-SPEC.md.
