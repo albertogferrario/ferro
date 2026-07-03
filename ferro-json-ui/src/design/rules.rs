@@ -25,7 +25,20 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &["browse"],
         check: check_list_empty_state,
     },
-    // row-actions-grouped and breadcrumb-on-subpages added in Task 2
+    DesignRule {
+        id: "row-actions-grouped",
+        title: "Group row/card actions in an ActionGroup",
+        rationale: "Loose inline buttons per row are inconsistent and crowd small screens; an ActionGroup/DropdownMenu keeps them tidy.",
+        intents: &["browse", "process"],
+        check: check_row_actions_grouped,
+    },
+    DesignRule {
+        id: "breadcrumb-on-subpages",
+        title: "Create/edit/detail pages carry a Breadcrumb",
+        rationale: "A breadcrumb back to the list page keeps navigation reversible on nested pages.",
+        intents: &["collect", "focus"],
+        check: check_breadcrumb_on_subpages,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -114,6 +127,66 @@ fn check_list_empty_state(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
             }
         })
         .collect()
+}
+
+fn check_row_actions_grouped(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    spec.elements
+        .iter()
+        .filter_map(|(id, el)| {
+            let btn_count = el
+                .children
+                .iter()
+                .filter(|c| {
+                    spec.elements
+                        .get(c.as_str())
+                        .map(|child| child.type_name == "Button")
+                        .unwrap_or(false)
+                })
+                .count();
+            if btn_count >= 2 {
+                Some(Finding {
+                    rule: "row-actions-grouped",
+                    element_id: Some(id.clone()),
+                    severity: Severity::Warning,
+                    message: format!("Element `{id}` has {btn_count} loose Button children."),
+                    suggestion: "Group these row/card actions in an ActionGroup (DropdownMenu) \
+                         instead of loose inline Buttons."
+                        .into(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn check_breadcrumb_on_subpages(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    if !is_app_shell_layout(spec) {
+        // Auth pages and layout-less specs are exempt.
+        return vec![];
+    }
+    let has_breadcrumb_element = spec.elements.values().any(|e| e.type_name == "Breadcrumb");
+    let has_breadcrumb_in_header = spec.elements.values().any(|e| {
+        e.type_name == "PageHeader"
+            && e.props
+                .get("breadcrumb")
+                .and_then(|v| v.as_array())
+                .map(|a| !a.is_empty())
+                .unwrap_or(false)
+    });
+    if !has_breadcrumb_element && !has_breadcrumb_in_header {
+        vec![Finding {
+            rule: "breadcrumb-on-subpages",
+            element_id: None,
+            severity: Severity::Warning,
+            message: "App-shell subpage has no Breadcrumb.".into(),
+            suggestion: "Add a Breadcrumb (or a PageHeader with a non-empty `breadcrumb`) \
+                 linking back to the list page."
+                .into(),
+        }]
+    } else {
+        vec![]
+    }
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────
