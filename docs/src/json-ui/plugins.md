@@ -288,9 +288,11 @@ Renders an interactive rich text editor backed by Quill 2.0.3. The editor contai
     },
     "doc_form": {
       "type": "Form",
-      "props": { "max_width": "lg" },
-      "children": ["title_input", "description_editor", "submit_btn"],
-      "action": { "handler": "documents.update", "method": "POST" }
+      "props": {
+        "action": { "handler": "documents.update", "method": "POST" },
+        "max_width": "wide"
+      },
+      "children": ["title_input", "description_editor", "submit_btn"]
     },
     "title_input": {
       "type": "Input",

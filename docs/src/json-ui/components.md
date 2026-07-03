@@ -57,7 +57,7 @@ Additional fixed-string enums scoped to individual components; each component se
 
 **text_element** — `"p"` | `"h1"` | `"h2"` | `"h3"` | `"span"` | `"div"` | `"section"`
 
-**input_type** — `"text"` | `"email"` | `"password"` | `"number"` | `"textarea"` | `"hidden"` | `"date"` | `"time"` | `"url"` | `"tel"` | `"search"`
+**input_type** — `"text"` | `"email"` | `"password"` | `"number"` | `"textarea"` | `"hidden"` | `"date"` | `"time"` | `"url"` | `"tel"` | `"search"` | `"file"`
 
 **orientation** — `"horizontal"` | `"vertical"`
 
@@ -161,9 +161,11 @@ Optional `subtitle` and `badge` slots add a muted secondary identifier and a Bad
     },
     "form_login": {
       "type": "Form",
-      "props": { "max_width": "sm" },
-      "children": ["email_input", "submit_btn"],
-      "action": { "handler": "auth.login", "method": "POST" }
+      "props": {
+        "action": { "handler": "auth.login", "method": "POST" },
+        "max_width": "narrow"
+      },
+      "children": ["email_input", "submit_btn"]
     },
     "email_input": {
       "type": "Input",
@@ -289,16 +291,19 @@ Dialog overlay with title, body children, footer children, and a trigger button 
 
 | Prop | Type | Description |
 |------|------|-------------|
+| `id` | `string` | HTML id of the `<dialog>` element; the trigger button references it |
 | `title` | `string` | Modal heading |
 | `description` | `string \| null` | Modal description text |
 | `trigger_label` | `string \| null` | Label for the button that opens the modal |
+| `footer` | `array \| null` | Element IDs rendered in the modal footer |
 
-Children of the modal body go in the element `"children"` array. Footer children use a `"footer_children"` prop listing element IDs.
+Children of the modal body go in the element `"children"` array. Footer children use the `"footer"` prop listing element IDs.
 
 ```json
 "delete_modal": {
   "type": "Modal",
   "props": {
+    "id": "delete_modal",
     "title": "Delete Item",
     "description": "This action cannot be undone.",
     "trigger_label": "Delete"
@@ -331,19 +336,19 @@ Loading placeholder with configurable dimensions.
 
 ### Collapsible
 
-An expandable/collapsible section with a trigger label.
+An expandable/collapsible section (`<details>`/`<summary>`) with a toggle label.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `trigger` | `string` | Label for the toggle |
-| `open` | `boolean \| null` | Initially open when `true` |
+| `title` | `string` | Label for the toggle |
+| `expanded` | `boolean \| null` | Initially open when `true` (default: `false`) |
 
 ```json
 "advanced_section": {
   "type": "Collapsible",
   "props": {
-    "trigger": "Advanced Options",
-    "open": false
+    "title": "Advanced Options",
+    "expanded": false
   },
   "children": ["timeout_input", "retry_input"]
 }
@@ -406,17 +411,16 @@ Content can use a `$template` expression to interpolate data:
 
 ### DataTable
 
-Data-bound table with column definitions, row actions, and sorting. Rows are loaded from the spec's data via `data_path`.
+Data-bound table with column definitions, per-row dropdown actions, mobile card fallback, and empty state. Rows are loaded from the spec's data via `data_path`.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `columns` | `array` | Column definitions (see below) |
 | `data_path` | `string` | JSON Pointer to the row data array (e.g., `"/orders"`) |
-| `row_actions` | `array \| null` | Actions available per row |
+| `row_actions` | `array \| null` | Per-row dropdown actions — `{"label", "action", "destructive"?, "visible_if"?}` objects |
 | `empty_message` | `string \| null` | Message when no data is present |
-| `sortable` | `boolean \| null` | Enable column sorting |
-| `sort_column` | `string \| null` | Currently sorted column key |
-| `sort_direction` | `sort_direction \| null` | `"asc"` or `"desc"` |
+| `row_key` | `string \| null` | Row field used for `{row_key}` substitution in action URLs (defaults to `id`) |
+| `row_href` | `string \| null` | URL pattern for row-click navigation; use `{row_key}` as placeholder |
 
 Each column object:
 
@@ -439,37 +443,57 @@ For `format: "badge"` the cell value is an object `{"tone": .., "label": ..}` wi
       { "key": "created_at", "label": "Created", "format": "date" }
     ],
     "row_actions": [
-      { "handler": "users.edit", "method": "GET" },
-      { "handler": "users.destroy", "method": "DELETE", "confirm": { "message": "Delete this user?" } }
+      { "label": "Edit", "action": { "handler": "users.edit", "method": "GET" } },
+      {
+        "label": "Delete",
+        "destructive": true,
+        "action": {
+          "handler": "users.destroy",
+          "method": "DELETE",
+          "confirm": { "title": "Delete this user?" }
+        }
+      }
     ],
-    "empty_message": "No users found.",
-    "sortable": true
+    "empty_message": "No users found."
   }
 }
 ```
 
 ### Table
 
-Simple table without a data binding path. Use `DataTable` for data-bound tables; use `Table` for static content.
+Lightweight data-bound table. Rows load from the spec's data via `data_path` — like `DataTable`, but with plain per-row action buttons instead of the dropdown menu, row-click navigation, and mobile card fallback. Prefer `DataTable` for entity list pages.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `columns` | `array` | Column definitions (same structure as DataTable) |
-| `rows` | `array` | Static row objects (key-value maps) |
+| `data_path` | `string` | JSON Pointer to the row data array (e.g., `"/plans"`) |
+| `row_actions` | `array \| null` | Plain Action objects rendered per row |
+| `empty_message` | `string \| null` | Message when no data is present |
+| `sortable` | `boolean \| null` | Enable column sorting |
+| `sort_column` | `string \| null` | Currently sorted column key |
+| `sort_direction` | `sort_direction \| null` | `"asc"` or `"desc"` |
 
 ```json
-"static_table": {
+"plans_table": {
   "type": "Table",
   "props": {
+    "data_path": "/plans",
     "columns": [
       { "key": "plan", "label": "Plan" },
       { "key": "price", "label": "Price", "format": "currency" }
-    ],
-    "rows": [
-      { "plan": "Starter", "price": "9.00" },
-      { "plan": "Pro", "price": "29.00" }
     ]
   }
+}
+```
+
+With handler data:
+
+```json
+{
+  "plans": [
+    { "plan": "Starter", "price": "9.00" },
+    { "plan": "Pro", "price": "29.00" }
+  ]
 }
 ```
 
@@ -743,19 +767,20 @@ Form container with an action binding. Field components go in the element `"chil
 
 | Prop | Type | Description |
 |------|------|-------------|
+| `action` | `object` | Submit action — `{"handler", "method"}` (required) |
 | `method` | `string \| null` | HTTP method override (`"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, `"DELETE"`) |
-| `max_width` | `form_max_width \| null` | Max form width: `"sm"`, `"md"`, `"lg"`, `"xl"`, `"full"` |
+| `max_width` | `form_max_width \| null` | Max form width: `"default"`, `"narrow"`, `"wide"` |
 
-The submit action is set on the element's `"action"` field, not in props.
+The submit action is set in props (`props.action`), unlike Button and Modal which attach the action on the element's `"action"` field.
 
 ```json
 "create_form": {
   "type": "Form",
   "props": {
-    "max_width": "md"
+    "action": { "handler": "users.store", "method": "POST" },
+    "max_width": "narrow"
   },
-  "children": ["name_input", "email_input", "submit_btn"],
-  "action": { "handler": "users.store", "method": "POST" }
+  "children": ["name_input", "email_input", "submit_btn"]
 }
 ```
 
@@ -979,7 +1004,7 @@ Interactive button. Attach the click action on the element's `"action"` field.
 | `disabled` | `boolean \| null` | Disable the button |
 | `icon` | `string \| null` | Icon name |
 | `icon_position` | `icon_position \| null` | `"left"` (default) or `"right"` |
-| `button_type` | `string \| null` | HTML button type: `"button"`, `"submit"`, `"reset"` |
+| `button_type` | `string \| null` | HTML button type: `"button"` (default), `"submit"` |
 
 ```json
 "save_btn": {
@@ -1374,31 +1399,29 @@ Each item object:
 
 ### ProductTile
 
-Product display card with image, title, price, and optional action.
+Touch-friendly product tile with quantity controls. Renders the product name, price, and +/− buttons that drive a hidden form input via the JS runtime — used for POS-style product selection inside an order form.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `title` | `string` | Product name |
+| `product_id` | `string` | Product identifier |
+| `name` | `string` | Product name |
 | `price` | `string` | Formatted price string (e.g., `"€29.00"`) |
-| `description` | `string \| null` | Product description |
-| `image_url` | `string \| null` | Product image URL |
-| `badge` | `string \| null` | Badge text (e.g., `"New"`, `"Sale"`) |
-| `action_label` | `string \| null` | Action button label |
+| `field` | `string` | Form field name the selected quantity is written to |
+| `default_quantity` | `number \| null` | Initial quantity (default: 0) |
 
 ```json
 "product_tile": {
   "type": "ProductTile",
   "props": {
-    "title": { "$data": "/product/name" },
+    "product_id": { "$data": "/product/id" },
+    "name": { "$data": "/product/name" },
     "price": { "$data": "/product/price_formatted" },
-    "description": { "$data": "/product/description" },
-    "image_url": { "$data": "/product/image_url" },
-    "badge": "New",
-    "action_label": "Add to Cart"
-  },
-  "action": { "handler": "cart.add", "method": "POST" }
+    "field": "quantities[1]"
+  }
 }
 ```
+
+Place ProductTile elements inside a `Form` — the quantity value submits with the surrounding form.
 
 ---
 
@@ -1466,27 +1489,24 @@ instead.
 
 ### KanbanColumn
 
-A single column in a KanbanBoard.
+A single lane definition inside `KanbanBoard.columns` — a column object, not a standalone element type.
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `title` | `string` | Column heading |
-| `data_path` | `string` | JSON Pointer to the card data array |
-| `count` | `number \| null` | Badge count shown in the column header |
-| `empty_message` | `string \| null` | Message when the column has no cards |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Lane key matched against each item's `group_by` value |
+| `title` | `string` | Lane heading |
+| `count` | `number \| null` | Lane count badge (static specs only) |
+| `children` | `array \| null` | Element IDs rendered inside the lane (static specs only) |
 
 ```json
-"pending_col": {
-  "type": "KanbanColumn",
-  "props": {
-    "title": "Pending",
-    "data_path": "/orders/pending",
-    "count": { "$data": "/orders/pending_count" },
-    "empty_message": "No pending orders"
-  },
+{
+  "id": "pending",
+  "title": "Pending",
   "children": ["pending_card_template"]
 }
 ```
+
+`count` and `children` are honored only when the board sets neither `items_path` nor `group_by`; in the data-bound path the renderer computes counts and renders cards from `items_path`. See [`$each` inside a KanbanColumn](expressions.md#example-kanban-cards-from-a-data-array) for custom card templating.
 
 ---
 
@@ -1581,13 +1601,15 @@ This pattern requires no Rust code to distinguish view and edit modes — the sp
     },
     "profile_form": {
       "type": "Form",
-      "props": { "max_width": "md" },
+      "props": {
+        "action": { "handler": "profile.update", "method": "POST" },
+        "max_width": "narrow"
+      },
       "children": [
         "name_view", "name_edit",
         "email_view", "email_edit",
         "save_btn"
-      ],
-      "action": { "handler": "profile.update", "method": "POST" }
+      ]
     },
     "name_view": {
       "type": "DescriptionList",

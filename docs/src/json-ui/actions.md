@@ -107,7 +107,7 @@ Navigate to a URL after success:
 }
 ```
 
-### Reload
+### Refresh
 
 Reload the current page:
 
@@ -116,7 +116,7 @@ Reload the current page:
   "handler": "settings.update",
   "method": "PUT",
   "on_success": {
-    "type": "reload"
+    "type": "refresh"
   }
 }
 ```
@@ -171,23 +171,24 @@ Display validation errors returned from the handler on corresponding form fields
 
 ## Form Actions
 
-The `Form` element uses `"action"` as its submit action. The entire form submits to the handler when the user clicks the submit button.
+The `Form` element takes its submit action as the required `props.action` (unlike Button and Modal, which attach the action on the element's `"action"` field). The entire form submits to the handler when the user clicks the submit button.
 
 Complete form element example:
 
 ```json
 "create_form": {
   "type": "Form",
-  "props": {},
-  "action": {
-    "handler": "items.store",
-    "method": "POST",
-    "on_success": {
-      "type": "redirect",
-      "url": "/items"
-    },
-    "on_error": {
-      "type": "show_errors"
+  "props": {
+    "action": {
+      "handler": "items.store",
+      "method": "POST",
+      "on_success": {
+        "type": "redirect",
+        "url": "/items"
+      },
+      "on_error": {
+        "type": "show_errors"
+      }
     }
   },
   "children": ["name_input", "description_input", "submit_btn"]
@@ -200,12 +201,13 @@ With form fields as sibling elements:
 "elements": {
   "create_form": {
     "type": "Form",
-    "props": {},
-    "action": {
-      "handler": "items.store",
-      "method": "POST",
-      "on_success": { "type": "redirect", "url": "/items" },
-      "on_error": { "type": "show_errors" }
+    "props": {
+      "action": {
+        "handler": "items.store",
+        "method": "POST",
+        "on_success": { "type": "redirect", "url": "/items" },
+        "on_error": { "type": "show_errors" }
+      }
     },
     "children": ["name_input", "submit_btn"]
   },
