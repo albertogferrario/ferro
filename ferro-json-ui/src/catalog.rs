@@ -767,6 +767,11 @@ impl Catalog {
                 }
             }
             collect_retired_action_variants(&el.props, "", &mut renamed);
+            if let Some(action) = &el.action {
+                if let Ok(action_value) = serde_json::to_value(action) {
+                    collect_retired_action_variants(&action_value, "/action", &mut renamed);
+                }
+            }
             if !renamed.is_empty() {
                 errors.push(CatalogError::PropsInvalid {
                     element_id: id.clone(),
@@ -2224,6 +2229,84 @@ mod tests {
             cat.component_schema("CheckboxGroup").is_some(),
             "CheckboxGroup must be registered in BUILTIN_SPECS as an alias for CheckboxList"
         );
+    }
+
+    // ── Stage 2b el.action walk tests (Plan 252-02) ──────────────────────────
+
+    /// Build a minimal spec from a JSON string (goes through `Spec::from_json`
+    /// so the element-level `action` field is typed-deserialized).
+    fn spec_from_json_string(json: &str) -> crate::spec::Spec {
+        crate::spec::Spec::from_json(json).expect("test spec must parse")
+    }
+
+    #[test]
+    fn validate_rejects_retired_el_action_confirm_variant() {
+        // A typed element-level `action.confirm.variant` (retired in Phase 251)
+        // must be caught by Stage 2b after the el.action walk is added.
+        // The error must mention the `/action` path prefix.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = spec_from_json_string(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "btn",
+                "elements": {
+                    "btn": {
+                        "type": "Button",
+                        "props": { "label": "Delete" },
+                        "action": {
+                            "handler": "orders.destroy",
+                            "method": "POST",
+                            "confirm": {
+                                "title": "Delete?",
+                                "message": "x",
+                                "variant": "danger"
+                            }
+                        }
+                    }
+                }
+            }"#,
+        );
+        let errs = cat
+            .validate(&spec)
+            .expect_err("should fail: confirm.variant is a retired prop");
+        assert!(
+            errs.iter().any(|e| matches!(
+                e,
+                CatalogError::PropsInvalid { errors, .. }
+                    if errors.iter().any(|m| m.contains("/action") && m.contains("variant"))
+            )),
+            "expected PropsInvalid mentioning /action and variant; got {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validate_accepts_canonical_el_action_confirm_tone() {
+        // The canonical `confirm.tone` field must not produce any false positive.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = spec_from_json_string(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "btn",
+                "elements": {
+                    "btn": {
+                        "type": "Button",
+                        "props": { "label": "Delete" },
+                        "action": {
+                            "handler": "orders.destroy",
+                            "method": "POST",
+                            "confirm": {
+                                "title": "Delete?",
+                                "message": "x",
+                                "tone": "destructive"
+                            }
+                        }
+                    }
+                }
+            }"#,
+        );
+        if let Err(errs) = cat.validate(&spec) {
+            panic!("validate with canonical confirm.tone failed: {errs:?}");
+        }
     }
 
     #[test]

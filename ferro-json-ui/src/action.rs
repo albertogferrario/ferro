@@ -13,6 +13,8 @@
 //!   start with the loop variable (`/{as}/...`) are inlined to the row
 //!   value during expansion — see `resolve.rs::expand_each`.
 
+use std::collections::HashMap;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +43,10 @@ pub struct ConfirmDialog {
     pub message: Option<String>,
     #[serde(default)]
     pub tone: Tone,
+    /// Captures unrecognised JSON keys so that Stage 2b can detect retired
+    /// prop names (e.g. `variant`) via `serde_json::to_value` + walk.
+    #[serde(flatten)]
+    pub(crate) unknown_fields: HashMap<String, serde_json::Value>,
 }
 
 /// Default tone for `ActionOutcome::Notify` — an absent `tone` stays
@@ -198,6 +204,7 @@ impl Action {
             title: title.into(),
             message: None,
             tone: Tone::Neutral,
+            unknown_fields: Default::default(),
         });
         self
     }
@@ -208,6 +215,7 @@ impl Action {
             title: title.into(),
             message: None,
             tone: Tone::Destructive,
+            unknown_fields: Default::default(),
         });
         self
     }
@@ -257,6 +265,7 @@ mod tests {
                 title: "Delete user?".to_string(),
                 message: Some("This cannot be undone.".to_string()),
                 tone: Tone::Destructive,
+                unknown_fields: Default::default(),
             }),
             on_success: Some(ActionOutcome::Redirect {
                 url: "/users".to_string(),
@@ -509,11 +518,13 @@ mod tests {
             title: "t".into(),
             message: None,
             tone: Tone::Neutral,
+            unknown_fields: Default::default(),
         };
         let destructive = ConfirmDialog {
             title: "t".into(),
             message: None,
             tone: Tone::Destructive,
+            unknown_fields: Default::default(),
         };
         assert_eq!(serde_json::to_value(&neutral).unwrap()["tone"], "neutral");
         assert_eq!(
