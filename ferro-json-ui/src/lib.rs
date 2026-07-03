@@ -32,6 +32,7 @@ pub mod catalog;
 pub mod component;
 pub mod config;
 pub mod data;
+pub mod design;
 pub mod expression;
 pub mod layout;
 pub mod loader;
@@ -60,6 +61,7 @@ pub use component::{
     SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
     TabsProps, TextElement, TextProps, ToastProps, Tone, Variant,
 };
+pub use design::{lint, rules, DesignMeta, DesignRule, Finding, Severity, KNOWN_INTENTS};
 pub use config::JsonUiConfig;
 pub use runtime::FERRO_RUNTIME_JS;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
