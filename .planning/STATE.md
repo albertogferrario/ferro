@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: idle
-stopped_at: Phase 243.1 complete (verified 4/4)
-last_updated: "2026-06-24T15:30:00.000Z"
-last_activity: 2026-06-24 -- Phase 243.1 verified complete
+status: verifying
+stopped_at: Phase 250 context gathered
+last_updated: "2026-07-03T01:24:41.996Z"
+last_activity: 2026-06-24
 progress:
-  total_phases: 117
-  completed_phases: 107
-  total_plans: 435
-  completed_plans: 435
+  total_phases: 126
+  completed_phases: 106
+  total_plans: 434
+  completed_plans: 433
   percent: 100
 ---
 
@@ -255,7 +255,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-06-24T15:18:00.787Z
-Stopped at: Completed 243.1-01-PLAN.md
-Resume file: None
+Last session: 2026-07-03T01:24:41.985Z
+Stopped at: Phase 250 context gathered
+Resume file: .planning/phases/250-token-vocabulary-v2-default-theme-refresh/250-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
