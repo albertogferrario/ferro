@@ -821,9 +821,12 @@ pub struct ToastProps {
     pub message: String,
     #[serde(default)]
     pub tone: Tone,
-    /// Seconds before auto-dismiss. Default 5.
+    /// Seconds before auto-dismiss. Default 5. `0` with `dismissible: true`
+    /// keeps the toast visible until manually closed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<u32>,
+    /// Render a manual close button. When `false`, `timeout` is clamped to a
+    /// minimum of 1 second so the toast always auto-dismisses.
     #[serde(default = "default_true")]
     pub dismissible: bool,
 }

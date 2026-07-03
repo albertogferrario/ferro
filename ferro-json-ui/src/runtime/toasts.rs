@@ -89,14 +89,22 @@ pub(super) const SOURCE: &str = r#"
         history.replaceState(null, '', newUrl);
     }
 
-    // Server-rendered toasts: schedule auto-dismiss based on
-    // data-toast-timeout (seconds). The renderer omits a close button so
-    // this timer is the only way out.
+    // Server-rendered toasts: wire the optional [data-toast-close] button
+    // (emitted when ToastProps.dismissible is true) and schedule auto-dismiss
+    // based on data-toast-timeout (seconds). A timeout <= 0 means persistent
+    // until manually dismissed — the renderer clamps timeout to >= 1 when
+    // dismissible is false, so every toast has at least one way out.
     function setupServerToasts() {
         var toasts = document.querySelectorAll('[data-toast-tone]:not([data-toast-handled])');
         for (var i = 0; i < toasts.length; i++) {
             var t = toasts[i];
             t.setAttribute('data-toast-handled', '');
+            var closeBtn = t.querySelector('[data-toast-close]');
+            if (closeBtn) {
+                (function(el, btn) {
+                    btn.addEventListener('click', function() { dismissToast(el); });
+                })(t, closeBtn);
+            }
             var timeoutAttr = t.getAttribute('data-toast-timeout');
             var timeout = parseInt(timeoutAttr, 10);
             if (!isFinite(timeout) || timeout <= 0) continue;

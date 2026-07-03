@@ -1100,8 +1100,8 @@ Declarative notification rendered as an overlay by the JS runtime. When a Toast 
 |------|------|-------------|
 | `message` | `string` | Toast message content |
 | `tone` | `tone \| null` | Status color (default: `"neutral"`) |
-| `timeout` | `number \| null` | Seconds before auto-dismiss (default: 5) |
-| `dismissible` | `boolean \| null` | Allow manual dismiss (default: `true`) |
+| `timeout` | `number \| null` | Seconds before auto-dismiss (default: 5). `0` with `dismissible: true` keeps the toast visible until manually closed |
+| `dismissible` | `boolean \| null` | Render a manual close button (default: `true`). When `false`, `timeout` is clamped to a minimum of 1 second so the toast always auto-dismisses |
 
 ```json
 "save_toast": {

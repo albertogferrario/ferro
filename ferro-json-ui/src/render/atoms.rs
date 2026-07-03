@@ -843,13 +843,28 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     };
     // strum guarantees the wire string (see component.rs strum_tests).
     let tone_str = props.tone.as_ref();
+    // `dismissible` (default true) emits the same [data-toast-close] button
+    // the JS showToast() path creates; setupServerToasts() wires the click.
+    // When NOT dismissible, clamp timeout to >= 1s so the auto-dismiss timer
+    // is always scheduled — a `timeout: 0` toast without a close button would
+    // otherwise cover the viewport corner with no way out.
     let timeout = props.timeout.unwrap_or(5);
-    // No close button — toast auto-dismisses via the runtime's
-    // setupServerToasts() handler reading data-toast-timeout.
+    let timeout = if props.dismissible {
+        timeout
+    } else {
+        timeout.max(1)
+    };
+    let close_button = if props.dismissible {
+        "<button class=\"text-current opacity-70 hover:opacity-100 text-lg leading-none\" \
+         data-toast-close>&times;</button>"
+    } else {
+        ""
+    };
     format!(
-        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm {MOTION_BASE} backdrop-blur-md {tone_classes}\" \
+        "<div class=\"fixed top-4 right-4 z-50 flex items-start gap-3 rounded-lg px-4 py-3 shadow-lg max-w-sm {MOTION_BASE} backdrop-blur-md {tone_classes}\" \
          data-toast-tone=\"{tone_str}\" data-toast-timeout=\"{timeout}\">\
-         <p class=\"text-sm\">{}</p>\
+         <span class=\"flex-1 text-sm\">{}</span>\
+         {close_button}\
          </div>",
         html_escape(&props.message)
     )
@@ -2079,6 +2094,36 @@ mod tests {
         let html = render_toast(el, &spec, &json!({}), 1);
         assert!(html.contains("Saved"));
         assert!(html.contains("data-toast-tone=\"success\""));
+    }
+
+    /// `dismissible` (default true) emits the [data-toast-close] button the
+    /// runtime wires in setupServerToasts(); `dismissible: false` omits it
+    /// and clamps `timeout: 0` to 1s so the toast can always be removed.
+    #[test]
+    fn toast_dismissible_emits_close_button_and_clamps_timeout() {
+        // Default dismissible: close button present, timeout 0 preserved
+        // (persistent until manually dismissed).
+        let spec = spec_with_root(
+            Element::new("Toast")
+                .prop("message", "Hi")
+                .prop("timeout", 0),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_toast(el, &spec, &json!({}), 1);
+        assert!(html.contains("data-toast-close"), "got: {html}");
+        assert!(html.contains("data-toast-timeout=\"0\""), "got: {html}");
+
+        // Not dismissible: no close button, timeout clamped to >= 1.
+        let spec = spec_with_root(
+            Element::new("Toast")
+                .prop("message", "Hi")
+                .prop("timeout", 0)
+                .prop("dismissible", false),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_toast(el, &spec, &json!({}), 1);
+        assert!(!html.contains("data-toast-close"), "got: {html}");
+        assert!(html.contains("data-toast-timeout=\"1\""), "got: {html}");
     }
 
     /// D-03 base tier: the Toast fade uses the duration-base token (in
