@@ -2,10 +2,10 @@ pub(super) const SOURCE: &str = r#"
     // ── Toast display/stacking/auto-dismiss ───────────────────────────────
 
     var VARIANT_CLASSES = {
-        info: 'bg-primary text-primary-foreground',
+        neutral: 'bg-primary text-primary-foreground',
         success: 'bg-success text-primary-foreground',
         warning: 'bg-warning text-primary-foreground',
-        error: 'bg-destructive text-primary-foreground'
+        destructive: 'bg-destructive text-primary-foreground'
     };
 
     function showToast(toast) {
@@ -13,9 +13,9 @@ pub(super) const SOURCE: &str = r#"
         if (!container) return;
 
         var message = toast.message || '';
-        var variant = toast.variant || 'info';
+        var tone = toast.tone || 'neutral';
         var timeout = (toast.timeout !== undefined ? toast.timeout : 5) * 1000;
-        var colorClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.info;
+        var colorClass = VARIANT_CLASSES[tone] || VARIANT_CLASSES.neutral;
 
         var el = document.createElement('div');
         el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm ' +
@@ -69,7 +69,7 @@ pub(super) const SOURCE: &str = r#"
         var params = new URLSearchParams(window.location.search);
         var msg = params.get('toast');
         if (!msg) return;
-        showToast({ message: msg, variant: 'success' });
+        showToast({ message: msg, tone: 'success' });
         params.delete('toast');
         var newUrl = window.location.pathname +
             (params.toString() ? '?' + params.toString() : '') +
@@ -81,7 +81,7 @@ pub(super) const SOURCE: &str = r#"
     // data-toast-timeout (seconds). The renderer omits a close button so
     // this timer is the only way out.
     function setupServerToasts() {
-        var toasts = document.querySelectorAll('[data-toast-variant]:not([data-toast-handled])');
+        var toasts = document.querySelectorAll('[data-toast-tone]:not([data-toast-handled])');
         for (var i = 0; i < toasts.length; i++) {
             var t = toasts[i];
             t.setAttribute('data-toast-handled', '');

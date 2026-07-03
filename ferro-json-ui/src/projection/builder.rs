@@ -25,9 +25,9 @@ use ferro_theme::IntentSlotTemplate;
 use crate::action::Action;
 use crate::catalog::{global_catalog, Catalog};
 use crate::component::{
-    ActionGroupProps, ActionItem, CardProps, CardVariant, Column, DataTableProps, DescriptionItem,
-    DescriptionListProps, DropdownMenuAction, FormProps, KanbanBoardProps, KanbanColumnProps,
-    StatCardProps, Tab, TableProps, TabsProps,
+    ActionGroupProps, ActionItem, CardAppearance, CardProps, Column, DataTableProps,
+    DescriptionItem, DescriptionListProps, DropdownMenuAction, FormProps, KanbanBoardProps,
+    KanbanColumnProps, StatCardProps, Tab, TableProps, TabsProps,
 };
 use crate::spec::{Element, ElementBuilder, Spec};
 
@@ -367,7 +367,7 @@ fn emit_card_root(
         badge: None,
         max_width: None,
         footer: Vec::new(),
-        variant: CardVariant::Bordered,
+        appearance: CardAppearance::Bordered,
     })
     .expect("CardProps serialization cannot fail");
     let mut el = element_with_props("Card", props);
@@ -549,6 +549,7 @@ fn emit_statcard_root(
     let props = serde_json::to_value(StatCardProps {
         label,
         value: String::new(),
+        tone: crate::component::Tone::Neutral,
         value_path,
         icon: None,
         subtitle: None,

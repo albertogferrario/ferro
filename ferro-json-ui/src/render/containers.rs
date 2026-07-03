@@ -13,10 +13,10 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    ActionGroupProps, ActionItem, ButtonGroupProps, ButtonVariant, CardProps, CardVariant,
-    CollapsibleProps, DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout,
-    FormSectionProps, GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps,
-    SegmentedControlProps, SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps,
+    ActionGroupProps, ActionItem, ButtonGroupProps, CardAppearance, CardProps, CollapsibleProps,
+    DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout, FormSectionProps,
+    GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, SegmentedControlProps,
+    SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps, Variant,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -57,12 +57,12 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    let (outer_class, inner_pad) = match props.variant {
-        CardVariant::Bordered => (
+    let (outer_class, inner_pad) = match props.appearance {
+        CardAppearance::Bordered => (
             "rounded-lg border border-border bg-card shadow-sm overflow-visible",
             "p-4",
         ),
-        CardVariant::Elevated => ("rounded-lg bg-card shadow-md overflow-visible", "p-8"),
+        CardAppearance::Elevated => ("rounded-lg bg-card shadow-md overflow-visible", "p-8"),
     };
 
     let mut html = format!("<div class=\"{outer_class}\"><div class=\"{inner_pad}\">");
@@ -964,38 +964,33 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
     format!("<div class=\"flex items-center gap-2 flex-wrap\">{body}</div>")
 }
 
-/// Returns the Tailwind button classes for a given `ButtonVariant` at default size.
+/// Returns the Tailwind button classes for a given `Variant` at default size.
 /// Matches the `render_button_inner` variant table in `atoms.rs`.
-fn button_variant_classes(variant: &ButtonVariant) -> &'static str {
+fn button_variant_classes(variant: &Variant) -> &'static str {
     match variant {
-        ButtonVariant::Default => {
+        Variant::Primary => {
             "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
              transition-colors duration-150 bg-primary text-primary-foreground hover:bg-primary/90 \
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         }
-        ButtonVariant::Secondary => {
+        Variant::Secondary => {
             "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
              transition-colors duration-150 bg-secondary text-secondary-foreground hover:bg-secondary/90 \
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         }
-        ButtonVariant::Destructive => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 bg-destructive text-primary-foreground hover:bg-destructive/90 \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-        ButtonVariant::Outline => {
+        Variant::Outline => {
             "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
              transition-colors duration-150 border border-border bg-background text-text hover:bg-surface \
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         }
-        ButtonVariant::Ghost => {
+        Variant::Ghost => {
             "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
              transition-colors duration-150 text-text hover:bg-surface \
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         }
-        ButtonVariant::Link => {
+        Variant::Destructive => {
             "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 text-primary underline hover:text-primary/80 \
+             transition-colors duration-150 bg-destructive text-primary-foreground hover:bg-destructive/90 \
              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         }
     }
@@ -1101,7 +1096,7 @@ pub(crate) fn render_action_group(
         };
 
         let btn_classes =
-            button_variant_classes(item.variant.as_ref().unwrap_or(&ButtonVariant::Default));
+            button_variant_classes(item.variant.as_ref().unwrap_or(&Variant::Primary));
         let label = html_escape(&item.label);
 
         match item.action.method {
@@ -1238,8 +1233,8 @@ pub(crate) fn render_segmented_control(
     // Size-driven padding/text classes. Keep typography compact across sizes —
     // segmented controls are nav chrome, not primary CTAs.
     let segment_pad = match props.size {
-        Size::Xs | Size::Sm => "px-2.5 py-1 text-xs",
-        Size::Default => "px-3 py-1.5 text-sm",
+        Size::Sm => "px-2.5 py-1 text-xs",
+        Size::Md => "px-3 py-1.5 text-sm",
         Size::Lg => "px-4 py-2 text-base",
     };
 
@@ -1715,7 +1710,7 @@ mod tests {
             "root",
             Element::new("Card")
                 .prop("title", "X")
-                .prop("variant", "elevated"),
+                .prop("appearance", "elevated"),
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);

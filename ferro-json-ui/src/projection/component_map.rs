@@ -15,9 +15,9 @@ use ferro_projections::render::field_display_name;
 use ferro_projections::{FieldDef, FieldMeaning, NavigationHint, RelationshipDef};
 
 use crate::component::{
-    AvatarProps, BadgeProps, BadgeVariant, ButtonProps, ButtonVariant, Column, ColumnFormat,
-    DescriptionItem, InputProps, InputType, ProgressProps, SelectOption, SelectProps, SwitchProps,
-    TextElement, TextProps,
+    AvatarProps, BadgeProps, ButtonProps, Column, ColumnFormat, DescriptionItem, InputProps,
+    InputType, ProgressProps, SelectOption, SelectProps, SwitchProps, TextElement, TextProps, Tone,
+    Variant,
 };
 
 /// Per-meaning component choices for the three rendering modes.
@@ -160,14 +160,14 @@ fn input_type_for(meaning: &FieldMeaning) -> InputType {
     }
 }
 
-/// Pick the `BadgeVariant` for meanings that render as Badge in Display mode.
-fn badge_variant_for(meaning: &FieldMeaning) -> BadgeVariant {
-    match meaning {
-        FieldMeaning::Status => BadgeVariant::Default,
-        FieldMeaning::Category => BadgeVariant::Secondary,
-        FieldMeaning::Boolean => BadgeVariant::Outline,
-        _ => BadgeVariant::Default,
-    }
+/// Pick the `Tone` for meanings that render as Badge in Display mode.
+///
+/// All meanings collapse to `Tone::Neutral` (D-09): status/category/boolean
+/// badges get the one consistent neutral treatment — semantic tones
+/// (success/warning/destructive) are a per-value concern the schema layer
+/// cannot infer from field meaning alone.
+fn badge_tone_for(_meaning: &FieldMeaning) -> Tone {
+    Tone::Neutral
 }
 
 /// Build `TextProps` for Display mode of a field. Caller decides the element id.
@@ -183,7 +183,7 @@ pub fn build_text_props(_field: &FieldDef) -> serde_json::Value {
 pub fn build_badge_props(field: &FieldDef) -> serde_json::Value {
     serde_json::to_value(BadgeProps {
         label: field_display_name(&field.name),
-        variant: badge_variant_for(&field.meaning),
+        tone: badge_tone_for(&field.meaning),
     })
     .expect("BadgeProps serialization cannot fail")
 }
@@ -338,11 +338,12 @@ pub fn build_relationship_text_props(_rel: &RelationshipDef) -> serde_json::Valu
 }
 
 /// Build `ButtonProps` for Link relationship rendering. The `variant` is
-/// `Link` to match the visual convention from relationship_map.rs line 29.
+/// `Ghost` — the canonical set has no `link` (D-07); relationship buttons
+/// use the low-weight ghost treatment instead of the underline-link look.
 pub fn build_relationship_button_props(rel: &RelationshipDef) -> serde_json::Value {
     serde_json::to_value(ButtonProps {
         label: format!("{} \u{2192}", field_display_name(&rel.target)),
-        variant: ButtonVariant::Link,
+        variant: Variant::Ghost,
         size: crate::component::Size::default(),
         disabled: None,
         icon: None,

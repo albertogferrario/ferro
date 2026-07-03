@@ -10,13 +10,12 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    ActionCardProps, ActionCardVariant, AlertProps, AlertVariant, AvatarProps, BadgeProps,
-    BadgeVariant, BreadcrumbProps, ButtonProps, ButtonType, ButtonVariant, CalendarCellProps,
-    ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps, HeaderProps,
-    IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
+    ActionCardProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonProps, ButtonType,
+    CalendarCellProps, ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps,
+    HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
     ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
-    Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps,
-    ToastVariant,
+    Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps, Tone,
+    Variant,
 };
 use crate::spec::{Element, Spec};
 
@@ -137,20 +136,16 @@ fn render_button_inner(props: &ButtonProps) -> String {
     let base = "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
     let variant_classes = match props.variant {
-        ButtonVariant::Default => "bg-primary text-primary-foreground hover:bg-primary/90",
-        ButtonVariant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        ButtonVariant::Destructive => {
-            "bg-destructive text-primary-foreground hover:bg-destructive/90"
-        }
-        ButtonVariant::Outline => "border border-border bg-background text-text hover:bg-surface",
-        ButtonVariant::Ghost => "text-text hover:bg-surface",
-        ButtonVariant::Link => "text-primary underline hover:text-primary/80",
+        Variant::Primary => "bg-primary text-primary-foreground hover:bg-primary/90",
+        Variant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/90",
+        Variant::Outline => "border border-border bg-background text-text hover:bg-surface",
+        Variant::Ghost => "text-text hover:bg-surface",
+        Variant::Destructive => "bg-destructive text-primary-foreground hover:bg-destructive/90",
     };
 
     let size_classes = match props.size {
-        Size::Xs => "px-2 py-1 text-xs",
         Size::Sm => "px-3 py-1.5 text-sm",
-        Size::Default => "px-4 py-2 text-sm",
+        Size::Md => "px-4 py-2 text-sm",
         Size::Lg => "px-6 py-3 text-base",
     };
 
@@ -252,20 +247,20 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Badge", e),
     };
-    badge_inline_html(props.variant, &props.label)
+    badge_inline_html(props.tone, &props.label)
 }
 
-/// Render a Badge `<span>` from `(variant, label)`. Shared by `render_badge` and
-/// the DataTable `ColumnFormat::Badge` cell renderer so both surfaces stay in
-/// lockstep — the base+variant CSS string is the single source of truth.
-pub(crate) fn badge_inline_html(variant: BadgeVariant, label: &str) -> String {
+/// Render a Badge `<span>` from `(tone, label)`. Shared by `render_badge`, the
+/// DataTable `ColumnFormat::Badge` cell renderer, and the MediaCardGrid footer
+/// badge so all surfaces stay in lockstep — the base+tone CSS string is the
+/// single source of truth. `neutral` renders one consistent outlined treatment.
+pub(crate) fn badge_inline_html(tone: Tone, label: &str) -> String {
     let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
-    let variant_classes = match variant {
-        BadgeVariant::Default => "bg-primary/10 text-primary",
-        BadgeVariant::Secondary => "bg-secondary/10 text-secondary-foreground",
-        BadgeVariant::Destructive => "bg-destructive/10 text-destructive",
-        BadgeVariant::Warning => "bg-warning/10 text-warning",
-        BadgeVariant::Outline => "border border-border text-text",
+    let tone_classes = match tone {
+        Tone::Neutral => "border border-border text-text",
+        Tone::Success => "bg-success/10 text-success",
+        Tone::Warning => "bg-warning/10 text-warning",
+        Tone::Destructive => "bg-destructive/10 text-destructive",
     };
     // Inline `justify-self: start` keeps the pill at its natural width when
     // it lands inside a Grid cell — default `place-self: stretch` otherwise
@@ -274,7 +269,7 @@ pub(crate) fn badge_inline_html(variant: BadgeVariant, label: &str) -> String {
     format!(
         "<span class=\"{} {}\" style=\"justify-self: start;\">{}</span>",
         base,
-        variant_classes,
+        tone_classes,
         html_escape(label)
     )
 }
@@ -286,20 +281,22 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Alert", e),
     };
-    let variant_classes = match props.variant {
-        AlertVariant::Info => "bg-primary/10 border-primary text-primary",
-        AlertVariant::Success => "bg-success/10 border-success text-success",
-        AlertVariant::Warning => "bg-warning/10 border-warning text-warning",
-        AlertVariant::Error => "bg-destructive/10 border-destructive text-destructive",
+    // Neutral is a muted surface tint (was Info's primary tint — documented
+    // migration delta). Success/Warning unchanged; Destructive was Error.
+    let tone_classes = match props.tone {
+        Tone::Neutral => "bg-surface border-border text-text",
+        Tone::Success => "bg-success/10 border-success text-success",
+        Tone::Warning => "bg-warning/10 border-warning text-warning",
+        Tone::Destructive => "bg-destructive/10 border-destructive text-destructive",
     };
-    let icon = match props.variant {
-        AlertVariant::Info => ICON_INFO,
-        AlertVariant::Success => ICON_SUCCESS,
-        AlertVariant::Warning => ICON_WARNING,
-        AlertVariant::Error => ICON_ERROR,
+    let icon = match props.tone {
+        Tone::Neutral => ICON_INFO,
+        Tone::Success => ICON_SUCCESS,
+        Tone::Warning => ICON_WARNING,
+        Tone::Destructive => ICON_ERROR,
     };
     let mut html = format!(
-        "<div role=\"alert\" class=\"rounded-md border p-4 flex items-start gap-3 {variant_classes}\">"
+        "<div role=\"alert\" class=\"rounded-md border p-4 flex items-start gap-3 {tone_classes}\">"
     );
     html.push_str(icon);
     html.push_str("<div>");
@@ -364,11 +361,10 @@ pub(crate) fn render_avatar(el: &Element, _spec: &Spec, _data: &Value, _depth: u
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Avatar", e),
     };
-    let size = props.size.as_ref().cloned().unwrap_or_default();
+    let size = props.size.unwrap_or_default();
     let size_classes = match size {
-        Size::Xs => "h-6 w-6 text-xs",
         Size::Sm => "h-8 w-8 text-sm",
-        Size::Default => "h-10 w-10 text-sm",
+        Size::Md => "h-10 w-10 text-sm",
         Size::Lg => "h-12 w-12 text-base",
     };
 
@@ -815,24 +811,20 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     // Translucent variant tint over a backdrop blur — content underneath
     // shows through but the toast stays clearly readable. 70% alpha gives
     // visible translucency even on plain backgrounds.
-    let variant_classes = match props.variant {
-        ToastVariant::Info => "bg-primary/70 text-primary-foreground",
-        ToastVariant::Success => "bg-success/70 text-primary-foreground",
-        ToastVariant::Warning => "bg-warning/70 text-primary-foreground",
-        ToastVariant::Error => "bg-destructive/70 text-primary-foreground",
+    let tone_classes = match props.tone {
+        Tone::Neutral => "bg-primary/70 text-primary-foreground",
+        Tone::Success => "bg-success/70 text-primary-foreground",
+        Tone::Warning => "bg-warning/70 text-primary-foreground",
+        Tone::Destructive => "bg-destructive/70 text-primary-foreground",
     };
-    let variant_str = match props.variant {
-        ToastVariant::Info => "info",
-        ToastVariant::Success => "success",
-        ToastVariant::Warning => "warning",
-        ToastVariant::Error => "error",
-    };
+    // strum guarantees the wire string (see component.rs strum_tests).
+    let tone_str = props.tone.as_ref();
     let timeout = props.timeout.unwrap_or(5);
     // No close button — toast auto-dismisses via the runtime's
     // setupServerToasts() handler reading data-toast-timeout.
     format!(
-        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm transition-opacity duration-300 backdrop-blur-md {variant_classes}\" \
-         data-toast-variant=\"{variant_str}\" data-toast-timeout=\"{timeout}\">\
+        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm transition-opacity duration-300 backdrop-blur-md {tone_classes}\" \
+         data-toast-tone=\"{tone_str}\" data-toast-timeout=\"{timeout}\">\
          <p class=\"text-sm\">{}</p>\
          </div>",
         html_escape(&props.message)
@@ -1267,10 +1259,13 @@ pub(crate) fn render_action_card(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("ActionCard", e),
     };
-    let border_class = match props.variant {
-        ActionCardVariant::Default => "border-l-primary",
-        ActionCardVariant::Setup => "border-l-warning",
-        ActionCardVariant::Danger => "border-l-destructive",
+    // Neutral is a plain border accent (was Default's `border-l-primary` —
+    // documented migration delta). Success is a new arm in the canonical set.
+    let border_class = match props.tone {
+        Tone::Neutral => "border-l-border",
+        Tone::Success => "border-l-success",
+        Tone::Warning => "border-l-warning",
+        Tone::Destructive => "border-l-destructive",
     };
 
     let (open_tag, close_tag) = if let Some(ref href) = props.href {
@@ -1942,12 +1937,12 @@ mod tests {
         let spec = spec_with_root(
             Element::new("Toast")
                 .prop("message", "Saved")
-                .prop("variant", "success"),
+                .prop("tone", "success"),
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_toast(el, &spec, &json!({}), 1);
         assert!(html.contains("Saved"));
-        assert!(html.contains("data-toast-variant=\"success\""));
+        assert!(html.contains("data-toast-tone=\"success\""));
     }
 
     // ── 17. NotificationDropdown ───────────────────────────────────────

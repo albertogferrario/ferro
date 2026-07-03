@@ -311,7 +311,7 @@ mod tests {
     /// `.map_err(LoadError::Catalog)?` with a `tracing::warn` loop.
     #[test]
     fn load_cached_warns_on_catalog_error_does_not_fail() {
-        // Alert.variant="" fails catalog enum-shape validation ("" not in AlertVariant).
+        // Alert.tone="" fails catalog enum-shape validation ("" not in Tone).
         // With D-16 the production load_cached logs tracing::warn instead of failing.
         // This test-local loader mirrors that behavior.
         let bad_spec = r#"{
@@ -321,7 +321,7 @@ mod tests {
                 "grid": { "type": "Grid", "children": ["maybe_alert"] },
                 "maybe_alert": {
                     "type": "Alert",
-                    "props": { "variant": "", "message": "flash message" },
+                    "props": { "tone": "", "message": "flash message" },
                     "visible": { "path": "/flash", "operator": "exists" }
                 }
             }

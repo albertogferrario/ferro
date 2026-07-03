@@ -16,19 +16,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::component::Tone;
 use crate::spec::DataRef;
-
-/// Variant for confirmation dialogs.
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum DialogVariant {
-    #[default]
-    Default,
-    Danger,
-}
 
 /// HTTP method for action requests.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -42,28 +31,22 @@ pub enum HttpMethod {
     Delete,
 }
 
-/// Confirmation dialog shown before executing an action.
+/// Confirmation dialog shown before executing an action. `tone: destructive`
+/// styles the dialog for dangerous actions; `neutral` (default) is the plain
+/// confirmation look.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ConfirmDialog {
     pub title: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
     #[serde(default)]
-    pub variant: DialogVariant,
+    pub tone: Tone,
 }
 
-/// Notification variant for action outcomes.
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum NotifyVariant {
-    #[default]
-    Success,
-    Info,
-    Warning,
-    Error,
+/// Default tone for `ActionOutcome::Notify` — an absent `tone` stays
+/// success-colored (a notify outcome usually reports a successful action).
+fn default_notify_tone() -> Tone {
+    Tone::Success
 }
 
 /// Outcome after an action completes (success or error).
@@ -77,7 +60,8 @@ pub enum ActionOutcome {
     Refresh,
     Notify {
         message: String,
-        variant: NotifyVariant,
+        #[serde(default = "default_notify_tone")]
+        tone: Tone,
     },
 }
 
@@ -208,22 +192,22 @@ impl Action {
         self
     }
 
-    /// Add a default confirmation dialog.
+    /// Add a neutral confirmation dialog.
     pub fn confirm(mut self, title: impl Into<String>) -> Self {
         self.confirm = Some(ConfirmDialog {
             title: title.into(),
             message: None,
-            variant: DialogVariant::Default,
+            tone: Tone::Neutral,
         });
         self
     }
 
-    /// Add a danger confirmation dialog.
+    /// Add a destructive confirmation dialog.
     pub fn confirm_danger(mut self, title: impl Into<String>) -> Self {
         self.confirm = Some(ConfirmDialog {
             title: title.into(),
             message: None,
-            variant: DialogVariant::Danger,
+            tone: Tone::Destructive,
         });
         self
     }
@@ -272,7 +256,7 @@ mod tests {
             confirm: Some(ConfirmDialog {
                 title: "Delete user?".to_string(),
                 message: Some("This cannot be undone.".to_string()),
-                variant: DialogVariant::Danger,
+                tone: Tone::Destructive,
             }),
             on_success: Some(ActionOutcome::Redirect {
                 url: "/users".to_string(),
@@ -304,12 +288,12 @@ mod tests {
 
         let notify = ActionOutcome::Notify {
             message: "Saved!".to_string(),
-            variant: NotifyVariant::Success,
+            tone: Tone::Success,
         };
         let json = serde_json::to_value(&notify).unwrap();
         assert_eq!(json["type"], "notify");
         assert_eq!(json["message"], "Saved!");
-        assert_eq!(json["variant"], "success");
+        assert_eq!(json["tone"], "success");
     }
 
     #[test]
@@ -320,10 +304,10 @@ mod tests {
     }
 
     #[test]
-    fn dialog_variant_defaults_to_default() {
+    fn dialog_tone_defaults_to_neutral() {
         let json = r#"{"title": "Confirm?"}"#;
         let dialog: ConfirmDialog = serde_json::from_str(json).unwrap();
-        assert_eq!(dialog.variant, DialogVariant::Default);
+        assert_eq!(dialog.tone, Tone::Neutral);
     }
 
     #[test]
@@ -447,20 +431,20 @@ mod tests {
     }
 
     #[test]
-    fn builder_confirm_adds_default_dialog() {
+    fn builder_confirm_adds_neutral_dialog() {
         let action = Action::new("users.store").confirm("Save changes?");
         let dialog = action.confirm.unwrap();
         assert_eq!(dialog.title, "Save changes?");
-        assert_eq!(dialog.variant, DialogVariant::Default);
+        assert_eq!(dialog.tone, Tone::Neutral);
         assert_eq!(dialog.message, None);
     }
 
     #[test]
-    fn builder_confirm_danger_adds_danger_dialog() {
+    fn builder_confirm_danger_adds_destructive_dialog() {
         let action = Action::delete("users.destroy").confirm_danger("Delete user?");
         let dialog = action.confirm.unwrap();
         assert_eq!(dialog.title, "Delete user?");
-        assert_eq!(dialog.variant, DialogVariant::Danger);
+        assert_eq!(dialog.tone, Tone::Destructive);
     }
 
     #[test]
@@ -485,7 +469,7 @@ mod tests {
         assert_eq!(json["handler"], "users.destroy");
         assert_eq!(json["method"], "DELETE");
         assert_eq!(json["confirm"]["title"], "Delete user?");
-        assert_eq!(json["confirm"]["variant"], "danger");
+        assert_eq!(json["confirm"]["tone"], "destructive");
         assert_eq!(json["on_success"]["type"], "refresh");
     }
 
@@ -495,28 +479,25 @@ mod tests {
         assert_eq!(action.method, HttpMethod::Put);
     }
 
-    /// Assert AsRef<str> matches serde JSON wire format for DialogVariant and NotifyVariant.
-    /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
+    /// ConfirmDialog and Notify share the canonical `Tone` — the strum↔serde
+    /// wire-format guard for `Tone` lives in `component.rs::strum_tests`.
+    /// Here we pin the action-level wire strings on the two dialog tones.
     #[test]
-    fn dialog_notify_variant_strum_matches_serde() {
-        fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
-            for v in variants {
-                let json = serde_json::to_string(v).expect("serialize");
-                assert_eq!(v.as_ref(), json.trim_matches('"'), "{label} strum drift");
-            }
-        }
-        check(
-            &[DialogVariant::Default, DialogVariant::Danger],
-            "DialogVariant",
-        );
-        check(
-            &[
-                NotifyVariant::Success,
-                NotifyVariant::Warning,
-                NotifyVariant::Error,
-                NotifyVariant::Info,
-            ],
-            "NotifyVariant",
+    fn confirm_dialog_tone_wire_format() {
+        let neutral = ConfirmDialog {
+            title: "t".into(),
+            message: None,
+            tone: Tone::Neutral,
+        };
+        let destructive = ConfirmDialog {
+            title: "t".into(),
+            message: None,
+            tone: Tone::Destructive,
+        };
+        assert_eq!(serde_json::to_value(&neutral).unwrap()["tone"], "neutral");
+        assert_eq!(
+            serde_json::to_value(&destructive).unwrap()["tone"],
+            "destructive"
         );
     }
 }

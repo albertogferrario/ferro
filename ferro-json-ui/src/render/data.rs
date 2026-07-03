@@ -17,8 +17,8 @@
 use serde_json::Value;
 
 use crate::component::{
-    BadgeVariant, Column, ColumnAlign, ColumnFormat, DataTableProps, DropdownMenuAction,
-    MediaCardGridProps, TableProps,
+    Column, ColumnAlign, ColumnFormat, DataTableProps, DropdownMenuAction, MediaCardGridProps,
+    TableProps, Tone,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -338,7 +338,7 @@ fn cell_string(v: Option<&Value>) -> String {
 
 /// Render a single DataTable cell. Dispatches on `col.format`:
 ///
-/// - `Some(ColumnFormat::Badge)` reads the cell as `{variant, label}` and
+/// - `Some(ColumnFormat::Badge)` reads the cell as `{tone, label}` and
 ///   emits a Badge `<span>` (shared shape with the standalone `Badge`
 ///   component via [`badge_inline_html`]). Invalid values emit an HTML
 ///   comment diagnostic instead of falling back to text — a typed column
@@ -352,17 +352,17 @@ fn cell_string(v: Option<&Value>) -> String {
 /// inside `badge_inline_html`.
 fn render_cell(col: &Column, value: Option<&Value>) -> String {
     if let Some(ColumnFormat::Badge) = col.format {
-        // Cell must be an object `{variant, label}` (or absent — empty cell).
+        // Cell must be an object `{tone, label}` (or absent — empty cell).
         match value {
             None | Some(Value::Null) => return String::new(),
             Some(v @ Value::Object(_)) => {
                 #[derive(serde::Deserialize)]
                 struct BadgeCell {
-                    variant: BadgeVariant,
+                    tone: Tone,
                     label: String,
                 }
                 match serde_json::from_value::<BadgeCell>(v.clone()) {
-                    Ok(cell) => return badge_inline_html(cell.variant, &cell.label),
+                    Ok(cell) => return badge_inline_html(cell.tone, &cell.label),
                     Err(e) => {
                         return format!(
                             "<!-- ferro-json-ui: invalid Badge cell value: {} -->",
@@ -373,7 +373,7 @@ fn render_cell(col: &Column, value: Option<&Value>) -> String {
             }
             Some(_) => {
                 return format!(
-                    "<!-- ferro-json-ui: invalid Badge cell value: expected object {{variant, label}}, got {} -->",
+                    "<!-- ferro-json-ui: invalid Badge cell value: expected object {{tone, label}}, got {} -->",
                     html_escape(&cell_string(value))
                 );
             }
@@ -680,12 +680,16 @@ pub(crate) fn render_media_card_grid(
             .and_then(|k| row.get(k))
             .and_then(|v| v.as_str());
 
-        let badge_variant = props
-            .badge_variant_key
+        // Parse the row value through the typed `Tone` enum so MediaCardGrid
+        // and `badge_inline_html` cannot drift (T-251-01: the raw row value
+        // never reaches a class attribute — invalid tones fall back to
+        // `neutral`, and classes come from the shared exhaustive match).
+        let badge_tone = props
+            .badge_tone_key
             .as_deref()
             .and_then(|k| row.get(k))
-            .and_then(|v| v.as_str())
-            .unwrap_or("outline");
+            .and_then(|v| serde_json::from_value::<Tone>(v.clone()).ok())
+            .unwrap_or_default();
 
         html.push_str(
             "<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">",
@@ -743,15 +747,7 @@ pub(crate) fn render_media_card_grid(
             html.push_str("<div class=\"px-4 pb-4 flex items-center justify-between gap-2\">");
 
             if let Some(label) = badge_label {
-                let badge_classes = match badge_variant {
-                    "destructive" => "bg-destructive/10 text-destructive",
-                    _ => "border border-border text-text",
-                };
-                html.push_str(&format!(
-                    "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {}\">{}</span>",
-                    badge_classes,
-                    html_escape(label)
-                ));
+                html.push_str(&badge_inline_html(badge_tone, label));
             } else if has_actions {
                 html.push_str("<span></span>");
             }
@@ -1420,15 +1416,39 @@ mod tests {
                 "data_path": "/items",
                 "title_key": "name",
                 "badge_key": "status",
-                "badge_variant_key": "variant"
+                "badge_tone_key": "tone"
             }),
         );
         let spec = mk_spec("root", el.clone());
         let data =
-            json!({"items": [{"name": "HF", "status": "Non visibile", "variant": "destructive"}]});
+            json!({"items": [{"name": "HF", "status": "Non visibile", "tone": "destructive"}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("Non visibile"), "got: {html}");
         assert!(html.contains("text-destructive"), "got: {html}");
+    }
+
+    #[test]
+    fn media_card_grid_invalid_tone_falls_back_to_neutral() {
+        // T-251-01: an invalid row tone never reaches a class attribute — it
+        // falls back to the neutral treatment from the shared badge renderer.
+        let el = mk_element(
+            "MediaCardGrid",
+            json!({
+                "data_path": "/items",
+                "title_key": "name",
+                "badge_key": "status",
+                "badge_tone_key": "tone"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"name": "HF", "status": "Attivo", "tone": "not-a-tone"}]});
+        let html = render_media_card_grid(&el, &spec, &data, 1);
+        assert!(html.contains("Attivo"), "got: {html}");
+        assert!(
+            html.contains("border border-border text-text"),
+            "expected neutral badge treatment; got: {html}"
+        );
+        assert!(!html.contains("not-a-tone"), "got: {html}");
     }
 
     #[test]
@@ -1460,7 +1480,7 @@ mod tests {
             }),
         );
         let spec = mk_spec("root", el.clone());
-        let data = json!({"rows": [{"status": {"variant": "destructive", "label": "Mancante"}}]});
+        let data = json!({"rows": [{"status": {"tone": "destructive", "label": "Mancante"}}]});
         let html = render_data_table(&el, &spec, &data, 1);
         assert!(html.contains("Mancante"), "label missing; got: {html}");
         assert!(
@@ -1472,7 +1492,7 @@ mod tests {
             "missing badge base class; got: {html}"
         );
         assert!(
-            !html.contains("{&quot;variant&quot;"),
+            !html.contains("{&quot;tone&quot;"),
             "raw json leaked into cell; got: {html}"
         );
     }

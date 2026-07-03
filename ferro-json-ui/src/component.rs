@@ -8,14 +8,46 @@ use serde::{Deserialize, Serialize};
 
 use crate::action::Action;
 
-/// Shared size enum for components (Button, Badge, Avatar, Input).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+/// Visual weight of interactive elements (buttons, action items). `primary` is the default.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum Variant {
+    #[default]
+    Primary,
+    Secondary,
+    Outline,
+    Ghost,
+    Destructive,
+}
+
+/// Semantic status color of stateful display components. `neutral` is the default and
+/// reproduces today's non-status look.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum Tone {
+    #[default]
+    Neutral,
+    Success,
+    Warning,
+    Destructive,
+}
+
+/// Component size scale. `md` is the default.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum Size {
-    Xs,
     Sm,
     #[default]
-    Default,
+    Md,
     Lg,
 }
 
@@ -46,22 +78,6 @@ pub enum Orientation {
     Vertical,
 }
 
-/// Button visual variants (aligned to shadcn/ui).
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum ButtonVariant {
-    #[default]
-    Default,
-    Secondary,
-    Destructive,
-    Outline,
-    Ghost,
-    Link,
-}
-
 /// Input field types.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -81,37 +97,6 @@ pub enum InputType {
     File,
 }
 
-/// Alert visual variants.
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum AlertVariant {
-    #[default]
-    Info,
-    Success,
-    Warning,
-    Error,
-}
-
-/// Badge visual variants (aligned to shadcn/ui).
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum BadgeVariant {
-    #[default]
-    Default,
-    Secondary,
-    Destructive,
-    /// Amber/warning tone for pending or attention states that are not errors
-    /// (e.g. incomplete onboarding). Maps to the `--color-warning` token.
-    Warning,
-    Outline,
-}
-
 /// Text element types for semantic HTML rendering.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -128,7 +113,7 @@ pub enum TextElement {
 
 /// Column display format for tables.
 ///
-/// `Badge` cells expect the row value to be an object `{variant, label}` matching
+/// `Badge` cells expect the row value to be an object `{tone, label}` matching
 /// [`BadgeProps`]. Other variants are display hints layered over plain cell text.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -177,7 +162,7 @@ pub struct SelectOption {
     pub label: String,
 }
 
-/// Visual variant for Card chrome.
+/// Structural chrome of a Card — NOT a weight or status axis (renamed from `CardVariant`).
 ///
 /// - `Bordered` (default): `border + bg-card + shadow-sm` with `p-4`.
 ///   Dashboard cards in dense layouts.
@@ -185,7 +170,7 @@ pub struct SelectOption {
 ///   Auth pages, error pages, standalone marketing cards.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum CardVariant {
+pub enum CardAppearance {
     #[default]
     Bordered,
     Elevated,
@@ -213,7 +198,7 @@ pub struct CardProps {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub footer: Vec<String>,
     #[serde(default)]
-    pub variant: CardVariant,
+    pub appearance: CardAppearance,
 }
 
 /// Props for Table component.
@@ -284,7 +269,7 @@ pub enum ButtonType {
 pub struct ButtonProps {
     pub label: String,
     #[serde(default)]
-    pub variant: ButtonVariant,
+    pub variant: Variant,
     #[serde(default)]
     pub size: Size,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -394,7 +379,7 @@ pub struct SelectProps {
 pub struct AlertProps {
     pub message: String,
     #[serde(default)]
-    pub variant: AlertVariant,
+    pub tone: Tone,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
@@ -404,7 +389,7 @@ pub struct AlertProps {
 pub struct BadgeProps {
     pub label: String,
     #[serde(default)]
-    pub variant: BadgeVariant,
+    pub tone: Tone,
 }
 
 /// Props for Modal component.
@@ -707,20 +692,6 @@ pub struct StreamTextProps {
     pub loading_text: Option<String>,
 }
 
-/// Toast visual variants.
-#[derive(
-    Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
-)]
-#[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
-pub enum ToastVariant {
-    #[default]
-    Info,
-    Success,
-    Warning,
-    Error,
-}
-
 /// A single item in a checklist.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ChecklistItem {
@@ -774,6 +745,10 @@ pub struct SidebarGroup {
 pub struct StatCardProps {
     pub label: String,
     pub value: String,
+    /// Semantic status color for the value/icon accent. `neutral` (default)
+    /// reproduces the plain non-status look.
+    #[serde(default)]
+    pub tone: Tone,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -815,7 +790,7 @@ fn default_true() -> bool {
 pub struct ToastProps {
     pub message: String,
     #[serde(default)]
-    pub variant: ToastVariant,
+    pub tone: Tone,
     /// Seconds before auto-dismiss. Default 5.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<u32>,
@@ -976,7 +951,7 @@ pub struct ActionItem {
     #[serde(default)]
     pub destructive: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub variant: Option<ButtonVariant>,
+    pub variant: Option<Variant>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     /// Fail-closed row gate (same semantics as `DropdownMenuAction.visible_if`).
@@ -1193,9 +1168,9 @@ pub struct MediaCardGridProps {
     /// Key for the footer badge label text.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub badge_key: Option<String>,
-    /// Key for the badge variant string: "outline" | "destructive" | "default".
+    /// Key for the badge tone string: "neutral" | "success" | "warning" | "destructive".
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub badge_variant_key: Option<String>,
+    pub badge_tone_key: Option<String>,
     /// Key used for {row_key} substitution in row_action URLs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_key: Option<String>,
@@ -1297,17 +1272,7 @@ pub struct CalendarCellProps {
     pub closed: bool,
 }
 
-/// Visual variant for action cards.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ActionCardVariant {
-    #[default]
-    Default,
-    Setup,
-    Danger,
-}
-
-/// Props for a horizontal action card with variant-colored left border.
+/// Props for a horizontal action card with tone-colored left border.
 ///
 /// Renders icon + title + description + chevron in a clickable row.
 /// When `href` is set, the card wraps in an `<a>` element with `aria-label`.
@@ -1318,7 +1283,7 @@ pub struct ActionCardProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon: Option<String>,
     #[serde(default)]
-    pub variant: ActionCardVariant,
+    pub tone: Tone,
     /// Optional navigation URL. When set, the card renders as an `<a>` element.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub href: Option<String>,
@@ -1632,7 +1597,7 @@ mod schema_smoke_tests {
             badge: None,
             max_width: None,
             footer: vec!["btn1".to_string(), "btn2".to_string()],
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: CardProps = serde_json::from_str(&json).unwrap();
@@ -1660,7 +1625,7 @@ mod schema_smoke_tests {
             badge: None,
             max_width: None,
             footer: Vec::new(),
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&card).unwrap();
         assert!(
@@ -1678,7 +1643,7 @@ mod schema_smoke_tests {
             badge: Some("Scade tra 9m".to_string()),
             max_width: None,
             footer: Vec::new(),
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: CardProps = serde_json::from_str(&json).unwrap();
@@ -1694,7 +1659,7 @@ mod schema_smoke_tests {
             badge: None,
             max_width: None,
             footer: Vec::new(),
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&card).unwrap();
         assert!(
@@ -1712,7 +1677,7 @@ mod schema_smoke_tests {
             badge: None,
             max_width: None,
             footer: Vec::new(),
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: CardProps = serde_json::from_str(&json).unwrap();
@@ -1728,7 +1693,7 @@ mod schema_smoke_tests {
             badge: None,
             max_width: None,
             footer: Vec::new(),
-            variant: CardVariant::Bordered,
+            appearance: CardAppearance::Bordered,
         };
         let json = serde_json::to_string(&card).unwrap();
         assert!(
@@ -1838,9 +1803,10 @@ mod schema_smoke_tests {
 mod strum_tests {
     use super::*;
 
-    /// Assert AsRef<str> matches serde JSON wire format for every variant of
-    /// AlertVariant, BadgeVariant, ButtonVariant, and ToastVariant.
+    /// Assert AsRef<str> matches serde JSON wire format for EVERY variant of
+    /// the canonical `Variant`, `Tone`, and `Size` enums.
     /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
+    /// Every variant of each enum MUST appear — no omissions.
     #[test]
     fn variant_enums_strum_matches_serde_wire_format() {
         fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
@@ -1856,102 +1822,84 @@ mod strum_tests {
         }
         check(
             &[
-                AlertVariant::Info,
-                AlertVariant::Success,
-                AlertVariant::Warning,
-                AlertVariant::Error,
+                Variant::Primary,
+                Variant::Secondary,
+                Variant::Outline,
+                Variant::Ghost,
+                Variant::Destructive,
             ],
-            "AlertVariant",
+            "Variant",
         );
         check(
             &[
-                BadgeVariant::Default,
-                BadgeVariant::Secondary,
-                BadgeVariant::Destructive,
-                BadgeVariant::Outline,
+                Tone::Neutral,
+                Tone::Success,
+                Tone::Warning,
+                Tone::Destructive,
             ],
-            "BadgeVariant",
+            "Tone",
         );
-        check(
-            &[
-                ButtonVariant::Default,
-                ButtonVariant::Secondary,
-                ButtonVariant::Destructive,
-                ButtonVariant::Outline,
-                ButtonVariant::Ghost,
-                ButtonVariant::Link,
-            ],
-            "ButtonVariant",
-        );
-        check(
-            &[
-                ToastVariant::Info,
-                ToastVariant::Success,
-                ToastVariant::Warning,
-                ToastVariant::Error,
-            ],
-            "ToastVariant",
-        );
+        check(&[Size::Sm, Size::Md, Size::Lg], "Size");
     }
 
     #[test]
-    fn alert_variant_as_ref_str_matches_wire_format() {
-        assert_eq!(AlertVariant::Success.as_ref(), "success");
-        assert_eq!(AlertVariant::Warning.as_ref(), "warning");
-        assert_eq!(AlertVariant::Info.as_ref(), "info");
-        assert_eq!(AlertVariant::Error.as_ref(), "error");
+    fn tone_as_ref_str_matches_wire_format() {
+        assert_eq!(Tone::Neutral.as_ref(), "neutral");
+        assert_eq!(Tone::Success.as_ref(), "success");
+        assert_eq!(Tone::Warning.as_ref(), "warning");
+        assert_eq!(Tone::Destructive.as_ref(), "destructive");
     }
 }
 
 #[cfg(test)]
-mod card_variant_tests {
+mod card_appearance_tests {
     use super::*;
 
     #[test]
-    fn card_variant_default_is_bordered() {
-        assert_eq!(CardVariant::default(), CardVariant::Bordered);
+    fn card_appearance_default_is_bordered() {
+        assert_eq!(CardAppearance::default(), CardAppearance::Bordered);
     }
 
     #[test]
-    fn card_variant_serializes_snake_case() {
+    fn card_appearance_serializes_snake_case() {
         assert_eq!(
-            serde_json::to_value(CardVariant::Bordered).unwrap(),
+            serde_json::to_value(CardAppearance::Bordered).unwrap(),
             serde_json::json!("bordered")
         );
         assert_eq!(
-            serde_json::to_value(CardVariant::Elevated).unwrap(),
+            serde_json::to_value(CardAppearance::Elevated).unwrap(),
             serde_json::json!("elevated")
         );
     }
 
     #[test]
-    fn card_variant_deserializes_snake_case() {
+    fn card_appearance_deserializes_snake_case() {
         assert_eq!(
-            serde_json::from_value::<CardVariant>(serde_json::json!("bordered")).unwrap(),
-            CardVariant::Bordered
+            serde_json::from_value::<CardAppearance>(serde_json::json!("bordered")).unwrap(),
+            CardAppearance::Bordered
         );
         assert_eq!(
-            serde_json::from_value::<CardVariant>(serde_json::json!("elevated")).unwrap(),
-            CardVariant::Elevated
+            serde_json::from_value::<CardAppearance>(serde_json::json!("elevated")).unwrap(),
+            CardAppearance::Elevated
         );
     }
 
     #[test]
-    fn card_props_without_variant_defaults_to_bordered() {
+    fn card_props_without_appearance_defaults_to_bordered() {
         let v = serde_json::json!({"title": "x"});
         let p: CardProps = serde_json::from_value(v).unwrap();
-        assert_eq!(p.variant, CardVariant::Bordered);
+        assert_eq!(p.appearance, CardAppearance::Bordered);
     }
 
     #[test]
-    fn card_props_with_elevated_variant() {
-        let v = serde_json::json!({"title": "x", "variant": "elevated"});
+    fn card_props_with_elevated_appearance() {
+        let v = serde_json::json!({"title": "x", "appearance": "elevated"});
         let p: CardProps = serde_json::from_value(v).unwrap();
-        assert_eq!(p.variant, CardVariant::Elevated);
+        assert_eq!(p.appearance, CardAppearance::Elevated);
     }
 
     #[test]
-    fn card_props_roundtrip_preserves_variant() {
+    fn card_props_roundtrip_preserves_appearance() {
         let p = CardProps {
             title: "x".into(),
             description: None,
@@ -1959,11 +1907,11 @@ mod card_variant_tests {
             badge: None,
             max_width: None,
             footer: vec![],
-            variant: CardVariant::Elevated,
+            appearance: CardAppearance::Elevated,
         };
         let j = serde_json::to_value(&p).unwrap();
         let back: CardProps = serde_json::from_value(j).unwrap();
-        assert_eq!(back.variant, CardVariant::Elevated);
+        assert_eq!(back.appearance, CardAppearance::Elevated);
     }
 }
 
