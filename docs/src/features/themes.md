@@ -58,12 +58,12 @@ Every valid v1 theme (23 slots) remains a valid v2 theme without changes — the
 
 | Token | Default (light) | Purpose |
 |-------|----------------|---------|
-| `--color-background` | `oklch(100% 0 0)` | Page background |
-| `--color-surface` | `oklch(97% 0 0)` | Section/panel background |
-| `--color-card` | `oklch(95% 0 0)` | Card component background |
-| `--color-border` | `oklch(90% 0 0)` | Borders and dividers |
-| `--color-text` | `oklch(15% 0 0)` | Primary text |
-| `--color-text-muted` | `oklch(50% 0 0)` | Secondary/placeholder text |
+| `--color-background` | `oklch(99% 0.004 250)` | Page background |
+| `--color-surface` | `oklch(97% 0.006 250)` | Section/panel background |
+| `--color-card` | `oklch(95% 0.008 250)` | Card component background |
+| `--color-border` | `oklch(90% 0.012 250)` | Borders and dividers |
+| `--color-text` | `oklch(20% 0.02 250)` | Primary text |
+| `--color-text-muted` | `oklch(50% 0.016 250)` | Secondary/placeholder text |
 
 ### Role Tokens (8)
 
@@ -73,7 +73,7 @@ Every valid v1 theme (23 slots) remains a valid v2 theme without changes — the
 | `--color-primary-foreground` | `oklch(100% 0 0)` | Text on primary backgrounds |
 | `--color-secondary` | `oklch(70% 0.05 250)` | Secondary actions |
 | `--color-secondary-foreground` | `oklch(15% 0 0)` | Text on secondary backgrounds |
-| `--color-accent` | `oklch(65% 0.15 200)` | Highlights, badges |
+| `--color-accent` | `oklch(70% 0.13 250)` | Highlights, badges |
 | `--color-destructive` | `oklch(55% 0.22 25)` | Delete, error states |
 | `--color-success` | `oklch(55% 0.18 145)` | Success states |
 | `--color-warning` | `oklch(70% 0.18 80)` | Warning states |
@@ -156,9 +156,9 @@ The scaffolded `tokens.css` includes a dark mode block:
 ```css
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: oklch(12% 0 0);
-    --color-surface: oklch(17% 0 0);
-    --color-text: oklch(95% 0 0);
+    --color-background: oklch(15% 0.014 250);
+    --color-surface: oklch(19% 0.016 250);
+    --color-text: oklch(95% 0.006 250);
     /* ... remaining dark overrides */
   }
 }
@@ -168,9 +168,9 @@ To add manual dark mode toggle (e.g., user preference stored in a cookie), apply
 
 ```css
 [data-theme="dark"] {
-  --color-background: oklch(12% 0 0);
-  --color-surface: oklch(17% 0 0);
-  --color-text: oklch(95% 0 0);
+  --color-background: oklch(15% 0.014 250);
+  --color-surface: oklch(19% 0.016 250);
+  --color-text: oklch(95% 0.006 250);
 }
 ```
 

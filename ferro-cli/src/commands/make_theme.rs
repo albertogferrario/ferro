@@ -81,19 +81,19 @@ fn tokens_css_template() -> &'static str {
 
 :root {
   /* Surface tokens */
-  --color-background: oklch(100% 0 0);
-  --color-surface: oklch(97% 0 0);
-  --color-card: oklch(95% 0 0);
-  --color-border: oklch(90% 0 0);
-  --color-text: oklch(15% 0 0);
-  --color-text-muted: oklch(50% 0 0);
+  --color-background: oklch(99% 0.004 250);
+  --color-surface: oklch(97% 0.006 250);
+  --color-card: oklch(95% 0.008 250);
+  --color-border: oklch(90% 0.012 250);
+  --color-text: oklch(20% 0.02 250);
+  --color-text-muted: oklch(50% 0.016 250);
 
   /* Role tokens */
   --color-primary: oklch(55% 0.2 250);
   --color-primary-foreground: oklch(100% 0 0);
   --color-secondary: oklch(70% 0.05 250);
   --color-secondary-foreground: oklch(15% 0 0);
-  --color-accent: oklch(65% 0.15 200);
+  --color-accent: oklch(70% 0.13 250);
   --color-destructive: oklch(55% 0.22 25);
   --color-success: oklch(55% 0.18 145);
   --color-warning: oklch(70% 0.18 80);
@@ -131,18 +131,18 @@ fn tokens_css_template() -> &'static str {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: oklch(12% 0 0);
-    --color-surface: oklch(17% 0 0);
-    --color-card: oklch(20% 0 0);
-    --color-border: oklch(30% 0 0);
-    --color-text: oklch(95% 0 0);
-    --color-text-muted: oklch(60% 0 0);
-    --color-primary: oklch(65% 0.2 250);
+    --color-background: oklch(15% 0.014 250);
+    --color-surface: oklch(19% 0.016 250);
+    --color-card: oklch(22% 0.018 250);
+    --color-border: oklch(31% 0.02 250);
+    --color-text: oklch(95% 0.006 250);
+    --color-text-muted: oklch(63% 0.016 250);
+    --color-primary: oklch(56% 0.2 250);
     --color-primary-foreground: oklch(100% 0 0);
-    --color-secondary: oklch(60% 0.05 250);
+    --color-secondary: oklch(53% 0.05 250);
     --color-secondary-foreground: oklch(95% 0 0);
-    --color-accent: oklch(60% 0.15 200);
-    --color-destructive: oklch(60% 0.22 25);
+    --color-accent: oklch(68% 0.13 250);
+    --color-destructive: oklch(59% 0.22 25);
     --color-success: oklch(60% 0.18 145);
     --color-warning: oklch(65% 0.18 80);
 
@@ -304,7 +304,7 @@ mod tests {
             "missing dark mode @media"
         );
         assert!(
-            css.contains("oklch(12%"),
+            css.contains("oklch(15% 0.014 250)"),
             "missing dark mode background value"
         );
         // Dark mode block must use :root, not @theme { ... }.
