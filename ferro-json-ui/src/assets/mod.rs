@@ -29,4 +29,18 @@ mod tests {
             "expected `flex` utility in generated CSS"
         );
     }
+
+    #[test]
+    fn ferro_base_css_contains_motion_duration_fallback() {
+        // SC1: v1 themes that omit --motion-duration-fast resolve via the fallback.
+        assert!(
+            FERRO_BASE_CSS.contains("var(--motion-duration-fast,"),
+            "expected motion-duration-fast fallback in generated CSS; run scripts/gen-ferro-base-css.sh"
+        );
+        // SC3: reduced-motion collapse survives regeneration.
+        assert!(
+            FERRO_BASE_CSS.contains("prefers-reduced-motion"),
+            "expected prefers-reduced-motion block in generated CSS"
+        );
+    }
 }
