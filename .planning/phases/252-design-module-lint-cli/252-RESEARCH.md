@@ -656,27 +656,27 @@ The design lint is a pure diagnostic engine operating on already-parsed spec dat
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-16 single-home: Option A vs Option B**
    - What we know: catalog.rs Stage 2b exists as a hard error; the el.action gap is small and fixable with ~5 lines
    - What's unclear: planner must decide severity (hard error vs warning) for migration hygiene
-   - Recommendation: Option A (extend Stage 2b) — keeps the migration-era lint in the validation layer where it belongs; design::lint focuses on composition patterns
+   - RESOLVED: Option A (extend Stage 2b) — keeps the migration-era lint in the validation layer where it belongs; design::lint focuses on composition patterns
 
 2. **`pagamenti.json` page-header conformance**
    - What we know: layout is "dashboard", no PageHeader element exists
    - What's unclear: should the spec gain a PageHeader element (better), or should the design field allow the rule?
-   - Recommendation: add a PageHeader element; the payments list page architecturally wants a title header. The test asserts zero findings — PageHeader is the path to zero without allow-listing.
+   - RESOLVED: add a PageHeader element; the payments list page architecturally wants a title header. The test asserts zero findings — PageHeader is the path to zero without allow-listing.
 
 3. **`row-actions-grouped` exact heuristic**
    - What we know: the rule targets loose Button siblings in row-context positions
    - What's unclear: detecting "row-context" reliably from the flat element map without runtime data
-   - Recommendation: the simplest heuristic is checking for multiple `Button` elements that are direct children of an `$each`-templated element — any such pattern suggests row action buttons that should be in an ActionGroup
+   - RESOLVED: the simplest heuristic is checking for multiple `Button` elements that are direct children of an `$each`-templated element — any such pattern suggests row action buttons that should be in an ActionGroup
 
 4. **`card-actions-in-menu` order enforcement**
    - What we know: the rule says "detail action first, destructive actions last, all inside ActionGroup"
    - What's unclear: is order-checking feasible on raw specs where row_actions order is defined in props arrays?
-   - Recommendation: check that `KanbanBoard.row_actions` (DropdownMenuAction array) has any destructive action NOT in last position → Warning; first item should have "detail"/"view" in label
+   - RESOLVED: check that `KanbanBoard.row_actions` (DropdownMenuAction array) has any destructive action NOT in last position → Warning; first item should have "detail"/"view" in label
 
 ---
 
