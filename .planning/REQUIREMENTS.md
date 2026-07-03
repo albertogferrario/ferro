@@ -163,7 +163,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
   base CSS and `default.css` (light + dark), so **every valid v1 theme remains a valid v2
   theme unchanged**. Regenerated `ferro-base.css` exposes the new utilities as `var()`
   references and collapses motion durations under `prefers-reduced-motion`.
-- [ ] **DS-02**: `default.css` is refreshed to the documented design language (cool-tinted
+- [x] **DS-02**: `default.css` is refreshed to the documented design language (cool-tinted
   neutrals in both modes, a single accent used sparingly, separation via spacing and
   contrast before borders, small consistent radii, one elevation treatment);
   `docs/src/features/themes.md` documents v2 plus the root-font-size type-scaling recipe.
