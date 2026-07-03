@@ -22,7 +22,7 @@ pub struct Theme {
 impl Theme {
     /// Returns the embedded default theme.
     ///
-    /// The CSS contains plain `:root { ... }` CSS variable declarations for all 23
+    /// The CSS contains plain `:root { ... }` CSS variable declarations for all 30
     /// semantic token slots (light and dark modes). Safe to inject into a `<style>` tag
     /// without Tailwind processing.
     /// Templates are all-`None` — built-in intent layouts apply unchanged.
@@ -69,10 +69,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_theme_returns_non_empty_css_with_color_primary() {
+    fn default_theme_returns_all_30_token_slots() {
         let theme = Theme::default_theme();
         assert!(!theme.css.is_empty());
-        assert!(theme.css.contains("--color-primary"));
+        // v1 tokens still present
+        assert!(
+            theme.css.contains("--color-primary"),
+            "missing --color-primary"
+        );
+        assert!(theme.css.contains("--font-sans"), "missing --font-sans");
+        // v2 new tokens
+        assert!(theme.css.contains("--spacing"), "missing --spacing");
+        assert!(
+            theme.css.contains("--motion-duration-fast"),
+            "missing --motion-duration-fast"
+        );
+        assert!(theme.css.contains("--motion-ease"), "missing --motion-ease");
+        assert!(theme.css.contains("--color-ring"), "missing --color-ring");
+        assert!(
+            theme.css.contains("--font-display"),
+            "missing --font-display"
+        );
     }
 
     #[test]
