@@ -208,8 +208,8 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| DS-01 | Phase 250 | Not started |
-| DS-02 | Phase 250 | Not started |
+| DS-01 | Phase 250 | Complete (verified 2026-07-03) |
+| DS-02 | Phase 250 | Complete (verified 2026-07-03) |
 | DS-03 | Phase 251 | Not started |
 | DS-04 | Phase 251 | Not started |
 | DS-05 | Phase 252 | Not started |
