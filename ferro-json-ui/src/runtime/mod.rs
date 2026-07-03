@@ -76,6 +76,9 @@ mod tests {
         assert!(!FERRO_RUNTIME_JS.contains("bg-green-500"));
         assert!(!FERRO_RUNTIME_JS.contains("bg-yellow-500"));
         assert!(!FERRO_RUNTIME_JS.contains("bg-red-500"));
+        // Retired toast vocabulary must not resurface: the SSR emitter and
+        // this runtime were renamed to `data-toast-tone` in lockstep.
+        assert!(!FERRO_RUNTIME_JS.contains("data-toast-variant"));
     }
 
     #[test]

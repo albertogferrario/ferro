@@ -9,7 +9,7 @@
       "props": {
         "title": "Check your email",
         "description": "A login link has been sent. It expires in 15 minutes.",
-        "variant": "elevated"
+        "appearance": "elevated"
       },
       "children": ["body", "dev_link"]
     },

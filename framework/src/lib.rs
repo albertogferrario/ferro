@@ -84,18 +84,18 @@ pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 #[cfg(feature = "json-ui")]
 pub use ferro_json_ui::{
     resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, Action,
-    ActionCardProps, ActionCardVariant, ActionOutcome, AlertProps, AlertVariant, AvatarProps,
-    BadgeProps, BadgeVariant, BreadcrumbItem, BreadcrumbProps, ButtonProps, ButtonType,
-    ButtonVariant, CardProps, CheckboxProps, ChecklistItem, ChecklistProps, Column, ColumnFormat,
-    ConfirmDialog, DashboardLayout, DashboardLayoutConfig, DescriptionItem, DescriptionListProps,
-    DialogVariant, Element, ElementBuilder, FormProps, HeaderProps, HttpMethod, IconPosition,
-    ImageProps, InputProps, InputType, JsonUiConfig, Layout, LayoutContext, LayoutRegistry,
-    ModalProps, NavItem, NotificationDropdownProps, NotificationItem, NotifyVariant, Orientation,
-    PaginationProps, ProgressProps, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
-    SidebarNavItem, SidebarProps, SidebarSection, Size, SkeletonProps, SortDirection, Spec,
-    SpecBuilder, SpecError, StatCardProps, SwitchProps, Tab, TableProps, TabsProps, TextElement,
-    TextProps, ToastProps, ToastVariant, Visibility as JsonUiVisibility, VisibilityCondition,
-    VisibilityOperator, MAX_NESTING_DEPTH, SCHEMA_VERSION,
+    ActionCardProps, ActionOutcome, AlertProps, AvatarProps, BadgeProps, BreadcrumbItem,
+    BreadcrumbProps, ButtonProps, ButtonType, CardAppearance, CardProps, CheckboxProps,
+    ChecklistItem, ChecklistProps, Column, ColumnFormat, ConfirmDialog, DashboardLayout,
+    DashboardLayoutConfig, DescriptionItem, DescriptionListProps, Element, ElementBuilder,
+    FormProps, HeaderProps, HttpMethod, IconPosition, ImageProps, InputProps, InputType,
+    JsonUiConfig, Layout, LayoutContext, LayoutRegistry, ModalProps, NavItem,
+    NotificationDropdownProps, NotificationItem, Orientation, PaginationProps, ProgressProps,
+    SelectOption, SelectProps, SeparatorProps, SidebarGroup, SidebarNavItem, SidebarProps,
+    SidebarSection, Size, SkeletonProps, SortDirection, Spec, SpecBuilder, SpecError,
+    StatCardProps, SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps, ToastProps,
+    Tone, Variant, Visibility as JsonUiVisibility, VisibilityCondition, VisibilityOperator,
+    MAX_NESTING_DEPTH, SCHEMA_VERSION,
 };
 #[cfg(feature = "stripe")]
 pub use ferro_stripe::{

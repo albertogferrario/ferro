@@ -9,7 +9,7 @@
       "props": {
         "title": "Sign in",
         "description": "Enter your email to receive a login link.",
-        "variant": "elevated"
+        "appearance": "elevated"
       },
       "children": ["form"]
     },
@@ -38,7 +38,7 @@
       "props": {
         "label": "Send login link",
         "button_type": "submit",
-        "variant": "default"
+        "variant": "primary"
       }
     }
   }

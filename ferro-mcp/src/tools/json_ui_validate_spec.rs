@@ -105,12 +105,12 @@ mod tests {
 
     #[test]
     fn reports_catalog_error_on_bad_variant() {
-        // Alert.variant="" is catalog-invalid (empty string is not a valid AlertVariant).
+        // Alert.tone="" is catalog-invalid (empty string is not a valid Tone).
         let json = r#"{
             "$schema": "ferro-json-ui/v2",
             "root": "alert",
             "elements": {
-                "alert": {"type": "Alert", "props": {"variant": "", "message": "x"}}
+                "alert": {"type": "Alert", "props": {"tone": "", "message": "x"}}
             }
         }"#;
         let r = execute(json);
