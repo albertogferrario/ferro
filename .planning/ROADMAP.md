@@ -3747,7 +3747,7 @@ adoption plan).
 
 ### Phases
 
-- [ ] **Phase 250: Token vocabulary v2 + default theme refresh** — 23 → 30 slots
+- [x] **Phase 250: Token vocabulary v2 + default theme refresh** — 23 → 30 slots (completed 2026-07-03)
   (density `--spacing`, motion ×4, `--color-ring`, `--font-display`) with defaults;
   design-language refresh of `default.css`; regenerated `ferro-base.css`.
 - [ ] **Phase 251: Component variant discipline + interactive-state pass** — canonical
@@ -3779,10 +3779,10 @@ unchanged; refresh the default theme to the documented design language.
      accent) and `docs/src/features/themes.md` documents v2 plus the root-font-size
      type-scaling recipe.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 250-01-PLAN.md — Token constants v2 + Tailwind utility bridge + ferro-base.css regen [DS-01]
 - [x] 250-02-PLAN.md — default.css design-language refresh + make:theme scaffold + drift guards [DS-01, DS-02]
-- [ ] 250-03-PLAN.md — themes.md v2 docs + type-scaling recipe + visual sign-off [DS-02]
+- [x] 250-03-PLAN.md — themes.md v2 docs + type-scaling recipe + visual sign-off [DS-02]
 
 #### Phase 251: Component variant discipline + interactive-state pass
 **Goal:** One variant vocabulary across the whole component set — audit all 47 builtin

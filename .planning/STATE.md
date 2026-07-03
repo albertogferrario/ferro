@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: executing
-stopped_at: Completed 250-02-PLAN.md (default.css refresh + 30-slot scaffold)
-last_updated: "2026-07-03T02:24:30.931Z"
+status: verifying
+stopped_at: Completed 250-03-PLAN.md (v2 docs + visual sign-off approved; Phase 250 complete 3/3)
+last_updated: "2026-07-03T04:03:17.357Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 126
-  completed_phases: 106
+  completed_phases: 107
   total_plans: 437
-  completed_plans: 435
+  completed_plans: 436
   percent: 100
 ---
 
@@ -32,7 +32,7 @@ Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Last activity: 2026-07-03
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
@@ -201,6 +201,7 @@ Progress: [██████████] 100%
 | Phase 243.1 P243.1-01 | 31610271 | 9 tasks | 13 files |
 | Phase 250-token-vocabulary-v2-default-theme-refresh P01 | 500 | 3 tasks | 4 files |
 | Phase 250-token-vocabulary-v2-default-theme-refresh P02 | 344 | 2 tasks | 3 files |
+| Phase 250-token-vocabulary-v2-default-theme-refresh P03 | 5737s (~95m) | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.5 Phase 250 Plan 03] Default theme visual sign-off approved with zero oklch nudges — `default.css` ships exactly as refreshed in Plan 02 (cool-tinted hue-250 neutrals, single harmonized accent, dark-not-gloomy). Focus rings are not visually checkable until Phase 251 (no component emits ring classes yet); the `--color-ring` token + default ship in 250. Full CI-exact gate green (fmt 0 / clippy --all-features 0 / test --all-features 0). Phase 250 complete: 3/3 plans.
 - [v16.0 Phase 232 Plan 03] Single-source PROVEN (EXEC-05 / Phase 232 complete): `single_source_both_channels` drives ONE declared `submit` transition through BOTH the MCP framing (`handle_tools_call` → `dispatch_write(.., "mcp")`) and the visual handler (`dispatch_write(.., "web")`) and asserts the IDENTICAL persisted derived `to_state`, with the audit channel (`mcp.action.submit` vs `web.action.submit`) the ONLY divergence; `single_source_guard_rejects_both` proves the guard re-eval is the same kernel gate on both channels. SC4 structural grep confirms exactly one `dispatch_write` definition (`framework/src/write/mod.rs`) and no `match action_name`/transition-target match on the write path (the `match find_action`/`match action.execute` hits are action resolution / `Result` matching, not transition re-encoding). The WriteDispatcher envelope is intact (relocated, not deleted). Full workspace gate green (fmt + clippy `--all --all-targets -D warnings` + test `--all-features`, exit 0). v16.0 write-boundary milestone closed.
 - [v16.0 Phase 232 Plan 01] The transition-execution kernel now lives in exactly ONE location: `framework::write` (relocated from `ferro-mcp-server`, behavior identical — guard re-eval, idempotency, confirm seam, persist, audit, override; envelope `WriteDispatcher`/`ExecutorFn`/`GuardEvaluatorFn`/`OverrideFn` preserved). The kernel owns a self-contained `WriteError`/`WriteResult` (facade-re-exported as `ferro::write::WriteError`); each channel maps it via `From` at the framing boundary. The audit prefix is parameterized: `format!("{channel}.action.{name}")` — MCP framing passes the literal `"mcp"` at every call site so `mcp.action.{name}` stays regression-pinned. `ferro-mcp-server` is now framing that depends on `ferro-rs` (acyclic) and calls into the kernel. The app `make_write_dispatcher()` closure constructs `ferro::write::WriteError`. framework `confirmation` is a pure feature flag (no ferro-ai). This is the EXEC-05 foundation; Wave 2 (Plans 02/03) builds the visual write surface on it.
 - [v16.0 Phase 231] EXEC-02/03 wired into the consumer write path (Plan 02): `dispatch_write` re-evaluates `preconditions ∪ transition-guard` deduped-by-name through the single live `GuardEvaluatorFn` loop (never `ctx.evaluated_guards`); `WriteDispatcher` carries a post-persist `OverrideFn` registry (`new()`/`with_override()`) that cannot suppress the base guard/transition. EXEC-01 end-to-end: the app executor derives `to_state` from `ferro::derive_transition_plan(...).to_state` (facade only) and the hand-written `match action_name => new_status` is deleted across `app/src`. EXEC-05 (cross-surface wiring, retire the WriteDispatcher) remains Phase 232.
@@ -257,7 +259,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-03T02:24:30.922Z
-Stopped at: Completed 250-02-PLAN.md (default.css refresh + 30-slot scaffold)
+Last session: 2026-07-03T04:03:17.338Z
+Stopped at: Completed 250-03-PLAN.md (v2 docs + visual sign-off approved; Phase 250 complete 3/3)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
