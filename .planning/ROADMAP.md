@@ -3753,7 +3753,7 @@ adoption plan).
 - [x] **Phase 251: Component variant discipline + interactive-state pass** — canonical (completed 2026-07-03)
   `variant`/`tone`/`size` enums across the 47 components; hover/focus-visible/disabled
   and frequency-tiered motion per the component quality bar; migration table.
-- [ ] **Phase 252: Design module + lint + CLI** — `Spec.design` field
+- [x] **Phase 252: Design module + lint + CLI** — `Spec.design` field (completed 2026-07-03)
   (`intent`/`allow`), `design::lint` rule engine with the ~10 intent-keyed rules,
   `ferro design:lint [--json] [--deny]`.
 - [ ] **Phase 253: MCP surface + docs + publish** — `design_lint` MCP tool, catalog /
@@ -3825,13 +3825,13 @@ ring, disabled treatment, frequency-tiered motion.
   5. The sample `app/` views lint clean, enforced by a test.
   6. Lint never affects rendering or spec validation.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
   - [x] 252-01-PLAN.md — Foundation: `Spec.design` field, `Finding`/`Severity`/`DesignRule` types, pure `lint()` engine (intent resolution + allow validation + inference), D-08 drift test (empty registry) [wave 1]
   - [x] 252-02-PLAN.md — D-16 single-home: extend catalog Stage 2b to catch element-level `action.confirm.variant` [wave 1]
   - [x] 252-03-PLAN.md — Rules batch A: page-header, prefer-data-table, list-empty-state, row-actions-grouped, breadcrumb-on-subpages [wave 2]
   - [x] 252-04-PLAN.md — Rules batch B: process-kanban, card-actions-in-menu, create-separate-page, form-default-values, destructive-confirmation [wave 3]
   - [x] 252-05-PLAN.md — CLI: `ferro design:lint [path] [--json] [--deny]` [wave 2]
-  - [ ] 252-06-PLAN.md — App views declare `design.intent` + PageHeader, D-17 lint-clean gate, CI-exact gate + docs build [wave 4]
+  - [x] 252-06-PLAN.md — App views declare `design.intent` + PageHeader, D-17 lint-clean gate, CI-exact gate + docs build [wave 4]
 
 #### Phase 253: MCP surface + docs + publish
 **Goal:** Close the agent-authoring loop and ship — expose `design_lint` through
