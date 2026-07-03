@@ -6,7 +6,7 @@ ferro-theme provides a semantic token system that gives JSON-UI applications con
 
 A theme consists of two files:
 
-- **`tokens.css`** — Tailwind v4 `@theme` block defining the 23 semantic token slots (colors, shapes, shadows, typography)
+- **`tokens.css`** — Tailwind v4 `@theme` block defining the 30 semantic token slots (colors, shapes, shadows, typography, density, motion, focus ring, display font)
 - **`theme.json`** — partial JSON object overriding intent template layouts (optional; empty `{}` uses defaults)
 
 Themes live in the `themes/` directory at the project root:
@@ -26,7 +26,7 @@ Scaffold a new theme:
 ferro make:theme myapp
 ```
 
-This creates `themes/myapp/tokens.css` with all 23 token slots pre-filled with defaults, and `themes/myapp/theme.json` as an empty object.
+This creates `themes/myapp/tokens.css` with all 30 token slots pre-filled with defaults, and `themes/myapp/theme.json` as an empty object.
 
 Activate the theme by setting it as the default in your middleware setup:
 
@@ -54,7 +54,9 @@ npx tailwindcss -i themes/myapp/tokens.css -o public/themes/myapp.css
 
 ## Token Reference
 
-All 23 semantic token slots. Components use these class names — themes control the values.
+All 30 semantic token slots. Components use these class names — themes control the values.
+
+Every valid v1 theme (23 slots) remains a valid v2 theme without changes — the 7 new slots ship with defaults in the base CSS.
 
 ### Surface Tokens (6)
 
@@ -101,8 +103,53 @@ All 23 semantic token slots. Components use these class names — themes control
 
 | Token | Default | Purpose |
 |-------|---------|---------|
-| `--font-family-sans` | `ui-sans-serif, system-ui, sans-serif` | Body and UI text |
-| `--font-family-mono` | `ui-monospace, monospace` | Code, IDs, technical values |
+| `--font-sans` | `ui-sans-serif, system-ui, sans-serif` | Body and UI text |
+| `--font-mono` | `ui-monospace, monospace` | Code, IDs, technical values |
+
+### Density Token (1)
+
+| Token | Default | Purpose |
+|-------|---------|---------|
+| `--spacing` | `0.25rem` | Base spacing unit; all spacing utilities scale as `calc(var(--spacing) * N)` — one knob rescales all padding/margin/gap |
+
+### Motion Tokens (4)
+
+| Token | Default | Purpose |
+|-------|---------|---------|
+| `--motion-duration-fast` | `120ms` | Micro-interactions: hover, toggles, controls (anything repeated) |
+| `--motion-duration-base` | `220ms` | Standard transitions: dropdowns, modals, toasts |
+| `--motion-duration-slow` | `320ms` | Large surfaces: drawers, page-level reveals |
+| `--motion-ease` | `cubic-bezier(0.2, 0, 0.38, 0.9)` | Standard easing curve — calm, settled, no bounce |
+
+Base CSS collapses all three durations to `0.01ms` under `prefers-reduced-motion: reduce`.
+
+### Focus Ring Token (1)
+
+| Token | Default (light) | Purpose |
+|-------|-----------------|---------|
+| `--color-ring` | primary-family oklch (`oklch(55% 0.2 250)`) | Uniform `focus-visible` ring for interactive components — accessibility as a token |
+
+### Display Font Token (1)
+
+| Token | Default | Purpose |
+|-------|---------|---------|
+| `--font-display` | `var(--font-sans)` | Display/heading font family |
+
+## Type Scaling
+
+The token vocabulary deliberately omits per-size type tokens. To scale all text,
+set the root `font-size` in your theme's `tokens.css` — Tailwind's text sizes are
+`rem`-based, so they all shift relative to the browser default:
+
+```css
+:root {
+  font-size: 14px;   /* compact — all rem-based sizes scale down */
+}
+```
+
+Spacing scales independently via the `--spacing` density token; root `font-size`
+controls the type `rem` anchor. Font weight is likewise not tokenized — there is no
+demonstrated theming need.
 
 ## Dark Mode
 
