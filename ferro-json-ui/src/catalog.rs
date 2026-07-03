@@ -1673,6 +1673,7 @@ mod tests {
             title: None,
             layout: None,
             data: Value::Null,
+            design: None,
         }
     }
 
@@ -1923,6 +1924,7 @@ mod tests {
             title: None,
             layout: None,
             data: Value::Null,
+            design: None,
         };
         let errs = cat.validate(&spec).expect_err("should fail");
         let props_invalid_count = errs

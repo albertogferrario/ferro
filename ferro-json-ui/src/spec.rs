@@ -65,6 +65,24 @@ pub struct DataRef {
     pub data: String,
 }
 
+/// Optional design metadata attached to a [`Spec`] for lint and pattern enforcement.
+///
+/// `intent` declares the page archetype (one of the seven projection intents:
+/// `browse`, `focus`, `collect`, `process`, `summarize`, `analyze`, `track`). An
+/// unknown string produces a warning finding during lint — it never fails spec parse.
+/// `allow` lists rule ids to suppress page-wide. Neither field affects rendering or
+/// spec validation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct DesignMeta {
+    /// Page archetype, one of the seven projection intents.
+    /// Unknown strings produce a warning finding; they never fail spec parse.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent: Option<String>,
+    /// Rule ids to suppress for this page. Unknown ids produce a warning finding.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allow: Vec<String>,
+}
+
 /// Top-level v2 JSON-UI document.
 ///
 /// A `Spec` is a flat element map keyed by ID with a single `root` pointer.
@@ -90,6 +108,9 @@ pub struct Spec {
     /// Arbitrary data payload consumed by data-path references inside elements.
     #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
     pub data: Value,
+    /// Optional design metadata (intent + allow list). Never affects rendering.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub design: Option<DesignMeta>,
 }
 
 /// A single type-erased UI element.
@@ -299,6 +320,7 @@ impl Spec {
             title: raw.title,
             layout: raw.layout,
             data: raw.data,
+            design: raw.design,
         };
         validate_structure(&spec)?;
         Ok(spec)
@@ -429,6 +451,7 @@ impl SpecBuilder {
             title: self.title,
             layout: self.layout,
             data: self.data,
+            design: None,
         };
         validate_structure(&spec)?;
         Ok(spec)
@@ -636,6 +659,8 @@ struct SpecWire {
     layout: Option<String>,
     #[serde(default)]
     data: Value,
+    #[serde(default)]
+    design: Option<DesignMeta>,
 }
 
 fn default_schema() -> String {
@@ -2117,5 +2142,35 @@ mod tests {
             result.is_err(),
             "expected parse failure for {{foo:bar}} title shape"
         );
+    }
+
+    #[test]
+    fn design_meta_valid_round_trip() {
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text"}},"design":{"intent":"browse","allow":["prefer-data-table"]}}"#;
+        let spec = Spec::from_json(json).expect("parses");
+        let design = spec.design.as_ref().expect("design present");
+        assert_eq!(design.intent.as_deref(), Some("browse"));
+        assert_eq!(design.allow, vec!["prefer-data-table"]);
+        let serialized = serde_json::to_string(&spec).unwrap();
+        let back = Spec::from_json(&serialized).expect("re-parses");
+        assert_eq!(spec, back);
+    }
+
+    #[test]
+    fn design_meta_unknown_intent_parses_without_error() {
+        // D-02: invalid intent is a String, never a parse failure.
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text"}},"design":{"intent":"totally-made-up"}}"#;
+        let spec = Spec::from_json(json).expect("unknown intent must not fail parse");
+        let design = spec.design.as_ref().expect("design present");
+        assert_eq!(design.intent.as_deref(), Some("totally-made-up"));
+    }
+
+    #[test]
+    fn design_meta_absent_omitted_from_serialized_output() {
+        let json = r#"{"$schema":"ferro-json-ui/v2","root":"x","elements":{"x":{"type":"Text"}}}"#;
+        let spec = Spec::from_json(json).expect("parses");
+        assert!(spec.design.is_none(), "design should be None");
+        let serialized = serde_json::to_string(&spec).unwrap();
+        assert!(!serialized.contains("design"), "design key must be absent from output, got: {serialized}");
     }
 }
