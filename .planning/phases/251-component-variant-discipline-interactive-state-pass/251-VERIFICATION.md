@@ -1,13 +1,13 @@
 ---
 phase: 251-component-variant-discipline-interactive-state-pass
 verified: 2026-07-03T16:05:00Z
-status: human_needed
-score: 10/11 must-haves verified
+status: passed
+score: 11/11 must-haves verified
 overrides_applied: 0
 human_verification:
   - test: "Open the sample app auth pages (/auth/login, /auth/login/confirm) in a browser, in BOTH light and dark mode. Tab through the page; hover buttons/links; trigger the 422 error path (bad email)."
     expected: "focus-visible ring (--color-ring) visibly appears on keyboard focus for every interactive element; hover treatments render; transitions are smooth with no pop/reflow; disabled controls are non-interactive; the intended visual deltas are present (Badge neutral = outlined, Alert neutral = surface tint not primary tint, ActionCard neutral = plain left border, relationship buttons = ghost not underline-link); dark-mode contrast is acceptable."
-    why_human: "Plan 04 Task 3 was a checkpoint:human-verify that was auto-approved under the --auto chain with HTML/CSS class-level evidence only (no Chrome MCP available in that session). Class presence in served markup is verified programmatically, but pixel-level rendering quality (ring visibility, hover smoothness, dark contrast, no reflow) cannot be. The 04-SUMMARY itself flags this pass as still worthwhile; it can be folded into the Phase 253 pre-publish review."
+    resolution: "EXECUTED and PASSED 2026-07-03 via Chrome MCP against a fresh binary on :8090 — see 251-HUMAN-UAT.md (focus rings light+dark, hover via computed style, 422 path, motion tokens 0.12s cubic-bezier(0.2,0,0.38,0.9) live). Original rationale: Plan 04 Task 3 was a checkpoint:human-verify that was auto-approved under the --auto chain with HTML/CSS class-level evidence only (no Chrome MCP available in that session). Class presence in served markup is verified programmatically, but pixel-level rendering quality (ring visibility, hover smoothness, dark contrast, no reflow) cannot be. The 04-SUMMARY itself flags this pass as still worthwhile; it can be folded into the Phase 253 pre-publish review."
 ---
 
 # Phase 251: Component Variant Discipline + Interactive-State Pass Verification Report
