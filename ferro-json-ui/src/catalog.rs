@@ -674,6 +674,13 @@ impl Catalog {
     ///    using on-demand [`jsonschema::validator_for`]. Errors accumulate as
     ///    [`CatalogError::PropsInvalid`]. Plugin schemas are accepted per CONTEXT D-20.
     ///
+    ///    **2b. Retired prop names** — prop names renamed in the canonical
+    ///    variant/tone/size migration (`Card.variant` → `appearance`,
+    ///    `Badge.variant` → `tone`, …) are hard errors. serde ignores unknown
+    ///    keys and the per-component schemas do not set
+    ///    `additionalProperties: false`, so without this lint a retired name
+    ///    would be silently dropped — an invisible visual downgrade.
+    ///
     /// 3. **Envelope check** — serialize the full `Spec` and run it through the
     ///    cached `self.validator` (compiled once in [`Catalog::build`], SCHEMA-03).
     ///    Errors become [`CatalogError::SpecInvalid`].
@@ -741,6 +748,31 @@ impl Catalog {
                         errors: per_elem_errs,
                     });
                 }
+            }
+        }
+
+        // === Stage 2b: retired prop names (canonical vocabulary migration) ===
+        // serde ignores unknown keys and the per-component schemas do not set
+        // `additionalProperties: false`, so a retired prop name would otherwise
+        // decode cleanly and be silently dropped — turning the rename into an
+        // invisible visual downgrade (e.g. `Badge.variant: "success"` rendering
+        // a neutral badge). Flag renames as hard errors pointing at the new name.
+        for (id, el) in &spec.elements {
+            let mut renamed: Vec<String> = Vec::new();
+            for (ty, old, new) in RETIRED_PROPS {
+                if el.type_name == *ty && el.props.get(old).is_some() {
+                    renamed.push(format!(
+                        "/{old}: `{old}` was renamed to `{new}` — update the spec"
+                    ));
+                }
+            }
+            collect_retired_action_variants(&el.props, "", &mut renamed);
+            if !renamed.is_empty() {
+                errors.push(CatalogError::PropsInvalid {
+                    element_id: id.clone(),
+                    type_name: el.type_name.clone(),
+                    errors: renamed,
+                });
             }
         }
 
@@ -841,6 +873,52 @@ impl Catalog {
             render_component_section(&mut out, spec);
         }
         out
+    }
+}
+
+// ── Retired prop-name lint (validate Stage 2b) ────────────────────────────────
+
+/// Element-level prop names retired by the canonical variant/tone/size
+/// migration: `(component type, retired prop, replacement prop)`.
+const RETIRED_PROPS: &[(&str, &str, &str)] = &[
+    ("Card", "variant", "appearance"),
+    ("Badge", "variant", "tone"),
+    ("Alert", "variant", "tone"),
+    ("Toast", "variant", "tone"),
+    ("ActionCard", "variant", "tone"),
+    ("MediaCardGrid", "badge_variant_key", "badge_tone_key"),
+];
+
+/// Recursively flag retired `variant` keys inside action-shaped objects
+/// embedded in props: `confirm: {..}` dialogs and `on_success`/`on_error`
+/// notify outcomes (e.g. inside `row_actions`, `buttons`, `actions` arrays).
+/// These decode through typed structs that ignore unknown keys, so without
+/// this walk an old `confirm.variant: "danger"` would silently lose its
+/// destructive styling.
+fn collect_retired_action_variants(value: &Value, path: &str, out: &mut Vec<String>) {
+    match value {
+        Value::Object(map) => {
+            for (key, child) in map {
+                let child_path = format!("{path}/{key}");
+                if let Value::Object(obj) = child {
+                    let is_confirm = key == "confirm";
+                    let is_notify_outcome = (key == "on_success" || key == "on_error")
+                        && obj.get("type").and_then(Value::as_str) == Some("notify");
+                    if (is_confirm || is_notify_outcome) && obj.contains_key("variant") {
+                        out.push(format!(
+                            "{child_path}/variant: `variant` was renamed to `tone` — update the spec"
+                        ));
+                    }
+                }
+                collect_retired_action_variants(child, &child_path, out);
+            }
+        }
+        Value::Array(arr) => {
+            for (i, child) in arr.iter().enumerate() {
+                collect_retired_action_variants(child, &format!("{path}/{i}"), out);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -1646,6 +1724,110 @@ mod tests {
             )),
             "expected PropsInvalid for missing required 'title'; got {errs:?}"
         );
+    }
+
+    #[test]
+    fn validate_rejects_retired_prop_names() {
+        // Prop names renamed in the canonical vocabulary migration must fail
+        // validation (Stage 2b) rather than be silently dropped by serde.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let cases: Vec<(&str, Value, &str)> = vec![
+            (
+                "Badge",
+                serde_json::json!({ "label": "Paid", "variant": "success" }),
+                "tone",
+            ),
+            (
+                "Card",
+                serde_json::json!({ "title": "T", "variant": "elevated" }),
+                "appearance",
+            ),
+            (
+                "MediaCardGrid",
+                serde_json::json!({
+                    "data_path": "/rows",
+                    "title_key": "name",
+                    "badge_variant_key": "status"
+                }),
+                "badge_tone_key",
+            ),
+        ];
+        for (ty, props, new_name) in cases {
+            let spec = test_spec_with(ty, props);
+            let errs = cat.validate(&spec).expect_err("should fail");
+            assert!(
+                errs.iter().any(|e| matches!(
+                    e,
+                    CatalogError::PropsInvalid { type_name, errors, .. }
+                        if type_name == ty && errors.iter().any(|m| m.contains(new_name))
+                )),
+                "expected retired-prop PropsInvalid for {ty} mentioning `{new_name}`; got {errs:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_rejects_retired_confirm_and_notify_variant() {
+        // `variant` inside props-embedded `confirm` dialogs and notify
+        // outcomes was renamed to `tone`; the walk must catch it at any depth.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = test_spec_with(
+            "DataTable",
+            serde_json::json!({
+                "data_path": "/rows",
+                "columns": [{ "key": "name", "label": "Name" }],
+                "row_actions": [{
+                    "label": "Delete",
+                    "action": {
+                        "handler": "rows.destroy",
+                        "method": "DELETE",
+                        "confirm": { "title": "Delete?", "variant": "danger" },
+                        "on_success": {
+                            "type": "notify",
+                            "message": "Deleted",
+                            "variant": "error"
+                        }
+                    }
+                }]
+            }),
+        );
+        let errs = cat.validate(&spec).expect_err("should fail");
+        let retired_msgs: Vec<&String> = errs
+            .iter()
+            .filter_map(|e| match e {
+                CatalogError::PropsInvalid { errors, .. } => Some(errors),
+                _ => None,
+            })
+            .flatten()
+            .filter(|m| m.contains("renamed to `tone`"))
+            .collect();
+        assert_eq!(
+            retired_msgs.len(),
+            2,
+            "expected confirm + notify retired-variant errors; got {errs:?}"
+        );
+    }
+
+    #[test]
+    fn validate_accepts_canonical_prop_names() {
+        // The renamed props themselves must pass Stage 2b.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let cases: Vec<(&str, Value)> = vec![
+            (
+                "Badge",
+                serde_json::json!({ "label": "Paid", "tone": "success" }),
+            ),
+            (
+                "Card",
+                serde_json::json!({ "title": "T", "appearance": "elevated" }),
+            ),
+        ];
+        for (ty, props) in cases {
+            let spec = test_spec_with(ty, props.clone());
+            if let Err(errs) = cat.validate(&spec) {
+                panic!("validate({ty}) with canonical props failed: {errs:?}");
+            }
+        }
     }
 
     #[test]

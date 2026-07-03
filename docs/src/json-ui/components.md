@@ -71,7 +71,7 @@ Additional fixed-string enums scoped to individual components; each component se
 
 ## Component vocabulary migration
 
-The canonical `variant`/`tone`/`size` vocabulary replaced the per-component enums. Retired values fail at spec parse — there are no aliases. Old → new mapping:
+The canonical `variant`/`tone`/`size` vocabulary replaced the per-component enums. There are no aliases: retired **values** on surviving prop names fail at spec parse, and retired **prop names** (e.g. `Card.variant`, `Badge.variant`, `confirm.variant`) fail catalog validation with an error naming the replacement prop. Old → new mapping:
 
 | Component | Old prop | Old value | New prop | New value |
 |-----------|----------|-----------|----------|-----------|
