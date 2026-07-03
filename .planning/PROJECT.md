@@ -53,7 +53,22 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 - v13.1 CRUD Handler Proc Macros complete (Phase 212, CRUD-01–06): `#[resource_get]` / `#[resource_post]` fold the tenant-scoped CRUD prelude (typed param + `current_tenant()` + tenant-scoped lookup + 404/303-on-miss) into one route attribute while keeping tenant + resource as real typed params; they inline the handler/action boilerplate (no nested attribute). Backed by a `TenantScoped` trait (cross-tenant reads impossible by construction) and `Validator::validate_or_redirect(url)`. trybuild suite (pass + compile-fail fixtures), facade exports, 0.2.56 bump. With this, the v13.x batch scoped so far (v13.0/v13.1/v13.2/v13.3) is complete; nothing in v13.x is published yet beyond v13.2's 0.2.55.
 - v14.0 Channel Projection complete (Phases 215–216, CHAN-01–04): the first production non-visual `Renderer` ships. Phase 215 extended the renderer-free surface (`BaseContext.evaluated_guards` + `verbosity`, `Intent::label()`, `Error::NoIntents`); Phase 216 added `FieldDef.render_hint` (`AltText`/`Skip`, additive, serde-backward-compatible) and a new `ferro-text` output crate whose `TextRenderer` projects the *same* `ServiceDef` to deterministic conversational text — per-intent strategies for Browse/Collect/Process/Summarize/Track, guard-filtered (absent key renders, explicit `false` hides), verbosity-aware, with a defined Focus/Analyze fallback. Re-exported via the `ferro` facade behind the `projections` feature; registered in publish.yml Wave 1b; `insta` snapshots over the COMP-05 `approval_workflow` anchor pin both guard states. The projection/intent abstraction is now validated against a non-screen modality. ~27 workspace crates.
 
-## Current Milestone: v16.3 MCP CRUD Data Surface (Track A)
+## Current Milestone: v16.5 JSON-UI Design System
+
+**Goal:** Complete the design system above the token layer — density/motion/focus-ring tokens with opinionated defaults, a canonical variant vocabulary across all 47 builtin components, and composition patterns codified as machine-readable, intent-keyed lint rules enforced at the agent-authoring boundary (an agent reads the system through ferro-mcp, authors a spec, and `design_lint` validates conformance before human review).
+
+**Target features:**
+- Token vocabulary v2 (23 → 30 slots: `--spacing`, motion ×4, `--color-ring`, `--font-display`) with defaults — every v1 theme stays valid.
+- Default theme refreshed to the documented design language.
+- Canonical `variant`/`tone`/`size` enums + interactive-state quality bar across all components.
+- `Spec.design` field + `design::lint` rule engine + `ferro design:lint` CLI.
+- `design_lint` MCP tool, catalog/generation-context extensions, `docs/src/design-system/` chapter; single publish at the end.
+
+**Active requirements:** DS-01..08 (`.planning/REQUIREMENTS.md`). Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`. Consumer-paired with the reference application's adoption phase, gated on the final publish.
+
+**Progress:** Phase 250 complete (2026-07-03, verified 4/4) — `ALL_TOKENS` at 30 slots (`ferro-theme/v2`), Tailwind bridge with `var(, default)` fallbacks + `@utility` duration classes, `prefers-reduced-motion` collapse (`!important`, cascade-proof), `default.css` refreshed to cool-tinted hue-250 neutrals with a single harmonized accent (visually signed off light + dark), `make:theme` scaffold and drift guards at 30 slots, `themes.md` rewritten to the plain-CSS authoring model with the type-scaling recipe. Phases 251–253 (variant discipline, design lint, MCP surface + publish) remain.
+
+## Shipped Milestone: v16.3 MCP CRUD Data Surface (Track A) (shipped 2026-06-24, 0.2.80)
 
 **Goal:** A projection that opts in derives a complete, safe, tenant-scoped CRUD interface (create / read+query / update / soft-delete) as MCP tools with zero hand-written tool code — the foundational track of the broader MCP capability program (Tracks A–D).
 
