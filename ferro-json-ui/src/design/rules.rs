@@ -60,6 +60,20 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &["collect"],
         check: check_create_separate_page,
     },
+    DesignRule {
+        id: "form-default-values",
+        title: "Edit-form fields pre-fill from data",
+        rationale: "On an edit form every field must restore its stored value; a blank field silently discards data on save.",
+        intents: &["collect"],
+        check: check_form_default_values,
+    },
+    DesignRule {
+        id: "destructive-confirmation",
+        title: "Destructive actions require confirmation",
+        rationale: "An irreversible action behind a single click is a data-loss hazard; a confirm dialog is the guard.",
+        intents: &[], // all intents
+        check: check_destructive_confirmation,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -276,6 +290,94 @@ fn check_create_separate_page(spec: &Spec, _intent: Option<&str>) -> Vec<Finding
                      Modal."
                     .into(),
             });
+        }
+    }
+    findings
+}
+
+/// Form-field element types for `form-default-values` detection.
+const FIELD_TYPES: &[&str] = &["Input", "Select", "Textarea", "RichTextEditor"];
+
+fn check_form_default_values(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    // Detect edit form: at least one field binds default_value via a $data path.
+    let is_edit_form = spec.elements.values().any(|e| {
+        FIELD_TYPES.contains(&e.type_name.as_str())
+            && e.props
+                .get("default_value")
+                .and_then(|v| v.get("$data"))
+                .is_some()
+    });
+    if !is_edit_form {
+        // Pure create form — no binding detected; rule does not apply.
+        return vec![];
+    }
+    // Warn for each field missing a default_value (or with null).
+    spec.elements
+        .iter()
+        .filter(|(_, el)| {
+            FIELD_TYPES.contains(&el.type_name.as_str())
+                && el
+                    .props
+                    .get("default_value")
+                    .map(|v| v.is_null())
+                    .unwrap_or(true) // absent key counts as missing
+        })
+        .map(|(id, _)| Finding {
+            rule: "form-default-values",
+            element_id: Some(id.clone()),
+            severity: Severity::Warning,
+            message: format!("Edit-form field `{id}` has no default_value."),
+            suggestion: "Pre-fill the field: bind default_value via a $data path \
+                 (e.g. req.old(..).or_else(|| record.field))."
+                .into(),
+        })
+        .collect()
+}
+
+fn check_destructive_confirmation(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for (id, el) in &spec.elements {
+        let mut flagged = false;
+        // Element-level: Button with variant=destructive and action without confirm.
+        if el.type_name == "Button"
+            && el.props.get("variant").and_then(|v| v.as_str()) == Some("destructive")
+        {
+            if let Some(action) = &el.action {
+                if action.confirm.is_none() {
+                    findings.push(Finding {
+                        rule: "destructive-confirmation",
+                        element_id: Some(id.clone()),
+                        severity: Severity::Warning,
+                        message: "Destructive action has no confirmation.".into(),
+                        suggestion: "Add a `confirm` (ConfirmDialog) to the action before it runs."
+                            .into(),
+                    });
+                    flagged = true;
+                }
+            }
+        }
+        // Props-embedded: row_actions or items arrays with destructive entries missing confirm.
+        if !flagged {
+            'outer: for key in &["row_actions", "items"] {
+                if let Some(arr) = el.props.get(*key).and_then(|v| v.as_array()) {
+                    for entry in arr {
+                        if entry.get("destructive").and_then(|v| v.as_bool()) == Some(true)
+                            && entry.get("confirm").is_none()
+                        {
+                            findings.push(Finding {
+                                rule: "destructive-confirmation",
+                                element_id: Some(id.clone()),
+                                severity: Severity::Warning,
+                                message: "Destructive action has no confirmation.".into(),
+                                suggestion: "Add a `confirm` (ConfirmDialog) to the action \
+                                     before it runs."
+                                    .into(),
+                            });
+                            break 'outer;
+                        }
+                    }
+                }
+            }
         }
     }
     findings
