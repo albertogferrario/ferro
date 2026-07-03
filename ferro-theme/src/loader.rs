@@ -72,24 +72,15 @@ mod tests {
     fn default_theme_returns_all_30_token_slots() {
         let theme = Theme::default_theme();
         assert!(!theme.css.is_empty());
-        // v1 tokens still present
-        assert!(
-            theme.css.contains("--color-primary"),
-            "missing --color-primary"
-        );
-        assert!(theme.css.contains("--font-sans"), "missing --font-sans");
-        // v2 new tokens
-        assert!(theme.css.contains("--spacing"), "missing --spacing");
-        assert!(
-            theme.css.contains("--motion-duration-fast"),
-            "missing --motion-duration-fast"
-        );
-        assert!(theme.css.contains("--motion-ease"), "missing --motion-ease");
-        assert!(theme.css.contains("--color-ring"), "missing --color-ring");
-        assert!(
-            theme.css.contains("--font-display"),
-            "missing --font-display"
-        );
+        // Iterate the vocabulary itself so token.rs and default.css cannot
+        // drift. The `{token}:` suffix avoids prefix false-positives
+        // (e.g. --color-text matching --color-text-muted).
+        for token in crate::token::ALL_TOKENS {
+            assert!(
+                theme.css.contains(&format!("{token}:")),
+                "default.css missing declaration for {token}"
+            );
+        }
     }
 
     #[test]
