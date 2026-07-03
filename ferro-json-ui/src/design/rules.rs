@@ -1,16 +1,119 @@
 //! Static design-rule registry — batch A (Plans 02–03).
-use crate::spec::Spec;
 use super::types::{DesignRule, Finding, Severity};
+use crate::spec::Spec;
 
 /// The static rule registry. Iterated by [`super::lint`] and [`super::rules`].
-pub(super) static RULE_REGISTRY: &[DesignRule] = &[];
+pub(super) static RULE_REGISTRY: &[DesignRule] = &[
+    DesignRule {
+        id: "page-header",
+        title: "Dashboard pages start with a PageHeader",
+        rationale: "A PageHeader gives every app page a consistent title, breadcrumb, and action-button slot.",
+        intents: &[], // all intents — layout gate is inside check_page_header
+        check: check_page_header,
+    },
+    DesignRule {
+        id: "prefer-data-table",
+        title: "Prefer DataTable over raw Table",
+        rationale: "DataTable adds responsive mobile cards and DropdownMenu row actions the raw Table lacks.",
+        intents: &["browse"],
+        check: check_prefer_data_table,
+    },
+    DesignRule {
+        id: "list-empty-state",
+        title: "List pages define an empty state",
+        rationale: "An empty state with a create CTA turns a blank list into a first-run affordance.",
+        intents: &["browse"],
+        check: check_list_empty_state,
+    },
+    // row-actions-grouped and breadcrumb-on-subpages added in Task 2
+];
 
-// ── Rule check functions (Plans 02–03) ───────────────────────────────────────
+// ── Rule check functions ──────────────────────────────────────────────────────
 
 /// Returns `true` for layouts that own page chrome (PageHeader, Breadcrumb).
 /// Auth layouts and custom / absent layouts are excluded.
 fn is_app_shell_layout(spec: &Spec) -> bool {
     matches!(spec.layout.as_deref(), Some("dashboard") | Some("app"))
+}
+
+fn check_page_header(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    if !is_app_shell_layout(spec) {
+        return vec![];
+    }
+    // Search the flat element map for any PageHeader.
+    let header = spec
+        .elements
+        .iter()
+        .find(|(_, el)| el.type_name == "PageHeader");
+    match header {
+        None => vec![Finding {
+            rule: "page-header",
+            element_id: None,
+            severity: Severity::Warning,
+            message: "Dashboard-family layout has no PageHeader element.".into(),
+            suggestion:
+                "Add a PageHeader element (with a `title` prop) as the first child of root.".into(),
+        }],
+        Some((id, el)) => {
+            // PageHeader exists — check that it carries a non-null title.
+            let title_missing = el.props.get("title").map(|v| v.is_null()).unwrap_or(true);
+            if title_missing {
+                vec![Finding {
+                    rule: "page-header",
+                    element_id: Some(id.clone()),
+                    severity: Severity::Warning,
+                    message: "PageHeader is missing a title.".into(),
+                    suggestion: "Set the PageHeader `title` prop.".into(),
+                }]
+            } else {
+                vec![]
+            }
+        }
+    }
+}
+
+fn check_prefer_data_table(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    spec.elements
+        .iter()
+        .filter(|(_, el)| el.type_name == "Table")
+        .map(|(id, _)| Finding {
+            rule: "prefer-data-table",
+            element_id: Some(id.clone()),
+            severity: Severity::Warning,
+            message: "Raw Table used for an entity list.".into(),
+            suggestion:
+                "Replace with a DataTable (responsive mobile cards, DropdownMenu row actions)."
+                    .into(),
+        })
+        .collect()
+}
+
+fn check_list_empty_state(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let has_empty_state = spec.elements.values().any(|e| e.type_name == "EmptyState");
+    spec.elements
+        .iter()
+        .filter(|(_, el)| el.type_name == "DataTable" || el.type_name == "MediaCardGrid")
+        .filter_map(|(id, el)| {
+            let has_empty_message = el
+                .props
+                .get("empty_message")
+                .and_then(|v| v.as_str())
+                .is_some();
+            if !has_empty_message && !has_empty_state {
+                Some(Finding {
+                    rule: "list-empty-state",
+                    element_id: Some(id.clone()),
+                    severity: Severity::Warning,
+                    message: "List component has no empty-state config.".into(),
+                    suggestion: "Add an `empty_message` to the DataTable or include an EmptyState \
+                         element with a create CTA."
+                        .into(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────
@@ -41,7 +144,11 @@ mod tests {
         )
         .unwrap();
         let findings = findings_for(lint(&spec), "page-header");
-        assert_eq!(findings.len(), 1, "expected 1 page-header finding, got: {findings:#?}");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 page-header finding, got: {findings:#?}"
+        );
         assert_eq!(findings[0].severity, Severity::Warning);
     }
 

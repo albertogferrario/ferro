@@ -144,17 +144,33 @@ mod engine_tests {
     use crate::spec::Spec;
 
     /// Helper: minimal spec JSON with a single element of the given type.
+    ///
+    /// When `element_type` is `"DataTable"` the spec always includes an
+    /// `empty_message` prop so it conforms to the `list-empty-state` rule and
+    /// does not produce unexpected composition findings.
     fn spec_with(element_type: &str) -> Spec {
-        Spec::from_json(&format!(
-            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{element_type}"}}}}}}"#
-        ))
-        .unwrap()
+        if element_type == "DataTable" {
+            // Raw string — no format! needed; DataTable always gets empty_message so that
+            // list-empty-state does not fire and finding counts stay predictable.
+            Spec::from_json(
+                r#"{"$schema":"ferro-json-ui/v2","root":"r","elements":{"r":{"type":"DataTable","props":{"empty_message":"No items"}}}}"#,
+            )
+            .unwrap()
+        } else {
+            Spec::from_json(&format!(
+                r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{element_type}"}}}}}}"#
+            ))
+            .unwrap()
+        }
     }
 
     /// Helper: spec JSON with a `design` object.
+    ///
+    /// Uses a DataTable with `empty_message` so the `list-empty-state` rule
+    /// does not fire and composition finding counts stay predictable.
     fn spec_with_design(design_json: &str) -> Spec {
         Spec::from_json(&format!(
-            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"DataTable"}}}},"design":{design_json}}}"#
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"DataTable","props":{{"empty_message":"No items"}}}}}},"design":{design_json}}}"#
         ))
         .unwrap()
     }
@@ -213,13 +229,16 @@ mod engine_tests {
 
     #[test]
     fn unknown_allow_id_emits_warning() {
-        // Use a permanently-unknown id — not a real rule id.
-        let spec = spec_with_type_and_design(
-            "DataTable",
-            r#"{"intent":"browse","allow":["no-such-rule"]}"#,
-        );
+        // Use a Form with focus intent so no browse-keyed composition rules run.
+        // Only the unknown allow id should produce a finding.
+        let spec = Spec::from_json(
+            r#"{"$schema":"ferro-json-ui/v2","root":"r",
+               "elements":{"r":{"type":"Form"}},
+               "design":{"intent":"focus","allow":["no-such-rule"]}}"#,
+        )
+        .unwrap();
         let findings = lint(&spec);
-        // "browse" declared → no declare-intent finding. "no-such-rule" unknown → 1 warning.
+        // "focus" declared → no declare-intent finding. "no-such-rule" unknown → 1 warning.
         assert_eq!(
             findings.len(),
             1,
@@ -247,12 +266,17 @@ mod engine_tests {
 
     #[test]
     fn valid_declared_intent_with_data_table_zero_findings() {
-        // Empty registry: no composition rules → zero findings for valid intent.
-        let spec = spec_with_type_and_design("DataTable", r#"{"intent":"browse"}"#);
+        // Valid declared intent + conforming DataTable (with empty_message) → zero findings.
+        let spec = Spec::from_json(
+            r#"{"$schema":"ferro-json-ui/v2","root":"r",
+               "elements":{"r":{"type":"DataTable","props":{"empty_message":"No items"}}},
+               "design":{"intent":"browse"}}"#,
+        )
+        .unwrap();
         let findings = lint(&spec);
         assert!(
             findings.is_empty(),
-            "valid declared intent + empty registry should produce zero findings, got: {findings:#?}"
+            "valid declared intent + conforming spec should produce zero findings, got: {findings:#?}"
         );
     }
 }
