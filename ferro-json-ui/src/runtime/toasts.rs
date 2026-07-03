@@ -1,11 +1,14 @@
 pub(super) const SOURCE: &str = r#"
     // ── Toast display/stacking/auto-dismiss ───────────────────────────────
 
+    // Tone classes are shared verbatim with the SSR render_toast — see the
+    // TOAST_TONE_* consts in render/classes.rs. Lockstep is asserted in
+    // runtime::tests::toast_tone_classes_match_ssr.
     var VARIANT_CLASSES = {
-        neutral: 'bg-primary text-primary-foreground',
-        success: 'bg-success text-primary-foreground',
-        warning: 'bg-warning text-primary-foreground',
-        destructive: 'bg-destructive text-primary-foreground'
+        neutral: 'bg-primary/70 text-primary-foreground',
+        success: 'bg-success/70 text-primary-foreground',
+        warning: 'bg-warning/70 text-primary-foreground',
+        destructive: 'bg-destructive/70 text-primary-foreground'
     };
 
     function showToast(toast) {
@@ -18,7 +21,7 @@ pub(super) const SOURCE: &str = r#"
         var colorClass = VARIANT_CLASSES[tone] || VARIANT_CLASSES.neutral;
 
         var el = document.createElement('div');
-        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm ' +
+        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm backdrop-blur-md ' +
             colorClass + ' opacity-0 transition-opacity duration-base ease-base';
         el.innerHTML =
             '<span class="flex-1 text-sm">' + escapeHtml(message) + '</span>' +

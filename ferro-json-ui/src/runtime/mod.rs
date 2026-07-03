@@ -103,6 +103,32 @@ mod tests {
         assert!(!FERRO_RUNTIME_JS.contains("text-white"));
     }
 
+    /// JS↔SSR lockstep: the runtime's VARIANT_CLASSES must carry the exact
+    /// tone-class strings the SSR `render_toast` composes from
+    /// `render::classes::TOAST_TONE_*`, plus the shared backdrop blur, so
+    /// server-rendered and JS-created toasts look identical.
+    #[test]
+    fn toast_tone_classes_match_ssr() {
+        use crate::render::classes::{
+            TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
+        };
+        for tone_classes in [
+            TOAST_TONE_NEUTRAL,
+            TOAST_TONE_SUCCESS,
+            TOAST_TONE_WARNING,
+            TOAST_TONE_DESTRUCTIVE,
+        ] {
+            assert!(
+                FERRO_RUNTIME_JS.contains(tone_classes),
+                "runtime VARIANT_CLASSES drifted from SSR toast tone classes: missing `{tone_classes}`"
+            );
+        }
+        assert!(
+            FERRO_RUNTIME_JS.contains("backdrop-blur-md"),
+            "runtime toast shell drifted from SSR: missing `backdrop-blur-md`"
+        );
+    }
+
     /// Popover-based dropdown wiring: the panel uses the HTML `popover`
     /// attribute so the browser lifts it into the top layer (escaping any
     /// `overflow:hidden` ancestor and the surrounding z-index stack). We

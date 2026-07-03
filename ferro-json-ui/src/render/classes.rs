@@ -19,6 +19,18 @@ pub(crate) const MOTION_BASE: &str = "transition-opacity duration-base ease-base
 /// Uniform disabled treatment for native controls (D-16).
 pub(crate) const DISABLED_BASE: &str = "disabled:opacity-50 disabled:pointer-events-none";
 
+/// Toast tone treatments: translucent tone tint (70% alpha) paired with a
+/// `backdrop-blur-md` on the toast shell. Single source of truth shared by
+/// the SSR `render_toast` and the JS runtime's `VARIANT_CLASSES` — lockstep
+/// is asserted in `runtime::tests::toast_tone_classes_match_ssr`.
+pub(crate) const TOAST_TONE_NEUTRAL: &str = "bg-primary/70 text-primary-foreground";
+/// Success toast tone — see [`TOAST_TONE_NEUTRAL`].
+pub(crate) const TOAST_TONE_SUCCESS: &str = "bg-success/70 text-primary-foreground";
+/// Warning toast tone — see [`TOAST_TONE_NEUTRAL`].
+pub(crate) const TOAST_TONE_WARNING: &str = "bg-warning/70 text-primary-foreground";
+/// Destructive toast tone — see [`TOAST_TONE_NEUTRAL`].
+pub(crate) const TOAST_TONE_DESTRUCTIVE: &str = "bg-destructive/70 text-primary-foreground";
+
 /// Fast-tier interactive base = fast motion + focus ring, for buttons/links/nav.
 pub(crate) const INTERACTIVE_BASE: &str = concat!(
     "transition-colors duration-fast ease-base ",

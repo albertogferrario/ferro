@@ -19,7 +19,10 @@ use crate::component::{
 };
 use crate::spec::{Element, Spec};
 
-use super::classes::{DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST};
+use super::classes::{
+    DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST, TOAST_TONE_DESTRUCTIVE,
+    TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
+};
 use super::html_escape;
 
 // ── Prop-decode diagnostic helper ────────────────────────────────────────
@@ -825,17 +828,16 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Toast", e),
     };
-    // Solid, opaque variant backgrounds with contrast text. Matches the JS
-    // showToast() palette so server-rendered and JS-created toasts look
-    // identical.
-    // Translucent variant tint over a backdrop blur — content underneath
-    // shows through but the toast stays clearly readable. 70% alpha gives
-    // visible translucency even on plain backgrounds.
+    // Translucent tone tint over a backdrop blur — content underneath shows
+    // through but the toast stays clearly readable. 70% alpha gives visible
+    // translucency even on plain backgrounds. The tone classes are shared
+    // verbatim with the JS runtime's VARIANT_CLASSES (see render/classes.rs)
+    // so server-rendered and JS-created toasts look identical.
     let tone_classes = match props.tone {
-        Tone::Neutral => "bg-primary/70 text-primary-foreground",
-        Tone::Success => "bg-success/70 text-primary-foreground",
-        Tone::Warning => "bg-warning/70 text-primary-foreground",
-        Tone::Destructive => "bg-destructive/70 text-primary-foreground",
+        Tone::Neutral => TOAST_TONE_NEUTRAL,
+        Tone::Success => TOAST_TONE_SUCCESS,
+        Tone::Warning => TOAST_TONE_WARNING,
+        Tone::Destructive => TOAST_TONE_DESTRUCTIVE,
     };
     // strum guarantees the wire string (see component.rs strum_tests).
     let tone_str = props.tone.as_ref();
