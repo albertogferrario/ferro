@@ -27,6 +27,7 @@ use crate::component::{
 use crate::data::{resolve_path, resolve_path_string};
 use crate::spec::{Element, Spec};
 
+use super::classes::{DISABLED_BASE, FOCUS_RING, MOTION_FAST};
 use super::{html_escape, render_element};
 
 /// Renders a `<form>` element. Child IDs in `el.children` become the form
@@ -177,10 +178,12 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     } else {
         "border-border"
     };
+    // The error ring is semantic (destructive) and intentionally NOT the
+    // `--color-ring` token; only the non-error branch uses the shared ring.
     let focus_ring_class = if has_error {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
     } else {
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        FOCUS_RING
     };
 
     let mut html = String::from("<div class=\"space-y-1\">");
@@ -195,7 +198,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
         InputType::Textarea => {
             let val = resolved_value.as_deref().unwrap_or("");
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
                 border_class,
@@ -261,7 +264,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 InputType::Textarea | InputType::Hidden | InputType::File => unreachable!(),
             };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
@@ -358,10 +361,12 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     } else {
         "border-border"
     };
+    // The error ring is semantic (destructive) and intentionally NOT the
+    // `--color-ring` token; only the non-error branch uses the shared ring.
     let focus_ring_class = if has_error {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
     } else {
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        FOCUS_RING
     };
 
     let mut html = String::from("<div class=\"space-y-1\">");
@@ -373,7 +378,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
     html.push_str("<div class=\"relative\">");
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-base shadow-sm transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
         html_escape(&props.field),
         html_escape(&props.field),
         border_class,
@@ -462,10 +467,12 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
     } else {
         "border-border"
     };
+    // The error ring is semantic (destructive) and intentionally NOT the
+    // `--color-ring` token; only the non-error branch uses the shared ring.
     let focus_ring_class = if has_error {
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
     } else {
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        FOCUS_RING
     };
 
     let value_attr = props.value.as_deref().unwrap_or("1");
@@ -477,7 +484,7 @@ pub(crate) fn render_checkbox(el: &Element, _spec: &Spec, data: &Value, _depth: 
     let mut html = String::from("<div class=\"space-y-1\">");
     html.push_str("<div class=\"flex items-center gap-2\">");
     html.push_str(&format!(
-        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm {} text-primary transition-colors duration-150 motion-reduce:transition-none disabled:opacity-50 disabled:cursor-not-allowed {}\"",
+        "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" class=\"h-4 w-4 rounded-sm {} text-primary {MOTION_FAST} {DISABLED_BASE} {}\"",
         html_escape(&checkbox_id),
         html_escape(&props.field),
         html_escape(value_attr),
@@ -657,10 +664,12 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
     let is_checked = resolve_checked(props.checked, props.data_path.as_deref(), data);
 
     let has_error = props.error.is_some();
+    // Error keeps the semantic destructive ring; the non-error ring sources
+    // the `--color-ring` token (peer-focus /30 opacity — Switch-specific).
     let peer_ring_class = if has_error {
         "peer-focus:ring-2 peer-focus:ring-destructive/30"
     } else {
-        "peer-focus:ring-2 peer-focus:ring-primary/30"
+        "peer-focus:ring-2 peer-focus:ring-ring/30"
     };
 
     let compact_class = if props.compact == Some(true) {

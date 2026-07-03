@@ -24,6 +24,7 @@ use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
 use super::atoms::{badge_inline_html, render_menu_item};
+use super::classes::{INTERACTIVE_BASE, MOTION_FAST};
 use super::html_escape;
 
 /// Renders a simple `Table` element. Reads `TableProps.columns` and
@@ -94,7 +95,7 @@ pub(crate) fn render_table(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                         let handler_str = action.handler.as_str();
                         let label = handler_str.split('.').next_back().unwrap_or(handler_str);
                         html.push_str(&format!(
-                            "<a href=\"{}\" class=\"text-primary hover:text-primary/80\">{}</a>",
+                            "<a href=\"{}\" class=\"text-primary hover:text-primary/80 {INTERACTIVE_BASE}\">{}</a>",
                             html_escape(url),
                             html_escape(label)
                         ));
@@ -221,7 +222,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 ("", String::new())
             };
             html.push_str(&format!(
-                "<tr class=\"even:bg-surface hover:bg-surface/80 transition-colors duration-150 border-t border-border{extra_class}\"{click_attrs}>"
+                "<tr class=\"even:bg-surface hover:bg-surface/80 {MOTION_FAST} border-t border-border{extra_class}\"{click_attrs}>"
             ));
             for col in &props.columns {
                 html.push_str(&format!(
@@ -258,7 +259,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             let (open_tag, close_tag) = if let Some(ref href) = row_href {
                 (
                     format!(
-                        "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer\">",
+                        "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\">",
                         html_escape(href)
                     ),
                     "</a>".to_string(),
@@ -582,7 +583,7 @@ pub(crate) fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]
     let id = html_escape(menu_id);
     let mut html = String::new();
     html.push_str(&format!(
-        "<button type=\"button\" popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-label=\"Azioni\" class=\"cursor-pointer select-none px-2 py-1 text-text-muted hover:text-text\">\u{22EE}</button>"
+        "<button type=\"button\" popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-label=\"Azioni\" class=\"cursor-pointer select-none px-2 py-1 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\">\u{22EE}</button>"
     ));
     html.push_str(&format!(
         "<div popover id=\"{id}\" data-popover-menu class=\"min-w-[10rem] rounded-md border border-border bg-card shadow-md text-left p-0\" role=\"menu\">"
@@ -590,8 +591,10 @@ pub(crate) fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]
     for item in items {
         html.push_str(&render_menu_item(
             item,
-            "block px-3 py-2 text-sm hover:bg-surface",
-            "block px-3 py-2 text-sm hover:bg-surface text-destructive",
+            &format!("block px-3 py-2 text-sm hover:bg-surface {INTERACTIVE_BASE}"),
+            &format!(
+                "block px-3 py-2 text-sm hover:bg-surface text-destructive {INTERACTIVE_BASE}"
+            ),
             " role=\"menuitem\"",
         ));
     }

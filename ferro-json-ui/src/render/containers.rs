@@ -21,7 +21,7 @@ use crate::component::{
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
-use super::classes::INTERACTIVE_BASE;
+use super::classes::{DISABLED_BASE, INTERACTIVE_BASE, MOTION_FAST};
 use super::data::{render_inline_dropdown, resolve_row_key, template_actions};
 use super::{html_escape, render_element};
 
@@ -177,9 +177,9 @@ pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize
         html_escape(&props.id),
         html_escape(&props.title)
     ));
-    html.push_str(
-        "<button type=\"button\" data-modal-close aria-label=\"Chiudi\" class=\"text-text-muted hover:text-text p-2 rounded transition-colors duration-150\">\u{00d7}</button>",
-    );
+    html.push_str(&format!(
+        "<button type=\"button\" data-modal-close aria-label=\"Chiudi\" class=\"text-text-muted hover:text-text p-2 rounded {INTERACTIVE_BASE}\">\u{00d7}</button>"
+    ));
     html.push_str("</div>");
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
@@ -259,7 +259,7 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
             // Client-side tab trigger
             html.push_str(&format!(
                 "<button type=\"button\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" data-tab=\"{}\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer {INTERACTIVE_BASE}\" \
                  aria-selected=\"{}\">{}</button>",
                 html_escape(&tab.value),
                 html_escape(&tab.value),
@@ -273,7 +273,7 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
             // Server-driven tab: link with ?tab= query param
             html.push_str(&format!(
                 "<a href=\"?tab={}\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium {INTERACTIVE_BASE}\" \
                  aria-selected=\"{}\">{}</a>",
                 html_escape(&tab.value),
                 html_escape(&tab.value),
@@ -869,7 +869,7 @@ pub(crate) fn render_collapsible(el: &Element, spec: &Spec, data: &Value, depth:
     html.push('>');
     let aria_expanded = if props.expanded { "true" } else { "false" };
     html.push_str(&format!(
-        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card\" aria-expanded=\"{}\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform\">{CHEVRON_DOWN}</span></summary>",
+        "<summary class=\"flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-text bg-surface rounded-lg hover:bg-card {INTERACTIVE_BASE}\" aria-expanded=\"{}\">{}<span class=\"text-text-muted group-open:rotate-180 transition-transform duration-base ease-base\">{CHEVRON_DOWN}</span></summary>",
         aria_expanded,
         html_escape(&props.title)
     ));
@@ -979,7 +979,7 @@ fn button_variant_classes(variant: &Variant) -> String {
         Variant::Destructive => "bg-destructive text-primary-foreground hover:bg-destructive/90",
     };
     format!(
-        "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 {INTERACTIVE_BASE} {color}"
+        "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 {INTERACTIVE_BASE} {DISABLED_BASE} {color}"
     )
 }
 
@@ -1129,9 +1129,7 @@ pub(crate) fn render_action_group(
         html.push_str(&format!(
             "<button type=\"button\" popovertarget=\"{}\" aria-label=\"{}\" \
              class=\"inline-flex items-center justify-center rounded-md p-1.5 \
-             text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary \
-             focus-visible:ring-offset-2\">{trigger_icon}</button>",
+             text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}\">{trigger_icon}</button>",
             html_escape(&props.menu_id),
             html_escape(overflow_label),
         ));
@@ -1153,8 +1151,10 @@ pub(crate) fn render_action_group(
             };
             html.push_str(&super::atoms::render_menu_item(
                 &dma,
-                "block px-4 py-2 text-sm text-text hover:bg-surface transition-colors duration-150",
-                "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors duration-150",
+                &format!("block px-4 py-2 text-sm text-text hover:bg-surface {INTERACTIVE_BASE}"),
+                &format!(
+                    "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 {INTERACTIVE_BASE}"
+                ),
                 "",
             ));
         }
@@ -1260,8 +1260,11 @@ pub(crate) fn render_segmented_control(
         } else {
             String::new()
         };
+        // Compact segments sit inside an overflow-hidden cluster: an offset
+        // ring would be clipped, so the ring is inset (D-14 compact-control
+        // discretion).
         group.push_str(&format!(
-            "<a href=\"{href}\"{aria_label_attr}{role_attr} class=\"{pad} {state} {border} transition-colors\">{label}</a>",
+            "<a href=\"{href}\"{aria_label_attr}{role_attr} class=\"{pad} {state} {border} {MOTION_FAST} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset\">{label}</a>",
             href = html_escape(&item.href),
             aria_label_attr = aria_label_attr,
             role_attr = role_attr,
@@ -1334,9 +1337,13 @@ pub(crate) fn render_sidebar_layout(
     for item in &items {
         let is_active = item.slug == props.active;
         let cls = if is_active {
-            "block px-3 py-2 text-sm font-semibold rounded-md bg-surface text-text"
+            format!(
+                "block px-3 py-2 text-sm font-semibold rounded-md bg-surface text-text {INTERACTIVE_BASE}"
+            )
         } else {
-            "block px-3 py-2 text-sm font-medium rounded-md text-text-muted hover:bg-surface hover:text-text transition-colors"
+            format!(
+                "block px-3 py-2 text-sm font-medium rounded-md text-text-muted hover:bg-surface hover:text-text {INTERACTIVE_BASE}"
+            )
         };
         let aria = if is_active {
             " aria-current=\"page\""

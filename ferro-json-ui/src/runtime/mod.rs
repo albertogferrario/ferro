@@ -79,6 +79,12 @@ mod tests {
         // Retired toast vocabulary must not resurface: the SSR emitter and
         // this runtime were renamed to `data-toast-tone` in lockstep.
         assert!(!FERRO_RUNTIME_JS.contains("data-toast-variant"));
+        // Retired motion vocabulary: the toast fade uses the duration-base
+        // token and dismissal is transitionend-driven (500ms fallback bound).
+        assert!(!FERRO_RUNTIME_JS.contains("duration-300"));
+        assert!(!FERRO_RUNTIME_JS.contains("duration-150"));
+        assert!(FERRO_RUNTIME_JS.contains("duration-base"));
+        assert!(FERRO_RUNTIME_JS.contains("transitionend"));
     }
 
     #[test]

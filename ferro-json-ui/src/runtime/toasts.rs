@@ -19,7 +19,7 @@ pub(super) const SOURCE: &str = r#"
 
         var el = document.createElement('div');
         el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm ' +
-            colorClass + ' opacity-0 transition-opacity duration-300';
+            colorClass + ' opacity-0 transition-opacity duration-base ease-base';
         el.innerHTML =
             '<span class="flex-1 text-sm">' + escapeHtml(message) + '</span>' +
             '<button class="text-current opacity-70 hover:opacity-100 text-lg leading-none" ' +
@@ -49,12 +49,21 @@ pub(super) const SOURCE: &str = r#"
     }
 
     function dismissToast(el) {
-        el.style.opacity = '0';
-        setTimeout(function() {
+        // Removal keyed on the fade-out transition (duration-base is themable).
+        // Reduced motion collapses durations to 0.01ms — not `none` — so
+        // transitionend still fires; the 500ms timer is a fallback bound in
+        // case the event is missed (e.g. element hidden mid-transition).
+        var removed = false;
+        function removeNode() {
+            if (removed) return;
+            removed = true;
             if (el.parentNode) {
                 el.parentNode.removeChild(el);
             }
-        }, 300);
+        }
+        el.addEventListener('transitionend', removeNode);
+        setTimeout(removeNode, 500);
+        el.style.opacity = '0';
     }
 
     function escapeHtml(str) {

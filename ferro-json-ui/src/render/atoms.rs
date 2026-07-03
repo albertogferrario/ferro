@@ -19,7 +19,7 @@ use crate::component::{
 };
 use crate::spec::{Element, Spec};
 
-use super::classes::INTERACTIVE_BASE;
+use super::classes::{DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST};
 use super::html_escape;
 
 // ── Prop-decode diagnostic helper ────────────────────────────────────────
@@ -135,7 +135,7 @@ pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
 /// [`render_button`] when the element carries a GET action.
 fn render_button_inner(props: &ButtonProps) -> String {
     let base = format!(
-        "inline-flex items-center justify-center rounded-md font-medium {INTERACTIVE_BASE}"
+        "inline-flex items-center justify-center rounded-md font-medium {INTERACTIVE_BASE} {DISABLED_BASE}"
     );
 
     let variant_classes = match props.variant {
@@ -152,13 +152,16 @@ fn render_button_inner(props: &ButtonProps) -> String {
         Size::Lg => "px-6 py-3 text-base",
     };
 
+    // Disabled contract (D-16): the native `disabled` attr drives DISABLED_BASE;
+    // the aria-disabled + literal pointer-events-none/opacity-50 pair keeps the
+    // treatment intact where the markup is not treated as a native control.
     let disabled_classes = if props.disabled == Some(true) {
-        " opacity-50 cursor-not-allowed"
+        " pointer-events-none opacity-50"
     } else {
         ""
     };
     let disabled_attr = if props.disabled == Some(true) {
-        " disabled"
+        " disabled aria-disabled=\"true\""
     } else {
         ""
     };
@@ -209,6 +212,12 @@ pub(crate) fn render_button(el: &Element, _spec: &Spec, _data: &Value, _depth: u
     // diagnostic HTML comment.
     if let Some(action) = &el.action {
         if matches!(action.method, HttpMethod::Get) {
+            // A disabled Button is never anchor-wrapped: `disabled:` variants do
+            // not fire on `<a>`, so the wrap would still navigate (D-16). The
+            // inner button carries aria-disabled + pointer-events-none opacity-50.
+            if props.disabled == Some(true) {
+                return render_button_inner(&props);
+            }
             // Force the inner button to `type="button"` for the anchor-wrapped
             // path. Without it, a `<button>` nested inside any ambient `<form>`
             // (e.g. an edit-form cancel button) defaults to `type="submit"`
@@ -489,7 +498,7 @@ pub(crate) fn render_breadcrumb(
             ));
         } else if let Some(ref url) = item.url {
             html.push_str(&format!(
-                "<a href=\"{}\" class=\"hover:text-text transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">{}</a>",
+                "<a href=\"{}\" class=\"hover:text-text {INTERACTIVE_BASE}\">{}</a>",
                 html_escape(url),
                 html_escape(&item.label)
             ));
@@ -538,7 +547,7 @@ pub(crate) fn render_pagination(
     if current > 1 {
         let prev = current - 1;
         html.push_str(&format!(
-            "<a href=\"{base_url_escaped}page={prev}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">&laquo;</a>"
+            "<a href=\"{base_url_escaped}page={prev}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">&laquo;</a>"
         ));
     }
 
@@ -555,7 +564,7 @@ pub(crate) fn render_pagination(
             ));
         } else {
             html.push_str(&format!(
-                "<a href=\"{base_url_escaped}page={page}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">{page}</a>"
+                "<a href=\"{base_url_escaped}page={page}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">{page}</a>"
             ));
         }
         prev_page = page;
@@ -565,7 +574,7 @@ pub(crate) fn render_pagination(
     if current < total_pages {
         let next = current + 1;
         html.push_str(&format!(
-            "<a href=\"{base_url_escaped}page={next}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\">&raquo;</a>"
+            "<a href=\"{base_url_escaped}page={next}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">&raquo;</a>"
         ));
     }
 
@@ -674,7 +683,7 @@ pub(crate) fn render_empty_state(
         html.push_str(&format!(
             "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md \
              border border-border bg-card text-text px-4 py-2 text-sm font-medium \
-             hover:bg-surface transition-colors\">{}</a>",
+             hover:bg-surface {INTERACTIVE_BASE}\">{}</a>",
             html_escape(url),
             html_escape(label)
         ));
@@ -697,13 +706,21 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth:
         .as_deref()
         .and_then(|p| crate::data::resolve_path_string(data, p))
         .unwrap_or_else(|| props.value.clone());
+    // Tone accents the value + icon (OQ-2); `neutral` reproduces the untinted
+    // default look exactly.
+    let (value_class, icon_class) = match props.tone {
+        Tone::Neutral => ("text-text", ""),
+        Tone::Success => ("text-success", " text-success"),
+        Tone::Warning => ("text-warning", " text-warning"),
+        Tone::Destructive => ("text-destructive", " text-destructive"),
+    };
     let mut html =
         String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
     if let Some(ref icon) = props.icon {
         // Icon string is emitted raw — trusted SVG supplied by server-side
         // authoring; not user input.
         html.push_str(&format!(
-            "<span class=\"inline-block mb-2 w-6 h-6\">{icon}</span>"
+            "<span class=\"inline-block mb-2 w-6 h-6{icon_class}\">{icon}</span>"
         ));
     }
     html.push_str(&format!(
@@ -712,13 +729,13 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth:
     ));
     if let Some(ref sse) = props.sse_target {
         html.push_str(&format!(
-            "<p class=\"text-2xl font-bold text-text\" data-sse-target=\"{}\" data-live-value>{}</p>",
+            "<p class=\"text-2xl font-bold {value_class}\" data-sse-target=\"{}\" data-live-value>{}</p>",
             html_escape(sse),
             html_escape(&display_value)
         ));
     } else {
         html.push_str(&format!(
-            "<p class=\"text-2xl font-bold text-text\">{}</p>",
+            "<p class=\"text-2xl font-bold {value_class}\">{}</p>",
             html_escape(&display_value)
         ));
     }
@@ -749,7 +766,7 @@ pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth
     if props.dismissible {
         let dismiss_label = props.dismiss_label.as_deref().unwrap_or("Dismiss");
         html.push_str(&format!(
-            "<button type=\"button\" class=\"text-xs font-medium text-text hover:text-primary\" data-dismissible>{}</button>",
+            "<button type=\"button\" class=\"text-xs font-medium text-text hover:text-primary {INTERACTIVE_BASE}\" data-dismissible>{}</button>",
             html_escape(dismiss_label)
         ));
     }
@@ -826,7 +843,7 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     // No close button — toast auto-dismisses via the runtime's
     // setupServerToasts() handler reading data-toast-timeout.
     format!(
-        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm transition-opacity duration-300 backdrop-blur-md {tone_classes}\" \
+        "<div class=\"fixed top-4 right-4 z-50 rounded-lg px-4 py-3 shadow-lg max-w-sm {MOTION_BASE} backdrop-blur-md {tone_classes}\" \
          data-toast-tone=\"{tone_str}\" data-toast-timeout=\"{timeout}\">\
          <p class=\"text-sm\">{}</p>\
          </div>",
@@ -849,7 +866,7 @@ pub(crate) fn render_notification_dropdown(
     let unread_count = props.notifications.iter().filter(|n| !n.read).count();
     let mut html = String::from("<div class=\"relative\" data-notification-dropdown>");
     html.push_str(&format!(
-        "<button type=\"button\" class=\"relative p-2 text-text-muted hover:text-text\" data-notification-count=\"{unread_count}\">"
+        "<button type=\"button\" class=\"relative p-2 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\" data-notification-count=\"{unread_count}\">"
     ));
     html.push_str(BELL_SVG);
     if unread_count > 0 {
@@ -880,7 +897,7 @@ pub(crate) fn render_notification_dropdown(
             html.push_str("<div class=\"flex-1 min-w-0\">");
             if let Some(ref url) = item.action_url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text hover:underline\">{}</a>",
+                    "<a href=\"{}\" class=\"text-sm text-text hover:underline {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.text)
                 ));
@@ -965,17 +982,21 @@ fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let (tag, classes) = if disabled {
         (
             "span",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 cursor-not-allowed select-none",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 pointer-events-none select-none".to_string(),
         )
     } else if item.active {
         (
             "a",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            format!(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary {INTERACTIVE_BASE}"
+            ),
         )
     } else {
         (
             "a",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            format!(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}"
+            ),
         )
     };
     let mut html = if disabled {
@@ -1045,7 +1066,7 @@ pub(crate) fn render_header(el: &Element, _spec: &Spec, _data: &Value, _depth: u
     }
     if let Some(ref logout) = props.logout_url {
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text\">Logout</a>",
+            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text {INTERACTIVE_BASE}\">Logout</a>",
             html_escape(logout)
         ));
     }
@@ -1165,9 +1186,9 @@ pub(crate) fn render_calendar_cell(
         " opacity-40"
     };
     let hover = if props.is_current_month {
-        " hover:bg-surface/60 transition-colors cursor-pointer"
+        format!(" hover:bg-surface/60 {MOTION_FAST} cursor-pointer")
     } else {
-        " cursor-pointer"
+        " cursor-pointer".to_string()
     };
     // A closed (unavailable) day is marked with a thin neutral diagonal line;
     // `relative` anchors the absolutely-positioned overlay <svg>.
@@ -1243,7 +1264,9 @@ pub(crate) fn render_calendar_cell(
                     ),
                 ),
             };
-            return format!("{diagnostic}<a href=\"{href}\" class=\"block\">{html}</a>");
+            return format!(
+                "{diagnostic}<a href=\"{href}\" class=\"block {FOCUS_RING}\">{html}</a>"
+            );
         }
     }
 
@@ -1274,7 +1297,7 @@ pub(crate) fn render_action_card(
     let (open_tag, close_tag) = if let Some(ref href) = props.href {
         (
             format!(
-                "<a href=\"{}\" aria-label=\"{}\" class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 hover:bg-surface transition-colors duration-150 no-underline\">",
+                "<a href=\"{}\" aria-label=\"{}\" class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 hover:bg-surface {INTERACTIVE_BASE} no-underline\">",
                 html_escape(href),
                 html_escape(&props.title),
                 border_class,
@@ -1284,7 +1307,7 @@ pub(crate) fn render_action_card(
     } else {
         (
             format!(
-                "<div class=\"rounded-lg border-l-4 {border_class} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface transition-colors duration-150\">"
+                "<div class=\"rounded-lg border-l-4 {border_class} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface {INTERACTIVE_BASE}\">"
             ),
             "</div>".to_string(),
         )
@@ -1335,11 +1358,11 @@ pub(crate) fn render_product_tile(
          </div>\
          <div class=\"flex items-center justify-between gap-2\">\
          <button type=\"button\" data-qty-dec=\"{field}\" \
-         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Diminuisci quantit\u{00E0} {name}\">\u{2212}</button>\
          <span data-qty-display=\"{field}\" class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{qty}</span>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
-         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2\" \
+         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Aumenta quantit\u{00E0} {name}\">+</button>\
          </div>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\

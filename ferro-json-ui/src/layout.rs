@@ -242,13 +242,13 @@ fn layout_header_html(props: &HeaderProps) -> String {
          px-4 py-3 bg-background border-b border-border md:pl-72\">",
     );
     // Mobile hamburger button — visible only on small screens.
-    html.push_str(
+    html.push_str(&format!(
         "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \
-         hover:text-text hover:bg-surface\" aria-label=\"Toggle sidebar\">\
+         hover:text-text hover:bg-surface {INTERACTIVE_BASE}\" aria-label=\"Toggle sidebar\">\
          <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
-         d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>",
-    );
+         d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>"
+    ));
     // Business name — absolutely centered relative to the header box,
     // independent of hamburger/notification/user elements.
     html.push_str(&format!(
@@ -261,7 +261,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
     if let Some(count) = props.notification_count {
         if count > 0 {
             html.push_str(&format!(
-                "<button data-notification-toggle class=\"relative p-2 text-text-muted hover:text-text\">\
+                "<button data-notification-toggle class=\"relative p-2 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\">\
                  <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
                  <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
                  d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg>\
@@ -269,12 +269,12 @@ fn layout_header_html(props: &HeaderProps) -> String {
                  text-xs font-bold text-primary-foreground bg-destructive rounded-full\">{count}</span></button>",
             ));
         } else {
-            html.push_str(
-                "<button data-notification-toggle class=\"p-2 text-text-muted hover:text-text\">\
+            html.push_str(&format!(
+                "<button data-notification-toggle class=\"p-2 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\">\
                  <svg class=\"h-5 w-5\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
                  <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
-                 d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg></button>",
-            );
+                 d=\"M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9\"/></svg></button>"
+            ));
         }
     }
     html.push_str(
@@ -306,7 +306,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
     }
     if let Some(ref logout) = props.logout_url {
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text\">Logout</a>",
+            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text {INTERACTIVE_BASE}\">Logout</a>",
             html_escape(logout)
         ));
     }
@@ -464,7 +464,7 @@ pub fn navigation(items: &[NavItem]) -> String {
             "text-text-muted hover:text-text"
         };
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"{}\">{}</a>",
+            "<a href=\"{}\" class=\"{} {INTERACTIVE_BASE}\">{}</a>",
             html_escape(&item.url),
             class,
             html_escape(&item.label),
@@ -497,7 +497,7 @@ pub fn sidebar(sections: &[SidebarSection]) -> String {
                 "text-text-muted hover:text-text"
             };
             html.push_str(&format!(
-                "<li><a href=\"{}\" class=\"block px-2 py-1 text-sm {}\">{}</a></li>",
+                "<li><a href=\"{}\" class=\"block px-2 py-1 text-sm rounded-md {} {INTERACTIVE_BASE}\">{}</a></li>",
                 html_escape(&item.url),
                 class,
                 html_escape(&item.label),

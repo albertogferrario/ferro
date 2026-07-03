@@ -7,20 +7,16 @@
 //! of these fragments — never build class names dynamically.
 
 /// focus-visible ring from the `--color-ring` token (D-14). ring-2 + offset-2 baseline.
-#[allow(dead_code)] // consumed by the per-file interactive pass
 pub(crate) const FOCUS_RING: &str =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 /// Fast tier (D-03): hover, toggles, controls, nav — high-frequency interactions.
-#[allow(dead_code)] // consumed by the per-file interactive pass
 pub(crate) const MOTION_FAST: &str = "transition-colors duration-fast ease-base";
 
 /// Base tier (D-03): dropdowns, modals, toasts.
-#[allow(dead_code)] // consumed by the per-file interactive pass
 pub(crate) const MOTION_BASE: &str = "transition-opacity duration-base ease-base";
 
 /// Uniform disabled treatment for native controls (D-16).
-#[allow(dead_code)] // consumed by the per-file interactive pass
 pub(crate) const DISABLED_BASE: &str = "disabled:opacity-50 disabled:pointer-events-none";
 
 /// Fast-tier interactive base = fast motion + focus ring, for buttons/links/nav.
