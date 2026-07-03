@@ -3779,8 +3779,8 @@ unchanged; refresh the default theme to the documented design language.
      accent) and `docs/src/features/themes.md` documents v2 plus the root-font-size
      type-scaling recipe.
 
-**Plans:** 3 plans (sequential waves — one cargo run at a time per the project serialization convention)
-- [ ] 250-01-PLAN.md — Token constants v2 + Tailwind utility bridge + ferro-base.css regen [DS-01]
+**Plans:** 1/3 plans executed
+- [x] 250-01-PLAN.md — Token constants v2 + Tailwind utility bridge + ferro-base.css regen [DS-01]
 - [ ] 250-02-PLAN.md — default.css design-language refresh + make:theme scaffold + drift guards [DS-01, DS-02]
 - [ ] 250-03-PLAN.md — themes.md v2 docs + type-scaling recipe + visual sign-off [DS-02]
 

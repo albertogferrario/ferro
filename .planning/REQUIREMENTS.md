@@ -157,7 +157,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 
 ### Token Vocabulary v2
 
-- [ ] **DS-01**: The fixed token vocabulary grows from 23 to 30 slots — density
+- [x] **DS-01**: The fixed token vocabulary grows from 23 to 30 slots — density
   (`--spacing`), motion (`--motion-duration-fast/base/slow`, `--motion-ease`), focus ring
   (`--color-ring`), display font (`--font-display`) — every new slot with a default in the
   base CSS and `default.css` (light + dark), so **every valid v1 theme remains a valid v2

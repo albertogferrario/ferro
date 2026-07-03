@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
 status: executing
-stopped_at: Phase 250 context gathered
-last_updated: "2026-07-03T02:02:48.706Z"
-last_activity: 2026-07-03 -- Phase 250 planning complete
+stopped_at: Completed 250-01-PLAN.md (token vocabulary v2 + CSS bridge)
+last_updated: "2026-07-03T02:13:36.953Z"
+last_activity: 2026-07-03
 progress:
   total_phases: 126
   completed_phases: 106
   total_plans: 437
-  completed_plans: 433
+  completed_plans: 434
   percent: 99
 ---
 
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 243.1 — projection-computed-derived-fields
+**Current focus:** Phase 250 — Token vocabulary v2 + default theme refresh
 
 ## Current Position
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 243.1 (projection-computed-derived-fields) — ✅ COMPLETE (verified 4/4, code review resolved)
-Plan: 1 of 1 complete
+Phase: 250 (Token vocabulary v2 + default theme refresh) — EXECUTING
+Plan: 2 of 3
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
 Status: Ready to execute
 
-Last activity: 2026-07-03 -- Phase 250 planning complete
+Last activity: 2026-07-03
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -199,6 +199,7 @@ Progress: [██████████] 100%
 | Phase 243-app-integration-e2e-envelope-guard-catalog-docs P02 | 383 | 2 tasks | 4 files |
 | Phase 243-app-integration-e2e-envelope-guard-catalog-docs P03 | 12 | 3 tasks | 3 files |
 | Phase 243.1 P243.1-01 | 31610271 | 9 tasks | 13 files |
+| Phase 250-token-vocabulary-v2-default-theme-refresh P01 | 500 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -255,7 +256,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-03T01:24:41.985Z
-Stopped at: Phase 250 context gathered
-Resume file: .planning/phases/250-token-vocabulary-v2-default-theme-refresh/250-CONTEXT.md
+Last session: 2026-07-03T02:13:36.944Z
+Stopped at: Completed 250-01-PLAN.md (token vocabulary v2 + CSS bridge)
+Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
