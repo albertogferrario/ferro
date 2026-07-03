@@ -22,6 +22,7 @@ use crate::plugin::{collect_plugin_assets, with_plugin, Asset};
 use crate::spec::{Spec, MAX_NESTING_DEPTH};
 
 pub(crate) mod atoms;
+pub(crate) mod classes;
 pub(crate) mod containers;
 pub(crate) mod data;
 pub(crate) mod form;

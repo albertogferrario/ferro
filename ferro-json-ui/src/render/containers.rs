@@ -21,6 +21,7 @@ use crate::component::{
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
+use super::classes::INTERACTIVE_BASE;
 use super::data::{render_inline_dropdown, resolve_row_key, template_actions};
 use super::{html_escape, render_element};
 
@@ -965,35 +966,21 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
 }
 
 /// Returns the Tailwind button classes for a given `Variant` at default size.
-/// Matches the `render_button_inner` variant table in `atoms.rs`.
-fn button_variant_classes(variant: &Variant) -> &'static str {
-    match variant {
-        Variant::Primary => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 bg-primary text-primary-foreground hover:bg-primary/90 \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-        Variant::Secondary => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 bg-secondary text-secondary-foreground hover:bg-secondary/90 \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-        Variant::Outline => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 border border-border bg-background text-text hover:bg-surface \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-        Variant::Ghost => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 text-text hover:bg-surface \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-        Variant::Destructive => {
-            "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 \
-             transition-colors duration-150 bg-destructive text-primary-foreground hover:bg-destructive/90 \
-             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        }
-    }
+/// The structural base + motion + focus ring come from
+/// [`super::classes::INTERACTIVE_BASE`] (single source of truth, shared with
+/// `render_button_inner` in `atoms.rs`); only the per-variant color fragment
+/// lives in the match arms.
+fn button_variant_classes(variant: &Variant) -> String {
+    let color = match variant {
+        Variant::Primary => "bg-primary text-primary-foreground hover:bg-primary/90",
+        Variant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/90",
+        Variant::Outline => "border border-border bg-background text-text hover:bg-surface",
+        Variant::Ghost => "text-text hover:bg-surface",
+        Variant::Destructive => "bg-destructive text-primary-foreground hover:bg-destructive/90",
+    };
+    format!(
+        "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 {INTERACTIVE_BASE} {color}"
+    )
 }
 
 /// Fail-closed visibility gate for `ActionItem.visible_if`.

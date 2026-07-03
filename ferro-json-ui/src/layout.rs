@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
 use crate::component::{HeaderProps, SidebarGroup, SidebarNavItem, SidebarProps};
+use crate::render::classes::INTERACTIVE_BASE;
 use crate::render::html_escape;
 
 // ── Layout context ──────────────────────────────────────────────────────
@@ -146,17 +147,21 @@ fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let (tag, classes) = if disabled {
         (
             "span",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 cursor-not-allowed select-none",
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 pointer-events-none select-none".to_string(),
         )
     } else if item.active {
         (
             "a",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            format!(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary {INTERACTIVE_BASE}"
+            ),
         )
     } else {
         (
             "a",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            format!(
+                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}"
+            ),
         )
     };
     let mut html = if disabled {
@@ -1287,12 +1292,12 @@ mod tests {
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(
-            html.contains("focus-visible:ring-primary"),
-            "layout sidebar nav <a> item should have focus-visible:ring-primary (INT-07)"
+            html.contains("focus-visible:ring-ring"),
+            "layout sidebar nav <a> item should have focus-visible:ring-ring (INT-07)"
         );
         assert!(
-            html.contains("duration-150"),
-            "layout sidebar nav <a> item should have duration-150 (INT-07)"
+            html.contains("duration-fast"),
+            "layout sidebar nav <a> item should have duration-fast (INT-07)"
         );
     }
 }

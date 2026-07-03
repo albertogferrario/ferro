@@ -19,6 +19,7 @@ use crate::component::{
 };
 use crate::spec::{Element, Spec};
 
+use super::classes::INTERACTIVE_BASE;
 use super::html_escape;
 
 // ── Prop-decode diagnostic helper ────────────────────────────────────────
@@ -133,7 +134,9 @@ pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
 /// styled button without any wrapping anchor — the anchor wrap is applied by
 /// [`render_button`] when the element carries a GET action.
 fn render_button_inner(props: &ButtonProps) -> String {
-    let base = "inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
+    let base = format!(
+        "inline-flex items-center justify-center rounded-md font-medium {INTERACTIVE_BASE}"
+    );
 
     let variant_classes = match props.variant {
         Variant::Primary => "bg-primary text-primary-foreground hover:bg-primary/90",
