@@ -300,4 +300,147 @@ mod tests {
             "DataTable with EmptyState sibling should be conforming, got: {findings:#?}"
         );
     }
+
+    // ── row-actions-grouped ──────────────────────────────────────────────────
+
+    #[test]
+    fn row_actions_grouped_violating_two_inline_buttons_on_browse() {
+        // Browse intent, a Card with 2 Button children → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "card",
+                "elements": {
+                    "card": {"type": "Card", "children": ["btn1", "btn2"]},
+                    "btn1": {"type": "Button", "props": {"label": "Edit"}},
+                    "btn2": {"type": "Button", "props": {"label": "Delete"}}
+                },
+                "design": {"intent": "browse"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "row-actions-grouped");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 row-actions-grouped finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn row_actions_grouped_conforming_single_button_child() {
+        // Browse intent, a Card with 1 Button child → 0 findings (threshold is ≥2).
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "card",
+                "elements": {
+                    "card": {"type": "Card", "children": ["btn1"]},
+                    "btn1": {"type": "Button", "props": {"label": "Edit"}}
+                },
+                "design": {"intent": "browse"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "row-actions-grouped");
+        assert!(
+            findings.is_empty(),
+            "single Button child should be conforming, got: {findings:#?}"
+        );
+    }
+
+    // ── breadcrumb-on-subpages ───────────────────────────────────────────────
+
+    #[test]
+    fn breadcrumb_on_subpages_violating_dashboard_collect_no_breadcrumb() {
+        // Dashboard layout, collect intent, no Breadcrumb → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "ph",
+                "layout": "dashboard",
+                "elements": {
+                    "ph": {"type": "PageHeader", "props": {"title": "New Item"}},
+                    "f": {"type": "Form"}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "breadcrumb-on-subpages");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 breadcrumb-on-subpages finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn breadcrumb_on_subpages_conforming_breadcrumb_element_present() {
+        // Dashboard layout, collect intent, Breadcrumb element present → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "ph",
+                "layout": "dashboard",
+                "elements": {
+                    "ph": {"type": "PageHeader", "props": {"title": "New Item"}},
+                    "bc": {"type": "Breadcrumb"},
+                    "f": {"type": "Form"}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "breadcrumb-on-subpages");
+        assert!(
+            findings.is_empty(),
+            "Breadcrumb element present should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn breadcrumb_on_subpages_auth_layout_exempt() {
+        // Auth layout → rule never fires (regression guard for login pages).
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "layout": "auth",
+                "elements": {"r": {"type": "Form"}},
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "breadcrumb-on-subpages");
+        assert!(
+            findings.is_empty(),
+            "auth layout must be exempt from breadcrumb-on-subpages, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn breadcrumb_on_subpages_conforming_page_header_breadcrumb_prop() {
+        // Dashboard layout, collect intent, PageHeader with non-empty breadcrumb array → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "ph",
+                "layout": "dashboard",
+                "elements": {
+                    "ph": {"type": "PageHeader", "props": {"title": "New Item", "breadcrumb": [{"label": "Items", "href": "/items"}]}},
+                    "f": {"type": "Form"}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "breadcrumb-on-subpages");
+        assert!(
+            findings.is_empty(),
+            "PageHeader with breadcrumb prop should be conforming, got: {findings:#?}"
+        );
+    }
 }
