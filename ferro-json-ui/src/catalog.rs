@@ -885,7 +885,8 @@ fn render_component_section(out: &mut String, spec: &ComponentSpec) {
 ///
 /// Walks `schema.properties` in serde-emit order. For each field:
 /// - `Option<T>` schemas (schemars emits `anyOf: [{...}, {type: null}]`) render as `Option<T>`.
-/// - Enum fields with ≤ 8 `enum` entries render inline as `name (a|b|c)`.
+/// - Enum fields with ≤ 8 `enum` entries render inline as `name (a|b|c)` —
+///   including fields referencing a local `$defs` enum (`$ref` resolved).
 /// - Enum fields with > 8 entries render as `name (one of N — see schema)`.
 /// - Plain scalar fields render as `name (String)` / `(i64)` / `(bool)`.
 /// - Array types render as `name (Vec<T>)`.
@@ -898,6 +899,10 @@ fn render_props_line(schema: &Value) -> String {
     let Some(props) = obj.get("properties").and_then(|v| v.as_object()) else {
         return String::new();
     };
+    // Component-local $defs (per_component_schemas keep them) — lets enum-typed
+    // fields ($ref → $defs entry) render their values inline instead of
+    // `<see schema>`.
+    let defs = obj.get("$defs").and_then(|v| v.as_object());
     let required: std::collections::HashSet<&str> = obj
         .get("required")
         .and_then(|v| v.as_array())
@@ -911,15 +916,36 @@ fn render_props_line(schema: &Value) -> String {
     let parts: Vec<String> = props
         .iter()
         .map(|(name, field_schema)| {
-            let ty = render_field_type(field_schema, required.contains(name.as_str()));
+            let ty = render_field_type(field_schema, required.contains(name.as_str()), defs);
             format!("{name} ({ty})")
         })
         .collect();
     parts.join(", ")
 }
 
+/// Resolve a `#/$defs/<Name>` reference against a component schema's local
+/// `$defs`, returning the enum value names ONLY when the target is a plain
+/// string enum (`{"enum": [...]}`). Non-enum refs return `None` so
+/// [`render_field_type`]'s `<see schema>` fallback stays unchanged for them.
+fn resolve_local_enum_ref<'a>(
+    schema: &'a Value,
+    defs: Option<&'a serde_json::Map<String, Value>>,
+) -> Option<Vec<&'a str>> {
+    let name = schema.get("$ref")?.as_str()?.strip_prefix("#/$defs/")?;
+    let target = defs?.get(name)?;
+    let arr = target.get("enum")?.as_array()?;
+    Some(arr.iter().filter_map(|v| v.as_str()).collect())
+}
+
 /// Render a single field's type string from its JSON Schema.
-fn render_field_type(schema: &Value, is_required: bool) -> String {
+///
+/// `defs` is the component schema's local `$defs` map (when present) so
+/// enum-typed fields referenced via `$ref` render their values inline.
+fn render_field_type(
+    schema: &Value,
+    is_required: bool,
+    defs: Option<&serde_json::Map<String, Value>>,
+) -> String {
     // 1) Detect enum inline: {type: "string", enum: [...]} or {enum: [...]}
     if let Some(variants) = schema.get("enum").and_then(|v| v.as_array()) {
         let names: Vec<&str> = variants.iter().filter_map(|v| v.as_str()).collect();
@@ -937,7 +963,7 @@ fn render_field_type(schema: &Value, is_required: bool) -> String {
                 .filter(|v| v.get("type").and_then(|t| t.as_str()) != Some("null"))
                 .collect();
             if has_null && non_null.len() == 1 {
-                let inner = render_field_type(non_null[0], true);
+                let inner = render_field_type(non_null[0], true, defs);
                 return format!("Option<{inner}>");
             }
         }
@@ -951,20 +977,29 @@ fn render_field_type(schema: &Value, is_required: bool) -> String {
             .collect();
         let has_null = types.iter().any(|v| v.as_str() == Some("null"));
         if has_null && non_null.len() == 1 {
-            return format!("Option<{}>", rust_for_json_type(non_null[0], schema));
+            return format!("Option<{}>", rust_for_json_type(non_null[0], schema, defs));
         }
     }
     // 4) Plain type
     if let Some(t) = schema.get("type").and_then(|v| v.as_str()) {
-        let inner = rust_for_json_type(t, schema);
+        let inner = rust_for_json_type(t, schema, defs);
         return wrap_optional(inner, is_required);
     }
-    // 5) Fallback: $ref or complex
+    // 5) $ref to a local plain string enum → inline its values (the canonical
+    //    Variant/Tone/Size land here; non-enum refs keep the fallback below).
+    if let Some(names) = resolve_local_enum_ref(schema, defs) {
+        return wrap_optional(render_enum_inline(&names), is_required);
+    }
+    // 6) Fallback: $ref or complex
     wrap_optional("<see schema>".to_string(), is_required)
 }
 
 /// Map a JSON Schema `type` + optional `items` to a Rust-ish type name.
-fn rust_for_json_type(t: &str, schema: &Value) -> String {
+fn rust_for_json_type(
+    t: &str,
+    schema: &Value,
+    defs: Option<&serde_json::Map<String, Value>>,
+) -> String {
     match t {
         "string" => "String".to_string(),
         "integer" => "i64".to_string(),
@@ -972,7 +1007,7 @@ fn rust_for_json_type(t: &str, schema: &Value) -> String {
         "boolean" => "bool".to_string(),
         "array" => {
             if let Some(items) = schema.get("items") {
-                let inner = render_field_type(items, true);
+                let inner = render_field_type(items, true, defs);
                 format!("Vec<{inner}>")
             } else {
                 "Vec<Value>".to_string()
@@ -1099,6 +1134,199 @@ mod tests {
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
         // → 47 (DropdownMenu replaced by ActionGroup).
         assert_eq!(crate::render::BUILTIN_TYPES.len(), 47);
+    }
+
+    // ── D-19 canonical enum-set drift guard ─────────────────────────────────
+
+    /// SINGLE source of truth for the canonical `variant` / `tone` / `size`
+    /// value sets, in serde declaration order of
+    /// `component::{Variant, Tone, Size}`. When a canonical enum changes,
+    /// update the matching array HERE and nowhere else — the drift guard
+    /// asserts every schema property with one of these names relationally.
+    const CANONICAL_VARIANT: &[&str] = &["primary", "secondary", "outline", "ghost", "destructive"];
+    const CANONICAL_TONE: &[&str] = &["neutral", "success", "warning", "destructive"];
+    const CANONICAL_SIZE: &[&str] = &["sm", "md", "lg"];
+
+    /// Map a schema property name to the canonical value set it must carry.
+    fn canonical_set_for(prop: &str) -> Option<&'static [&'static str]> {
+        match prop {
+            "variant" => Some(CANONICAL_VARIANT),
+            "tone" => Some(CANONICAL_TONE),
+            "size" => Some(CANONICAL_SIZE),
+            _ => None,
+        }
+    }
+
+    /// Extract an enum schema's value set, handling every shape schemars 1.x
+    /// emits: a `#/$defs/...` `$ref` (followed one hop), a plain `enum` array,
+    /// an `anyOf`/`oneOf` with a null branch (`Option<Enum>` — unwrapped), and
+    /// an `anyOf` of `{"const": ...}` entries (per-variant doc comments).
+    /// Returns `None` when the schema is not enum-shaped.
+    fn extract_enum_values<'a>(
+        schema: &'a Value,
+        defs: &'a serde_json::Map<String, Value>,
+    ) -> Option<Vec<&'a str>> {
+        if let Some(name) = schema
+            .get("$ref")
+            .and_then(|v| v.as_str())
+            .and_then(|r| r.strip_prefix("#/$defs/"))
+        {
+            return extract_enum_values(defs.get(name)?, defs);
+        }
+        if let Some(arr) = schema.get("enum").and_then(|v| v.as_array()) {
+            return Some(arr.iter().filter_map(|v| v.as_str()).collect());
+        }
+        for key in ["anyOf", "oneOf"] {
+            let Some(arr) = schema.get(key).and_then(|v| v.as_array()) else {
+                continue;
+            };
+            let non_null: Vec<&Value> = arr
+                .iter()
+                .filter(|v| v.get("type").and_then(|t| t.as_str()) != Some("null"))
+                .collect();
+            // Option<Enum>: single non-null branch beside a null branch.
+            if non_null.len() == 1 && non_null.len() < arr.len() {
+                return extract_enum_values(non_null[0], defs);
+            }
+            // Per-variant-doc shape: every branch is {"const": "x", ...}.
+            let consts: Vec<&str> = non_null
+                .iter()
+                .filter_map(|v| v.get("const").and_then(|c| c.as_str()))
+                .collect();
+            if !consts.is_empty() && consts.len() == non_null.len() {
+                return Some(consts);
+            }
+        }
+        None
+    }
+
+    /// Recursively walk a schema subtree, resolving `$ref` against the root
+    /// `$defs` map (the visited set terminates cycles), and assert that every
+    /// object property named `variant` / `tone` / `size` carries exactly the
+    /// canonical value set. Increments `checked` per asserted property so the
+    /// caller can prove the traversal is not vacuous.
+    fn walk_canonical_enum_props(
+        node: &Value,
+        defs: &serde_json::Map<String, Value>,
+        visited: &mut std::collections::HashSet<String>,
+        checked: &mut usize,
+    ) {
+        match node {
+            Value::Object(obj) => {
+                if let Some(name) = obj
+                    .get("$ref")
+                    .and_then(|v| v.as_str())
+                    .and_then(|r| r.strip_prefix("#/$defs/"))
+                {
+                    if visited.insert(name.to_string()) {
+                        if let Some(target) = defs.get(name) {
+                            walk_canonical_enum_props(target, defs, visited, checked);
+                        }
+                    }
+                }
+                if let Some(props) = obj.get("properties").and_then(|v| v.as_object()) {
+                    for (prop_name, prop_schema) in props {
+                        let Some(want) = canonical_set_for(prop_name) else {
+                            continue;
+                        };
+                        let got = extract_enum_values(prop_schema, defs).unwrap_or_else(|| {
+                            panic!(
+                                "schema property '{prop_name}' must be enum-typed with the \
+                                 canonical vocabulary, got non-enum schema: {prop_schema}"
+                            )
+                        });
+                        assert_eq!(
+                            got.as_slice(),
+                            want,
+                            "schema property '{prop_name}' carries a non-canonical value set \
+                             {got:?} (canonical: {want:?})"
+                        );
+                        *checked += 1;
+                    }
+                }
+                for child in obj.values() {
+                    walk_canonical_enum_props(child, defs, visited, checked);
+                }
+            }
+            Value::Array(arr) => {
+                for item in arr {
+                    walk_canonical_enum_props(item, defs, visited, checked);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn variant_tone_size_enum_sets_drift_guard() {
+        // D-19: canonical-vocabulary divergence must be a build failure. The
+        // canonical value sets are pinned ONCE in CANONICAL_VARIANT / _TONE /
+        // _SIZE above; this guard (1) asserts the three canonical $defs
+        // directly, then (2) walks every component's props subtree and
+        // (3) every root $defs entry transitively ($ref-resolved, no
+        // exclusions — OQ-1 normalized the action-level fields to `tone`), so
+        // a future `size: xs` anywhere in the catalog fails HERE.
+        let cat = Catalog::build_builtins_only().expect("build succeeds");
+        let schema = cat.json_schema();
+        let defs = schema
+            .get("$defs")
+            .and_then(|v| v.as_object())
+            .expect("assembled schema has a root $defs map");
+
+        // 1) The three canonical $defs are enums with exactly the canonical values.
+        for (def_name, want) in [
+            ("Variant", CANONICAL_VARIANT),
+            ("Tone", CANONICAL_TONE),
+            ("Size", CANONICAL_SIZE),
+        ] {
+            let def = defs
+                .get(def_name)
+                .unwrap_or_else(|| panic!("$defs/{def_name} missing from the assembled schema"));
+            let got = extract_enum_values(def, defs)
+                .unwrap_or_else(|| panic!("$defs/{def_name} is not an enum schema: {def}"));
+            assert_eq!(
+                got.as_slice(),
+                want,
+                "$defs/{def_name} value set drifted from the canonical enum"
+            );
+        }
+
+        // 2) Walk every component's oneOf props subtree transitively.
+        let one_of = defs
+            .get("Element")
+            .and_then(|e| e.get("oneOf"))
+            .and_then(|v| v.as_array())
+            .expect("$defs/Element/oneOf array");
+        assert_eq!(
+            one_of.len(),
+            crate::render::BUILTIN_TYPES.len(),
+            "oneOf must carry one entry per builtin component"
+        );
+        let mut checked = 0usize;
+        for entry in one_of {
+            let props = entry
+                .pointer("/allOf/1/properties/props")
+                .unwrap_or_else(|| {
+                    panic!("oneOf entry missing allOf[1].properties.props: {entry}")
+                });
+            let mut visited = std::collections::HashSet::new();
+            walk_canonical_enum_props(props, defs, &mut visited, &mut checked);
+        }
+
+        // 3) Walk every root $defs entry directly — action-level fields
+        //    (ConfirmDialog.tone, ActionOutcome::Notify.tone inside
+        //    $defs/Action) and any hoisted def must conform even if
+        //    unreachable from a props subtree.
+        let mut visited = std::collections::HashSet::new();
+        for def in defs.values() {
+            walk_canonical_enum_props(def, defs, &mut visited, &mut checked);
+        }
+
+        assert!(
+            checked >= 10,
+            "walker asserted only {checked} variant/tone/size properties — \
+             the schema traversal is broken (expected at least 10 across the catalog)"
+        );
     }
 
     #[test]
@@ -1720,9 +1948,11 @@ mod tests {
         // Budget bumped from 8 KB to 9 KB in Phase 162 Plan 01 (CheckboxList added, 40 components).
         // Budget bumped from 9 KB to 10 KB in Phase 175 Plan 04 (CheckboxGroup alias added, 43 components).
         // Budget bumped from 10 KB to 11 KB in Phase 169 Plan 02 (StreamText added, 45 components).
+        // Budget bumped from 11 KB to 12 KB in Phase 251 Plan 03 ($ref'd enum
+        // values inlined in prop docs — canonical Variant/Tone/Size surfaced).
         assert!(
-            bytes <= 11 * 1024,
-            "prompt() is {bytes} bytes, exceeds 11 KB budget (CONTEXT D-17)"
+            bytes <= 12 * 1024,
+            "prompt() is {bytes} bytes, exceeds 12 KB budget (CONTEXT D-17)"
         );
     }
 
@@ -1735,6 +1965,25 @@ mod tests {
             assert!(
                 prompt.contains(&heading),
                 "prompt() missing section heading for '{name}'"
+            );
+        }
+    }
+
+    #[test]
+    fn prompt_inlines_canonical_enum_values() {
+        // Enum-typed props referenced via $ref must surface their values
+        // inline — an agent reading the prompt sees the exact canonical
+        // vocabulary, not `<see schema>`.
+        let cat = Catalog::build_builtins_only().expect("build");
+        let prompt = cat.prompt();
+        for values in [
+            CANONICAL_VARIANT.join("|"),
+            CANONICAL_TONE.join("|"),
+            CANONICAL_SIZE.join("|"),
+        ] {
+            assert!(
+                prompt.contains(&values),
+                "prompt() must inline the canonical enum values '{values}'"
             );
         }
     }
