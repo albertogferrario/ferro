@@ -10,7 +10,17 @@ use crate::action::Action;
 
 /// Visual weight of interactive elements (buttons, action items). `primary` is the default.
 #[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    strum::AsRefStr,
+    strum::VariantArray,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -26,7 +36,17 @@ pub enum Variant {
 /// Semantic status color of stateful display components. `neutral` is the default and
 /// reproduces today's non-status look.
 #[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    strum::AsRefStr,
+    strum::VariantArray,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -40,7 +60,17 @@ pub enum Tone {
 
 /// Component size scale. `md` is the default.
 #[derive(
-    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    strum::AsRefStr,
+    strum::VariantArray,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
@@ -1803,10 +1833,14 @@ mod schema_smoke_tests {
 mod strum_tests {
     use super::*;
 
+    use strum::VariantArray;
+
     /// Assert AsRef<str> matches serde JSON wire format for EVERY variant of
     /// the canonical `Variant`, `Tone`, and `Size` enums.
     /// Threat T-162-08-01: strum and serde must agree on every snake_case string.
-    /// Every variant of each enum MUST appear — no omissions.
+    /// The variant lists come from `strum::VariantArray`, so omitting a
+    /// variant (the pre-251 `BadgeVariant::Warning` gap) is structurally
+    /// impossible.
     #[test]
     fn variant_enums_strum_matches_serde_wire_format() {
         fn check<T: AsRef<str> + serde::Serialize>(variants: &[T], label: &str) {
@@ -1820,26 +1854,19 @@ mod strum_tests {
                 );
             }
         }
-        check(
-            &[
-                Variant::Primary,
-                Variant::Secondary,
-                Variant::Outline,
-                Variant::Ghost,
-                Variant::Destructive,
-            ],
-            "Variant",
-        );
-        check(
-            &[
-                Tone::Neutral,
-                Tone::Success,
-                Tone::Warning,
-                Tone::Destructive,
-            ],
-            "Tone",
-        );
-        check(&[Size::Sm, Size::Md, Size::Lg], "Size");
+        check(Variant::VARIANTS, "Variant");
+        check(Tone::VARIANTS, "Tone");
+        check(Size::VARIANTS, "Size");
+    }
+
+    /// Pin the canonical value-set sizes so an added/removed variant is a
+    /// conscious decision (the D-19 schema guard in Plan 03 walks the catalog;
+    /// this is the enum-side anchor).
+    #[test]
+    fn canonical_enums_have_expected_variant_counts() {
+        assert_eq!(Variant::VARIANTS.len(), 5);
+        assert_eq!(Tone::VARIANTS.len(), 4);
+        assert_eq!(Size::VARIANTS.len(), 3);
     }
 
     #[test]
@@ -1848,6 +1875,179 @@ mod strum_tests {
         assert_eq!(Tone::Success.as_ref(), "success");
         assert_eq!(Tone::Warning.as_ref(), "warning");
         assert_eq!(Tone::Destructive.as_ref(), "destructive");
+    }
+}
+
+#[cfg(test)]
+mod canonical_enum_tests {
+    use super::*;
+
+    // ── Defaults ────────────────────────────────────────────────────────
+
+    #[test]
+    fn variant_default_is_primary() {
+        assert_eq!(Variant::default(), Variant::Primary);
+    }
+
+    #[test]
+    fn tone_default_is_neutral() {
+        assert_eq!(Tone::default(), Tone::Neutral);
+    }
+
+    #[test]
+    fn size_default_is_md() {
+        assert_eq!(Size::default(), Size::Md);
+    }
+
+    // ── snake_case wire format (serialize + deserialize + roundtrip) ───
+
+    #[test]
+    fn variant_serde_snake_case_roundtrip() {
+        use strum::VariantArray;
+        for v in Variant::VARIANTS {
+            let json = serde_json::to_value(v).unwrap();
+            assert_eq!(json, serde_json::json!(v.as_ref()));
+            let back: Variant = serde_json::from_value(json).unwrap();
+            assert_eq!(back, *v);
+        }
+        assert_eq!(
+            serde_json::from_str::<Variant>("\"primary\"").unwrap(),
+            Variant::Primary
+        );
+    }
+
+    #[test]
+    fn tone_serde_snake_case_roundtrip() {
+        use strum::VariantArray;
+        for t in Tone::VARIANTS {
+            let json = serde_json::to_value(t).unwrap();
+            assert_eq!(json, serde_json::json!(t.as_ref()));
+            let back: Tone = serde_json::from_value(json).unwrap();
+            assert_eq!(back, *t);
+        }
+    }
+
+    #[test]
+    fn size_serde_snake_case_roundtrip() {
+        use strum::VariantArray;
+        for s in Size::VARIANTS {
+            let json = serde_json::to_value(s).unwrap();
+            assert_eq!(json, serde_json::json!(s.as_ref()));
+            let back: Size = serde_json::from_value(json).unwrap();
+            assert_eq!(back, *s);
+        }
+        assert!(serde_json::from_str::<Size>("\"md\"").is_ok());
+        assert!(serde_json::from_str::<Size>("\"sm\"").is_ok());
+        assert!(serde_json::from_str::<Size>("\"lg\"").is_ok());
+    }
+
+    // ── Retired values are rejected at parse (D-12: no serde aliases) ──
+
+    #[test]
+    fn retired_size_values_are_rejected() {
+        assert!(
+            serde_json::from_str::<Size>("\"xs\"").is_err(),
+            "size 'xs' was retired (migrate to 'sm')"
+        );
+        assert!(
+            serde_json::from_str::<Size>("\"default\"").is_err(),
+            "size 'default' was retired (migrate to 'md')"
+        );
+    }
+
+    #[test]
+    fn retired_variant_values_are_rejected() {
+        assert!(
+            serde_json::from_str::<Variant>("\"default\"").is_err(),
+            "variant 'default' was retired (migrate to 'primary')"
+        );
+        assert!(
+            serde_json::from_str::<Variant>("\"link\"").is_err(),
+            "variant 'link' was removed (migrate to 'ghost')"
+        );
+    }
+
+    #[test]
+    fn retired_tone_values_are_rejected() {
+        assert!(
+            serde_json::from_str::<Tone>("\"info\"").is_err(),
+            "tone 'info' was retired (migrate to 'neutral')"
+        );
+        assert!(
+            serde_json::from_str::<Tone>("\"error\"").is_err(),
+            "tone 'error' was retired (migrate to 'destructive')"
+        );
+    }
+
+    #[test]
+    fn button_spec_with_link_variant_fails_to_decode() {
+        let v = serde_json::json!({"variant": "link", "label": "x"});
+        assert!(
+            serde_json::from_value::<ButtonProps>(v).is_err(),
+            "Button variant 'link' must fail decode (migrate to 'ghost')"
+        );
+    }
+
+    // ── Props defaults ──────────────────────────────────────────────────
+
+    #[test]
+    fn button_props_defaults_to_primary_md() {
+        let v = serde_json::json!({"label": "x"});
+        let p: ButtonProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.variant, Variant::Primary);
+        assert_eq!(p.size, Size::Md);
+    }
+
+    #[test]
+    fn alert_props_without_tone_defaults_to_neutral() {
+        let v = serde_json::json!({"message": "x"});
+        let p: AlertProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Neutral);
+    }
+
+    #[test]
+    fn alert_props_with_tone_neutral_decodes() {
+        let v = serde_json::json!({"message": "x", "tone": "neutral"});
+        let p: AlertProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Neutral);
+    }
+
+    #[test]
+    fn badge_props_without_tone_defaults_to_neutral() {
+        let v = serde_json::json!({"label": "x"});
+        let p: BadgeProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Neutral);
+    }
+
+    #[test]
+    fn toast_props_without_tone_defaults_to_neutral() {
+        let v = serde_json::json!({"message": "x"});
+        let p: ToastProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Neutral);
+    }
+
+    #[test]
+    fn action_card_props_with_success_tone_decodes() {
+        let v = serde_json::json!({"title": "x", "description": "y", "tone": "success"});
+        let p: ActionCardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Success);
+    }
+
+    #[test]
+    fn stat_card_props_without_tone_defaults_to_neutral() {
+        let v = serde_json::json!({"label": "x", "value": "1"});
+        let p: StatCardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Neutral);
+    }
+
+    #[test]
+    fn stat_card_props_roundtrip_preserves_tone() {
+        let v = serde_json::json!({"label": "x", "value": "1", "tone": "warning"});
+        let p: StatCardProps = serde_json::from_value(v).unwrap();
+        assert_eq!(p.tone, Tone::Warning);
+        let j = serde_json::to_value(&p).unwrap();
+        let back: StatCardProps = serde_json::from_value(j).unwrap();
+        assert_eq!(back.tone, Tone::Warning);
     }
 }
 

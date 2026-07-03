@@ -311,6 +311,27 @@ mod tests {
     }
 
     #[test]
+    fn notify_without_tone_defaults_to_success() {
+        // A notify outcome with no tone stays success-colored — the serde
+        // default fn preserves the pre-251 NotifyVariant::Success default.
+        let json = r#"{"type": "notify", "message": "Saved!"}"#;
+        let outcome: ActionOutcome = serde_json::from_str(json).unwrap();
+        match outcome {
+            ActionOutcome::Notify { tone, .. } => assert_eq!(tone, Tone::Success),
+            other => panic!("expected Notify, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn notify_with_retired_tone_value_fails() {
+        // 'info'/'error' were NotifyVariant values; the shared Tone rejects them.
+        let json = r#"{"type": "notify", "message": "x", "tone": "info"}"#;
+        assert!(serde_json::from_str::<ActionOutcome>(json).is_err());
+        let json = r#"{"type": "notify", "message": "x", "tone": "error"}"#;
+        assert!(serde_json::from_str::<ActionOutcome>(json).is_err());
+    }
+
+    #[test]
     fn action_without_url_omits_url_field() {
         let action = Action {
             handler: ActionHandler::Literal("users.index".to_string()),
