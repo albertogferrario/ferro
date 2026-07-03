@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: executing
-stopped_at: Completed 251-03-PLAN.md (D-19 drift guard + agent-surface sweep)
-last_updated: "2026-07-03T13:39:51.669Z"
+status: verifying
+stopped_at: Completed 251-04-PLAN.md (phase 251 complete, 4/4 plans)
+last_updated: "2026-07-03T14:24:26.529Z"
 last_activity: 2026-07-03
 progress:
   total_phases: 126
-  completed_phases: 107
+  completed_phases: 108
   total_plans: 441
-  completed_plans: 439
+  completed_plans: 440
   percent: 100
 ---
 
@@ -32,7 +32,7 @@ Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Last activity: 2026-07-03
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
@@ -206,6 +206,7 @@ Progress: [██████████] 100%
 | Phase 251-component-variant-discipline-interactive-state-pass P01 | 26m | 3 tasks | 15 files |
 | Phase 251-component-variant-discipline-interactive-state-pass P02 | 18m | 3 tasks | 9 files |
 | Phase 251-component-variant-discipline-interactive-state-pass P03 | 15m | 3 tasks | 4 files |
+| Phase 251-component-variant-discipline-interactive-state-pass P04 | 41m | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.5 Phase 251 Plan 04] Phase 251 closed (4/4): D-17 migration table + canonical three-enum section live in `docs/src/json-ui/components.md` (gestiscilo Phase 232 reference); actions.md/forms.md swept; pre-existing doc drift fixed (column_format badge/image/icon, GapSize xs, StatCard tone). `ferro-base.css` regenerated once after all class changes (D-04) — border-l-success, disabled:pointer-events-none, peer-focus:ring-ring/30, focus-visible:ring-inset newly surfaced; input.css unchanged (safelist already complete, dynamic-construction grep 0). Full CI-exact gate green (fmt/clippy --all-features/test --all-features; drift guard 1/1, ferro-mcp json_ui 47/47). Schema churn = v16.3 CRUD export drift, discarded per audit finding. Known cosmetic: retired classes (duration-150/300, ring-primary family) leak into the generated CSS as DEAD utility definitions from negative test assertions — left as-is, Phase 252 lint candidate. Visual checkpoint auto-approved under the auto chain with served-HTML/CSS evidence (light+dark `--color-ring` verified; zero retired classes in markup); pixel-level pass suggested at Phase 253 pre-publish review. D-18 skip recorded: ferro-cli's only `variant` hits are shadcn `.tsx.tpl` templates (different vocabulary) — intentionally unchanged.
 - [v16.5 Phase 251 Plan 02] Interactive-state pass shipped (DS-04): shared class constants in `render/classes.rs` (FOCUS_RING, MOTION_FAST, MOTION_BASE, DISABLED_BASE, INTERACTIVE_BASE) with a composition drift-guard test; every render/layout/runtime site migrated to `focus-visible:ring-ring` + `duration-fast`/`duration-base` + `ease-base`; `motion-reduce:transition-none` deleted everywhere tokens take over (D-15). Discretion calls: SegmentedControl ring is INSET (offset would clip in overflow-hidden cluster); Collapsible chevron = `transition-transform duration-base ease-base`; compact icon buttons gained `rounded-md` with the ring. D-16: disabled GET-action Button skips the anchor wrap (aria-disabled + `pointer-events-none opacity-50`); form controls use `disabled:pointer-events-none`. OQ-5: toast dismissal via `transitionend` + 500ms fallback; OQ-4: NO modal/dropdown animation added (explicit non-addition). StatCard tone renderer accent shipped (Plan 01 Known Stub resolved; neutral = untinted default). Form error rings (`ring-destructive`, Switch `peer-focus:ring-destructive/30`) preserved. `ferro-base.css` regen deferred to Plan 04 (D-04). New literals for the Plan 04 regen: `focus-visible:ring-ring`, `focus-visible:ring-inset`, `peer-focus:ring-ring/30`, `duration-fast/base`, `ease-base`, `disabled:pointer-events-none`.
 - [v16.5 Phase 251 Plan 01] Canonical `Variant`/`Tone`/`Size`/`CardAppearance` enums shipped in ferro-json-ui; all nine old enums (ButtonVariant, AlertVariant, BadgeVariant, ToastVariant, CardVariant, ActionCardVariant, old Size, DialogVariant, NotifyVariant) deleted with no aliases — retired values (`xs`, `default`, `link`, `info`, `error`) proven rejected at serde parse. Discretion calls: neutral badge = outlined (`border-border`); Alert neutral = `bg-surface` tint (plan's `bg-muted` adjusted — no `--color-muted` token exists); Toast neutral keeps Info classes (zero visual change, class pass is Plan 02); relationship buttons `link`→`ghost` (D-07); projection badge tones all collapse to neutral (D-09). OQ-1 normalized (ConfirmDialog/Notify carry `tone: Tone`, Notify absent-tone default stays success); OQ-2 StatCard `tone` added schema-only (renderer accent = Plan 02), CalendarCell skipped; OQ-3 `dot_colors` raw-Tailwind note handed to Plan 04. Known handoff: retired prop NAMES on renamed fields (Alert `variant`) are serde-ignored, not rejected — D-19 guard (Plan 03) should decide stale-prop detection scope.
 - [v16.5 Phase 250 Plan 03] Default theme visual sign-off approved with zero oklch nudges — `default.css` ships exactly as refreshed in Plan 02 (cool-tinted hue-250 neutrals, single harmonized accent, dark-not-gloomy). Focus rings are not visually checkable until Phase 251 (no component emits ring classes yet); the `--color-ring` token + default ship in 250. Full CI-exact gate green (fmt 0 / clippy --all-features 0 / test --all-features 0). Phase 250 complete: 3/3 plans.
@@ -265,7 +267,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-03T13:39:51.662Z
-Stopped at: Completed 251-03-PLAN.md (D-19 drift guard + agent-surface sweep)
+Last session: 2026-07-03T14:24:26.521Z
+Stopped at: Completed 251-04-PLAN.md (phase 251 complete, 4/4 plans)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.

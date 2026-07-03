@@ -3750,7 +3750,7 @@ adoption plan).
 - [x] **Phase 250: Token vocabulary v2 + default theme refresh** — 23 → 30 slots (completed 2026-07-03)
   (density `--spacing`, motion ×4, `--color-ring`, `--font-display`) with defaults;
   design-language refresh of `default.css`; regenerated `ferro-base.css`.
-- [ ] **Phase 251: Component variant discipline + interactive-state pass** — canonical
+- [x] **Phase 251: Component variant discipline + interactive-state pass** — canonical (completed 2026-07-03)
   `variant`/`tone`/`size` enums across the 47 components; hover/focus-visible/disabled
   and frequency-tiered motion per the component quality bar; migration table.
 - [ ] **Phase 252: Design module + lint + CLI** — `Spec.design` field
@@ -3799,11 +3799,11 @@ ring, disabled treatment, frequency-tiered motion.
      disabled states; transitions use the motion tokens at frequency-appropriate tiers.
   3. A migration table lists every renamed prop/value for consumers.
   4. `ferro-base.css` regenerated after class changes; workspace gate green.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 251-01-PLAN.md — Enum consolidation: shared `Variant`/`Tone`/`Size`/`CardAppearance`, compiler-driven rename ripple (Wave 1)
 - [x] 251-02-PLAN.md — Interactive-state + motion pass: shared class constants, ring-ring/duration-token migration, disabled uniformity, JS/SSR lockstep (Wave 2)
 - [x] 251-03-PLAN.md — Enforcement + agent surface: D-19 schema-walking drift guard, catalog prose, ferro-mcp vocabulary (Wave 3)
-- [ ] 251-04-PLAN.md — Migration docs (D-17), ferro-base.css regen, full workspace gate, Chrome MCP visual pass (Wave 4)
+- [x] 251-04-PLAN.md — Migration docs (D-17), ferro-base.css regen, full workspace gate, Chrome MCP visual pass (Wave 4)
 
 #### Phase 252: Design module + lint + CLI
 **Goal:** Codify the composition patterns as a machine-readable, testable rule set —
