@@ -135,7 +135,7 @@ if req.has_validation_errors() {
     builder = builder.element(
         "validation_summary",
         Element::new("Alert")
-            .prop("variant", "error")
+            .prop("tone", "destructive")
             .prop("message", "Some fields need attention."),
     );
     root_children.push("validation_summary".to_string());

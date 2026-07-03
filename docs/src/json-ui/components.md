@@ -39,21 +39,23 @@ The sections below document every built-in component: its props table (with JSON
 
 ## Shared Enum Values
 
-Several props accept fixed-string enum values. The valid strings are listed here; each component section references these by name.
+Three shared enums cover the weight, status, and scale axes across all components. One word, one meaning: `variant` is always visual weight, `tone` is always status color, `size` is always the `sm`/`md`/`lg` scale.
 
-**size** — `"xs"` | `"sm"` | `"default"` | `"lg"`
+**variant** (visual weight of interactive elements) — `"primary"` | `"secondary"` | `"outline"` | `"ghost"` | `"destructive"`
 
-**button_variant** — `"default"` | `"secondary"` | `"destructive"` | `"outline"` | `"ghost"` | `"link"`
+**tone** (status color of stateful display components) — `"neutral"` | `"success"` | `"warning"` | `"destructive"`
 
-**alert_variant** — `"info"` | `"success"` | `"warning"` | `"error"`
+**size** — `"sm"` | `"md"` (default) | `"lg"`
 
-**badge_variant** — `"default"` | `"secondary"` | `"destructive"` | `"outline"`
+## Component-Specific Enum Values
 
-**column_format** — `"date"` | `"date_time"` | `"currency"` | `"boolean"`
+Additional fixed-string enums scoped to individual components; each component section references these by name.
+
+**card_appearance** — `"bordered"` (default) | `"elevated"`
+
+**column_format** — `"date"` | `"date_time"` | `"currency"` | `"boolean"` | `"badge"` | `"image"` | `"icon"`
 
 **text_element** — `"p"` | `"h1"` | `"h2"` | `"h3"` | `"span"` | `"div"` | `"section"`
-
-**toast_variant** — `"info"` | `"success"` | `"warning"` | `"error"`
 
 **input_type** — `"text"` | `"email"` | `"password"` | `"number"` | `"textarea"` | `"hidden"` | `"date"` | `"time"` | `"url"` | `"tel"` | `"search"`
 
@@ -65,9 +67,38 @@ Several props accept fixed-string enum values. The valid strings are listed here
 
 **form_max_width** — `"default"` | `"narrow"` | `"wide"`
 
-**gap_size** — `"none"` | `"sm"` | `"md"` (default) | `"lg"` | `"xl"`
+**gap_size** — `"none"` | `"sm"` | `"md"` (default) | `"lg"` | `"xl"` (prop `gap`; a component-scoped scale, not the shared `size`)
 
-**action_card_variant** — `"default"` | `"setup"` | `"danger"`
+## Component vocabulary migration
+
+The canonical `variant`/`tone`/`size` vocabulary replaced the per-component enums. Retired values fail at spec parse — there are no aliases. Old → new mapping:
+
+| Component | Old prop | Old value | New prop | New value |
+|-----------|----------|-----------|----------|-----------|
+| Button, ActionGroup item | `variant` | `default` | `variant` | `primary` |
+| Button, ActionGroup item | `variant` | `link` | `variant` | `ghost` (link style removed) |
+| Button, ActionGroup item | `variant` | `secondary`/`outline`/`ghost`/`destructive` | `variant` | unchanged |
+| Button, Avatar, SegmentedControl | `size` | `xs` | `size` | `sm` |
+| Button, Avatar, SegmentedControl | `size` | `default` | `size` | `md` |
+| Alert, Toast | `variant` | `info` | `tone` | `neutral` |
+| Alert, Toast | `variant` | `error` | `tone` | `destructive` |
+| Alert, Toast | `variant` | `success`/`warning` | `tone` | unchanged |
+| Badge | `variant` | `default`/`secondary`/`outline` | `tone` | `neutral` |
+| Badge | `variant` | `warning`/`destructive` | `tone` | unchanged |
+| Card | `variant` | `bordered`/`elevated` | `appearance` | unchanged values |
+| ActionCard | `variant` | `default`/`setup`/`danger` | `tone` | `neutral`/`warning`/`destructive` (+ `success`) |
+| DataTable badge column | row `{"variant": ..}` | old badge values | row `{"tone": ..}` | canonical tone values |
+| MediaCardGrid | `badge_variant_key` | `outline`/`destructive`/`default` | `badge_tone_key` | canonical tone values |
+| ConfirmDialog | `variant` | `default`/`danger` | `tone` | `neutral`/`destructive` |
+| Notify outcome | `variant` | `info`/`error` (+`success`/`warning`) | `tone` | `neutral`/`destructive` (+unchanged) |
+
+Behavior and visual deltas to expect when migrating:
+
+- Badge `default`/`secondary`/`outline` all map to `tone: "neutral"`, rendered with one outlined treatment (`border border-border text-text`) — the old primary-tinted default fill is gone.
+- Alert `info` was primary-tinted; `tone: "neutral"` renders on the neutral surface family (`bg-surface border-border text-text`).
+- Relationship (link) buttons lose the underline-link look — the `link` variant is removed; use `"ghost"`.
+- ActionCard's neutral left border changed from `border-l-primary` to `border-l-border`; a `success` tone arm is new.
+- CalendarCell `dot_colors` still accepts raw Tailwind class strings (pre-existing behavior outside the semantic vocabulary; a candidate for the design lint).
 
 ---
 
@@ -82,7 +113,7 @@ Container with title, optional description, nested children, and footer.
 | `title` | `string` | Card heading |
 | `description` | `string \| null` | Secondary text below the title |
 | `subtitle` | `string \| null` | Muted secondary identifier rendered between title and description (e.g. staff name beneath customer name) |
-| `badge` | `string \| null` | Small Badge-styled pill rendered to the right of the title (Secondary variant chrome) for status indicators, counters, or countdown labels |
+| `badge` | `string \| null` | Small Badge-styled pill rendered to the right of the title (secondary-tinted chrome) for status indicators, counters, or countdown labels |
 
 Children are element IDs listed in the `"children"` array on the element, not in props.
 
@@ -148,25 +179,25 @@ Optional `subtitle` and `badge` slots add a muted secondary identifier and a Bad
 
 All elements — `card_main`, `heading`, `form_login`, `email_input`, `submit_btn` — are siblings in the `elements` map. The tree structure is expressed purely through `children` ID references.
 
-#### Variant
+#### Appearance
 
-`Card` accepts an optional `variant` prop controlling chrome and padding.
+`Card` accepts an optional `appearance` prop controlling chrome and padding.
 
-**card_variant** — `"bordered"` (default) | `"elevated"`
+**card_appearance** — `"bordered"` (default) | `"elevated"`
 
 | Value | Classes applied | Padding | Typical use |
 |-------|-----------------|---------|-------------|
 | `"bordered"` | `border border-border bg-card shadow-sm overflow-visible` | `p-4` | Dashboard cards in dense layouts |
 | `"elevated"` | `bg-card shadow-md overflow-visible` (no border) | `p-8` | Auth pages, error pages, standalone marketing cards |
 
-`variant` defaults to `"bordered"` when omitted.
+`appearance` defaults to `"bordered"` when omitted.
 
 ```json
 "auth_card": {
   "type": "Card",
   "props": {
     "title": "Sign in",
-    "variant": "elevated"
+    "appearance": "elevated"
   },
   "children": ["login_form"]
 }
@@ -179,7 +210,7 @@ Responsive grid layout for arranging child elements in columns.
 | Prop | Type | Description |
 |------|------|-------------|
 | `columns` | `number \| null` | Number of columns (default: 2) |
-| `gap` | `gap_size \| null` | Gap between items: `"none"`, `"xs"`, `"sm"`, `"md"`, `"lg"`, `"xl"` |
+| `gap` | `gap_size \| null` | Gap between items: `"none"`, `"sm"`, `"md"`, `"lg"`, `"xl"` |
 
 ```json
 "stats_grid": {
@@ -395,6 +426,8 @@ Each column object:
 | `label` | `string` | Column header text |
 | `format` | `column_format \| null` | Display format |
 
+For `format: "badge"` the cell value is an object `{"tone": .., "label": ..}` with a canonical `tone` value, rendered as a Badge pill. `format: "image"` reads the cell as an image URL; `format: "icon"` reads it as a built-in icon name.
+
 ```json
 "users_table": {
   "type": "DataTable",
@@ -489,19 +522,19 @@ Handler data: `{ "document": { "fields": [{ "label": "Author", "value": "Alice" 
 
 ### Badge
 
-Small label with variant-based styling.
+Small tone-styled status label.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `label` | `string` | Badge text |
-| `variant` | `badge_variant \| null` | Visual style (default: `"default"`) |
+| `tone` | `tone \| null` | Status color (default: `"neutral"`, rendered outlined) |
 
 ```json
 "status_badge": {
   "type": "Badge",
   "props": {
     "label": "Active",
-    "variant": "default"
+    "tone": "success"
   }
 }
 ```
@@ -515,7 +548,7 @@ User avatar with image, fallback initials, and size.
 | `alt` | `string` | Alt text (required for accessibility) |
 | `src` | `string \| null` | Image URL |
 | `fallback` | `string \| null` | Fallback initials when no image |
-| `size` | `size \| null` | `"xs"`, `"sm"`, `"default"`, `"lg"` |
+| `size` | `size \| null` | `"sm"`, `"md"` (default), `"lg"` |
 
 ```json
 "user_avatar": {
@@ -609,6 +642,7 @@ Metric card for dashboards. Displays a label and value, with an optional SSE tar
 |------|------|-------------|
 | `label` | `string` | Metric label (e.g., `"Total Revenue"`) |
 | `value` | `string` | Current metric value (e.g., `"€12,345"`) |
+| `tone` | `tone \| null` | Status accent on the value and icon (default: `"neutral"` — no accent) |
 | `icon` | `string \| null` | Icon name |
 | `subtitle` | `string \| null` | Secondary text below the value |
 | `sse_target` | `string \| null` | SSE event key for live value updates |
@@ -940,8 +974,8 @@ Interactive button. Attach the click action on the element's `"action"` field.
 | Prop | Type | Description |
 |------|------|-------------|
 | `label` | `string` | Button label |
-| `variant` | `button_variant \| null` | Visual style (default: `"default"`) |
-| `size` | `size \| null` | Button size (default: `"default"`) |
+| `variant` | `variant \| null` | Visual weight (default: `"primary"`) |
+| `size` | `size \| null` | Button size (default: `"md"`) |
 | `disabled` | `boolean \| null` | Disable the button |
 | `icon` | `string \| null` | Icon name |
 | `icon_position` | `icon_position \| null` | `"left"` (default) or `"right"` |
@@ -952,8 +986,8 @@ Interactive button. Attach the click action on the element's `"action"` field.
   "type": "Button",
   "props": {
     "label": "Save Changes",
-    "variant": "default",
-    "size": "default",
+    "variant": "primary",
+    "size": "md",
     "icon": "save",
     "icon_position": "left"
   },
@@ -974,7 +1008,7 @@ A horizontal group of buttons rendered together.
   "type": "ButtonGroup",
   "props": {
     "buttons": [
-      { "label": "All", "variant": "default" },
+      { "label": "All", "variant": "primary" },
       { "label": "Active", "variant": "outline" },
       { "label": "Archived", "variant": "outline" }
     ]
@@ -1006,7 +1040,7 @@ Each item object:
 | `label` | `string` | Button / menu item text |
 | `action` | `object` | Action declaration (`{ "handler": ..., "method": ... }`) |
 | `destructive` | `boolean` | `true` forces the item into the kebab, rendered last (default `false`) |
-| `variant` | `string \| null` | Button variant for the inline rendering |
+| `variant` | `variant \| null` | Button weight for the inline rendering |
 | `icon` | `string \| null` | Optional icon name |
 | `visible_if` | `string \| null` | Row field gate (fail-closed: an absent or falsy field hides the item) |
 
@@ -1039,12 +1073,12 @@ kebab and rendered last because it is destructive.
 
 ### Alert
 
-Alert message with variant-based styling and optional title.
+Alert message with tone-based styling and optional title.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `message` | `string` | Alert message content |
-| `variant` | `alert_variant \| null` | Visual style (default: `"info"`) |
+| `tone` | `tone \| null` | Status color (default: `"neutral"`) |
 | `title` | `string \| null` | Alert title |
 
 ```json
@@ -1052,7 +1086,7 @@ Alert message with variant-based styling and optional title.
   "type": "Alert",
   "props": {
     "message": "Your trial expires in 3 days.",
-    "variant": "warning",
+    "tone": "warning",
     "title": "Trial Ending"
   }
 }
@@ -1065,7 +1099,7 @@ Declarative notification rendered as an overlay by the JS runtime. When a Toast 
 | Prop | Type | Description |
 |------|------|-------------|
 | `message` | `string` | Toast message content |
-| `variant` | `toast_variant \| null` | Visual style (default: `"info"`) |
+| `tone` | `tone \| null` | Status color (default: `"neutral"`) |
 | `timeout` | `number \| null` | Seconds before auto-dismiss (default: 5) |
 | `dismissible` | `boolean \| null` | Allow manual dismiss (default: `true`) |
 
@@ -1074,7 +1108,7 @@ Declarative notification rendered as an overlay by the JS runtime. When a Toast 
   "type": "Toast",
   "props": {
     "message": "Changes saved successfully.",
-    "variant": "success",
+    "tone": "success",
     "timeout": 3,
     "dismissible": true
   }
@@ -1278,7 +1312,7 @@ A card that acts as a clickable action item.
 | `title` | `string` | Card heading |
 | `description` | `string \| null` | Supporting text |
 | `icon` | `string \| null` | Icon name |
-| `variant` | `action_card_variant \| null` | Visual style: `"default"`, `"outline"`, `"ghost"` |
+| `tone` | `tone \| null` | Left-border status color (default: `"neutral"`) |
 
 ```json
 "create_product": {
@@ -1287,7 +1321,7 @@ A card that acts as a clickable action item.
     "title": "Add Product",
     "description": "Create a new product listing.",
     "icon": "plus",
-    "variant": "outline"
+    "tone": "neutral"
   },
   "action": { "handler": "products.create", "method": "GET" }
 }

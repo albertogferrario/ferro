@@ -62,7 +62,7 @@ Add a `"confirm"` object to show a confirmation dialog before the action execute
     "method": "DELETE",
     "confirm": {
       "title": "Delete this item?",
-      "variant": "danger"
+      "tone": "destructive"
     }
   }
 }
@@ -74,7 +74,7 @@ The `"confirm"` object fields:
 |-------|------|-------------|
 | `"title"` | string | Dialog heading text |
 | `"message"` | string (optional) | Additional detail text |
-| `"variant"` | string | `"default"` or `"danger"` |
+| `"tone"` | string | `"neutral"` (default) or `"destructive"` |
 
 Standard confirmation (no destructive styling):
 
@@ -132,12 +132,12 @@ Show a notification toast:
   "on_success": {
     "type": "notify",
     "message": "Item created",
-    "variant": "success"
+    "tone": "success"
   }
 }
 ```
 
-Notification variants: `"success"`, `"info"`, `"warning"`, `"error"`.
+Notification tones: `"neutral"`, `"success"`, `"warning"`, `"destructive"`. An absent `tone` defaults to `"success"`.
 
 ### Show errors
 
