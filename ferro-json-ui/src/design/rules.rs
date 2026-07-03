@@ -145,8 +145,8 @@ fn check_list_empty_state(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
             let has_empty_message = el
                 .props
                 .get("empty_message")
-                .and_then(|v| v.as_str())
-                .is_some();
+                .map(|v| !v.is_null())
+                .unwrap_or(false);
             if !has_empty_message && !has_empty_state {
                 Some(Finding {
                     rule: "list-empty-state",
@@ -205,8 +205,7 @@ fn check_breadcrumb_on_subpages(spec: &Spec, _intent: Option<&str>) -> Vec<Findi
         e.type_name == "PageHeader"
             && e.props
                 .get("breadcrumb")
-                .and_then(|v| v.as_array())
-                .map(|a| !a.is_empty())
+                .map(|v| !v.is_null())
                 .unwrap_or(false)
     });
     if !has_breadcrumb_element && !has_breadcrumb_in_header {
@@ -547,6 +546,26 @@ mod tests {
     }
 
     #[test]
+    fn list_empty_state_conforming_data_bound_empty_message() {
+        // Browse intent, DataTable where empty_message is a $data binding → 0 findings.
+        // Regression guard for WR-01: the rule must accept any non-null value, not only string literals.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "DataTable", "props": {"empty_message": {"$data": "/i18n/no_items"}}}},
+                "design": {"intent": "browse"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "list-empty-state");
+        assert!(
+            findings.is_empty(),
+            "$data-bound empty_message must be accepted, got: {findings:#?}"
+        );
+    }
+
+    #[test]
     fn list_empty_state_conforming_with_empty_state_sibling() {
         // Browse intent, DataTable with no empty_message but an EmptyState element → 0 findings.
         let spec = Spec::from_json(
@@ -708,6 +727,30 @@ mod tests {
         assert!(
             findings.is_empty(),
             "PageHeader with breadcrumb prop should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn breadcrumb_on_subpages_conforming_data_bound_breadcrumb_prop() {
+        // Dashboard layout, collect intent, PageHeader with $data-bound breadcrumb → 0 findings.
+        // Regression guard for WR-02: any non-null breadcrumb value must be accepted.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "ph",
+                "layout": "dashboard",
+                "elements": {
+                    "ph": {"type": "PageHeader", "props": {"title": "New Item", "breadcrumb": {"$data": "/breadcrumb_items"}}},
+                    "f": {"type": "Form"}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "breadcrumb-on-subpages");
+        assert!(
+            findings.is_empty(),
+            "$data-bound breadcrumb must be accepted, got: {findings:#?}"
         );
     }
 
