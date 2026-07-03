@@ -2,12 +2,17 @@
   "$schema": "ferro-json-ui/v2",
   "title": "Pagamenti",
   "layout": "dashboard",
+  "design": { "intent": "summarize" },
   "root": "root",
   "elements": {
     "root": {
       "type": "Card",
       "props": { "title": "Pagamenti" },
-      "children": ["stats_row", "payments_table"]
+      "children": ["page_header", "stats_row", "payments_table"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": { "title": "Pagamenti" }
     },
     "stats_row": {
       "type": "StatCard",

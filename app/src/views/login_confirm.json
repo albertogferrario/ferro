@@ -2,6 +2,7 @@
   "$schema": "ferro-json-ui/v2",
   "title": "Check your email",
   "layout": "auth",
+  "design": { "intent": "focus" },
   "root": "card",
   "elements": {
     "card": {
