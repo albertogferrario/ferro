@@ -516,4 +516,147 @@ mod tests {
             "PageHeader with breadcrumb prop should be conforming, got: {findings:#?}"
         );
     }
+
+    // ── process-kanban ───────────────────────────────────────────────────────
+
+    #[test]
+    fn process_kanban_violating_no_kanban_board() {
+        // Process intent, no KanbanBoard element → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "DataTable", "props": {"empty_message": "No items"}}},
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "process-kanban");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 process-kanban finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn process_kanban_conforming_with_kanban_board() {
+        // Process intent, KanbanBoard present → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "KanbanBoard", "props": {}}},
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "process-kanban");
+        assert!(
+            findings.is_empty(),
+            "KanbanBoard present should be conforming for process-kanban, got: {findings:#?}"
+        );
+    }
+
+    // ── card-actions-in-menu ─────────────────────────────────────────────────
+
+    #[test]
+    fn card_actions_in_menu_violating_destructive_not_last() {
+        // Process intent, KanbanBoard with destructive row_action NOT in last position → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "KanbanBoard", "props": {
+                        "row_actions": [
+                            {"label": "Delete", "destructive": true},
+                            {"label": "View details"}
+                        ]
+                    }}
+                },
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "card-actions-in-menu");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 card-actions-in-menu finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn card_actions_in_menu_conforming_destructive_last() {
+        // Process intent, KanbanBoard with destructive action last → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "KanbanBoard", "props": {
+                        "row_actions": [
+                            {"label": "View details"},
+                            {"label": "Delete", "destructive": true}
+                        ]
+                    }}
+                },
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "card-actions-in-menu");
+        assert!(
+            findings.is_empty(),
+            "destructive last should be conforming for card-actions-in-menu, got: {findings:#?}"
+        );
+    }
+
+    // ── create-separate-page ─────────────────────────────────────────────────
+
+    #[test]
+    fn create_separate_page_violating_modal_contains_form() {
+        // Collect intent, Modal element whose child is a Form → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "m",
+                "elements": {
+                    "m": {"type": "Modal", "children": ["f"]},
+                    "f": {"type": "Form"}
+                },
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "create-separate-page");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 create-separate-page finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn create_separate_page_conforming_no_modal() {
+        // Collect intent, Form without a Modal wrapper → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "Form"}},
+                "design": {"intent": "collect"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "create-separate-page");
+        assert!(
+            findings.is_empty(),
+            "no Modal should be conforming for create-separate-page, got: {findings:#?}"
+        );
+    }
 }
