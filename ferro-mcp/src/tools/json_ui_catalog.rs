@@ -263,8 +263,8 @@ Action::new(handler) -> Action (POST)
 Action::get(handler) -> Action (GET)
 Action::delete(handler) -> Action (DELETE)
   .method(HttpMethod) -> Self
-  .confirm(title) -> Self (default dialog)
-  .confirm_danger(title) -> Self (danger dialog)
+  .confirm(title) -> Self (neutral dialog)
+  .confirm_danger(title) -> Self (destructive dialog)
   .on_success(ActionOutcome) -> Self
   .on_error(ActionOutcome) -> Self
 
@@ -274,9 +274,9 @@ ActionOutcome variants:
   Redirect { url: String }
   ShowErrors
   Refresh
-  Notify { message: String, variant: NotifyVariant }
+  Notify { message: String, tone: Tone (neutral|success|warning|destructive) }
 
-ConfirmDialog { title: String, message: Option<String>, variant: DialogVariant (default|danger) }";
+ConfirmDialog { title: String, message: Option<String>, tone: Tone (neutral|destructive) }";
 
 #[cfg(test)]
 mod tests {

@@ -134,7 +134,7 @@ mod tests {
             "$schema": "ferro-json-ui/v2",
             "root": "x",
             "elements": {
-                "x": {"type": "Alert", "props": {"variant": "info", "message": "hello"}}
+                "x": {"type": "Alert", "props": {"tone": "neutral", "message": "hello"}}
             }
         }"#;
         let r = execute(json);

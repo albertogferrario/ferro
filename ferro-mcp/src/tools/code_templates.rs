@@ -1092,7 +1092,7 @@ fn json_view_templates() -> Vec<CodeTemplate> {
     },
     "create-btn": {
       "type": "Button",
-      "props": { "label": "Create {{Entity}}", "variant": "default" },
+      "props": { "label": "Create {{Entity}}", "variant": "primary" },
       "action": { "handler": "{{entity}}.create", "method": "GET" }
     },
     "{{entity}}-table": {
