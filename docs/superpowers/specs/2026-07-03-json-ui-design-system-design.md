@@ -45,6 +45,39 @@ Deliberate exclusions:
   adding per-size tokens would duplicate an existing control surface.
 - **Font weight tokens.** No demonstrated theming need.
 
+### Design language defaults
+
+The new tokens ship with opinionated defaults — a framework default is still a design
+decision, and an unmade decision reads as a template. Conventions:
+
+**Motion.** Durations are frequency-tiered: the more often an interaction repeats, the
+less it may move.
+
+| Token | Default | Used for |
+|---|---|---|
+| `--motion-duration-fast` | `120ms` | Micro-interactions: hover, toggles, controls — anything repeated |
+| `--motion-duration-base` | `220ms` | Standard transitions: dropdowns, modals, toasts |
+| `--motion-duration-slow` | `320ms` | Large surfaces: drawers, page-level reveals |
+| `--motion-ease` | `cubic-bezier(0.2, 0, 0.38, 0.9)` | Calm, settled standard curve (high damping, no bounce) |
+
+Component discipline built on these: no decorative animation — motion exists to explain
+a change; high-frequency and keyboard-driven interactions get `fast` or no motion;
+enter uses ease-out, leave uses ease-in (component-internal, not extra theme slots);
+`prefers-reduced-motion` collapses all durations. Nothing may pop or reflow during a
+transition.
+
+**Default theme.** The refresh direction for `default.css`: cool-tinted neutrals
+rather than flat grey (in both modes — dark is dark, not gloomy); a single accent used
+sparingly (a dominant neutral field with one focal color per view); separation via
+spacing and contrast before borders; small, consistent radii; one consistent elevation
+treatment. Hierarchy comes from weight, color, and spacing before size.
+
+**Component quality bar** (applies to the variant-discipline phase, verified per
+component): hover, `focus-visible`, active, and disabled states present; loading,
+empty, and error states designed rather than defaulted; focus ring from
+`--color-ring` at a visible contrast; hit targets ergonomic. These are checkable
+criteria, not adjectives.
+
 Changes:
 
 - `ferro-theme/src/token.rs`: 7 new constants, `ALL_TOKENS` → 30, doc header updated to
