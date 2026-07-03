@@ -1,6 +1,6 @@
-//! Fixed semantic token vocabulary for ferro-theme/v1.
+//! Fixed semantic token vocabulary for ferro-theme/v2.
 //!
-//! Defines ~23 semantic slots that every theme must provide. Tokens are
+//! Defines ~30 semantic slots that every theme must provide. Tokens are
 //! CSS custom properties resolved by the Tailwind v4 `@theme` directive.
 //! Components reference them as utility classes (`bg-primary`, `text-surface`, etc.).
 
@@ -60,7 +60,29 @@ pub const TOKEN_FONT_SANS: &str = "--font-sans";
 /// Monospace font stack.
 pub const TOKEN_FONT_MONO: &str = "--font-mono";
 
-/// All token names in the ferro-theme/v1 vocabulary (23 slots).
+// Density token — base spacing unit
+/// Base spacing unit; all spacing utilities resolve as calc(var(--spacing) * N).
+pub const TOKEN_SPACING: &str = "--spacing";
+
+// Motion tokens — frequency-tiered transition discipline
+/// Fast transition duration (micro-interactions: hover, toggles). Default: 120ms.
+pub const TOKEN_MOTION_DURATION_FAST: &str = "--motion-duration-fast";
+/// Base transition duration (dropdowns, modals, toasts). Default: 220ms.
+pub const TOKEN_MOTION_DURATION_BASE: &str = "--motion-duration-base";
+/// Slow transition duration (drawers, page-level reveals). Default: 320ms.
+pub const TOKEN_MOTION_DURATION_SLOW: &str = "--motion-duration-slow";
+/// Standard easing curve (calm, settled, no bounce).
+pub const TOKEN_MOTION_EASE: &str = "--motion-ease";
+
+// Focus token — uniform keyboard-navigation ring
+/// Focus-visible ring color for interactive components.
+pub const TOKEN_COLOR_RING: &str = "--color-ring";
+
+// Display font token
+/// Display/heading font family; defaults to var(--font-sans).
+pub const TOKEN_FONT_DISPLAY: &str = "--font-display";
+
+/// All token names in the ferro-theme/v2 vocabulary (30 slots).
 pub const ALL_TOKENS: &[&str] = &[
     TOKEN_BACKGROUND,
     TOKEN_SURFACE,
@@ -85,4 +107,25 @@ pub const ALL_TOKENS: &[&str] = &[
     TOKEN_SHADOW_LG,
     TOKEN_FONT_SANS,
     TOKEN_FONT_MONO,
+    TOKEN_SPACING,
+    TOKEN_MOTION_DURATION_FAST,
+    TOKEN_MOTION_DURATION_BASE,
+    TOKEN_MOTION_DURATION_SLOW,
+    TOKEN_MOTION_EASE,
+    TOKEN_COLOR_RING,
+    TOKEN_FONT_DISPLAY,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_tokens_len_is_30() {
+        assert_eq!(
+            ALL_TOKENS.len(),
+            30,
+            "ALL_TOKENS must have exactly 30 slots"
+        );
+    }
+}
