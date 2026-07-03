@@ -46,10 +46,17 @@ mod tests {
                 "expected `{class}` utility rule in generated CSS; run scripts/gen-ferro-base-css.sh"
             );
         }
-        // SC3: reduced-motion collapse survives regeneration.
+        // SC3: reduced-motion collapse survives regeneration. The collapse
+        // declarations need !important — theme <style> tags are injected
+        // after this stylesheet and redeclare the tokens on :root at equal
+        // specificity, so normal declarations would lose on source order.
         assert!(
             FERRO_BASE_CSS.contains("prefers-reduced-motion"),
             "expected prefers-reduced-motion block in generated CSS"
+        );
+        assert!(
+            FERRO_BASE_CSS.contains("--motion-duration-fast:.01ms!important"),
+            "expected !important on the reduced-motion collapse; run scripts/gen-ferro-base-css.sh"
         );
     }
 }

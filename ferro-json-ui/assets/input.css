@@ -87,11 +87,15 @@
 }
 
 /* Collapse motion durations for users who prefer reduced motion.
- * Uses 0.01ms (not 0ms) so transitionend/animationend listeners still fire. */
+ * Uses 0.01ms (not 0ms) so transitionend/animationend listeners still fire.
+ * !important is required: theme <style> tags are injected AFTER this
+ * stylesheet and redeclare the tokens on :root at equal specificity, so a
+ * normal declaration here would lose on source order. Important author
+ * declarations beat later normal ones regardless of order. */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-duration-fast: 0.01ms;
-    --motion-duration-base: 0.01ms;
-    --motion-duration-slow: 0.01ms;
+    --motion-duration-fast: 0.01ms !important;
+    --motion-duration-base: 0.01ms !important;
+    --motion-duration-slow: 0.01ms !important;
   }
 }
