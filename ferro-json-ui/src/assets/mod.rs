@@ -37,6 +37,15 @@ mod tests {
             FERRO_BASE_CSS.contains("var(--motion-duration-fast,"),
             "expected motion-duration-fast fallback in generated CSS; run scripts/gen-ferro-base-css.sh"
         );
+        // The duration utilities must exist as class rules — a theme-layer
+        // variable emission alone satisfies the var() substring above without
+        // any consumable utility being generated.
+        for class in [".duration-fast{", ".duration-base{", ".duration-slow{"] {
+            assert!(
+                FERRO_BASE_CSS.contains(class),
+                "expected `{class}` utility rule in generated CSS; run scripts/gen-ferro-base-css.sh"
+            );
+        }
         // SC3: reduced-motion collapse survives regeneration.
         assert!(
             FERRO_BASE_CSS.contains("prefers-reduced-motion"),

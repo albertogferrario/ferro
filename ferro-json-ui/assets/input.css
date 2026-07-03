@@ -45,10 +45,10 @@
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
 
-  /* Motion tokens — bridge semantic names to Tailwind utility namespaces */
-  --duration-fast: var(--motion-duration-fast, 120ms);
-  --duration-base: var(--motion-duration-base, 220ms);
-  --duration-slow: var(--motion-duration-slow, 320ms);
+  /* Motion easing token — bridges to Tailwind's --ease-* utility namespace.
+   * Durations are NOT bridged here: Tailwind does not resolve duration-*
+   * utilities against a --duration-* theme namespace (unlike --ease-*),
+   * so the duration utilities are defined via @utility below instead. */
   --ease-base: var(--motion-ease, cubic-bezier(0.2, 0, 0.38, 0.9));
 
   /* Focus ring token */
@@ -70,6 +70,21 @@
  */
 @source inline("grid-cols-1 grid-cols-2 grid-cols-3 grid-cols-4 grid-cols-5 grid-cols-6 grid-cols-7 grid-cols-8 grid-cols-9 grid-cols-10 grid-cols-11 grid-cols-12 md:grid-cols-1 md:grid-cols-2 md:grid-cols-3 md:grid-cols-4 md:grid-cols-5 md:grid-cols-6 md:grid-cols-7 md:grid-cols-8 md:grid-cols-9 md:grid-cols-10 md:grid-cols-11 md:grid-cols-12 lg:grid-cols-1 lg:grid-cols-2 lg:grid-cols-3 lg:grid-cols-4 lg:grid-cols-5 lg:grid-cols-6 lg:grid-cols-7 lg:grid-cols-8 lg:grid-cols-9 lg:grid-cols-10 lg:grid-cols-11 lg:grid-cols-12");
 @source inline("duration-fast duration-base duration-slow ease-base font-display ring-ring");
+
+/*
+ * Motion duration utilities. Tailwind v4 does not generate duration-*
+ * utilities from a --duration-* theme namespace, so these are defined
+ * explicitly. Fallbacks keep 23-slot v1 themes working.
+ */
+@utility duration-fast {
+  transition-duration: var(--motion-duration-fast, 120ms);
+}
+@utility duration-base {
+  transition-duration: var(--motion-duration-base, 220ms);
+}
+@utility duration-slow {
+  transition-duration: var(--motion-duration-slow, 320ms);
+}
 
 /* Collapse motion durations for users who prefer reduced motion.
  * Uses 0.01ms (not 0ms) so transitionend/animationend listeners still fire. */
