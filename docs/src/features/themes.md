@@ -6,7 +6,7 @@ ferro-theme provides a semantic token system that gives JSON-UI applications con
 
 A theme consists of two files:
 
-- **`tokens.css`** — Tailwind v4 `@theme` block defining the 30 semantic token slots (colors, shapes, shadows, typography, density, motion, focus ring, display font)
+- **`tokens.css`** — plain CSS `:root { ... }` block declaring the 30 semantic token slots (colors, shapes, shadows, typography, density, motion, focus ring, display font)
 - **`theme.json`** — partial JSON object overriding intent template layouts (optional; empty `{}` uses defaults)
 
 Themes live in the `themes/` directory at the project root:
@@ -40,17 +40,13 @@ let middleware = ThemeMiddleware::new()
 Edit `themes/myapp/tokens.css` to customize the visual identity:
 
 ```css
-@theme {
+:root {
   --color-primary: oklch(55% 0.22 160);  /* green brand color */
   --color-accent: oklch(65% 0.18 300);   /* purple accent */
 }
 ```
 
-Process with Tailwind CLI before deploying:
-
-```bash
-npx tailwindcss -i themes/myapp/tokens.css -o public/themes/myapp.css
-```
+No build step is required. `ThemeMiddleware` injects `tokens.css` verbatim into an inline `<style>` tag, so the file must be standard CSS. Tailwind at-rules such as `@theme` are not processed at runtime — browsers ignore unknown at-rules wholesale, leaving every token in the block undefined.
 
 ## Token Reference
 
@@ -159,7 +155,7 @@ The scaffolded `tokens.css` includes a dark mode block:
 
 ```css
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-background: oklch(12% 0 0);
     --color-surface: oklch(17% 0 0);
     --color-text: oklch(95% 0 0);
@@ -292,15 +288,9 @@ A tenant with `plan: "enterprise"` loads `themes/enterprise/`. Tenants without a
 
 ## For Theme Creators
 
-**Authoring format vs. deployed format:**
+**No build step:**
 
-The `tokens.css` file uses the Tailwind v4 `@theme` authoring syntax, which is processed by the Tailwind CLI. Do not serve the raw `tokens.css` directly — run it through Tailwind first:
-
-```bash
-npx tailwindcss -i themes/mytheme/tokens.css -o public/themes/mytheme.css
-```
-
-Add this to your build pipeline or `package.json` scripts.
+`tokens.css` is plain CSS. `ThemeMiddleware` reads it and injects it verbatim into an inline `<style>` tag on every JSON-UI response. Utility classes are pre-built into the framework's base CSS and resolve tokens through `var()` at render time, so a theme only declares variable values. Do not use Tailwind at-rules (`@theme`, `@import "tailwindcss"`) — browsers ignore unknown at-rules wholesale, leaving every token in the block undefined.
 
 **Partial overrides in theme.json:**
 
