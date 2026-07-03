@@ -790,11 +790,13 @@ pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth
     for item in &props.items {
         html.push_str("<li class=\"flex items-center gap-2\">");
         if item.checked {
-            html.push_str("<input type=\"checkbox\" checked class=\"h-4 w-4 rounded-sm border-border text-primary\">");
+            html.push_str(&format!(
+                "<input type=\"checkbox\" checked class=\"h-4 w-4 rounded-sm border-border text-primary {MOTION_FAST} {FOCUS_RING}\">"
+            ));
         } else {
-            html.push_str(
-                "<input type=\"checkbox\" class=\"h-4 w-4 rounded-sm border-border text-primary\">",
-            );
+            html.push_str(&format!(
+                "<input type=\"checkbox\" class=\"h-4 w-4 rounded-sm border-border text-primary {MOTION_FAST} {FOCUS_RING}\">"
+            ));
         }
         let label_class = if item.checked {
             "text-sm line-through text-text-muted"
@@ -803,7 +805,7 @@ pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth
         };
         if let Some(ref href) = item.href {
             html.push_str(&format!(
-                "<a href=\"{}\" class=\"{}\">{}</a>",
+                "<a href=\"{}\" class=\"{} {INTERACTIVE_BASE}\">{}</a>",
                 html_escape(href),
                 label_class,
                 html_escape(&item.label)

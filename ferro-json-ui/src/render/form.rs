@@ -613,7 +613,7 @@ pub(crate) fn render_checkbox_list(
         html.push_str("<div class=\"flex items-center gap-2\">");
         html.push_str(&format!(
             "<input type=\"checkbox\" id=\"{}\" name=\"{}\" value=\"{}\" \
-             class=\"h-4 w-4 rounded-sm {} text-primary\"",
+             class=\"h-4 w-4 rounded-sm {} text-primary {MOTION_FAST} {DISABLED_BASE} {FOCUS_RING}\"",
             html_escape(&checkbox_id),
             html_escape(&props.field),
             html_escape(&option.value),
@@ -769,7 +769,7 @@ pub(crate) fn render_switch(el: &Element, _spec: &Spec, data: &Value, _depth: us
     }
     html.push('>');
     html.push_str(&format!(
-        "<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary {peer_ring_class} after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full\"></div>",
+        "<div class=\"w-11 h-6 bg-border rounded-full peer peer-checked:bg-primary {peer_ring_class} after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all after:duration-fast after:ease-base peer-checked:after:translate-x-full\"></div>",
     ));
     html.push_str("</label>");
     html.push_str("</div>");
@@ -1597,7 +1597,9 @@ mod tests {
         );
         let spec = mk_spec("root", el.clone());
         let html = render_checkbox_list(&el, &spec, &json!({}), 1);
-        let disabled_count = html.matches(" disabled").count();
+        // Match the bare attribute (` disabled>` closes the tag) — the class
+        // string legitimately contains `disabled:*` DISABLED_BASE fragments.
+        let disabled_count = html.matches(" disabled>").count();
         assert_eq!(
             disabled_count, 2,
             "every input must carry disabled; got: {html}"

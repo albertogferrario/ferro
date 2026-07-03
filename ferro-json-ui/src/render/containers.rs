@@ -160,7 +160,7 @@ pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize
     let mut html = String::new();
     // Trigger button (sibling of dialog, not inside it)
     html.push_str(&format!(
-        "<button type=\"button\" class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer\" data-modal-open=\"{}\">{}</button>",
+        "<button type=\"button\" class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer hover:bg-primary/90 {INTERACTIVE_BASE}\" data-modal-open=\"{}\">{}</button>",
         html_escape(&props.id),
         html_escape(trigger)
     ));
@@ -546,7 +546,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
             ("border-transparent", "text-text-muted hover:text-text")
         };
         html.push_str(&format!(
-            "<button type=\"button\" data-tab=\"{}\" class=\"flex-1 px-3 py-2 text-sm border-b-2 {} {}\" aria-selected=\"{}\">{} <span class=\"ml-1 text-xs text-text-muted\">({})</span></button>",
+            "<button type=\"button\" data-tab=\"{}\" class=\"flex-1 px-3 py-2 text-sm border-b-2 {} {} {INTERACTIVE_BASE}\" aria-selected=\"{}\">{} <span class=\"ml-1 text-xs text-text-muted\">({})</span></button>",
             html_escape(&lane.id),
             border,
             text,
@@ -624,7 +624,7 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
         for item in &props.breadcrumb {
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">{}</a>",
+                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.label)
                 ));
@@ -705,7 +705,7 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
         for item in &props.breadcrumb {
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap\">{}</a>",
+                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.label)
                 ));
