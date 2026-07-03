@@ -137,13 +137,13 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
     ),
     (
         "Badge",
-        "Small variant-styled label.",
+        "Small tone-styled status label.",
         || to_value(schema_for!(BadgeProps)).unwrap(),
         &[],
     ),
     (
         "Alert",
-        "Inline notice with info / success / warning / error variants.",
+        "Inline notice with neutral / success / warning / destructive tones.",
         || to_value(schema_for!(AlertProps)).unwrap(),
         &[],
     ),
@@ -245,7 +245,7 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
     ),
     (
         "ActionCard",
-        "Clickable row with icon, title, description, chevron, and variant-colored border.",
+        "Clickable row with icon, title, description, chevron, and tone-colored left border.",
         || to_value(schema_for!(ActionCardProps)).unwrap(),
         &[],
     ),
