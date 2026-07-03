@@ -3825,10 +3825,10 @@ ring, disabled treatment, frequency-tiered motion.
   5. The sample `app/` views lint clean, enforced by a test.
   6. Lint never affects rendering or spec validation.
 
-**Plans:** 2/6 plans executed
+**Plans:** 3/6 plans executed
   - [x] 252-01-PLAN.md — Foundation: `Spec.design` field, `Finding`/`Severity`/`DesignRule` types, pure `lint()` engine (intent resolution + allow validation + inference), D-08 drift test (empty registry) [wave 1]
   - [x] 252-02-PLAN.md — D-16 single-home: extend catalog Stage 2b to catch element-level `action.confirm.variant` [wave 1]
-  - [ ] 252-03-PLAN.md — Rules batch A: page-header, prefer-data-table, list-empty-state, row-actions-grouped, breadcrumb-on-subpages [wave 2]
+  - [x] 252-03-PLAN.md — Rules batch A: page-header, prefer-data-table, list-empty-state, row-actions-grouped, breadcrumb-on-subpages [wave 2]
   - [ ] 252-04-PLAN.md — Rules batch B: process-kanban, card-actions-in-menu, create-separate-page, form-default-values, destructive-confirmation [wave 3]
   - [ ] 252-05-PLAN.md — CLI: `ferro design:lint [path] [--json] [--deny]` [wave 2]
   - [ ] 252-06-PLAN.md — App views declare `design.intent` + PageHeader, D-17 lint-clean gate, CI-exact gate + docs build [wave 4]
