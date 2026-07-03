@@ -494,6 +494,18 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Walk JSON-UI spec files and report design-pattern findings
+    #[command(name = "design:lint")]
+    DesignLint {
+        /// Directory or file to lint (default: src/views)
+        path: Option<String>,
+        /// Emit machine-readable JSON instead of human output
+        #[arg(long)]
+        json: bool,
+        /// Exit non-zero when any warning-level finding exists (CI mode)
+        #[arg(long)]
+        deny: bool,
+    },
     /// Generate a GitHub Actions CI workflow at .github/workflows/ci.yml
     #[command(name = "ci:init")]
     CiInit {
@@ -787,6 +799,9 @@ fn main() {
         }
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
+        }
+        Commands::DesignLint { path, json, deny } => {
+            commands::design_lint::run(path, json, deny);
         }
         Commands::CiInit { force } => {
             commands::ci_init::run(force);
