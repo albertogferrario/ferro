@@ -10,7 +10,7 @@ use std::path::Path;
 /// Generate theme scaffold files in `themes/{name}/`.
 ///
 /// Creates:
-/// - `themes/{name}/tokens.css` — plain CSS `:root { ... }` block with all 23 semantic token slots
+/// - `themes/{name}/tokens.css` — plain CSS `:root { ... }` block with all 30 semantic token slots
 /// - `themes/{name}/theme.json` — empty JSON object for partial intent template overrides
 ///
 /// Returns an error if `themes/{name}/` already exists.
@@ -112,6 +112,21 @@ fn tokens_css_template() -> &'static str {
   /* Typography tokens */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
+
+  /* Density token */
+  --spacing: 0.25rem;
+
+  /* Motion tokens */
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 220ms;
+  --motion-duration-slow: 320ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0.38, 0.9);
+
+  /* Focus ring token */
+  --color-ring: oklch(55% 0.2 250);
+
+  /* Display font token */
+  --font-display: var(--font-sans);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -130,6 +145,21 @@ fn tokens_css_template() -> &'static str {
     --color-destructive: oklch(60% 0.22 25);
     --color-success: oklch(60% 0.18 145);
     --color-warning: oklch(65% 0.18 80);
+
+    /* Density token */
+    --spacing: 0.25rem;
+
+    /* Motion tokens */
+    --motion-duration-fast: 120ms;
+    --motion-duration-base: 220ms;
+    --motion-duration-slow: 320ms;
+    --motion-ease: cubic-bezier(0.2, 0, 0.38, 0.9);
+
+    /* Focus ring token */
+    --color-ring: oklch(65% 0.18 250);
+
+    /* Display font token */
+    --font-display: var(--font-sans);
   }
 }
 "#
@@ -155,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn test_make_theme_tokens_css_has_all_23_token_slots() {
+    fn test_make_theme_tokens_css_has_all_30_token_slots() {
         let tmp = TempDir::new().unwrap();
         make_theme_in_dir("test", tmp.path()).unwrap();
 
@@ -211,6 +241,30 @@ mod tests {
         // Typography tokens (2)
         assert!(css.contains("--font-sans:"), "missing --font-sans");
         assert!(css.contains("--font-mono:"), "missing --font-mono");
+
+        // Density token (1)
+        assert!(css.contains("--spacing:"), "missing --spacing");
+
+        // Motion tokens (4)
+        assert!(
+            css.contains("--motion-duration-fast:"),
+            "missing --motion-duration-fast"
+        );
+        assert!(
+            css.contains("--motion-duration-base:"),
+            "missing --motion-duration-base"
+        );
+        assert!(
+            css.contains("--motion-duration-slow:"),
+            "missing --motion-duration-slow"
+        );
+        assert!(css.contains("--motion-ease:"), "missing --motion-ease");
+
+        // Focus ring token (1)
+        assert!(css.contains("--color-ring:"), "missing --color-ring");
+
+        // Display font token (1)
+        assert!(css.contains("--font-display:"), "missing --font-display");
     }
 
     #[test]
