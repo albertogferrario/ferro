@@ -59,4 +59,14 @@ mod tests {
             "expected !important on the reduced-motion collapse; run scripts/gen-ferro-base-css.sh"
         );
     }
+
+    #[test]
+    fn ferro_base_css_ring_falls_back_to_primary() {
+        // 23-slot v1 themes never define --color-ring; focus rings must
+        // resolve to the theme's primary color instead of an undefined var.
+        assert!(
+            FERRO_BASE_CSS.contains("var(--color-ring,var(--color-primary))"),
+            "expected --color-ring fallback to --color-primary in generated CSS; run scripts/gen-ferro-base-css.sh"
+        );
+    }
 }

@@ -51,8 +51,9 @@
    * so the duration utilities are defined via @utility below instead. */
   --ease-base: var(--motion-ease, cubic-bezier(0.2, 0, 0.38, 0.9));
 
-  /* Focus ring token */
-  --color-ring: var(--color-ring);
+  /* Focus ring token — falls back to the primary color so 23-slot v1
+   * themes (which never define --color-ring) keep working focus rings. */
+  --color-ring: var(--color-ring, var(--color-primary));
 
   /* Display font token — nested fallback to font-sans */
   --font-display: var(--font-display, var(--font-sans));
