@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: verifying
+status: executing
 stopped_at: Phase 252 context gathered
-last_updated: "2026-07-03T16:35:37.640Z"
-last_activity: 2026-07-03
+last_updated: "2026-07-03T17:22:04.815Z"
+last_activity: 2026-07-03 -- Phase 252 planning complete
 progress:
   total_phases: 126
   completed_phases: 108
-  total_plans: 441
+  total_plans: 447
   completed_plans: 440
-  percent: 100
+  percent: 98
 ---
 
 # Project State
@@ -32,9 +32,9 @@ Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
-Last activity: 2026-07-03
+Last activity: 2026-07-03 -- Phase 252 planning complete
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
 
 > **Operator actions pending (from v14.0 / prior milestones):**
