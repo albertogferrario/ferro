@@ -46,3 +46,5 @@ http-body-util = "0.1"
 serde_urlencoded = "0.7"
 # CRUD visual-parity test: derive_crud_plan + CrudVerb (not re-exported by ferro).
 ferro-projections = { path = "../ferro-projections" }
+# D-17 lint-clean gate: walks app/src/views/*.json and asserts zero findings.
+ferro-json-ui = { path = "../ferro-json-ui" }
