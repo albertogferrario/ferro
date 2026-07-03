@@ -184,7 +184,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
   `design::lint(&Spec)` engine implements the ~10 intent-keyed rules (intent inferred
   with info-level finding when undeclared); lint never affects rendering or validation;
   each rule ships a violating/conforming unit-test pair.
-- [ ] **DS-06**: `ferro design:lint [path] [--json] [--deny]` CLI — recursive over spec
+- [x] **DS-06**: `ferro design:lint [path] [--json] [--deny]` CLI — recursive over spec
   JSON files, human-readable + `--json` output, exit 0 always unless `--deny`.
 
 ### Agent Surface & Docs
