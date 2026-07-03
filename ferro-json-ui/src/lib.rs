@@ -61,8 +61,8 @@ pub use component::{
     SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
     TabsProps, TextElement, TextProps, ToastProps, Tone, Variant,
 };
-pub use design::{lint, rules, DesignMeta, DesignRule, Finding, Severity, KNOWN_INTENTS};
 pub use config::JsonUiConfig;
+pub use design::{lint, rules, DesignMeta, DesignRule, Finding, Severity, KNOWN_INTENTS};
 pub use runtime::FERRO_RUNTIME_JS;
 // resolve_path and resolve_path_string are pub(crate) — internal render pipeline helpers
 pub use layout::{

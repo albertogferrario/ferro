@@ -19,14 +19,14 @@ pub(super) fn infer_intent(spec: &Spec) -> Option<&'static str> {
         .map(|el| el.type_name.as_str())
         .collect();
 
-    if types.iter().any(|t| *t == "KanbanBoard") {
+    if types.contains(&"KanbanBoard") {
         return Some("process");
     }
     let form_count = types.iter().filter(|t| **t == "Form").count();
     if form_count >= 1 {
         return Some("collect");
     }
-    if types.iter().any(|t| *t == "DataTable" || *t == "Table") {
+    if types.contains(&"DataTable") || types.contains(&"Table") {
         return Some("browse");
     }
     let stat_count = types.iter().filter(|t| **t == "StatCard").count();

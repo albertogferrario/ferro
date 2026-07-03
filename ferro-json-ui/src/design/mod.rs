@@ -87,10 +87,10 @@ pub fn lint(spec: &Spec) -> Vec<Finding> {
             // No declared intent — infer and emit Info finding.
             let inferred = infer::infer_intent(spec);
             let message = match inferred {
-                Some(i) => format!(
-                    "No design.intent declared; inferred `{i}` from spec content."
-                ),
-                None => "No design.intent declared and none could be inferred from spec content.".into(),
+                Some(i) => format!("No design.intent declared; inferred `{i}` from spec content."),
+                None => {
+                    "No design.intent declared and none could be inferred from spec content.".into()
+                }
             };
             findings.push(Finding {
                 rule: "declare-intent",
@@ -106,7 +106,8 @@ pub fn lint(spec: &Spec) -> Vec<Finding> {
     // ── Step 2: validate allow ids ────────────────────────────────────────────
     // Known ids = all rule ids in the registry PLUS the engine finding "declare-intent".
     for id in allow {
-        let known = rules::RULE_REGISTRY.iter().any(|r| r.id == id.as_str()) || id == "declare-intent";
+        let known =
+            rules::RULE_REGISTRY.iter().any(|r| r.id == id.as_str()) || id == "declare-intent";
         if !known {
             findings.push(Finding {
                 rule: "allow",
@@ -213,10 +214,17 @@ mod engine_tests {
     #[test]
     fn unknown_allow_id_emits_warning() {
         // Use a permanently-unknown id — not a real rule id.
-        let spec = spec_with_type_and_design("DataTable", r#"{"intent":"browse","allow":["no-such-rule"]}"#);
+        let spec = spec_with_type_and_design(
+            "DataTable",
+            r#"{"intent":"browse","allow":["no-such-rule"]}"#,
+        );
         let findings = lint(&spec);
         // "browse" declared → no declare-intent finding. "no-such-rule" unknown → 1 warning.
-        assert_eq!(findings.len(), 1, "expected one finding for unknown allow id");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected one finding for unknown allow id"
+        );
         assert_eq!(findings[0].rule, "allow");
         assert_eq!(findings[0].severity, Severity::Warning);
         assert!(
@@ -275,8 +283,7 @@ mod drift_tests {
         let mut proj = projection_labels.clone();
         proj.sort_unstable();
         assert_eq!(
-            design,
-            proj,
+            design, proj,
             "KNOWN_INTENTS in design module drifted from ferro_projections::Intent labels"
         );
     }
