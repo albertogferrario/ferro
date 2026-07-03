@@ -170,7 +170,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 
 ### Component Variant Discipline
 
-- [ ] **DS-03**: All 47 builtin components use the canonical `variant`
+- [x] **DS-03**: All 47 builtin components use the canonical `variant`
   (primary/secondary/outline/ghost/destructive), `tone` (neutral/success/warning/
   destructive), and `size` (sm/md/lg) enums; catalog prop schemas enforce them; drift
   guards extend to the enum sets; a migration table lists every rename for consumers.
