@@ -94,14 +94,26 @@ Set `"layout"` at the top level of the spec:
     "login_form": {
       "type": "Form",
       "props": {
-        "action": "/login",
-        "method": "POST",
-        "fields": [
-          { "name": "email", "type": "email", "label": "Email" },
-          { "name": "password", "type": "password", "label": "Password" }
-        ],
-        "submit_label": "Sign In"
-      }
+        "action": {
+          "handler": "auth.login",
+          "method": "POST",
+          "on_success": { "type": "redirect", "url": "/" },
+          "on_error": { "type": "show_errors" }
+        }
+      },
+      "children": ["email_input", "password_input", "submit_btn"]
+    },
+    "email_input": {
+      "type": "Input",
+      "props": { "field": "email", "input_type": "email", "label": "Email" }
+    },
+    "password_input": {
+      "type": "Input",
+      "props": { "field": "password", "input_type": "password", "label": "Password" }
+    },
+    "submit_btn": {
+      "type": "Button",
+      "props": { "label": "Sign In", "button_type": "submit", "variant": "primary" }
     }
   }
 }
