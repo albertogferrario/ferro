@@ -35,3 +35,66 @@ pub(super) fn infer_intent(spec: &Spec) -> Option<&'static str> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::spec::Spec;
+
+    fn spec_with(element_type: &str) -> Spec {
+        Spec::from_json(&format!(
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{element_type}"}}}}}}"#
+        ))
+        .unwrap()
+    }
+
+    fn spec_with_two(type_a: &str, type_b: &str) -> Spec {
+        Spec::from_json(&format!(
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{type_a}","children":["b"]}},"b":{{"type":"{type_b}"}}}}}}"#
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn infer_kanban_board_is_process() {
+        let spec = spec_with("KanbanBoard");
+        assert_eq!(infer_intent(&spec), Some("process"));
+    }
+
+    #[test]
+    fn infer_form_is_collect() {
+        let spec = spec_with("Form");
+        assert_eq!(infer_intent(&spec), Some("collect"));
+    }
+
+    #[test]
+    fn infer_data_table_is_browse() {
+        let spec = spec_with("DataTable");
+        assert_eq!(infer_intent(&spec), Some("browse"));
+    }
+
+    #[test]
+    fn infer_table_is_browse() {
+        let spec = spec_with("Table");
+        assert_eq!(infer_intent(&spec), Some("browse"));
+    }
+
+    #[test]
+    fn infer_two_stat_cards_is_summarize() {
+        let spec = spec_with_two("StatCard", "StatCard");
+        assert_eq!(infer_intent(&spec), Some("summarize"));
+    }
+
+    #[test]
+    fn infer_text_only_is_none() {
+        let spec = spec_with("Text");
+        assert_eq!(infer_intent(&spec), None);
+    }
+
+    #[test]
+    fn infer_one_stat_card_is_none() {
+        // Single StatCard below threshold — no inference.
+        let spec = spec_with("StatCard");
+        assert_eq!(infer_intent(&spec), None);
+    }
+}

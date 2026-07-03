@@ -135,6 +135,120 @@ pub fn lint(spec: &Spec) -> Vec<Finding> {
     findings
 }
 
+// ── Engine unit tests ─────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod engine_tests {
+    use super::*;
+    use crate::spec::Spec;
+
+    /// Helper: minimal spec JSON with a single element of the given type.
+    fn spec_with(element_type: &str) -> Spec {
+        Spec::from_json(&format!(
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{element_type}"}}}}}}"#
+        ))
+        .unwrap()
+    }
+
+    /// Helper: spec JSON with a `design` object.
+    fn spec_with_design(design_json: &str) -> Spec {
+        Spec::from_json(&format!(
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"DataTable"}}}},"design":{design_json}}}"#
+        ))
+        .unwrap()
+    }
+
+    /// Helper: spec with a `design` object and an explicit element type.
+    fn spec_with_type_and_design(element_type: &str, design_json: &str) -> Spec {
+        Spec::from_json(&format!(
+            r#"{{"$schema":"ferro-json-ui/v2","root":"r","elements":{{"r":{{"type":"{element_type}"}}}},"design":{design_json}}}"#
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn undeclared_intent_with_data_table_emits_info_browse() {
+        // No design field → inference: DataTable → "browse".
+        let spec = spec_with("DataTable");
+        let findings = lint(&spec);
+        assert_eq!(findings.len(), 1, "expected exactly one finding");
+        assert_eq!(findings[0].rule, "declare-intent");
+        assert_eq!(findings[0].severity, Severity::Info);
+        assert!(
+            findings[0].message.contains("browse"),
+            "message should mention inferred intent 'browse', got: {}",
+            findings[0].message
+        );
+    }
+
+    #[test]
+    fn undeclared_intent_no_signal_emits_info_none_inferred() {
+        // Text-only spec → no inference signal.
+        let spec = spec_with("Text");
+        let findings = lint(&spec);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule, "declare-intent");
+        assert_eq!(findings[0].severity, Severity::Info);
+        assert!(
+            findings[0].message.contains("none could be inferred"),
+            "message should mention no inference, got: {}",
+            findings[0].message
+        );
+    }
+
+    #[test]
+    fn unknown_declared_intent_emits_warning() {
+        let spec = spec_with_design(r#"{"intent":"totally-made-up"}"#);
+        let findings = lint(&spec);
+        assert_eq!(findings.len(), 1, "expected exactly one finding");
+        assert_eq!(findings[0].rule, "declare-intent");
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert!(
+            findings[0].message.contains("totally-made-up"),
+            "message should include the bad intent string, got: {}",
+            findings[0].message
+        );
+    }
+
+    #[test]
+    fn unknown_allow_id_emits_warning() {
+        // Use a permanently-unknown id — not a real rule id.
+        let spec = spec_with_type_and_design("DataTable", r#"{"intent":"browse","allow":["no-such-rule"]}"#);
+        let findings = lint(&spec);
+        // "browse" declared → no declare-intent finding. "no-such-rule" unknown → 1 warning.
+        assert_eq!(findings.len(), 1, "expected one finding for unknown allow id");
+        assert_eq!(findings[0].rule, "allow");
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert!(
+            findings[0].message.contains("no-such-rule"),
+            "message should include the bad allow id, got: {}",
+            findings[0].message
+        );
+    }
+
+    #[test]
+    fn allow_declare_intent_suppresses_info_finding() {
+        // No design.intent declared + allow:["declare-intent"] → zero findings.
+        let spec = spec_with_type_and_design("Text", r#"{"allow":["declare-intent"]}"#);
+        let findings = lint(&spec);
+        assert!(
+            findings.is_empty(),
+            "allow:declare-intent should suppress the info finding, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn valid_declared_intent_with_data_table_zero_findings() {
+        // Empty registry: no composition rules → zero findings for valid intent.
+        let spec = spec_with_type_and_design("DataTable", r#"{"intent":"browse"}"#);
+        let findings = lint(&spec);
+        assert!(
+            findings.is_empty(),
+            "valid declared intent + empty registry should produce zero findings, got: {findings:#?}"
+        );
+    }
+}
+
 // ── D-08 drift test ───────────────────────────────────────────────────────────
 
 #[cfg(all(test, feature = "projections"))]
