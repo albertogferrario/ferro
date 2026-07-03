@@ -100,11 +100,23 @@ pub fn run(path: Option<String>, json: bool, deny: bool) {
         })
     {
         let file_path = entry.path();
+        let label = file_path.display().to_string();
         let content = match std::fs::read_to_string(file_path) {
             Ok(c) => c,
-            Err(_) => continue,
+            Err(e) => {
+                all.push(FileFinding {
+                    file: label.clone(),
+                    finding: Finding {
+                        rule: "file-read",
+                        element_id: None,
+                        severity: Severity::Warning,
+                        message: format!("Could not read file: {e}"),
+                        suggestion: "Check file permissions.".into(),
+                    },
+                });
+                continue;
+            }
         };
-        let label = file_path.display().to_string();
         all.extend(lint_content(&label, &content));
     }
 
@@ -280,6 +292,26 @@ mod tests {
         assert!(
             !has_warning(&findings),
             "has_warning must be false for silently skipped files"
+        );
+    }
+
+    #[test]
+    fn has_warning_true_for_file_read_finding() {
+        // file-read findings must be Warning severity so --deny trips.
+        // Regression guard for WR-03: I/O errors must not be silently swallowed.
+        let findings = vec![FileFinding {
+            file: "unreadable.json".into(),
+            finding: Finding {
+                rule: "file-read",
+                element_id: None,
+                severity: Severity::Warning,
+                message: "Could not read file: permission denied (os error 13)".into(),
+                suggestion: "Check file permissions.".into(),
+            },
+        }];
+        assert!(
+            has_warning(&findings),
+            "file-read finding must be Warning severity so --deny triggers"
         );
     }
 }
