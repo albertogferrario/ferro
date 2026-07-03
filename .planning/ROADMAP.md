@@ -3708,3 +3708,142 @@ and document the authoring surface, result path, scaling model, and non-goals.
 | OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 |
 
 ✓ 6/6 requirements mapped, no orphans, no duplicates.
+
+## v16.5 JSON-UI Design System (Phases 250–253) [CONSUMER-PAIRED with gestiscilo Phase 232]
+
+**Status:** Queued (v16.3 stays the current milestone; numbering continues after v16.4's
+reserved 244–249). Independent of v16.4 — the two milestones share no code surface and
+can be planned/executed in either order.
+
+**Goal:** Complete the design system above the token layer. ferro-json-ui already has
+semantic tokens, semantic-class emission, and themes; this milestone adds the missing
+upper half — density/motion/focus-ring tokens with opinionated defaults, a canonical
+variant vocabulary across all 47 components, and composition patterns codified as
+machine-readable, intent-keyed lint rules. The defining capability: **the design system
+is enforced at the agent-authoring boundary** — an agent reads the system through
+ferro-mcp (`generation_context`, `json_ui_catalog`), authors a spec, and `design_lint`
+validates conformance before any human review. Pattern archetypes are the seven
+projection intents; the design system extends the core abstraction rather than adding a
+parallel vocabulary.
+
+**Anchor spec:** `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`
+(token vocabulary v2, design language defaults, rule catalog, surfaces, reference-case
+adoption plan).
+
+**Builds on shipped work:**
+- `ferro-theme` v1 vocabulary + `ThemeMiddleware` per-request resolution (unchanged surface).
+- 47 builtin components emitting semantic classes exclusively; catalog + drift guards.
+- `ferro-mcp` `json_ui_catalog` / `generation_context` tools.
+- The seven projection intents (`ferro-projections`) — reused as the pattern archetype key.
+
+**Architectural constraints (encoded in every phase goal):**
+- No new crate: pattern rules live in ferro-json-ui (which owns spec validation and the
+  catalog); tokens stay in ferro-theme.
+- Lint is diagnostics-only — rendering never rejects a spec on design grounds; the only
+  failure mode is the opt-in CLI `--deny`.
+- Every valid v1 theme remains a valid v2 theme (new tokens ship with defaults).
+- Single publish at the end (Phase 253); the consumer adoption phase pins that release.
+
+### Phases
+
+- [ ] **Phase 250: Token vocabulary v2 + default theme refresh** — 23 → 30 slots
+  (density `--spacing`, motion ×4, `--color-ring`, `--font-display`) with defaults;
+  design-language refresh of `default.css`; regenerated `ferro-base.css`.
+- [ ] **Phase 251: Component variant discipline + interactive-state pass** — canonical
+  `variant`/`tone`/`size` enums across the 47 components; hover/focus-visible/disabled
+  and frequency-tiered motion per the component quality bar; migration table.
+- [ ] **Phase 252: Design module + lint + CLI** — `Spec.design` field
+  (`intent`/`allow`), `design::lint` rule engine with the ~10 intent-keyed rules,
+  `ferro design:lint [--json] [--deny]`.
+- [ ] **Phase 253: MCP surface + docs + publish** — `design_lint` MCP tool, catalog /
+  generation-context extensions, `docs/src/design-system/` chapter, crates.io publish.
+
+### Phase Details
+
+#### Phase 250: Token vocabulary v2 + default theme refresh
+**Goal:** Grow the fixed vocabulary from 23 to 30 slots — one-knob density
+(`--spacing`), frequency-tiered motion (`--motion-duration-fast/base/slow`,
+`--motion-ease`), a uniform focus ring (`--color-ring`), and a display font slot
+(`--font-display`) — every new slot with a default so existing v1 themes stay valid
+unchanged; refresh the default theme to the documented design language.
+**Depends on:** nothing (first phase of the milestone).
+**Requirements:** DS-01, DS-02.
+**Success Criteria** (what must be TRUE):
+  1. `ALL_TOKENS` lists 30 slots; every new slot has a default in the base CSS and
+     `default.css` (light + dark); an unmodified v1 `tokens.css` theme renders identically.
+  2. Regenerated `ferro-base.css` exposes the new utilities (`duration-fast/base/slow`,
+     `ease-base`, ring color, `font-display`, spacing base) resolving to `var()` slots.
+  3. Base CSS collapses motion durations under `prefers-reduced-motion`.
+  4. `default.css` follows the design language (cool-tinted neutrals, single sparing
+     accent) and `docs/src/features/themes.md` documents v2 plus the root-font-size
+     type-scaling recipe.
+
+#### Phase 251: Component variant discipline + interactive-state pass
+**Goal:** One variant vocabulary across the whole component set — audit all 47 builtin
+components, normalize to canonical `variant` (primary/secondary/outline/ghost/
+destructive), `tone` (neutral/success/warning/destructive), and `size` (sm/md/lg)
+enums, and bring every interactive component to the quality bar: hover, `focus-visible`
+ring, disabled treatment, frequency-tiered motion.
+**Depends on:** Phase 250 (motion + ring tokens).
+**Requirements:** DS-03, DS-04.
+**Success Criteria** (what must be TRUE):
+  1. Every component exposing weight/status/size props uses the canonical enums;
+     catalog prop schemas enforce them; drift guards extended to the enum sets.
+  2. Every interactive component has hover, `focus-visible` (via `--color-ring`), and
+     disabled states; transitions use the motion tokens at frequency-appropriate tiers.
+  3. A migration table lists every renamed prop/value for consumers.
+  4. `ferro-base.css` regenerated after class changes; workspace gate green.
+
+#### Phase 252: Design module + lint + CLI
+**Goal:** Codify the composition patterns as a machine-readable, testable rule set —
+`Spec` gains an optional `design` field (`intent` + `allow`), a pure
+`design::lint(&Spec)` engine implements the intent-keyed rules, and
+`ferro design:lint` surfaces findings from the command line.
+**Depends on:** Phase 251 (rules reference the canonical component vocabulary).
+**Requirements:** DS-05, DS-06.
+**Success Criteria** (what must be TRUE):
+  1. `Spec` accepts the optional `design` field; invalid `intent` values and unknown
+     `allow` ids are reported as findings, never errors.
+  2. The rule set from the anchor spec (~10 rules: page-header, prefer-data-table,
+     list-empty-state, row-actions-grouped, process-kanban, create-separate-page,
+     breadcrumb-on-subpages, form-default-values, destructive-confirmation,
+     card-actions-in-menu) is implemented with a violating + conforming test pair per rule.
+  3. Undeclared intent is inferred from spec content and reported as an info finding.
+  4. `ferro design:lint [path] [--json] [--deny]` walks spec files; exit is non-zero
+     only under `--deny` with warning-level findings.
+  5. The sample `app/` views lint clean, enforced by a test.
+  6. Lint never affects rendering or spec validation.
+
+#### Phase 253: MCP surface + docs + publish
+**Goal:** Close the agent-authoring loop and ship — expose `design_lint` through
+ferro-mcp, extend `json_ui_catalog` and `generation_context` with the design system,
+document the whole system, and publish the workspace release the consumer adoption
+phase pins.
+**Depends on:** Phase 252.
+**Requirements:** DS-07, DS-08.
+**Success Criteria** (what must be TRUE):
+  1. The `design_lint` MCP tool lints an inline spec or a path and returns structured
+     findings.
+  2. `json_ui_catalog` carries the canonical variant vocabulary;
+     `generation_context` carries a design-system summary (tokens + per-intent
+     pattern expectations).
+  3. `docs/src/design-system/` covers principles, token v2 reference, variant
+     vocabulary, pattern catalog (rationale + example + `allow` per rule), and the
+     lint guide (CLI + MCP).
+  4. Workspace version bumped and published to crates.io after the full CI-exact gate;
+     the consumer adoption phase (gestiscilo Phase 232) is unblocked.
+
+### Requirement → Phase Mapping (v16.5)
+
+| Requirement | Phase |
+|-------------|-------|
+| DS-01 (token vocabulary v2 with defaults) | Phase 250 |
+| DS-02 (default theme design-language refresh) | Phase 250 |
+| DS-03 (canonical variant/tone/size vocabulary) | Phase 251 |
+| DS-04 (interactive-state + motion quality bar) | Phase 251 |
+| DS-05 (`Spec.design` + intent-keyed lint rules) | Phase 252 |
+| DS-06 (`ferro design:lint` CLI) | Phase 252 |
+| DS-07 (MCP design surface: `design_lint`, catalog, generation context) | Phase 253 |
+| DS-08 (design-system docs + publish) | Phase 253 |
+
+✓ 8/8 requirements mapped, no orphans, no duplicates.
