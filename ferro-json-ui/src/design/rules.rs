@@ -295,7 +295,7 @@ fn check_create_separate_page(spec: &Spec, _intent: Option<&str>) -> Vec<Finding
 }
 
 /// Form-field element types for `form-default-values` detection.
-const FIELD_TYPES: &[&str] = &["Input", "Select", "Textarea", "RichTextEditor"];
+const FIELD_TYPES: &[&str] = &["Input", "Select", "RichTextEditor"];
 
 fn check_form_default_values(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
     // Detect edit form: at least one field binds default_value via a $data path.
