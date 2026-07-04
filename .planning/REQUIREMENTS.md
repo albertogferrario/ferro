@@ -142,10 +142,11 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ---
 
-# Requirements — v16.5 JSON-UI Design System — IN PROGRESS
+# Requirements — v16.5 JSON-UI Design System — COMPLETE
 
-**Status:** Started 2026-07-03 (current milestone). Independent of v16.4 (reserved
-244–249); the two share no code surface. Consumer-paired with gestiscilo Phase 232.
+**Status:** Complete — shipped 2026-07-04, published 0.2.86 (awaiting `/gsd-complete-milestone`
+archival). Independent of v16.4 (reserved 244–249). Consumer-paired with gestiscilo Phase 232,
+unblocked by the 253 publish.
 
 **Milestone goal:** Complete the design system above the token layer — density/motion/
 focus-ring tokens with opinionated defaults, a canonical variant vocabulary across all
@@ -210,9 +211,128 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 |--------|-------|--------|
 | DS-01 | Phase 250 | Complete (verified 2026-07-03) |
 | DS-02 | Phase 250 | Complete (verified 2026-07-03) |
-| DS-03 | Phase 251 | Not started |
-| DS-04 | Phase 251 | Not started |
-| DS-05 | Phase 252 | Not started |
-| DS-06 | Phase 252 | Not started |
-| DS-07 | Phase 253 | Not started |
-| DS-08 | Phase 253 | Not started |
+| DS-03 | Phase 251 | Complete (verified 2026-07-03) |
+| DS-04 | Phase 251 | Complete (verified 2026-07-03) |
+| DS-05 | Phase 252 | Complete (verified 2026-07-04) |
+| DS-06 | Phase 252 | Complete (verified 2026-07-04) |
+| DS-07 | Phase 253 | Complete (verified 2026-07-04) |
+| DS-08 | Phase 253 | Complete (published 0.2.85/0.2.86, 2026-07-04) |
+
+---
+
+# Requirements — v16.6 POS Component Suite — CURRENT
+
+**Status:** Current milestone, started 2026-07-04. Phase numbering continues at 254.
+Independent of v16.4 (queued, reserved 244–249). Consumer-paired with gestiscilo's
+register/counter ("cassa") mode; seed finding: the ~1500-line RawHtml product picker
+audited in `.planning/phases/253-mcp-surface-docs-publish/253-FRICTION.md`.
+
+**Milestone goal:** Touch-first sale-screen components in the ferro-json-ui builtin
+catalog — product grid, cart panel, numpad, quantity/category primitives — at a tablet
+interaction quality bar, derivable from a `ServiceDef` through the projection layer and
+agent-authorable through the v16.5 MCP + design-lint boundary.
+
+**Research:** `.planning/research/` (STACK, FEATURES, ARCHITECTURE, PITFALLS, SUMMARY —
+2026-07-04). Zero new dependencies; all components are builtins (never plugins); the
+seven-intent vocabulary is unchanged.
+
+**Scope decisions (2026-07-04):** form-state cart only (client CartRuntime deferred —
+consequence accepted: gestiscilo's RawHtml elimination is partial until it ships);
+CategoryNav is a standalone builtin; Grid `row_weights` included; Numpad included;
+barcode keyboard-wedge deferred.
+
+## v16.6 Requirements
+
+### Components
+
+- [ ] **POS-01**: A spec author binds a products data path to a `ProductGrid` builtin and
+  gets a responsive, touch-first product grid (ProductTile children via `$each`) with
+  built-in client-side text search filtering.
+- [ ] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
+  `stock_badge` — with existing specs rendering unchanged (serde-backward-compatible).
+- [ ] **POS-03**: A `CategoryNav` standalone builtin filters visible product tiles by
+  category client-side (show/hide), touch targets ≥44px.
+- [ ] **POS-04**: A `CartPanel` builtin renders a server-rendered cart (line items with
+  per-line quantity stepper + remove, running total, EmptyState when empty, confirm-action
+  slot) that pins and internally scrolls within a `fill_viewport` layout.
+- [ ] **POS-05**: A `QuantityStepper` standalone builtin provides a reusable +/− numeric
+  stepper on the ProductTile hidden-input contract, usable in cart lines and forms.
+- [ ] **POS-06**: A `Numpad` builtin provides a custom tap-surface numeric keypad
+  (≥56px keys) writing to a target field — never a native input, so the software keyboard
+  is never triggered.
+
+### Touch Interaction Quality
+
+- [ ] **POS-07**: A shared POS touch foundation — `touch-action: manipulation`, `:active`
+  press states on the motion tokens, tap-highlight reset, overscroll containment, minimum
+  hit-target constants — is centralized in `render/classes.rs` and applied across all POS
+  components; every emitted class is a full literal (Tailwind-scanner/safelist-safe).
+- [ ] **POS-08**: POS forms are double-submit protected — a `data-disable-on-submit`
+  runtime guard plus the documented idempotency-key pattern on the existing
+  `framework::write` idempotency hook.
+
+### Layout
+
+- [ ] **POS-09**: `Grid` gains `row_weights` — asymmetric fill-row weighting (product pane
+  taller than cart on phones), additive alongside the Phase 253 `spans` prop.
+
+### Projection
+
+- [ ] **POS-10**: A `ServiceDef` renders a working sale screen via a `Register` layout
+  template under the **Collect** intent (builder `emit_register_root` +
+  `ElementBuilder.each()` + `fill_viewport` emission) — the seven-intent vocabulary is
+  unchanged.
+
+### Agent-Authoring Boundary
+
+- [ ] **POS-11**: POS design-lint rules ship — `pos-fill-viewport`, `pos-grid-fill`,
+  `pos-cart-present`, `fill-viewport-layout-unknown` — each with violating/conforming AND
+  data-bound fixtures; `RULE_COMPONENTS` mapping updated.
+- [ ] **POS-12**: The MCP + docs surface is extended — `json_ui_catalog` entries/count for
+  the new components, `generation_context` POS composition guidance, `docs/src` updates.
+
+### Release
+
+- [ ] **POS-13**: The `/cassa` sample app flips to the new components (projection-derived
+  Register), the full CI-exact gate is green, and a single crates.io publish closes the
+  milestone (gestiscilo's register phase gates on it).
+
+## Future Requirements (deferred)
+
+- **CartRuntime** — client-side live cart (tap → cart panel update + running total, single
+  commit POST) via a `runtime/cart_runtime.rs` module with a documented `data-cart-target`
+  extension hook. Deferred by scope decision; revisit on gestiscilo adoption friction.
+- **Barcode keyboard-wedge input** — keystroke-timing scanner detection (~40 lines runtime
+  JS, `data-barcode-max-gap` tuning attribute).
+- **Layout-name-independent `ferro-fill` chain** — removes the dashboard-family selector
+  dependency of `fill_viewport` (deeper refactor; the `fill-viewport-layout-unknown` lint
+  rule mitigates meanwhile).
+
+## Out of Scope (v16.6)
+
+- **Payment flow** (cash/card/split tender), **receipt rendering**, **shift/session close**
+  — the sale screen itself only; a later milestone.
+- **New intents** (`Register`/`Kiosk`) — the seven-intent vocabulary is frozen (v16.5
+  decision: archetypes ARE the intents).
+- **Plugin-registry placement** — all POS components are builtins; any `register_component`
+  use is a review blocker.
+- **Hardware integration** (cash drawers, receipt printers, scanner SDKs) — keyboard-wedge
+  input is the only scanner path ever considered, and it is deferred.
+
+## Traceability (v16.6)
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| POS-01 | — | Not started |
+| POS-02 | — | Not started |
+| POS-03 | — | Not started |
+| POS-04 | — | Not started |
+| POS-05 | — | Not started |
+| POS-06 | — | Not started |
+| POS-07 | — | Not started |
+| POS-08 | — | Not started |
+| POS-09 | — | Not started |
+| POS-10 | — | Not started |
+| POS-11 | — | Not started |
+| POS-12 | — | Not started |
+| POS-13 | — | Not started |
