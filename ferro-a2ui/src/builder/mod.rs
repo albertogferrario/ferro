@@ -1,6 +1,7 @@
 //! Emission core: dispatches intents to archetype builders and assembles
 //! the `createSurface` skeleton.
 
+mod browse;
 mod collect;
 
 use crate::component::Component;
@@ -26,7 +27,6 @@ impl Emit {
 }
 
 /// Readable, non-system fields in declaration order.
-#[allow(dead_code)] // consumed by archetype builders (Task 9)
 pub(crate) fn display_fields(service: &ServiceDef) -> Vec<&FieldDef> {
     service
         .fields
@@ -70,11 +70,6 @@ fn surface_properties(ctx: &A2uiContext) -> Option<Value> {
     }
 }
 
-/// Placeholder archetype: title only. Replaced per-intent by Tasks 8–14.
-fn emit_generic(e: &mut Emit, service: &ServiceDef) -> Result<Vec<String>, Error> {
-    Ok(vec![emit_title(e, service)])
-}
-
 /// Builds a full surface rendering for the selected intent.
 pub(crate) fn build(
     service: &ServiceDef,
@@ -91,10 +86,11 @@ pub(crate) fn build(
     let template = resolve_template(intent, mode, ctx.templates.as_ref());
     let mut emit = Emit::default();
 
-    // Archetype dispatch — remaining arms land in Tasks 9–14.
+    // Archetype dispatch — remaining arms land in Tasks 10–14.
     let child_ids = match intent.label() {
         "collect" => collect::emit(&mut emit, service, ctx, &template)?,
-        _ => emit_generic(&mut emit, service)?,
+        // Browse and custom intents share the browse shape (mirrors ferro-text).
+        _ => browse::emit(&mut emit, service, ctx, &template)?,
     };
 
     let root = Component::new("root", "Column").children_ids(child_ids);
