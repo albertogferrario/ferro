@@ -61,7 +61,7 @@ A2UI (Agent-to-UI) is a declarative UI specification for AI agents. It defines a
 
 A2UI covers "what UI to render" but not "what UI does this service need." It is complementary: an `A2UIRenderer` could be an alternative `Renderer` implementation that produces A2UI component trees instead of JSON-UI output.
 
-**Status:** v0.8 stable, v0.9 draft. Production use at Google (Opal, Gemini Enterprise).
+**Status:** v0.9.1 stable, v1.0 release candidate (stable targeted Q4 2026). Production use at Google (Opal, Gemini Enterprise), CopilotKit, Flutter GenUI. Maintained under the `a2ui-project` GitHub org.
 
 *Reference: [a2ui.org](https://a2ui.org/)*
 
