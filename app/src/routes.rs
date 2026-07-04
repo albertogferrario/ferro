@@ -20,6 +20,12 @@ routes! {
     get!("/redirect-example", controllers::user::redirect_example),
     get!("/config", controllers::config_example::show).name("config.show"),
     get!("/pagamenti", controllers::pagamenti::index).name("pagamenti.index"),
+    get!("/ordini", controllers::ordini::index).name("ordini.index"),
+    post!("/ordini/:id/elimina", controllers::ordini::elimina).name("ordini.elimina"),
+    get!("/prodotti", controllers::prodotti::index).name("prodotti.index"),
+    get!("/prodotti/nuovo", controllers::prodotti::nuovo).name("prodotti.nuovo"),
+    post!("/prodotti", controllers::prodotti::store).name("prodotti.store"),
+    post!("/prodotti/:id/elimina", controllers::prodotti::elimina).name("prodotti.elimina"),
 
     // User routes - all 7 RESTful endpoints from a single line
     resource!("/users", controllers::user),
