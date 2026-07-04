@@ -11,5 +11,8 @@
 //! `ferro-projections` owns the trait and schema types; this crate owns the
 //! wire types and emission logic. It has no dependency on `ferro-json-ui`.
 
+pub mod catalog;
 pub mod component;
+pub mod context;
 pub mod message;
+pub mod surface;
