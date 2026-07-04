@@ -72,6 +72,14 @@
 - [Expressions](json-ui/expressions.md)
 - [JSON Schema](json-ui/json-schema.md)
 
+# Design System
+
+- [Principles](design-system/principles.md)
+- [Token Reference](design-system/tokens.md)
+- [Variant Vocabulary](design-system/variants.md)
+- [Pattern Catalog](design-system/patterns.md)
+- [Linting Guide](design-system/linting.md)
+
 # Agents
 
 - [checkpoint_projection](agents/checkpoint-projection.md)
