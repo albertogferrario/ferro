@@ -1,326 +1,431 @@
-# Stack Research: v15.0 Agent-Operable App (Consumer MCP)
+# Stack Research: v16.6 POS Component Suite
 
-**Domain:** Projection-derived consumer MCP endpoint with write/act capabilities and inbound NL intent loop
-**Researched:** 2026-06-13
-**Confidence:** HIGH (all findings sourced from in-codebase verification + Context7 rmcp docs)
-
----
-
-## What Already Exists — Do Not Re-Build
-
-Everything below is already shipping in the ferro workspace. v15.0 extends these; it does not replace them.
-
-| Component | What It Provides | Crate |
-|-----------|-----------------|-------|
-| `ferro-mcp-server` (0.2.x) | `McpRenderer` (Renderer impl), `handle_initialize/tools_list/tools_call`, `dispatch` (read-only, tenant-scoped, SQL), JSON-RPC layer, `BearerOutcome` stub | `ferro-mcp-server` |
-| `ferro-mcp-oauth` | OAuth 2.1 authorization server (DCR, PKCE, authorize, consent, token, device), `validate_bearer` → `BearerCheck` (JWT sig + exp + audience + tenant), `McpTokenClaims` | `ferro-mcp-oauth` |
-| `rmcp` 0.12 | `Tool`, `ToolAnnotations`, `CallToolResult` (with `.structured()` constructor), JSON Schema `Arc<JsonObject>` input; `ToolAnnotations::{read_only, destructive, idempotent}` hints | `rmcp = "0.12"` |
-| `ferro-projections` | `ServiceDef` (fields, actions, guards, state_machine, mcp_exposed, tenant_column, mcp_ability), `ActionDef`/`InputDef`/`GuardDef`, `BaseContext` (evaluated_guards, verbosity), `Renderer` trait | `ferro-projections` |
-| `ferro-ai` | `Classifier<T>` (provider-agnostic structured JSON output), `AiConfig::from_env()`, `AnthropicProvider`/`OpenAiClient`/`OllamaClient`, `ToolRegistry`/`ToolDef` | `ferro-ai` |
-| `TenantScoped` trait | Typed tenant-scoped lookup, cross-tenant reads structurally impossible | `framework` |
-
-The v12.6 consumer-MCP OAuth endpoint provides the transport and auth shell. The v14.0 projection surface (`evaluated_guards`, `BaseContext`, `FieldDef.render_hint`) provides the guard-filtering substrate. v15.0 adds write and intent-loop capabilities on top.
+**Domain:** Touch-first sale-screen components in a server-rendered, no-JS-framework design system
+**Researched:** 2026-07-04
+**Confidence:** HIGH (CSS platform properties verified via MDN/caniuse; JS patterns verified against existing runtime; WCAG numbers from W3C primary docs)
 
 ---
 
-## Capability Analysis: What v15.0 Must Add
+## Zero-New-Dependency Verdict: CONFIRMED
 
-### (a) rmcp 0.12 API Surface for Dynamic Tool Registration
+No new Rust crates, no new JS libraries, no new CSS tooling. Every requirement below is met by CSS
+platform properties + vanilla JS (following the existing `runtime/*.rs` pattern) + Tailwind v4
+utility class additions. The `input.css` safelist requires extension for new dynamically-generated
+classes; `gen-ferro-base-css.sh` remains the only build step.
 
-**Confidence: HIGH** — verified from Context7 docs + direct codebase reads of `ferro-mcp-server/src/renderer.rs` and `jsonrpc.rs`.
+---
 
-rmcp 0.12 is already used correctly in `ferro-mcp-server`. The projection→tools renderer (`McpRenderer`) already builds `Tool` objects at runtime from `ServiceDef` — this is dynamic by construction. The API surface required for v15.0's action tools is the same surface already in use.
+## CSS Touch Ergonomics
 
-**Tool construction (verified API):**
-```rust
-// Already in use (renderer.rs) — read tools
-Tool::new(name, description, Arc::new(schema_map))
-    .annotate(ToolAnnotations::new().read_only(true))
+### `touch-action: manipulation` — Double-Tap Zoom + Click Delay
 
-// For write/action tools: drop read_only, set destructive/idempotent hints
-Tool::new(name, description, Arc::new(schema_map))
-    .annotate(ToolAnnotations::new()
-        .destructive(true)   // state-transition actions
-        .read_only(false))   // or idempotent(true) for update-in-place
-```
+**What it does:** Enables pan and pinch-zoom; disables the double-tap-to-zoom gesture. Removing
+double-tap zoom eliminates the 300ms click-event delay browsers impose to wait for a potential
+second tap — a critical latency win for POS tile grids where operators tap rapidly.
 
-`Tool::new()` signature (verified via Context7):
-```
-Tool::new<N, D, S>(name: N, description: D, input_schema: S) -> Self
-where
-    N: Into<Cow<'static, str>>,
-    D: Into<Cow<'static, str>>,
-    S: Into<Arc<JsonObject>>,
-```
+**iOS Safari support:** `manipulation` is supported from iOS Safari 9.3 and all current versions.
+`none`, `pan-x`, `pan-y` are NOT supported on iOS Safari — only `auto` and `manipulation` are safe
+to use cross-platform. (Confirmed via caniuse mdn-css_properties_touch-action_manipulation.)
 
-No compile-time macro. Tools are registered at runtime by returning them from `handle_tools_list`. Dynamic registration is the current model; rmcp's `ToolRoute::new_dyn()` exists but is unused because `ferro-mcp-server` bypasses rmcp's built-in router entirely with a custom JSON-RPC dispatch.
+**Current state:** The existing `ProductTile` component already applies `touch-manipulation` on its
+outer container (`rounded-lg border … touch-manipulation`). This is correct for the container.
+Extend to buttons inside all new POS components (numpad keys, category tabs, cart action buttons) —
+the container class alone is not sufficient if child buttons trigger their own event handling.
 
-**`tools/list` for action tools:**
-`render_exposed_tools(services, &McpContext)` already returns `Vec<Tool>` (one per exposed `ServiceDef`, read tool). For v15.0, this function must be extended (or a sibling `render_action_tools()` added) to emit one additional `Tool` per guard-passing `ActionDef` on each exposed `ServiceDef`. Both lists are concatenated into the `tools` array in the `tools/list` response.
+**Do NOT use** `user-scalable=no` / `maximum-scale=1` in the viewport meta tag. This violates
+WCAG 1.4.4 (Resize Text, AA) by preventing users from zooming the page.
 
-**`tools/call` result shape — spec-compliant typed content:**
-The original bug (`content[]` without `type` field, which MCP clients Zod-reject) was fixed by Phase 197 by switching to `CallToolResult::structured(payload)`. This is verified by the interop test `tools_call_result_parses_as_valid_mcp_content` in `jsonrpc.rs`, which deserializes the emitted response through `CallToolResult`'s own custom `Deserialize`. Action tools must use the same pattern.
+**Integration:** Add `touch-manipulation` to every interactive POS component's button/tile class
+string in the Rust renderer. Tailwind already knows this utility — no safelist entry needed.
 
-`CallToolResult` structure (verified via Context7):
-```rust
-pub struct CallToolResult {
-    pub content: Vec<Content>,           // must contain typed blocks
-    pub structured_content: Option<Value>,
-    pub is_error: Option<bool>,
-    pub meta: Option<Meta>,
+---
+
+### `-webkit-tap-highlight-color: transparent` — Tap Flash Suppression
+
+**What it does:** Suppresses the default blue/gray flash that WebKit/Chrome mobile show when an
+element is tapped. The flash is distracting in rapid-tap POS interactions (product grid, numpad).
+Non-standard but universally supported in WebKit and Chrome Android.
+
+**Pattern:** Apply globally at the `ferro-base.css` level with a base layer rule, or inline on
+each POS interactive element. The global approach is cleaner for app-like workspaces:
+
+```css
+/* Add to input.css @layer base or as a utility: */
+[data-ferro-pos-interactive] {
+  -webkit-tap-highlight-color: transparent;
 }
 ```
 
-`CallToolResult::structured(payload)` produces: `is_error: Some(false)`, one `content` block with `type: "text"`, `structured_content` = the payload JSON. This is the shape MCP clients expect.
+Then implement the press state via `:active` (see below) as the explicit, designed feedback
+instead of the browser default flash.
 
-For action tool results: use `CallToolResult::structured(json!({"success": true, "message": "..."}))` on success, or `json!({"result": ...})` with entity data. On business-logic rejection (guard failed at execution time, wrong state, validation error): use `CallToolResult { content: vec![text_block], structured_content: Some(json!({"error": "..."})), is_error: Some(true), meta: None }` rather than a JSON-RPC `-32602` error, because the call succeeded but the action was refused — the distinction matters for agent error handling.
-
-**Do NOT upgrade rmcp:** No feature in v15.0 requires rmcp ≥1.5. The existing `Tool`, `ToolAnnotations`, `CallToolResult`, and `Arc<JsonObject>` input schema API is sufficient for both read and write tools. An upgrade would be a breaking change across three crates (`ferro-mcp`, `ferro-mcp-server`, `ferro-api-mcp`) and is not justified.
-
----
-
-### (b) API-Key Auth for the MCP Endpoint
-
-**Confidence: HIGH** — verified from `ferro-mcp-oauth/src/validate.rs` and `ferro-mcp-server/src/auth.rs`.
-
-`ferro-mcp-oauth` ships a complete bearer-token validation stack: `validate_bearer(header, config, expected_tenant)` → `BearerCheck` with five cases (Unauthenticated, Invalid, Forbidden, Authenticated, Invalid). The current v12.6 flow issues OAuth JWTs with `tenant_id` claims. `BearerOutcome` in `ferro-mcp-server` is the application-seam stub.
-
-**What v15.0 adds:** API-key bearer tokens are structurally identical to OAuth JWTs from the MCP endpoint's perspective — both arrive as `Authorization: Bearer <token>`. The difference is validation:
-
-- **OAuth path (existing):** JWT decoded, `exp` + signature + audience + tenant checked via `validate_bearer`.
-- **API-key path (new):** SHA-256 hash of the raw key looked up in a `api_keys` DB table that stores `{hashed_key, tenant_id, abilities[], active}`. No JWT. The DB record is the source of truth for expiry (soft: `active = false`) and scope.
-
-The right addition is a second validation branch in `ferro-mcp-oauth/src/validate.rs`, not a second endpoint. The MCP HTTP handler reads the `Authorization: Bearer <token>` header and tries:
-1. If the token is a JWT (starts with `eyJ`): `validate_bearer` via the existing OAuth path.
-2. Otherwise: hash the token (SHA-256, then hex), lookup in `api_keys`, check `active = true`, extract `tenant_id` + ability scope.
-
-Both paths produce the same `BearerCheck::Authenticated(principal)` outcome. The application handler is unchanged.
-
-**What NOT to add:** A separate MCP endpoint for API-key auth. One endpoint, two validation branches, same downstream behavior.
-
-**Crate placement:** The API-key validator belongs in `ferro-mcp-oauth` (the auth crate for the consumer MCP), not in `ferro-mcp-server`. However, the `api_keys` schema should reuse whatever the v8.1 `ferro make:api-key` command generates (verified: v8.1 shipped `ferro make:api-key` CLI). Confirm whether `framework/src/` already has an `api_keys` model before designing a new schema.
-
-**New dependencies:** None. All required primitives are already in `ferro-mcp-oauth`:
-- `sha2 = "0.10"` — already present
-- `subtle = "2.5"` — already present (constant-time compare)
-- `sea-orm` — already present for the DB lookup
+**Integration:** Add a base rule to `input.css` scoped to POS interactive elements. Tailwind does
+not generate this as a utility class — it must be a raw CSS rule in `input.css`.
 
 ---
 
-### (c) ferro-ai for the NL→Intent Classification Loop
+### `:active` Press States — Touch Press Feedback
 
-**Confidence: HIGH** — verified from `ferro-ai/src/classifier/mod.rs`, `ferro-ai/src/config.rs`, `ferro-ai/src/lib.rs`.
+**Why `:hover` is wrong on touch:** `:hover` on touch devices fires after tap completion and
+persists until the next tap elsewhere — it does not represent "finger is down." On a POS tile
+grid, `:hover` causes a persistent highlight that looks like a stuck state. Use `:active` for
+press feedback; it fires on `pointerdown`/`touchstart` and releases on lift.
 
-**What exists:** `ferro-ai` provides a provider-agnostic `Classifier<T>` that calls an LLM with a system prompt + user message + JSON schema and returns a typed Rust struct. The default provider is Anthropic. Default model (Anthropic): `claude-sonnet-4-6` (verified in `config.rs` test line `assert_eq!(client.default_model(), "claude-sonnet-4-6")`). The classifier is provider-agnostic: `FERRO_AI_PROVIDER` env var selects Anthropic/OpenAI/Groq/Ollama.
+**Correct press feedback for POS tiles:**
 
-**What the inbound intent loop needs:**
+```
+active:scale-[0.97] active:brightness-95
+```
 
-The NL→intent classification maps a tenant's natural-language message to one of:
-1. A named `ActionDef` on an exposed `ServiceDef` (message implies mutation / state transition).
-2. A read query on an exposed `ServiceDef` (message implies browsing/looking up data).
-3. Ambiguous / unrecognized (needs clarification).
+Or, using the existing token vocabulary:
 
-The classification output type is defined in `ferro-mcp-server` (not in `ferro-ai`, which stays generic):
+```
+active:bg-primary/80   (for primary-colored buttons)
+active:bg-border       (for surface-colored tiles)
+```
 
-```rust
-#[derive(serde::Deserialize)]
-struct IntentClassification {
-    service: String,         // name of the exposed ServiceDef
-    action: Option<String>,  // None = read query; Some(name) = ActionDef name
-    confidence: f64,         // gates LowConfidence rejection in Classifier
-    arguments: serde_json::Value, // filter params (read) or action inputs (write)
+The `scale` approach provides immediate kinetic feedback; the `bg-*` approach matches the
+hover pattern already used in `ProductTile` (`hover:bg-border`).
+
+**Media query consideration:** For non-touch contexts (mouse+keyboard admin use), `:hover`
+states remain useful. The correct approach is NOT to remove `:hover`, but to ensure `:active`
+is always defined alongside it and provides at least equal visual weight.
+
+**Integration:** Add `active:*` variants alongside every `hover:*` class in new POS components.
+Tailwind generates `active:` variants from literal class strings — ensure they appear in Rust source
+so the scanner picks them up. If dynamically constructed via `format!()`, add to the `@source
+inline()` safelist in `input.css`.
+
+---
+
+### `user-select: none` — Accidental Text Selection Prevention
+
+**What it does:** Prevents long-press text selection on buttons and tiles. On a POS numpad or
+product grid, a prolonged touch triggers browser text selection rather than a button press —
+especially on Android Chrome. `user-select: none` disables this.
+
+**Tailwind utility:** `select-none`
+
+**Apply to:** All numpad keys, product tiles, cart quantity controls, category navigation tabs.
+Do NOT apply globally — form inputs and text display areas need selection.
+
+**Integration:** Add `select-none` to the class strings of all new POS interactive components
+in the Rust renderer. Already in Tailwind's core utilities — no safelist needed.
+
+---
+
+### `overscroll-behavior: contain` — Scroll Chain Prevention
+
+**What it does:** Prevents scroll events in a child scrollable pane from propagating to the
+parent viewport. Without this, scrolling the product grid on a fill_viewport POS page triggers
+pull-to-refresh or viewport scroll, breaking the kiosk feel.
+
+**Value choice:**
+- `contain`: prevents chaining but preserves bounce/rubber-band within the element. Correct for
+  a pane with genuine content to scroll.
+- `none`: prevents chaining AND removes bounce. Use if rubber-band feels wrong in the POS context
+  (e.g., the product pane never scrolls far enough to expose whitespace).
+
+**Tailwind utilities:** `overscroll-contain` / `overscroll-none`
+
+**Apply to:** The scrollable product grid pane and the cart line-item list within the
+`fill_viewport` layout. Both are `overflow-y-auto` containers.
+
+**Browser support:** Broadly supported including Safari (confirmed via MDN).
+
+**Integration:** Add `overscroll-contain` to the Grid pane containers in the POS layout. This
+is a new Tailwind utility in Rust source — picked up by the Tailwind scanner automatically.
+
+---
+
+### Input `font-size` ≥ 16px — iOS Auto-Zoom Prevention
+
+**What it does:** iOS Safari auto-zooms into any `<input>` with `font-size < 16px` on focus.
+On a POS numpad, this zoom is unexpected and disrupts the fill_viewport layout.
+
+**Rule:** Every `<input>` element rendered inside POS components must use `font-size: 16px` or
+larger. The numpad writes to a `<input type="hidden">` (no focus issue), but any visible
+search-box or quantity-edit input must respect this floor.
+
+**Tailwind utility:** `text-base` (which maps to `font-size: 1rem = 16px` by default in
+Tailwind v4). Use `text-base` as the minimum on any visible input in a POS context.
+
+**Design-lint candidate:** Encode as an Info-level rule in `design::lint`: any `Input`
+component in a `fill_viewport: true` spec with font-size implied below 16px → warning.
+
+---
+
+## Hit Target Standards
+
+| Standard | Requirement | Level |
+|----------|-------------|-------|
+| WCAG 2.5.8 (WCAG 2.2) | 24×24 CSS px minimum, or 24px spacing from adjacent targets | AA (required) |
+| WCAG 2.5.5 (WCAG 2.1) | 44×44 CSS px | AAA (best practice for POS) |
+| Apple Human Interface Guidelines | 44×44 points | Platform recommendation |
+| Material Design 3 | 48×48 dp | Platform recommendation |
+
+**POS recommendation:** 48×48 CSS px minimum for all tap targets (product tiles, numpad keys,
+category tabs, cart controls). The existing `ProductTile` uses `min-h-[44px] min-w-[44px]`
+(WCAG 2.5.5 AAA / Apple HIG). New components should meet or exceed this baseline; numpad keys
+(large single-character buttons) should target 56×56 or larger since they are the primary input
+surface.
+
+**Rationale:** Research from the University of Maryland (cited in WCAG 2.5.8 understanding docs)
+shows error rates 3× higher for targets below 44px. POS environments add stress factors (gloved
+hands, split attention, counter vibration) that push this toward the 48-56px range.
+
+**Design-lint encoding:** Add a POS-context lint rule: any interactive component in a spec that
+includes a `ProductGrid`, `CartPanel`, or `Numpad` should warn if any button-class element has an
+inferred height/width below 44px (checking `size: sm` in the component schema, which maps to
+`h-8` = 32px in the existing size enum).
+
+---
+
+## Vanilla-JS Patterns
+
+### Numpad Module (`runtime/numpad.rs`)
+
+**Architecture:** Follow the existing `product_tiles.rs` / `kanban.rs` module pattern — a single
+`setupNumpad()` function initialized in `ferroRuntime()`.
+
+**Data model:**
+
+```html
+<!-- Emitted by render_numpad() -->
+<div data-numpad data-numpad-target="qty_field">
+  <div data-numpad-display class="...">0</div>
+  <button type="button" data-numpad-key="1">1</button>
+  ...
+  <button type="button" data-numpad-key="backspace">⌫</button>
+  <button type="button" data-numpad-key="clear">C</button>
+</div>
+<input type="hidden" name="qty_field" data-numpad-input="qty_field" value="0">
+```
+
+**Event delegation:** One `click` listener on each `[data-numpad]` container. `event.target.
+closest('[data-numpad-key]')` handles taps on child elements (e.g., icon spans inside buttons).
+
+```javascript
+function setupNumpad() {
+    var pads = document.querySelectorAll('[data-numpad]');
+    for (var i = 0; i < pads.length; i++) {
+        initNumpad(pads[i]);
+    }
+}
+
+function initNumpad(pad) {
+    var target = pad.getAttribute('data-numpad-target');
+    var display = pad.querySelector('[data-numpad-display]');
+    var input = document.querySelector('[data-numpad-input="' + target + '"]');
+    var current = '';
+
+    pad.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-numpad-key]');
+        if (!btn) return;
+        var key = btn.getAttribute('data-numpad-key');
+        if (key === 'clear') { current = ''; }
+        else if (key === 'backspace') { current = current.slice(0, -1); }
+        else if (/^\d$/.test(key)) { current = current === '0' ? key : current + key; }
+        display.textContent = current || '0';
+        if (input) { input.value = current || '0'; input.dispatchEvent(new Event('input', {bubbles:true})); }
+    });
 }
 ```
 
-The system prompt embeds the exposed services + their actions + their descriptions. Keep prompts compact: list service names, display names, descriptions, and action names only — not full `ServiceDef` JSON — to stay within token budgets. The schema passed to `Classifier<IntentClassification>::classify()` is derived from the struct above.
-
-**No changes to ferro-ai itself** are needed for v15.0. The existing `Classifier<T>` API is sufficient. The loop logic (message → classify → dispatch → result) lives in `ferro-mcp-server/src/intent.rs` (new file).
-
-**New dependency in ferro-mcp-server:**
-```toml
-ferro-ai = { path = "../ferro-ai", version = "0.2" }
-```
-Currently `ferro-mcp-server` has no `ferro-ai` dependency. This is the only new Cargo.toml change required.
-
-**No circular dependency:** `ferro-ai` depends on `ferro-projections` (verified in `ferro-ai/Cargo.toml`). `ferro-mcp-server` depends on `ferro-projections`. Adding `ferro-ai` to `ferro-mcp-server` creates `ferro-mcp-server → ferro-ai → ferro-projections`. No cycle.
-
-**Classification latency:** Each NL→intent call makes an LLM API round trip (Anthropic: ~500ms–2s). The MCP transport handles this fine (it is async). For low-latency deployments, `FERRO_AI_PROVIDER=ollama` with a local model is available with zero code changes.
+**Server round-trip decision:** No optimistic fetch. The numpad writes to a hidden form field.
+The cart total updates in JS (DOM arithmetic). The POST happens once, when the operator taps
+the submit/confirm button. This is the correct pattern for a ferro server-rendered app: the
+form is the contract; intermediate cart state is client-transient. Round-tripping each quantity
+change would add server latency to what should be instant tactile feedback.
 
 ---
 
-### (d) Crate Placement: Projection→MCP-Tools Renderer
+### Cart Runtime Module (`runtime/cart_runtime.rs`)
 
-**Confidence: HIGH** — verified by CLAUDE.md v11.5 renderer-location rule + `ferro-mcp-server/src/renderer.rs` which already implements this pattern.
+**Responsibility:** Recompute line totals and cart total whenever any qty input changes.
 
-The rule from v11.5: `ferro-projections` owns the `Renderer` trait only. Concrete renderers for specific output formats live in their output crate. `McpRenderer` is already in `ferro-mcp-server`, which is the MCP output crate. This is correct and must not change.
+**Data model:**
 
-**v15.0 does not need a new crate.** `ferro-mcp-server` is extended, not replaced:
-
-- The existing `McpRenderer` renders `ServiceDef → Tool` as a read (`list_<name>`) tool with `readOnlyHint = true`.
-- Write/action tools are rendered as additional `Tool` objects: one per guard-passing `ActionDef` on an exposed `ServiceDef`. These are produced in the same `render_exposed_tools` call (or a new `render_action_tools` sibling).
-- `schema.rs` gains `build_action_input_schema(action: &ActionDef) → Value` which maps `ActionDef.inputs: Vec<InputDef>` to JSON Schema properties, mirroring `build_input_schema` for reads.
-- `dispatch.rs` gains `execute_action(service, action_name, inputs, db, tenant_id)` for write dispatch, mirroring the existing read `dispatch()`.
-
-**Why NOT a new crate:** Creating a second output crate for write tools (e.g., `ferro-mcp-actions`) would mean two crates rendering to the same output format (MCP `Tool` / `CallToolResult`). This is the "duplicate control surface" anti-pattern from `feedback_no_duplicate_control_surface.md`. All projection→MCP-tool rendering lives in `ferro-mcp-server`.
-
----
-
-## Stack Summary: Additions for v15.0
-
-| Addition | Type | Lives In | Why |
-|----------|------|----------|-----|
-| `build_action_input_schema(action)` | New function | `ferro-mcp-server/src/schema.rs` | Maps `ActionDef.inputs` to JSON Schema for tool input |
-| Extended `render_exposed_tools` (or sibling) | New/extended function | `ferro-mcp-server/src/renderer.rs` | Emits both read tools and guard-filtered action tools |
-| `execute_action(...)` | New function | `ferro-mcp-server/src/dispatch.rs` | Write dispatch: INSERT/UPDATE/state-transition via raw SQL or SeaORM |
-| `McpContext` extended with tenant + guards | Struct change | `ferro-mcp-server/src/renderer.rs` | Phase 197 left `McpContext` empty; v15.0 embeds `BaseContext` (evaluated_guards) |
-| Guard-filter in action tool listing | Logic | `ferro-mcp-server/src/renderer.rs` | `evaluated_guards.get(g).copied().unwrap_or(true)` — same rule as `TextRenderer` |
-| API-key validation branch | New function | `ferro-mcp-oauth/src/validate.rs` | Parallel to `validate_bearer` for non-JWT tokens |
-| `IntentClassification` struct + NL loop | New file | `ferro-mcp-server/src/intent.rs` | Coordinator: message → Classifier → dispatch |
-| `ferro-ai` dependency | Cargo dep | `ferro-mcp-server/Cargo.toml` | Intent loop needs the classifier |
-
----
-
-## Recommended Stack
-
-### Core Technologies (unchanged)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `rmcp` | 0.12 (pin; do NOT upgrade) | MCP protocol types (`Tool`, `CallToolResult`, `ToolAnnotations`) | Already integrated; upgrade = breaking change across 3 crates with no required feature |
-| `ferro-projections` | workspace | `ServiceDef`, `ActionDef`, `GuardDef`, `BaseContext`, `Renderer` trait | The source of truth for all tool definitions; `evaluated_guards` is the guard-filter substrate |
-| `ferro-ai` | workspace (new dep in `ferro-mcp-server`) | `Classifier<T>` for NL→intent classification | Provider-agnostic; Anthropic `claude-sonnet-4-6` default; already in the workspace |
-| `ferro-mcp-oauth` | workspace | Bearer token validation for both OAuth JWT and API-key paths | Auth shell from v12.6; API-key branch is an additive extension |
-| `sea-orm` | 1.0 | Write dispatch (INSERT, UPDATE, state transition) for action tools | Already in `ferro-mcp-server`; action execution needs DB writes |
-| `schemars` | 1 | JSON Schema generation for action tool `inputSchema` | Already in `ferro-mcp-server`; action schema mirrors read schema pattern |
-| `serde_json` | 1.0 | JSON payloads for tool inputs/outputs | Already everywhere |
-
-### Supporting Libraries (no version changes)
-
-| Library | Current location | Notes for v15.0 |
-|---------|-----------------|----------------|
-| `sha2 = "0.10"` | `ferro-mcp-oauth` | API-key hashing; already present |
-| `subtle = "2.5"` | `ferro-mcp-oauth` | Constant-time key comparison; already present |
-| `jsonwebtoken = "9"` | `ferro-mcp-oauth` | JWT decode for OAuth token path; already present |
-| `tokio = "1"` | everywhere | Async dispatch, LLM calls; already everywhere |
-| `thiserror = "1"` | `ferro-mcp-server` | Error types for new dispatch paths; already present |
-| `tracing = "0.1"` | `ferro-mcp-server` | Structured logging for dispatch/auth events; already present |
-
-### What NOT to Add
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| rmcp upgrade to ≥1.5 | Breaking change across `ferro-mcp`, `ferro-mcp-server`, `ferro-api-mcp`; no feature in v15.0 requires it | Stay on 0.12 |
-| New output crate for write tools | "Duplicate control surface" — one output format, one output crate | Extend `ferro-mcp-server` |
-| Separate MCP endpoint for API keys | Two endpoints for one protocol surface increases client complexity | One endpoint, two validation branches in `ferro-mcp-oauth` |
-| Full OAuth scope redesign | v12.6 already ships OAuth scopes via `McpTokenClaims`; API keys reuse the same `mcp_ability` model from `ServiceDef` | Extend `mcp_ability` semantics to cover action scopes |
-| Hard-coding Anthropic in the intent loop | Breaks the provider-agnostic contract of `ferro-ai` | Use `AiConfig::from_env()` → `Classifier<IntentClassification>` |
-
----
-
-## Integration Points with Existing Surfaces
-
-### ferro-projections → ferro-mcp-server (read tools, already working)
-
-`ServiceDef.mcp_exposed = true` → `render_exposed_tools()` → one `Tool` per service named `list_<name>`, `readOnlyHint = true`, input schema from `is_filter_field` allowlist.
-
-### ferro-projections → ferro-mcp-server (action tools, new for v15.0)
-
-`ServiceDef.actions: Vec<ActionDef>`, filtered by `McpContext.base.evaluated_guards` → one `Tool` per guard-passing `ActionDef`. Input schema from `ActionDef.inputs: Vec<InputDef>` via `build_action_input_schema`. Tool name: `<service_name>_<action_name>` (snake_case, avoids collisions with read tools). `ToolAnnotations` set to `destructive(true)` for state-transition actions, `idempotent(true)` for idempotent updates.
-
-Guard-filter logic (consistent with `TextRenderer`):
-```rust
-let guard_passes = |g: &str| {
-    ctx.base.evaluated_guards
-        .get(g)
-        .copied()
-        .unwrap_or(true) // absent = render (same rule as TextRenderer)
-};
-let visible_actions: Vec<&ActionDef> = service.actions.iter()
-    .filter(|a| a.preconditions.iter().all(|g| guard_passes(g)))
-    .collect();
+```html
+<!-- Emitted per cart line -->
+<tr data-cart-line data-unit-price="1250">  <!-- price in cents, integer -->
+  <td>Product Name</td>
+  <td data-qty-display="line_1">1</td>
+  <td data-line-total="line_1">€12,50</td>
+  <input type="hidden" name="line_1_qty" data-qty-input="line_1" value="1">
+</tr>
+<!-- Cart footer -->
+<tfoot data-cart-total></tfoot>
 ```
 
-### ferro-mcp-oauth → application handler seam
+**Arithmetic:** Use integer cents throughout — multiply `qty × unit_price_cents`, sum, then
+format on display. Never use floating-point arithmetic for money.
 
-OAuth path: `validate_bearer(header, &oauth_config, Some(tenant_id))` → `BearerCheck::Authenticated(principal)`.
-API-key path (new): `validate_api_key(header, &db, Some(tenant_id))` → same `BearerCheck::Authenticated(principal)`.
+**Event delegation:** Attach one `input` listener to the cart container. Triggered by the
+`input` event dispatched in `product_tiles.rs` or `numpad.rs` after each qty change.
 
-Both paths check `ServiceDef.mcp_ability` against the principal's ability scope (from `McpTokenClaims.abilities` or `api_keys.abilities`).
+---
 
-### ferro-ai → ferro-mcp-server (intent loop, new for v15.0)
+### Barcode Scanner (Keyboard Wedge) Module (`runtime/barcode_scanner.rs`)
 
-```rust
-// In ferro-mcp-server/src/intent.rs (new file)
-use ferro_ai::{AiConfig, Classifier, ClassifierConfig};
+**How wedge scanners work:** The scanner emulates a USB HID keyboard. Each scan produces a rapid
+burst of `keydown` events — typically < 20ms between characters — followed by a `keydown` for
+`Enter` (keyCode 13). Human typing is slower (> 80ms between keystrokes); this timing gap is the
+detection heuristic.
 
-pub async fn classify_message(
-    message: &str,
-    services: &[ServiceDef],   // exposed + guard-filtered per tenant
-) -> Result<IntentClassification, ferro_ai::Error> {
-    let client = Arc::new(AiConfig::from_env()?);
-    let classifier = Classifier::<IntentClassification>::new(
-        client,
-        ClassifierConfig::default(), // model from FERRO_AI_MODEL, provider from FERRO_AI_PROVIDER
-    );
-    let schema = build_intent_schema(services); // names + descriptions only, not full ServiceDef JSON
-    classifier.classify(INTENT_SYSTEM_PROMPT, message, &schema).await
-        .map(|r| r.value)
+**No library.** onscan.js (the most-cited library) adds a JS dependency and ~10KB for ~40 lines
+of logic. The pattern is implemented inline.
+
+**Pattern:**
+
+```javascript
+function setupBarcodeScanner() {
+    var scanEl = document.querySelector('[data-barcode-input]');
+    if (!scanEl) return;  // page doesn't include the component
+
+    var buffer = '';
+    var lastKeyTime = 0;
+    var SCAN_TIMEOUT_MS = 100;
+    var MAX_BETWEEN_CHARS_MS = 50;
+
+    document.addEventListener('keydown', function(e) {
+        var now = Date.now();
+        var gap = now - lastKeyTime;
+        lastKeyTime = now;
+
+        // Long gap = human typing or new scan start; reset buffer
+        if (gap > SCAN_TIMEOUT_MS && buffer.length > 0) { buffer = ''; }
+
+        if (e.key === 'Enter' && buffer.length >= 4) {
+            // Minimum 4 chars avoids triggering on keyboard Enter presses
+            var code = buffer;
+            buffer = '';
+            scanEl.value = code;
+            scanEl.dispatchEvent(new Event('input', {bubbles: true}));
+            scanEl.dispatchEvent(new Event('change', {bubbles: true}));
+            e.preventDefault();
+        } else if (e.key.length === 1 && gap < MAX_BETWEEN_CHARS_MS) {
+            // Only buffer if arrival is fast (scanner, not human)
+            buffer += e.key;
+        }
+    });
 }
 ```
 
+**Integration with the POS page:** The `data-barcode-input` attribute is on a hidden (or
+visually-prominent search) input. The `change` event triggers a form submission or a fetch
+lookup for the product. The component emits `<input data-barcode-input name="barcode" …>`; the
+runtime wires the scanner.
+
+**Caveat:** The `MAX_BETWEEN_CHARS_MS = 50` threshold works for USB HID scanners. Bluetooth
+scanners may have higher latency (~80-100ms between chars) and may misdetect. The threshold
+should be a `data-barcode-max-gap="80"` attribute so per-instance tuning is possible without
+code changes.
+
 ---
 
-## Cargo.toml Changes Required
+## Integration with the Existing Pipeline
 
-**`ferro-mcp-server/Cargo.toml`** — add one dependency:
-```toml
-ferro-ai = { path = "../ferro-ai", version = "0.2" }
+### `input.css` Safelist Additions
+
+New POS classes that are dynamically constructed (via `format!()` in Rust renderers) and will not
+be detected by the Tailwind literal scanner:
+
+```css
+/* Add to @source inline() in input.css */
+@source inline("active:scale-[0.97] active:brightness-95 active:bg-border active:bg-primary/80
+                overscroll-contain overscroll-none select-none touch-manipulation
+                grid-rows-1 grid-rows-2 grid-rows-3
+                min-h-[48px] min-w-[48px] min-h-[56px] min-w-[56px]");
 ```
 
-No other crate requires new external dependencies. All required libraries (`sha2`, `subtle`, `sea-orm`, `schemars`, `serde_json`, `rmcp`, `jsonwebtoken`) are already present in the relevant crates.
+If `active:scale-[0.97]` uses an arbitrary value, verify it generates correctly; the literal
+must appear in source or be in the safelist. Prefer `active:scale-95` (built-in Tailwind step)
+over arbitrary values if the difference is imperceptible.
+
+### `runtime/mod.rs` Pattern
+
+Each new module (`numpad.rs`, `cart_runtime.rs`, `barcode_scanner.rs`) follows the exact existing
+pattern:
+1. File: `pub(super) const SOURCE: &str = r#"..."#;`
+2. `mod.rs`: `mod numpad; mod cart_runtime; mod barcode_scanner;`
+3. `FERRO_RUNTIME_JS`: push the three new sources into the assembled string
+4. `ferroRuntime()` dispatcher: add `setupNumpad();`, `setupCartRuntime();`, `setupBarcodeScanner();`
+5. Tests: add `bundle_contains_all_setup_functions` assertions for the new names
+
+### Drift Guard Count
+
+Every new builtin component added to the catalog requires updating the integer count in three
+locations (per the existing lockstep):
+1. `ferro-json-ui/src/catalog.rs` — `BUILTIN_TYPES` constant or equivalent drift guard
+2. `ferro-mcp/src/tools/json_ui_catalog.rs` — the mirror count in the MCP tool
+3. `ferro-json-ui/assets/ferro-base.css` — regenerated by `gen-ferro-base-css.sh`
+
+Current builtin count is 47 (post v16.5). Every new POS component increments this.
 
 ---
 
-## Version Compatibility
+## What NOT to Add
 
-| Package | Constraint | Note |
-|---------|-----------|------|
-| `rmcp` | pin at `"0.12"`, do NOT upgrade | ≥1.5 is a breaking change across 3 crates; no v15.0 feature requires it |
-| `ferro-ai` | workspace version | Provider-agnostic; `FERRO_AI_PROVIDER` selects Anthropic (default `claude-sonnet-4-6`) / OpenAI / Groq / Ollama |
-| `sea-orm` | 1.0 | Write dispatch needs `insert` + `update` operations; 1.0 API stable |
-| `schemars` | 1 | `build_action_input_schema` follows same pattern as `build_input_schema`; already in `ferro-mcp-server` |
+| Avoid | Why | What to Use Instead |
+|-------|-----|---------------------|
+| Gesture library (Hammer.js, ZingTouch) | No swipe gestures needed; tap, press, scroll handled by CSS + click events | CSS `touch-action` + `click` events |
+| Virtual keyboard library (mobiscroll, onscreen-keyboard.js) | 40-300KB for functionality replaceable in ~80 lines of vanilla JS | `runtime/numpad.rs` module |
+| onscan.js or barcode-scan-js | Library dependency for ~40 lines of timing logic | `runtime/barcode_scanner.rs` module |
+| Pointer Events API (`pointerdown`/`pointerup`) for tap detection | Overkill — `click` fires correctly on touch when `touch-action: manipulation` eliminates the 300ms delay | `click` event + `touch-action: manipulation` |
+| `user-scalable=no` / `maximum-scale=1` in `<meta name="viewport">` | WCAG 1.4.4 violation; breaks accessibility zooming | `touch-action: manipulation` per element |
+| `touchstart` / `touchend` event listeners for basic tap | Superseded by `click` + pointer-events; adds complexity for no gain | `click` with `touch-action: manipulation` |
+| CSS scroll snap on the product grid | Adds positional constraints that fight free-scroll; product grids are not paginated | Standard `overflow-y-auto` + `overscroll-contain` |
+| Optimistic fetch on every cart quantity change | Server round-trip per tap adds latency; cart is transient until final POST | Client-side DOM arithmetic; POST only on submit |
+| Arbitrary `@font-display` or font loading for the numpad display | Token vocabulary already includes `--font-display`; use `font-display` utility | Existing `font-display` token |
 
 ---
 
-## Confidence Assessment
+## Standards Numbers for Design-Lint Encoding
 
-| Area | Level | Reason |
-|------|-------|--------|
-| rmcp 0.12 API surface | HIGH | Verified from direct codebase read (renderer.rs, jsonrpc.rs) + Context7 docs confirming `Tool::new`, `ToolAnnotations`, `CallToolResult::structured` |
-| API-key auth pattern | HIGH | `ferro-mcp-oauth/src/validate.rs` read directly; extension point is clear; all required deps already present |
-| ferro-ai classifier integration | HIGH | `ferro-ai/src/classifier/mod.rs` and `config.rs` read directly; `Classifier<T>` API and provider model confirmed |
-| Crate placement decision | HIGH | v11.5 rule + `ferro-mcp-server/src/renderer.rs` is already the MCP output crate with `McpRenderer` |
-| Guard-filter in action tools | HIGH | v14.0 `BaseContext.evaluated_guards` + `TextRenderer` rule documented in ferro-text; `unwrap_or(true)` pattern confirmed |
-| Write dispatch SQL | MEDIUM | Read dispatch in `dispatch.rs` is a verified pattern; write (INSERT/UPDATE) follows the same `Statement::from_sql_and_values` approach but is not yet implemented |
+These numbers should be encoded as `design::lint` rules or component schema defaults in the
+milestone phases:
+
+| Concern | Number | Source | Severity |
+|---------|--------|--------|----------|
+| Minimum hit target | 44×44 CSS px | WCAG 2.5.5 AAA / Apple HIG | Warn if POS component size enum resolves to `h-8` (32px) |
+| Preferred POS hit target | 48×48 CSS px | Material Design 3 / WCAG 2.5.8 guidance | Info if POS tile is exactly 44px but context is POS |
+| Input font-size floor | 16px (= `text-base`) | iOS Safari auto-zoom behavior | Warn on any visible Input in a fill_viewport POS spec |
+| Adjacent target spacing | 24 CSS px | WCAG 2.5.8 AA | Structural — enforce via padding in component CSS, not lint |
+| `touch-action: manipulation` | Required on all interactive POS elements | Eliminates 300ms delay | Structural — enforce in component Rust renderer, not lint |
+
+---
+
+## Alternatives Considered
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| Client-side cart arithmetic (DOM) | Fetch-based optimistic cart update | Server latency visible on rapid qty changes; complexity for no UX gain |
+| Inline `setupBarcodeScanner()` (40 lines) | onscan.js library | External dependency; timing constants are tunable via `data-` attributes |
+| `touch-action: manipulation` | `touch-action: none` | `none` not supported on iOS Safari |
+| `:active` press states | `:hover` for touch feedback | `:hover` is sticky on touch; `:active` fires on `pointerdown` |
+| `overscroll-contain` on panes | `overscroll-none` | `contain` preserves the within-pane bounce affordance; `none` feels abrupt for long product lists |
 
 ---
 
 ## Sources
 
-- `ferro-mcp-server/src/renderer.rs` — existing `McpRenderer`, `Tool::new`, `ToolAnnotations` usage
-- `ferro-mcp-server/src/jsonrpc.rs` — `CallToolResult::structured()` usage, D-04 interop test verifying `type: "text"` content block
-- `ferro-mcp-server/src/dispatch.rs` — read dispatch pattern, tenant-scoping, filter allowlist
-- `ferro-mcp-server/src/schema.rs` — `build_input_schema`, `is_filter_field`
-- `ferro-mcp-server/Cargo.toml` — confirms `rmcp = "0.12"`, `ferro-ai` absence, existing deps
-- `ferro-mcp-oauth/src/validate.rs` — `validate_bearer`, `BearerCheck` enum, JWT + tenant validation logic
-- `ferro-mcp-oauth/Cargo.toml` — confirms `sha2`, `subtle`, `jsonwebtoken` already present
-- `ferro-projections/src/service.rs` — `ServiceDef` (mcp_exposed, tenant_column, mcp_ability, actions, guards)
-- `ferro-projections/src/action.rs` — `ActionDef`, `InputDef`, `GuardDef` structures
-- `ferro-ai/src/classifier/mod.rs` — `Classifier<T>`, `ClassifierConfig`, retry/confidence behavior
-- `ferro-ai/src/config.rs` — `AiConfig::from_env()`, default model `claude-sonnet-4-6`, provider selection
-- `ferro-ai/Cargo.toml` — confirms `ferro-projections` dependency (no circular dep when added to `ferro-mcp-server`)
-- Context7 `/websites/rs_rmcp` — `Tool::new` signature, `ToolAnnotations` fields, `CallToolResult` struct, `ToolRoute::new_dyn` for dynamic registration — HIGH confidence
+- MDN `touch-action` — property values, `manipulation` behavior, double-tap zoom removal (HIGH)
+- caniuse `mdn-css_properties_touch-action_manipulation` — iOS Safari support from 9.3 (HIGH)
+- W3C WCAG 2.5.8 Understanding doc — 24×24px AA requirement, five exceptions (HIGH)
+- W3C WCAG 2.5.5 Understanding doc — 44×44px AAA requirement (HIGH)
+- MDN `-webkit-tap-highlight-color` — suppression via `transparent` (MEDIUM — non-standard)
+- MDN `overscroll-behavior` — `contain` vs `none`, scroll chaining prevention (HIGH)
+- defensivecss.dev — iOS input font-size 16px zoom prevention (MEDIUM — community, matches Apple behavior)
+- `ferro-json-ui/src/render/atoms.rs` line 1373 — existing `touch-manipulation` on ProductTile (HIGH — in-codebase)
+- `ferro-json-ui/src/runtime/product_tiles.rs` — existing qty-inc/dec/display/input data-attribute pattern (HIGH — in-codebase)
+- `ferro-json-ui/src/runtime/mod.rs` — IIFE module assembly pattern (HIGH — in-codebase)
+- `ferro-json-ui/assets/input.css` — `@source inline()` safelist pattern, `fill_viewport` chain (HIGH — in-codebase)
+- `ferro-json-ui/src/render/classes.rs` — `INTERACTIVE_BASE`, `MOTION_FAST`, `FOCUS_RING` fragments (HIGH — in-codebase)
+- 253-FRICTION.md — concrete gestiscilo cassa requirements driving this milestone (HIGH — first-party)
+- GitHub axenox/onscan.js — barcode scanner detection timing heuristics (MEDIUM — third-party library used as reference only)
 
 ---
-*Stack research for: ferro v15.0 Agent-Operable App (Consumer MCP)*
-*Researched: 2026-06-13*
+
+*Stack research for: ferro v16.6 POS Component Suite*
+*Researched: 2026-07-04*
