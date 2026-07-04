@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v16.6
 milestone_name: POS Component Suite
-status: defining-requirements
-stopped_at: "Milestone v16.6 started — defining requirements (roadmap pending)"
+status: roadmap-created
+stopped_at: "Roadmap created for v16.6 — Phase 254 (Props Contracts + Touch Foundation + Design Rules) ready for planning"
 last_updated: "2026-07-04T19:25:15.595Z"
 last_activity: 2026-07-04
 progress:
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Milestone v16.6 POS Component Suite — defining requirements
+**Current focus:** Milestone v16.6 POS Component Suite — Phase 254 (Props Contracts + Touch Foundation + Design Rules)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 254 (Props Contracts + Touch Foundation + Design Rules — Not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-04 — Milestone v16.6 POS Component Suite started
+Status: Roadmap created; awaiting /gsd-plan-phase 254
+Last activity: 2026-07-04 — Roadmap created for v16.6 POS Component Suite (5 phases: 254-258)
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
 
@@ -272,6 +272,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ### Roadmap Evolution
 
+- Phases 254-258 added (2026-07-04): v16.6 POS Component Suite roadmap created. 5 phases: **254** Props Contracts + Touch Foundation + Design Rules (POS-02/07/11); **255** POS Runtime Modules + Double-Submit Protection (POS-08 — setupNumpad/setupPosFilter only; NO cart-state JS, form-state cart decision, CartRuntime deferred to Future Requirements); **256** Component Renderers + BUILTIN Lockstep (POS-01/03/04/05/06/09); **257** Projection Builder Register Layout Template (POS-10); **258** MCP Surface + Docs + Publish (POS-12/13). All 13 POS-01..13 requirements mapped; single publish at Phase 258; no mid-milestone publishes. Consumer-paired with gestiscilo register/counter mode. v16.5 marked shipped (0.2.86). Next: `/gsd-plan-phase 254`.
 - Phases 250-253 added (2026-07-03): v16.5 JSON-UI Design System [CONSUMER-PAIRED with gestiscilo Phase 232] — completes the design system above the token layer. **250** token vocabulary v2 (23→30: `--spacing` density, motion ×4 with frequency-tiered defaults 120/220/320ms + calm curve, `--color-ring`, `--font-display`; every v1 theme stays valid) + design-language `default.css` refresh; **251** canonical `variant`/`tone`/`size` enums across the 47 components + interactive-state/motion quality bar (hover, focus-visible ring, disabled, reduced-motion) + migration table; **252** `Spec.design` (`intent`/`allow`) + pure `design::lint` with ~10 intent-keyed rules (archetypes ARE the seven projection intents — no parallel page-type vocabulary) + `ferro design:lint [--json] [--deny]`; **253** `design_lint` MCP tool + catalog/generation-context extensions + `docs/src/design-system/` + single crates.io publish. Defining capability: design system enforced at the agent-authoring boundary (read via MCP, validated by lint, before human review). Constraints: no new crate (rules in ferro-json-ui, tokens in ferro-theme); lint diagnostics-only. DS-01..08 mapped 250..253. Consumer reference case: gestiscilo Phase 232 (68-spec lint-clean sweep + CI gate + FRICTION.md), gated on the 253 publish. Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`. Created via brainstorm (not full `/gsd-new-milestone`: v16.3 left open, numbering continues after v16.4's reserved 244–249; independent of v16.4, plannable in either order). Next: `/gsd-plan-phase 250`.
 - Phases 244-249 added (2026-06-24): v16.4 Work Distribution — `#[offload]` service methods (QUEUED behind v16.3 Phase 243; v16.3 stays current milestone, numbering continues). Mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature (trait = single source of truth, ferro-mcp introspectable). Fire-and-forward result path: worker → `ferro-projection` snapshot → `ferro-broadcast` delta (request never blocks). Serializable-contract requirement doubles as module-isolation. **244** `#[offload]` macro → Job+payload; **245** typed result handle + compile-time serializable enforcement (trybuild); **246** result → read-model snapshot (+ terminal error state); **247** read-model delta → broadcast streaming (non-blocking); **248** deployable `ferro worker` runtime at N replicas (at-least-once idempotent ack, fault-domain isolation) — capacity scales by running more workers, **no framework autoscaler**; **249** ferro-mcp introspection + scaling docs. OFFLOAD-01..06 mapped 244..249. **CTO scope decision: build the scalable primitive, defer the auto-deciding** — autonomous machine lifecycle / scale-to-zero (KEDA, CRIU, Nomad, WASM isolates) is cost-optimization not capacity, parked as 2.0 in the spec. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Created via brainstorm+CTO discussion (not full `/gsd-new-milestone`: v16.3 left open, no STATE reset, no `phases clear`). Next (after 243): `/gsd-plan-phase 244`.
 - Phase 238 added (2026-06-21): v16.2 `ferro-inertia` first-load HTML shell. Promotes [backlog/2026-06-21-inertia-first-load-shell.md](backlog/2026-06-21-inertia-first-load-shell.md) — `ferro-inertia` owns the `X-Inertia` JSON contract but has no server-rendered first-load HTML document (embedded `data-page` + Vite asset tags). Content-negotiated render: full HTML when not `X-Inertia`, JSON when it is; dev (Vite module tags off `vite_dev_server`) / prod (hashed tags from Vite `manifest.json`) asset modes; configurable root template; same-origin `server.proxy` docs. Field-reported by downstream app `u` (Phase 5 OQ-4 deferral). **Reconcile against `ferro-assets` SSR-manifest substrate before planning — likely wiring, not from-scratch.** Numbered 238 to avoid collision with the pre-existing Phase 237 (ActionGroup, roadmap-only reservation that `phase add` could not see — no directory). Next: `/gsd-plan-phase 238`.

@@ -70,7 +70,8 @@
 - ✅ [**v16.0 Write-Boundary AX**](milestones/v16.0-ROADMAP.md) — Phases 231-232 (shipped 2026-06-16). The projection write path now derives transitions from the `StateMachine` the framework owns — `TransitionPlan` + `derive_transition_plan` (no hand-written `match`), server-side guard re-eval, post-persist override hook, registration-time drift gate, and one `framework::write` kernel backing both the MCP and the new visual `POST /{service}/{action}` write surfaces (single-source, no per-channel executor).
 - ✅ **v16.2 ferro-inertia First-Load HTML Shell** — Phase 238 (completed 2026-06-21). `ferro-inertia` emits a complete first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env` plumbing, a configurable root template (title/head_extras/mount_id), and same-origin + Vite `server.proxy` docs. Verified live (dev hydration + prod manifest tags). Promoted from the downstream `u` app's deferred first-load shell.
 - ✅ **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 + 243.1 (completed 2026-06-24, shipped in 0.2.80; not yet archived). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
-- 🚧 **v16.5 JSON-UI Design System** — Phases 250-253 (in progress, started 2026-07-03; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). The design system is enforced at the agent-authoring boundary — an agent reads the system through ferro-mcp, authors a spec, and `design_lint` validates conformance before human review. Single publish at Phase 253. Independent of v16.4 (reserved 244–249). Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
+- ✅ **v16.5 JSON-UI Design System** — Phases 250-253 (shipped 2026-07-04, 0.2.86; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). Single publish at Phase 253. Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
+- 🚧 **v16.6 POS Component Suite** — Phases 254-258 (started 2026-07-04; consumer-paired with gestiscilo's register/counter mode). Touch-first sale-screen components in the ferro-json-ui builtin catalog — ProductGrid, CartPanel, CategoryNav, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` through the Collect/Register projection layer, agent-authorable through the v16.5 MCP + design-lint boundary. Single publish at Phase 258. Independent of v16.4 (reserved 244–249).
 
 ---
 
@@ -3710,11 +3711,10 @@ and document the authoring surface, result path, scaling model, and non-goals.
 
 ✓ 6/6 requirements mapped, no orphans, no duplicates.
 
-## 🚧 v16.5 JSON-UI Design System (Phases 250–253) [CONSUMER-PAIRED with gestiscilo Phase 232]
+## ✅ v16.5 JSON-UI Design System (Phases 250–253) [CONSUMER-PAIRED with gestiscilo Phase 232]
 
-**Status:** In progress (started 2026-07-03; numbering continues after v16.4's
-reserved 244–249). Independent of v16.4 — the two milestones share no code surface and
-can be planned/executed in either order.
+**Status:** Shipped 2026-07-04 (published 0.2.86; numbering continued after v16.4's
+reserved 244–249). Independent of v16.4 — the two milestones shared no code surface.
 
 **Goal:** Complete the design system above the token layer. ferro-json-ui already has
 semantic tokens, semantic-class emission, and themes; this milestone adds the missing
@@ -3872,3 +3872,158 @@ phase pins.
 | DS-08 (design-system docs + publish) | Phase 253 |
 
 ✓ 8/8 requirements mapped, no orphans, no duplicates.
+
+---
+
+## 🚧 v16.6 POS Component Suite (Phases 254–258) [CONSUMER-PAIRED with gestiscilo register/counter mode]
+
+**Status:** In progress (started 2026-07-04). Phase numbering continues at 254. v16.4 Work Distribution (244–249) remains queued and independent.
+
+**Goal:** Touch-first sale-screen components in the ferro-json-ui builtin catalog — ProductGrid (with integrated search and category strip), CartPanel, CategoryNav, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` through the Collect/Register projection layer and agent-authorable through the v16.5 MCP + design-lint boundary. Consumer-paired with gestiscilo's register/counter ("cassa") mode; seed finding: the ~1500-line RawHtml product picker audited in `253-FRICTION.md`.
+
+**Builds on shipped work:**
+- 47 builtin components with semantic-class emission, drift guards, and the full lockstep checklist (Phases 250–253).
+- `design::lint` rule engine + `RULE_COMPONENTS` mapping (Phase 252).
+- `ferro-mcp` `design_lint` tool, `generation_context`, `json_ui_catalog` (Phase 253).
+- `fill_viewport: true` CSS chain in `ferro-json-ui/assets/input.css` (Phase 253).
+- `ProductTileProps` + `render_product_tile` + `runtime/product_tiles.rs` (existing, extended here).
+
+**Scope constraints (encoded in every phase):**
+- All POS components are builtins — any `register_component` use is a review blocker.
+- The seven-intent vocabulary is unchanged — Register is a layout template arm under Collect, not a new intent; `KNOWN_INTENTS` drift guard is not touched.
+- Form-state cart only this milestone — ProductTile hidden inputs accumulate quantities into a single confirm POST; the cart panel is server-rendered. The client-side CartRuntime (live per-tap cart panel updates, client-computed running total) is explicitly DEFERRED (REQUIREMENTS.md Future Requirements); revisit on gestiscilo adoption friction.
+- Out of scope: payment flow, receipt rendering, shift/session close, hardware integration beyond keyboard-wedge (which is deferred).
+
+**Anchor research:** `.planning/research/` (STACK, FEATURES, ARCHITECTURE, PITFALLS, SUMMARY — 2026-07-04). Open decisions resolved (2026-07-04, operator): form-state cart only — CartRuntime DEFERRED (against the synthesis recommendation; consequence accepted: gestiscilo's RawHtml elimination is partial until it ships); CategoryNav is a standalone builtin per POS-03; Grid row_weights included (POS-09); Numpad included; barcode keyboard-wedge deferred.
+
+**Architectural constraints:**
+- No new crates — all work lands in `ferro-json-ui` (components + renderers + runtime + design rules) and `ferro-mcp` (count + docs).
+- Every new render function imports touch constants from `render/classes.rs` (no inline strings).
+- No raw palette class (`red-`, `blue-`, `orange-`, `zinc-`, `gray-`, `slate-`) in any POS render function.
+- All emitted Tailwind classes appear as full string literals; `format!("util-{}", n)` patterns require exhaustive `match` arms or `@source inline()` safelist entries.
+- Both drift-guard count assertions (canonical `catalog.rs:1219` + mirror `json_ui_catalog.rs:396`) are bumped in the same commit per component addition.
+- Single crates.io publish at Phase 258; no mid-milestone publishes.
+
+### Phases
+
+- [ ] **Phase 254: Props Contracts + Touch Foundation + Design Rules** — ProductTile additive props (POS-02), shared POS touch constants in `render/classes.rs` (POS-07), Grid `row_weights` prop on `GridProps` (substrate), four POS design-lint rules with violating/conforming/data-bound fixtures (POS-11); all new `*Props` struct declarations (ProductGridProps, CartPanelProps, CategoryNavProps, QuantityStepperProps, NumpadProps).
+- [ ] **Phase 255: POS Runtime Modules + Double-Submit Protection** — `setupNumpad()` (tap-surface keypad writing to a target field) and `setupPosFilter()` (category/search tile-visibility filtering via `data-product-categories` + text match) runtime modules, `runtime/mod.rs` wiring, `data-disable-on-submit` double-submit guard + documented idempotency-key pattern (POS-08). NO cart-state JS — form-state accumulation stays on the existing `product_tiles.rs` hidden-input contract.
+- [ ] **Phase 256: Component Renderers + BUILTIN Lockstep** — `render_product_grid` (integrated CategoryStrip + search), `render_category_nav`, `render_cart_panel`, `render_quantity_stepper`, `render_numpad`; Grid `row_weights` render path (POS-09); `BUILTIN_TYPES` + dispatch arms + `BUILTIN_SPECS` + imports per component; drift-guard count bumps both sites; `gen-ferro-base-css.sh` regen. Delivers POS-01, 03, 04, 05, 06, 09.
+- [ ] **Phase 257: Projection Builder — Register Layout Template** — `layout: "Register"` arm in `builder.rs::build_display_spec()`; `emit_register_root()` emitting fill-viewport Grid with cart_pane + products_pane; `Spec::builder().fill_viewport(bool)`; `ElementBuilder.each(path, as_)`; `IntentSlotTemplate` Collect→Register; `/cassa` sample app flipped to projection-derived spec. Delivers POS-10.
+- [ ] **Phase 258: MCP Surface + Docs + Publish** — `json_ui_catalog` count + component names updated; `generation_context` POS composition guidance; `docs/src` updates; single crates.io publish. Delivers POS-12, POS-13.
+
+### Phase Details
+
+#### Phase 254: Props Contracts + Touch Foundation + Design Rules
+
+**Goal:** Lock the component API contracts, shared touch primitives, and design-lint rules before any render code is written, preventing contract thrash when renderers are built in Phase 256.
+
+**Depends on:** Phase 253 (v16.5 shipped; canonical Variant/Tone/Size enums and semantic-token enforcement in place).
+
+**Requirements:** POS-02, POS-07, POS-11
+
+**Success Criteria** (what must be TRUE):
+1. `ProductTileProps` compiles with additive fields (`category`, `image_url`, `color`, `stock_badge`, plus the `data-product-categories` attribute for the Phase 255 filter runtime); existing specs serialized without those fields round-trip unchanged — serde backward-compat test passes.
+2. `render/classes.rs` exposes named POS touch constants (`POS_TOUCH_ACTION`, `POS_HIT_TARGET_MIN`, `POS_PRESS_ACTIVE`, `POS_OVERSCROLL_CONTAIN`, `POS_TAP_HIGHLIGHT`); a constant-composition drift-guard test asserts every POS render function imports from this module rather than inlining string literals.
+3. The four POS lint rules (`pos-fill-viewport`, `pos-grid-fill`, `pos-cart-present`, `fill-viewport-layout-unknown`) each pass three fixture tests: a violating spec returns the expected finding severity; a conforming spec returns no finding; a data-bound (`$data.*`-scoped) spec does not misfire.
+4. `component_rule_mapping_is_exhaustive` passes for all four new rule ids and their component-name associations in `RULE_COMPONENTS`.
+
+**Plans:** TBD
+**UI hint**: yes
+
+---
+
+#### Phase 255: POS Runtime Modules + Double-Submit Protection
+
+**Goal:** The POS runtime modules (numpad input, category/search tile filtering) are in the bundle with a stable data-attribute contract before any render function targets it; the double-submit guard is in place for cart-mutation forms. Scope boundary: NO cart-state JS — quantities accumulate in ProductTile hidden inputs (existing `product_tiles.rs` contract) and submit as a single confirm POST; the live CartRuntime is deferred.
+
+**Depends on:** Phase 254 (`ProductTileProps` data attributes defined; touch foundation established).
+
+**Requirements:** POS-08
+
+**Success Criteria** (what must be TRUE):
+1. `bundle_contains_all_setup_functions` test passes for `setupNumpad` and `setupPosFilter` — both function names are present in the emitted IIFE source.
+2. `dispatcher_invokes_every_setup` test passes — `ferroRuntime()` calls `setupNumpad()` and `setupPosFilter()` exactly once; both are no-ops when their elements are absent.
+3. Numpad key taps write to the declared target hidden field and dispatch an `input` event (form-guard compatible); category/search filtering toggles tile visibility client-side via `data-product-categories` matching and text search with no server round-trip — confirmed by inline-source inspection and HTML attribute assertions.
+4. The cart-mutation confirm button emits a `data-disable-on-submit` attribute; the runtime guard disables it after the first click; the idempotency-key pattern is documented with the `framework::write` idempotency hook reference.
+
+**Plans:** TBD
+**UI hint**: yes
+
+---
+
+#### Phase 256: Component Renderers + BUILTIN Lockstep
+
+**Goal:** All five new POS builtins are first-class catalog members; a spec author can compose a complete sale screen from `ProductGrid`, `CartPanel`, `CategoryNav`, `QuantityStepper`, and `Numpad`; `Grid` `row_weights` renders asymmetric layout.
+
+**Depends on:** Phase 255 (runtime data-attribute contract stable; render functions can target attribute names without guessing).
+
+**Requirements:** POS-01, POS-03, POS-04, POS-05, POS-06, POS-09
+
+**Success Criteria** (what must be TRUE):
+1. `builtin_specs_names_match_dispatch` passes at the bumped count (47 + 5 = 52); both drift-guard count assertions — `catalog.rs:1219` canonical and `json_ui_catalog.rs:396` mirror — agree at 52 and were bumped in the same commit per component addition (History comment is the audit trail).
+2. Every interactive element in `ProductGrid`, `CategoryNav`, `CartPanel`, `QuantityStepper`, and `Numpad` renders with `min-h-[44px]` enforced at Rust render time (preferred `min-h-[56px]` for Numpad keys); HTML assertions verify by element inspection.
+3. No raw palette class (`red-`, `blue-`, `orange-`, `zinc-`, `gray-`, `slate-`) appears in any POS render function; `grep -rn 'format!(".*-{}' ferro-json-ui/src/` returns zero unaccounted dynamic class constructions; `variant_classes_use_semantic_tokens` test passes.
+4. `Grid` `row_weights` emits fractional `grid-template-rows` CSS (weights `[2, 1]` → `"2fr 1fr"`) in the rendered style attribute; HTML assertion confirms the value for a spec with `row_weights` set; existing Grid specs without `row_weights` are unaffected.
+5. `CategoryNav` renders touch targets ≥ 44px and filters product tile visibility client-side via `data-product-categories` attribute matching; a `ProductGrid` spec with `categories_path` bound correctly populates the filter strip.
+
+**Plans:** TBD
+**UI hint**: yes
+
+---
+
+#### Phase 257: Projection Builder — Register Layout Template
+
+**Goal:** A `ServiceDef` with products and cart fields derives a working sale screen within the existing Collect intent; the `/cassa` sample app serves the projection-derived spec without any `RawHtml`.
+
+**Depends on:** Phase 256 (`ProductGrid` and `CartPanel` must be in `BUILTIN_TYPES` before `catalog_validate` accepts projector output referencing them).
+
+**Requirements:** POS-10
+
+**Success Criteria** (what must be TRUE):
+1. A `ServiceDef` with browse-intent products and collect-intent cart fields emits a `Register`-layout spec via `emit_register_root()`; `catalog_validate` accepts the output spec without errors; the seven-intent vocabulary and `KNOWN_INTENTS` drift guard are unchanged.
+2. The `/cassa` sample app spec is projection-derived — no `RawHtml` escape hatch in `app/src/controllers/cassa.rs` or `app/src/views/cassa.json`; `grep -rn RawHtml app/src/` returns no cassa hits; `GET /cassa` returns a valid rendered HTML page.
+3. `Spec::builder().fill_viewport(true)` is emitted by the projector for the Register layout; the `fill_viewport` flag propagates through catalog validation; the HTML page carries the correct `fill_viewport` CSS class chain.
+4. `ElementBuilder.each(path, as_)` round-trips through serde; `catalog_validate` accepts the directive on a products-pane element; `$each`-scoped `$data.*` path handling is verified by an integration test against `catalog_validate`.
+
+**Plans:** TBD
+**UI hint**: yes
+
+---
+
+#### Phase 258: MCP Surface + Docs + Publish
+
+**Goal:** Agents can discover and compose POS sale screens through `ferro-mcp` without consulting source code; the full CI-exact gate is green; gestiscilo's register phase can pin the published crate.
+
+**Depends on:** Phase 257 (projection-derived `/cassa` in place; sample app validates the composition patterns that `generation_context` will describe).
+
+**Requirements:** POS-12, POS-13
+
+**Success Criteria** (what must be TRUE):
+1. `json_ui_catalog` returns all five new component names (ProductGrid, CartPanel, CategoryNav, QuantityStepper, Numpad); `test_all_components_present` in `ferro-mcp` passes at the updated count (52); both count assertions agree.
+2. `generation_context` includes POS composition guidance: when to use the Register layout template vs. a form-only Collect spec; the form-state cart contract (`data-qty-input` hidden-input accumulation, single confirm POST) and the filter/numpad data attributes (`data-product-categories`, numpad target field); the `fill_viewport` dependency for POS layouts; the `design::lint` rules agents should check.
+3. `docs/src/json-ui/components.md` covers all five new components with props tables and at minimum one usage example per component; the mdBook docs build exits 0.
+4. The full CI-exact gate (`cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features`) is green; `cargo publish -p ferro-rs` exits 0; the published version on crates.io exceeds 0.2.86; gestiscilo's register phase can pin the new version.
+
+**Plans:** TBD
+**UI hint**: yes
+
+### Requirement → Phase Mapping (v16.6)
+
+| Requirement | Phase |
+|-------------|-------|
+| POS-01 (ProductGrid builtin with touch-first grid + search) | Phase 256 |
+| POS-02 (ProductTile additive props, backward-compat) | Phase 254 |
+| POS-03 (CategoryNav standalone builtin, ≥44px targets) | Phase 256 |
+| POS-04 (CartPanel builtin with qty stepper + EmptyState) | Phase 256 |
+| POS-05 (QuantityStepper standalone builtin) | Phase 256 |
+| POS-06 (Numpad builtin, ≥56px keys, no native input) | Phase 256 |
+| POS-07 (shared POS touch foundation in render/classes.rs) | Phase 254 |
+| POS-08 (double-submit protection + idempotency-key pattern) | Phase 255 |
+| POS-09 (Grid row_weights asymmetric weighting) | Phase 256 |
+| POS-10 (ServiceDef → Register layout template under Collect) | Phase 257 |
+| POS-11 (POS design-lint rules + RULE_COMPONENTS) | Phase 254 |
+| POS-12 (MCP + docs surface extensions) | Phase 258 |
+| POS-13 (/cassa flip + CI-exact gate + publish) | Phase 258 |
+
+✓ 13/13 requirements mapped, no orphans, no duplicates.

@@ -323,16 +323,16 @@ barcode keyboard-wedge deferred.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| POS-01 | — | Not started |
-| POS-02 | — | Not started |
-| POS-03 | — | Not started |
-| POS-04 | — | Not started |
-| POS-05 | — | Not started |
-| POS-06 | — | Not started |
-| POS-07 | — | Not started |
-| POS-08 | — | Not started |
-| POS-09 | — | Not started |
-| POS-10 | — | Not started |
-| POS-11 | — | Not started |
-| POS-12 | — | Not started |
-| POS-13 | — | Not started |
+| POS-01 | Phase 256 | Not started |
+| POS-02 | Phase 254 | Not started |
+| POS-03 | Phase 256 | Not started |
+| POS-04 | Phase 256 | Not started |
+| POS-05 | Phase 256 | Not started |
+| POS-06 | Phase 256 | Not started |
+| POS-07 | Phase 254 | Not started |
+| POS-08 | Phase 255 | Not started |
+| POS-09 | Phase 256 | Not started |
+| POS-10 | Phase 257 | Not started |
+| POS-11 | Phase 254 | Not started |
+| POS-12 | Phase 258 | Not started |
+| POS-13 | Phase 258 | Not started |
