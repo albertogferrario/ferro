@@ -14,6 +14,7 @@ pub mod database_query;
 pub mod database_schema;
 pub mod dependency_graph;
 pub mod deploy_check;
+pub mod design_lint;
 pub mod diagnose_error;
 pub mod explain_model;
 pub mod explain_route;
