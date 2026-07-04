@@ -16,3 +16,4 @@ pub mod component;
 pub mod context;
 pub mod message;
 pub mod surface;
+pub mod template;
