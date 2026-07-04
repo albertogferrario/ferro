@@ -2298,6 +2298,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ferro-a2ui"
+version = "0.2.86"
+dependencies = [
+ "ferro-projections",
+ "ferro-theme",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ferro-ai"
 version = "0.2.86"
 dependencies = [

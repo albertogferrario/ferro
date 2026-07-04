@@ -28,6 +28,7 @@ members = [
     "ferro-stripe",
     "ferro-theme",
     "ferro-ai",
+    "ferro-a2ui",
     "ferro-whatsapp",
     "ferro-wallet",
     "ferro-orm",
