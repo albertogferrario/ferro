@@ -814,11 +814,33 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         GapSize::Xl => "gap-8",
     };
 
-    // Children body via `render_element`.
+    // Children body via `render_element`. A child with a span > 1 (positional
+    // `spans` entry) is wrapped so the wrapper becomes the multi-track grid
+    // item. Span classes are limited to the utilities the base CSS ships:
+    // col-span-2..4 on the base grid, md:col-span-2..3 at the md breakpoint.
     let body: String = el
         .children
         .iter()
-        .map(|cid| render_element(cid, spec, data, depth + 1))
+        .enumerate()
+        .map(|(i, cid)| {
+            let rendered = render_element(cid, spec, data, depth + 1);
+            let span = props.spans.get(i).copied().unwrap_or(1);
+            if span < 2 || props.scrollable == Some(true) {
+                return rendered;
+            }
+            let mut classes: Vec<String> = Vec::new();
+            if props.columns > 1 {
+                classes.push(format!("col-span-{}", span.clamp(2, 4)));
+            }
+            if props.md_columns.is_some() {
+                classes.push(format!("md:col-span-{}", span.clamp(2, 3)));
+            }
+            if classes.is_empty() {
+                rendered
+            } else {
+                format!("<div class=\"{}\">{rendered}</div>", classes.join(" "))
+            }
+        })
         .collect();
 
     if props.scrollable == Some(true) {
@@ -1730,6 +1752,36 @@ mod tests {
         assert!(
             html.contains("border border-border"),
             "missing variant defaults to Bordered, got: {html}"
+        );
+    }
+
+    #[test]
+    fn grid_spans_wrap_children_with_col_span() {
+        // spans: [2, 1] on a md:grid-cols-3 grid → first child wrapped in
+        // md:col-span-2, second child unwrapped (span 1).
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("Grid")
+                    .prop("columns", 1)
+                    .prop("md_columns", 3)
+                    .prop("spans", json!([2, 1]))
+                    .child("a")
+                    .child("b"),
+            ),
+            ("a", Element::new("Text").prop("content", "A")),
+            ("b", Element::new("Text").prop("content", "B")),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("<div class=\"md:col-span-2\">"),
+            "span-2 wrapper missing; got: {html}"
+        );
+        assert_eq!(
+            html.matches("col-span").count(),
+            1,
+            "span-1 child must not be wrapped; got: {html}"
         );
     }
 

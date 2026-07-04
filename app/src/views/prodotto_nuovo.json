@@ -21,7 +21,7 @@
     },
     "content_row": {
       "type": "Grid",
-      "props": { "columns": 1, "md_columns": 2, "gap": "lg" },
+      "props": { "columns": 1, "md_columns": 3, "gap": "lg", "spans": [2, 1] },
       "children": ["form_card", "info_card"]
     },
     "form_card": {

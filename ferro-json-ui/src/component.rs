@@ -896,6 +896,13 @@ pub struct GridProps {
     /// uses `grid-flow-col` auto-cols layout for Trello-like horizontal scrolling.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scrollable: Option<bool>,
+    /// Per-child column spans, aligned positionally with `children` (missing
+    /// entries default to 1). A child with span N occupies N tracks — e.g.
+    /// `columns: 1, md_columns: 3, spans: [2, 1]` renders a 2/3 + 1/3 row.
+    /// Supported spans: 2–4 on the base grid, 2–3 at the `md` breakpoint.
+    /// Ignored in `scrollable` mode.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spans: Vec<u8>,
 }
 
 fn default_grid_columns() -> u8 {
