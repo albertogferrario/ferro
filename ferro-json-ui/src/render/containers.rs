@@ -31,7 +31,7 @@ use super::{html_escape, render_element};
 /// max_width, variant) and wraps the rendering of each ID in `el.children`
 /// in a bordered or elevated container per `variant`. Footer IDs come from
 /// `CardProps.footer`. `Narrow` and `Wide` variants of `max_width` apply an
-/// outer `mx-auto` width wrapper.
+/// outer left-anchored width wrapper.
 pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
     let props: CardProps = match serde_json::from_value(el.props.clone()) {
         Ok(p) => p,
@@ -117,13 +117,16 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
     }
     html.push_str("</div>"); // close outer card
 
+    // Width constraint anchors LEFT (no mx-auto): in a dashboard content column
+    // the constrained card must share the PageHeader/breadcrumb edge. Centering
+    // is a layout concern (AuthLayout centers its whole content area itself).
     match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => {}
         FormMaxWidth::Narrow => {
-            html = format!("<div class=\"max-w-2xl mx-auto\">{html}</div>");
+            html = format!("<div class=\"max-w-2xl\">{html}</div>");
         }
         FormMaxWidth::Wide => {
-            html = format!("<div class=\"max-w-4xl mx-auto\">{html}</div>");
+            html = format!("<div class=\"max-w-4xl\">{html}</div>");
         }
     }
 
@@ -1731,7 +1734,7 @@ mod tests {
     }
 
     #[test]
-    fn card_max_width_narrow_wraps_in_mx_auto() {
+    fn card_max_width_narrow_wraps_left_anchored() {
         let spec = build_spec(vec![(
             "root",
             Element::new("Card")
@@ -1741,8 +1744,12 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 1);
         assert!(
-            html.starts_with("<div class=\"max-w-2xl mx-auto\">"),
+            html.starts_with("<div class=\"max-w-2xl\">"),
             "narrow wrapper missing; got: {html}"
+        );
+        assert!(
+            !html.contains("mx-auto"),
+            "width constraint must anchor left, not center; got: {html}"
         );
     }
 

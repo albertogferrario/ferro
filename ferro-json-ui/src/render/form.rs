@@ -125,11 +125,13 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
 
     html.push_str("</form>");
 
-    // Max-width wrapper when specified.
+    // Max-width wrapper when specified. Anchors LEFT (no mx-auto) so a
+    // constrained form aligns with the page header edge; centering belongs to
+    // the layout (AuthLayout centers its whole content area itself).
     let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
         FormMaxWidth::Default => html,
-        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl mx-auto\">{html}</div>"),
-        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl mx-auto\">{html}</div>"),
+        FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl\">{html}</div>"),
+        FormMaxWidth::Wide => format!("<div class=\"max-w-4xl\">{html}</div>"),
     };
 
     format!("{diagnostic}{html}")
