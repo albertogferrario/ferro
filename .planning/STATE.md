@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
 status: executing
-stopped_at: Completed 253-mcp-surface-docs-publish 253-04-PLAN.md
-last_updated: "2026-07-04T01:32:08.028Z"
+stopped_at: Phase 253 held at publish gate — 253-05 task 2/3 (operator visual pass pending; 0.2.85 bump committed locally, NOT pushed)
+last_updated: "2026-07-04T02:26:19.181Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 127
@@ -279,7 +279,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-04T01:32:08.018Z
-Stopped at: Completed 253-mcp-surface-docs-publish 253-04-PLAN.md
-Resume file: None
+Last session: 2026-07-04T02:26:19.120Z
+Stopped at: Phase 253 held at publish gate — 253-05 task 2/3 (operator visual pass pending; 0.2.85 bump committed locally, NOT pushed)
+Resume file: .planning/phases/253-mcp-surface-docs-publish/253-05-PLAN.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
