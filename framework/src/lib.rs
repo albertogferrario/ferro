@@ -83,8 +83,8 @@ pub use utoipa_redoc;
 pub use error::{AppError, FrameworkError, HttpError, ValidationErrors};
 #[cfg(feature = "json-ui")]
 pub use ferro_json_ui::{
-    resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all, Action,
-    ActionCardProps, ActionOutcome, AlertProps, AvatarProps, BadgeProps, BreadcrumbItem,
+    register_layout, resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all,
+    Action, ActionCardProps, ActionOutcome, AlertProps, AvatarProps, BadgeProps, BreadcrumbItem,
     BreadcrumbProps, ButtonProps, ButtonType, CardAppearance, CardProps, CheckboxProps,
     ChecklistItem, ChecklistProps, Column, ColumnFormat, ConfirmDialog, DashboardLayout,
     DashboardLayoutConfig, DescriptionItem, DescriptionListProps, Element, ElementBuilder,
