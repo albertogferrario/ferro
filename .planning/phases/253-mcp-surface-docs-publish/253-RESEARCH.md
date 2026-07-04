@@ -574,24 +574,25 @@ pub struct GenerationContext {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `DesignRule` gain a `components` field, or is text-scan derivation used for per-component catalog guidance?**
    - What we know: `DesignRule` currently has `id/title/rationale/intents/check`; no component field exists.
    - What's unclear: Whether D-05 "derived from design::rules() metadata where a rule references the component" means text scanning or a structural field.
    - Recommendation: Text scanning is simpler and avoids touching Phase 252's shipped type. If coverage is poor (some rules don't mention component names in their text), add a `components` field to `DesignRule` as part of Phase 253.
+   - RESOLVED: Neither text-scan nor a new `DesignRule` field. Catalog guidance is **component-keyed** via an explicit `RULE_COMPONENTS: &[(&str, &[&str])]` static (rule id -> builtin component names) living in `ferro-mcp` (`tools/json_ui_catalog.rs`), joined to `design::rules()` for title/rationale. It is bidirectionally drift-tested: every mapped rule id in `design::rules()`, every registry rule id is mapped (no silent drift), and every component name in the builtin catalog set (`execute(None).components[].name`). Text-scanning is rejected as fragile (D-05 "structural guarantees over one-off fixes"). The **intent-keyed** grouping lives ONLY in `generation_context` (D-06), never in the catalog. `CardAppearance` (the 4th Phase-251 enum in D-05) is EXCLUDED from the canonical vocabulary lists: it lacks the `strum::AsRefStr`/`strum::VariantArray` derives that Variant/Tone/Size carry, and it is structural Card chrome (`bordered`/`elevated`), not a weight/status/size axis -- so it cannot be enumerated drift-proof the same way and has no catalog-level vocabulary treatment. `ConfirmDialog`/`RichTextEditor`/`Textarea` are non-builtins and are absent from `RULE_COMPONENTS` by design.
 
 2. **What version number to use for the publish commit?**
    - What we know: local master is at 0.2.83; crates.io is at 0.2.80; three unpushed commits cover 0.2.81-0.2.83.
    - What's unclear: Whether 0.2.81-0.2.83 have been published (MEMORY.md says crates.io at 0.2.80 but that note may be stale post-Phase 252).
    - Recommendation: At the publish gate, verify via `curl -s https://crates.io/api/v1/crates/ferro-rs | jq .crate.max_version` or `gh api repos/albertogferrario/ferro/releases/latest` before choosing the next version number.
+   - RESOLVED: Deferred to gate time by design -- the final version is chosen at the publish gate (253-05) after a crates.io API check (`curl -s https://crates.io/api/v1/crates/ferro-rs | jq -r .crate.max_version`) confirms the true published max version; the publish commit sets the next patch above it. Left to Claude's Discretion per CONTEXT.
 
 3. **Are the 251 pixel-level visual pass items in the D-14 UAT checklist blocking or advisory?**
    - What we know: Phase 251 Plan 04 notes suggest a pixel-level pass at Phase 253 pre-publish review (not blocking, "suggested").
    - What's unclear: Whether Alberto considers this a hard gate for publish.
    - Recommendation: Include as a UAT checklist item (same pattern as 252's human CLI output check) but not a blocking hard gate.
-
----
+   - RESOLVED: Advisory, not blocking. The pixel pass is folded into the 253-05 pre-publish UAT checklist per D-14 alongside 252's human CLI-output check; the operator gate (checkpoint:human-verify) decides, but it is not an automated hard gate.
 
 ## Environment Availability
 
