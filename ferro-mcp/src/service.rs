@@ -250,6 +250,14 @@ pub struct JsonUiValidateSpecParams {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct DesignLintParams {
+    /// Inline JSON-UI v2 spec string to lint. Provide either this or `path`, not both.
+    pub spec_json: Option<String>,
+    /// Path to a single JSON-UI spec file to lint. Provide either this or `spec_json`, not both.
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CrudCreateParams {
     /// Model name (e.g., "User", "Post"). Case-insensitive, matches against project models.
     pub model: String,
@@ -1297,10 +1305,10 @@ impl FerroMcpService {
         serde_json::to_string_pretty(&templates).unwrap_or_else(|_| "{}".to_string())
     }
 
-    /// Get a structured catalog of all JSON-UI components (39 built-in + plugin components like Map)
+    /// Get a structured catalog of all JSON-UI components (47 built-in + plugin components like Map)
     #[tool(
         name = "json_ui_catalog",
-        description = "Get a structured reference of all JSON-UI components: 39 built-in components \
+        description = "Get a structured reference of all JSON-UI components: 47 built-in components \
             plus plugin components (Map, etc.) with their props, types, variants, and builder API.\n\n\
             **When to use:** Understanding available JSON-UI components before building a view, \
             checking prop names and types for a specific component, learning the builder pattern \
@@ -1421,6 +1429,30 @@ impl FerroMcpService {
     ) -> String {
         let result = tools::json_ui_validate_spec::execute(&params.0.spec_json);
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string())
+    }
+
+    /// Lint a JSON-UI spec for design-pattern conformance
+    #[tool(
+        name = "design_lint",
+        description = "Run design-pattern rules on a JSON-UI v2 spec and return findings.\n\n\
+            Provide EITHER `spec_json` (inline JSON string) OR `path` (path to a single \
+            .json file) — not both and not neither.\n\n\
+            **When to use:** After writing or editing a spec, validate it against the \
+            design rules before submitting for review. Returns the same `FileFinding[]` \
+            shape as `ferro design:lint --json`: Warning findings trip `--deny` in CI; \
+            Info findings are advisory.\n\n\
+            **Returns:** JSON array of `{ file, rule, element_id, severity, message, suggestion }`. \
+            An empty array means the spec is clean. Parse failures and input errors are \
+            returned as Warning-level findings — never as tool errors.\n\n\
+            **Combine with:** `json_ui_validate_spec` for structural + catalog validity, \
+            `generation_context` for per-intent pattern expectations before authoring."
+    )]
+    pub async fn design_lint(&self, params: Parameters<DesignLintParams>) -> String {
+        let result = tools::design_lint::execute(
+            params.0.spec_json.as_deref(),
+            params.0.path.as_deref(),
+        );
+        serde_json::to_string_pretty(&result).unwrap_or_else(|_| "[]".to_string())
     }
 
     /// Create a new record for a model
