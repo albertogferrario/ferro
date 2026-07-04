@@ -3762,7 +3762,7 @@ adoption plan).
   - [x] 253-01-PLAN.md — `design_lint` MCP tool (spec_json XOR path) + registration + count fix
   - [x] 253-02-PLAN.md — `json_ui_catalog` + `generation_context` design-system extensions + drift guards
   - [x] 253-03-PLAN.md — `docs/src/design-system/` chapter + patterns.md drift test
-  - [ ] 253-04-PLAN.md — pre-publish cleanup (IN-01 FIELD_TYPES, IN-02 CLI zero-files message)
+  - [x] 253-04-PLAN.md — pre-publish cleanup (IN-01 FIELD_TYPES, IN-02 CLI zero-files message)
   - [ ] 253-05-PLAN.md — CI-exact gate + workspace version bump + crates.io publish (operator-gated)
 
 ### Phase Details
