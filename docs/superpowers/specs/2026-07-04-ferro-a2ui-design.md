@@ -1,9 +1,11 @@
 # ferro-a2ui: A2UI Renderer Design
 
 **Date:** 2026-07-04
-**Status:** Design complete. Implementation in progress against the v1.0 RC
-as an experimental, unpublished workspace crate. MCP endpoint wiring and
-crates.io publication gated on A2UI v1.0 stable (see Implementation Trigger).
+**Status:** Phases 1–3 delivered (wire types, archetype builders across both
+catalog tiers and emission modes, action-event mapping) as an experimental,
+unpublished workspace crate built against the v1.0 RC. MCP endpoint wiring
+and crates.io publication (phases 4–5) gated on A2UI v1.0 stable (see
+Implementation Trigger).
 **Supersedes:** scope sketch in `.planning/backlog/2026-07-04-a2ui-renderer-assessment.md`
 
 ## Summary

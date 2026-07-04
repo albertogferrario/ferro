@@ -71,7 +71,8 @@ impl Component {
         self.prop(key, serde_json::json!({"path": path.into()}))
     }
 
-    /// Sets the `action` prop (see [`crate::actions`]).
+    /// Sets the `action` prop (an action-event value built by the crate's
+    /// action-event mapping).
     pub fn action(self, action: Value) -> Self {
         self.prop("action", action)
     }
