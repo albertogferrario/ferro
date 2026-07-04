@@ -112,13 +112,18 @@ Available on the running app's `/mcp` endpoint after the pin. Input:
 - `spec_json: String` — inline JSON to lint, **or**
 - `path: String` — path to a `.json` spec file
 
-Output: `FileFinding[]` — array of findings with `rule_id`, `severity`
-(`Error | Warning | Info`), `message`, `suggestion`, and `location`.
+Output: `FileFinding[]` — each entry carries `file` plus the flattened finding
+fields `rule`, `element_id`, `severity` (`warning | info` — there is no error
+severity; lint is diagnostics-only), `message`, and `suggestion`. Identical to
+the CLI `--json` shape.
 
 ### CLI gate
 
 ```bash
-# Report only (non-zero exit if errors found)
+# Report only (always exits 0)
+ferro design:lint app/src/views
+
+# CI mode: non-zero exit when any warning-level finding exists (info never fails)
 ferro design:lint app/src/views --deny
 
 # JSON output for CI integration
@@ -150,9 +155,11 @@ iteration).
 The `generation_context` MCP tool now includes a `design_system` section
 with:
 
-- `vocabulary` — all canonical variant/tone/size values for every component.
-- `intent_patterns` — recommended component compositions per projection intent.
-- `active_rules` — the live lint rule set with descriptions and examples.
+- `tokens` — the 30-slot token vocabulary with a one-line purpose each.
+- `intent_patterns` — design rules grouped per projection intent (plus an
+  `all` bucket), each with id, title, and rationale.
+- `canonical_variants` — the canonical `variant`/`tone`/`size` value lists.
+- `docs` — pointer to the `docs/src/design-system/` chapter.
 
 An authoring agent should read `generation_context` before writing specs to
 get the canonical vocabulary and avoid retired values.
