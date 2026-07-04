@@ -6,8 +6,8 @@
   "root": "root",
   "elements": {
     "root": {
-      "type": "Card",
-      "props": { "title": "Pagamenti" },
+      "type": "Grid",
+      "props": { "columns": 1 },
       "children": ["page_header", "stats_row", "payments_table"]
     },
     "page_header": {

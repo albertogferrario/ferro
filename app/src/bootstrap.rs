@@ -29,8 +29,10 @@
 
 #[allow(unused_imports)]
 use ferro::{
-    bind, global_middleware, singleton, ApiKeyProvider, App, AuthResponse, Gate, LangMiddleware,
-    Limit, RateLimiter, SessionConfig, SessionMiddleware, Theme, ThemeMiddleware, UserProvider, DB,
+    bind, global_middleware, register_layout, singleton, ApiKeyProvider, App, AuthResponse,
+    DashboardLayout, DashboardLayoutConfig, Gate, HeaderProps, LangMiddleware, Limit, RateLimiter,
+    SessionConfig, SessionMiddleware, SidebarGroup, SidebarNavItem, SidebarProps, Theme,
+    ThemeMiddleware, UserProvider, DB,
 };
 
 use crate::middleware;
@@ -73,6 +75,54 @@ pub async fn register() {
     // framework's embedded default theme — CWD-independent (no filesystem read),
     // so the app boots from any working directory (e.g. under e2e harnesses).
     global_middleware!(ThemeMiddleware::new().default_theme(Theme::default_theme()));
+
+    // Dashboard layout shell: views declaring `"layout": "dashboard"` render
+    // inside a persistent sidebar + header frame. Without this registration the
+    // layout registry silently falls back to the bare default layout.
+    register_layout(
+        "dashboard",
+        DashboardLayout::new(DashboardLayoutConfig {
+            sidebar: SidebarProps {
+                fixed_top: vec![],
+                groups: vec![SidebarGroup {
+                    label: "Gestione".to_string(),
+                    collapsed: false,
+                    items: vec![
+                        SidebarNavItem {
+                            label: "Pagamenti".to_string(),
+                            href: "/pagamenti".to_string(),
+                            icon: None,
+                            active: false,
+                            disabled: None,
+                        },
+                        SidebarNavItem {
+                            label: "Ordini".to_string(),
+                            href: "/ordini".to_string(),
+                            icon: None,
+                            active: false,
+                            disabled: None,
+                        },
+                        SidebarNavItem {
+                            label: "Prodotti".to_string(),
+                            href: "/prodotti".to_string(),
+                            icon: None,
+                            active: false,
+                            disabled: None,
+                        },
+                    ],
+                }],
+                fixed_bottom: vec![],
+            },
+            header: HeaderProps {
+                business_name: "Ferro Demo".to_string(),
+                notification_count: None,
+                user_name: None,
+                user_avatar: None,
+                logout_url: None,
+            },
+            sse_url: None,
+        }),
+    );
 
     // Register the user provider for Auth::user()
     bind!(dyn UserProvider, DatabaseUserProvider);

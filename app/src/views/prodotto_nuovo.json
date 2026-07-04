@@ -23,7 +23,8 @@
       "type": "Card",
       "props": {
         "title": "Dati prodotto",
-        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo."
+        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo.",
+        "max_width": "narrow"
       },
       "children": ["form"]
     },
@@ -31,8 +32,7 @@
       "type": "Form",
       "props": {
         "action": { "handler": "/prodotti", "method": "POST" },
-        "method": "POST",
-        "max_width": "narrow"
+        "method": "POST"
       },
       "children": ["nome", "categoria", "prezzo", "quantita", "submit"]
     },
