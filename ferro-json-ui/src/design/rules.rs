@@ -360,8 +360,11 @@ fn check_destructive_confirmation(spec: &Spec, _intent: Option<&str>) -> Vec<Fin
             'outer: for key in &["row_actions", "items"] {
                 if let Some(arr) = el.props.get(*key).and_then(|v| v.as_array()) {
                     for entry in arr {
+                        // Conformance is `Action.confirm` — the confirm dialog lives on
+                        // the nested action object, not on the item entry (which the
+                        // renderer would silently ignore).
                         if entry.get("destructive").and_then(|v| v.as_bool()) == Some(true)
-                            && entry.get("confirm").is_none()
+                            && entry.pointer("/action/confirm").is_none()
                         {
                             findings.push(Finding {
                                 rule: "destructive-confirmation",
@@ -1067,7 +1070,9 @@ mod tests {
 
     #[test]
     fn destructive_confirmation_conforming_row_action_with_confirm() {
-        // row_action with destructive=true and confirm key present → 0 findings.
+        // row_action with destructive=true and action.confirm present → 0 findings.
+        // The confirm dialog lives on the nested Action object (DropdownMenuAction
+        // has no entry-level confirm field).
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
@@ -1076,7 +1081,8 @@ mod tests {
                     "r": {"type": "KanbanBoard", "props": {
                         "row_actions": [
                             {"label": "Delete", "destructive": true,
-                             "confirm": {"title": "Delete?", "tone": "destructive"}}
+                             "action": {"handler": "items.destroy", "method": "POST",
+                                        "confirm": {"title": "Delete?", "tone": "destructive"}}}
                         ]
                     }}
                 },
@@ -1087,7 +1093,36 @@ mod tests {
         let findings = findings_for(lint(&spec), "destructive-confirmation");
         assert!(
             findings.is_empty(),
-            "row_action with confirm should be conforming, got: {findings:#?}"
+            "row_action with action.confirm should be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn destructive_confirmation_violating_row_action_entry_level_confirm() {
+        // Entry-level confirm is not a real DropdownMenuAction field — the renderer
+        // ignores it and no dialog appears. Must still be flagged (1 Warning).
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "KanbanBoard", "props": {
+                        "row_actions": [
+                            {"label": "Delete", "destructive": true,
+                             "confirm": {"title": "Delete?", "tone": "destructive"},
+                             "action": {"handler": "items.destroy", "method": "POST"}}
+                        ]
+                    }}
+                },
+                "design": {"intent": "process"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "destructive-confirmation");
+        assert_eq!(
+            findings.len(),
+            1,
+            "entry-level confirm does not reach the renderer and must be flagged, got: {findings:#?}"
         );
     }
 
