@@ -12,3 +12,4 @@
 //! wire types and emission logic. It has no dependency on `ferro-json-ui`.
 
 pub mod component;
+pub mod message;
