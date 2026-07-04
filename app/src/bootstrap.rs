@@ -89,6 +89,13 @@ pub async fn register() {
                     collapsed: false,
                     items: vec![
                         SidebarNavItem {
+                            label: "Cassa".to_string(),
+                            href: "/cassa".to_string(),
+                            icon: None,
+                            active: false,
+                            disabled: None,
+                        },
+                        SidebarNavItem {
                             label: "Pagamenti".to_string(),
                             href: "/pagamenti".to_string(),
                             icon: None,

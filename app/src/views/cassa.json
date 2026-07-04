@@ -1,0 +1,81 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Cassa",
+  "layout": "dashboard",
+  "fill_viewport": true,
+  "design": {
+    "intent": "collect",
+    "allow": ["page-header", "breadcrumb-on-subpages"]
+  },
+  "root": "workspace",
+  "elements": {
+    "workspace": {
+      "type": "Grid",
+      "props": {
+        "columns": 1,
+        "md_columns": 3,
+        "gap": "md",
+        "fill": true,
+        "spans": [1, 2]
+      },
+      "children": ["cart_pane", "products_pane"]
+    },
+    "cart_pane": {
+      "type": "Card",
+      "props": {
+        "title": "Ordine corrente",
+        "badge": { "$data": "/badge_articoli" }
+      },
+      "children": ["cart_table", "cart_total", "btn_confirm"]
+    },
+    "cart_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "prodotto", "label": "Prodotto" },
+          { "key": "qta", "label": "Qtà" },
+          { "key": "importo", "label": "Importo" }
+        ],
+        "data_path": "/carrello",
+        "row_key": "id",
+        "empty_message": "Tocca un prodotto per aggiungerlo.",
+        "row_actions": [
+          {
+            "label": "Rimuovi",
+            "action": { "handler": "/cassa/rimuovi/{row_key}", "method": "POST" }
+          }
+        ]
+      }
+    },
+    "cart_total": {
+      "type": "StatCard",
+      "props": {
+        "label": "Totale",
+        "value": { "$data": "/totale" }
+      }
+    },
+    "btn_confirm": {
+      "type": "Button",
+      "props": {
+        "label": "Conferma ordine",
+        "variant": "primary"
+      },
+      "action": { "handler": "/cassa/conferma", "method": "POST" }
+    },
+    "products_pane": {
+      "type": "Grid",
+      "props": { "columns": 2, "md_columns": 3, "lg_columns": 4, "gap": "sm" },
+      "children": ["tile"]
+    },
+    "tile": {
+      "type": "ProductTile",
+      "$each": { "path": "/prodotti", "as": "p" },
+      "props": {
+        "product_id": { "$data": "/p/id" },
+        "name": { "$data": "/p/nome" },
+        "price": { "$data": "/p/prezzo" },
+        "field": { "$data": "/p/field" }
+      }
+    }
+  }
+}
