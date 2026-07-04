@@ -7,6 +7,10 @@ Q4 2026; v1.0 is a Release Candidate today, v0.9.1 is the production spec).
 Priority-raising signals: a formal A2UI MCP extension lands upstream; a
 mainstream consumer client surface becomes broadly available; a ferro
 consumer application requests A2UI output.
+**Next re-check:** 2026-10-01 (start of the upstream Q4 stable window) —
+verify v1.0 stable status, the MCP extension (upstream issue #648), and
+consumer client surfaces; if the gate fired, start from the design's
+Wire-Delta Watchlist.
 
 ## Status check (2026-07-04)
 
