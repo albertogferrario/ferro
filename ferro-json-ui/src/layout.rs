@@ -366,7 +366,9 @@ impl Layout for AppLayout {
     <div class="flex">
         {side}
         <main class="flex-1 px-3 py-4 md:p-6">
-            {wrapper}
+            <div class="mx-auto w-full max-w-7xl">
+                {wrapper}
+            </div>
         </main>
     </div>"#,
         );
@@ -623,7 +625,9 @@ impl Layout for DashboardLayout {
     <div class="flex flex-col md:pl-64">
         {header_html}
         <main class="flex-1 px-3 py-4 md:p-6">
-            {wrapper}
+            <div class="mx-auto w-full max-w-7xl">
+                {wrapper}
+            </div>
         </main>
         <div data-toast-container class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
     </div>"#,

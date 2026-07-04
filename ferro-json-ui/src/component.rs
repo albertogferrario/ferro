@@ -896,6 +896,11 @@ pub struct GridProps {
     /// uses `grid-flow-col` auto-cols layout for Trello-like horizontal scrolling.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scrollable: Option<bool>,
+    /// Constrains the grid to a centered, bounded column (`narrow` = max-w-2xl,
+    /// `wide` = max-w-4xl). Use on a page-root Grid to build a focused column:
+    /// the header and content share one bounded width, centered as a unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_width: Option<FormMaxWidth>,
 }
 
 fn default_grid_columns() -> u8 {

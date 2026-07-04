@@ -7,7 +7,7 @@
   "elements": {
     "root": {
       "type": "Grid",
-      "props": { "columns": 1 },
+      "props": { "columns": 1, "max_width": "narrow" },
       "children": ["page_header", "form_card"]
     },
     "page_header": {
@@ -23,8 +23,7 @@
       "type": "Card",
       "props": {
         "title": "Dati prodotto",
-        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo.",
-        "max_width": "narrow"
+        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo."
       },
       "children": ["form"]
     },
