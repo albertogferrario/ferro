@@ -1,7 +1,9 @@
 # ferro-a2ui: A2UI Renderer Design
 
 **Date:** 2026-07-04
-**Status:** Design complete. Implementation gated on A2UI v1.0 stable (see Implementation Trigger).
+**Status:** Design complete. Implementation in progress against the v1.0 RC
+as an experimental, unpublished workspace crate. MCP endpoint wiring and
+crates.io publication gated on A2UI v1.0 stable (see Implementation Trigger).
 **Supersedes:** scope sketch in `.planning/backlog/2026-07-04-a2ui-renderer-assessment.md`
 
 ## Summary
@@ -35,9 +37,10 @@ A2UI-over-MCP pattern.
   Flutter GenUI SDK, CopilotKit React, stable Lit/Angular/React web renderers.
 - No official Rust SDK exists; community crates are early-stage.
 
-This design targets the **v1.0 RC wire format**. Implementation waits for
-v1.0 stable; the Wire-Delta Watchlist below must be re-verified against the
-stable spec before code is written.
+This design targets the **v1.0 RC wire format**. Implementation proceeds
+against the RC; the Wire-Delta Watchlist below must be re-verified against
+the stable spec before the crate is published or wired into the consumer
+MCP endpoint.
 
 ## Goals
 
@@ -59,7 +62,10 @@ stable spec before code is written.
   only; the catalog definition enables future client work).
 - A2A transport support in v1 (message types stay transport-agnostic; the
   extension slot is preserved).
-- Tracking pre-1.0 spec churn with production code.
+- Publishing to crates.io or wiring into the consumer MCP endpoint before
+  v1.0 stable. The crate carries `publish = false` and stays out of
+  `publish.yml` until the gate flips (the CI publish token cannot publish
+  new crates; first publish is a local bootstrap).
 
 ## Architecture
 
@@ -314,16 +320,17 @@ Follows the documented A2UI-over-MCP pattern:
 
 ## Implementation trigger and phasing
 
-**Hard gate:** A2UI v1.0 stable published (upstream target: Q4 2026).
-Signals that raise priority: a formal A2UI MCP extension lands; a mainstream
-consumer client surface becomes broadly available; a ferro consumer
-application requests A2UI output.
+Phases 1–3 proceed now against the v1.0 RC (experimental, unpublished).
+**Hard gate for phases 4–5:** A2UI v1.0 stable published (upstream target:
+Q4 2026), preceded by a Wire-Delta Watchlist pass. Signals that raise
+priority: a formal A2UI MCP extension lands; a mainstream consumer client
+surface becomes broadly available; a ferro consumer application requests
+A2UI output.
 
-Phasing sketch once triggered:
-
-1. Wire types + serde round-trip against the stable spec (watchlist pass).
+1. Wire types + serde round-trip against the RC spec.
 2. Builder: archetypes × tiers × emission modes; DataContract.
 3. Actions + write-kernel dispatch; validation-error flow.
-4. MCP enrichment + negotiation; `:8090` e2e.
-5. Catalog publication + drift guard + docs (`docs/src/`), MCP tool
-   description updates.
+4. *(gated)* MCP enrichment + negotiation; `:8090` e2e.
+5. *(gated)* Catalog publication + drift guard + docs (`docs/src/`), MCP
+   tool description updates, `publish = false` removal + `publish.yml`
+   Wave 1b entry + local publish bootstrap.

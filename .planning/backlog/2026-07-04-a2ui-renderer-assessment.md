@@ -2,15 +2,18 @@
 
 **Captured:** 2026-07-04
 **Design:** complete — see `docs/superpowers/specs/2026-07-04-ferro-a2ui-design.md`
-**Implementation trigger:** A2UI v1.0 **stable** published (upstream target
-Q4 2026; v1.0 is a Release Candidate today, v0.9.1 is the production spec).
-Priority-raising signals: a formal A2UI MCP extension lands upstream; a
-mainstream consumer client surface becomes broadly available; a ferro
-consumer application requests A2UI output.
+**Implementation:** in progress against the v1.0 RC as an experimental,
+unpublished workspace crate (`publish = false`, not in `publish.yml`).
+**Gate for MCP wiring + publication:** A2UI v1.0 **stable** published
+(upstream target Q4 2026; v1.0 is a Release Candidate today, v0.9.1 is the
+production spec), preceded by a Wire-Delta Watchlist pass. Priority-raising
+signals: a formal A2UI MCP extension lands upstream; a mainstream consumer
+client surface becomes broadly available; a ferro consumer application
+requests A2UI output.
 **Next re-check:** 2026-10-01 (start of the upstream Q4 stable window) —
 verify v1.0 stable status, the MCP extension (upstream issue #648), and
-consumer client surfaces; if the gate fired, start from the design's
-Wire-Delta Watchlist.
+consumer client surfaces; if the gate fired, run the design's Wire-Delta
+Watchlist, then wire + publish.
 
 ## Status check (2026-07-04)
 
@@ -76,5 +79,5 @@ streamed back to the agent. It runs over A2A and MCP.
 ## Explicit non-goals
 
 - Replacing the json-ui wire format or server-side HTML rendering.
-- Tracking a pre-1.0 external spec with production code.
+- Publishing or wiring into the consumer MCP endpoint before v1.0 stable.
 - Shipping a client-side renderer for the ferro catalog.
