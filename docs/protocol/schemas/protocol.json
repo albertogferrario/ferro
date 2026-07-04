@@ -80,6 +80,42 @@
             "null"
           ],
           "description": "Gate ability required to call this projection via MCP.\nPlain metadata read by the app's MCP handler; no auth dependency here."
+        },
+        "creatable": {
+          "type": "boolean",
+          "description": "Whether `create_<svc>` is derived for this projection (Track A).\nEnabling any CRUD write verb requires `mcp_write_ability` (see `validate`).",
+          "default": false
+        },
+        "updatable": {
+          "type": "boolean",
+          "description": "Whether `update_<svc>` (data-field patch) is derived for this projection.",
+          "default": false
+        },
+        "deletable": {
+          "type": "boolean",
+          "description": "Whether `delete_<svc>` (soft-delete, confirmation-gated) is derived.",
+          "default": false
+        },
+        "mcp_write_ability": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Gate ability required to call the create/update/delete tools.\nRequired when any of `creatable`/`updatable`/`deletable` is set."
+        },
+        "table": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Backing table name for derived CRUD dispatch (field→column binding).\nWhen `None`, the dispatch layer derives it from the service name."
+        },
+        "soft_delete_column": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Soft-delete column name. When `None`, the dispatch layer defaults to `deleted_at`."
         }
       },
       "required": [
