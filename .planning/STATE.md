@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: executing
-stopped_at: Phase 253 held at publish gate — 253-05 task 2/3 (operator visual pass pending; 0.2.85 bump committed locally, NOT pushed)
-last_updated: "2026-07-04T02:26:19.181Z"
+status: verifying
+stopped_at: 253-05 complete — 0.2.85 published
+last_updated: "2026-07-04T14:07:56.473Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 127
-  completed_phases: 109
+  completed_phases: 110
   total_plans: 452
-  completed_plans: 450
+  completed_plans: 451
   percent: 100
 ---
 
@@ -32,7 +32,7 @@ Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Ready to execute
+Status: Phase complete — ready for verification
 
 Last activity: 2026-07-04
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
@@ -219,6 +219,7 @@ Progress: [██████████] 100%
 | Phase 253-mcp-surface-docs-publish P02 | 632 | 2 tasks | 5 files |
 | Phase 253-mcp-surface-docs-publish P03 | 5 | 2 tasks | 7 files |
 | Phase 253-mcp-surface-docs-publish P04 | 185 | 2 tasks | 2 files |
+| Phase 253-mcp-surface-docs-publish P05 | 90 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -279,7 +280,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-04T02:26:19.120Z
-Stopped at: Phase 253 held at publish gate — 253-05 task 2/3 (operator visual pass pending; 0.2.85 bump committed locally, NOT pushed)
-Resume file: .planning/phases/253-mcp-surface-docs-publish/253-05-PLAN.md
+Last session: 2026-07-04T14:07:56.464Z
+Stopped at: 253-05 complete — 0.2.85 published
+Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
