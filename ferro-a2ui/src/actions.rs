@@ -3,9 +3,6 @@
 //! Event names reuse the MCP tool vocabulary (`create_<svc>`, `mark_paid`, …)
 //! so surfaces and tools share one dispatch layer.
 
-// Consumed by the archetype builders (Tasks 8–14); removed when dispatch lands.
-#![allow(dead_code)]
-
 use crate::builder::Emit;
 use crate::component::Component;
 use ferro_projections::{ActionDef, ServiceDef};
