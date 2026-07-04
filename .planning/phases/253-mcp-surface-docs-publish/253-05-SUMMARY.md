@@ -155,10 +155,12 @@ Original Task 1 commit (prior session):
 
 ## Publish Verification
 
-- **crates.io version:** (pending CI — expected 0.2.85; verify via `curl -s https://crates.io/api/v1/crates/ferro-rs | jq -r .crate.max_version`)
-- **GitHub Release tag:** (pending CI — expected v0.2.85)
-- **CI Publish run:** 28708390679 — `in_progress` at time of SUMMARY write; monitor via `gh run watch 28708390679`
-- **origin/master ref:** corrected to `a28e935ee821cd28f8d8b4f11a978617e21bcb4c`
+- **crates.io version:** 0.2.85 confirmed via API (`curl .../ferro-rs | jq -r .crate.max_version`)
+- **GitHub Release tag:** v0.2.85 exists (points to `6e6e98a9`)
+- **CI Publish run:** 28708390679 — Check Version ✓, Test ✓ (15m3s), Publish to crates.io ✓ (7m44s, all waves), Post-publish scaffold smoke (in-progress at SUMMARY write)
+- **Publish waves completed:** 1a → 1b → 1c → 2 (framework + mcp) → 3 (framework-consumers) → Tag + binary build trigger ✓
+- **origin/master ref:** corrected to `6e6e98a9aaf4b5928cb77430361ce37ffe8ae2ad`
+- **CI Security Check (cargo-deny):** FAILED — pre-existing advisories (RUSTSEC-2026-0190 anyhow, RUSTSEC-2026-0189 rmcp 0.12.0); same failure present on the prior push (CI run 28486489730); not introduced by this phase. Logged to deferred-items.md.
 
 ## gestiscilo Phase 232 Handoff
 
