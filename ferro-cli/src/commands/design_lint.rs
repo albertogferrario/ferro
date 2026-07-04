@@ -87,6 +87,7 @@ pub fn run(path: Option<String>, json: bool, deny: bool) {
         .unwrap_or_else(|| PathBuf::from("src/views"));
 
     let mut all: Vec<FileFinding> = Vec::new();
+    let mut files_linted: usize = 0;
 
     // WalkDir default: follow_links = false (symlinks not traversed — T-252-01).
     for entry in WalkDir::new(&root)
@@ -117,6 +118,9 @@ pub fn run(path: Option<String>, json: bool, deny: bool) {
                 continue;
             }
         };
+        if content.contains(SCHEMA_VERSION) {
+            files_linted += 1;
+        }
         all.extend(lint_content(&label, &content));
     }
 
@@ -125,6 +129,8 @@ pub fn run(path: Option<String>, json: bool, deny: bool) {
             "{}",
             serde_json::to_string_pretty(&all).unwrap_or_else(|_| "[]".into())
         );
+    } else if all.is_empty() && files_linted == 0 {
+        println!("{}", style("No JSON-UI spec files found.").yellow());
     } else {
         print_human(&all);
     }
