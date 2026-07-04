@@ -821,34 +821,21 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    let html = if props.scrollable == Some(true) {
-        format!(
+    if props.scrollable == Some(true) {
+        return format!(
             "<div class=\"overflow-x-auto\"><div class=\"grid grid-flow-col auto-cols-[minmax(280px,1fr)] {gap}\">{body}</div></div>"
-        )
-    } else {
-        let cols = props.columns.clamp(1, 12);
-        let mut col_classes = format!("grid-cols-{cols}");
-        if let Some(md) = props.md_columns {
-            col_classes.push_str(&format!(" md:grid-cols-{}", md.clamp(1, 12)));
-        }
-        if let Some(lg) = props.lg_columns {
-            col_classes.push_str(&format!(" lg:grid-cols-{}", lg.clamp(1, 12)));
-        }
-        format!("<div class=\"grid w-full {col_classes} {gap}\">{body}</div>")
-    };
-
-    // Focused-column wrapper: unlike Card/Form (left-anchored content inside a
-    // column), a constrained page-root Grid centers AS A UNIT — header and
-    // content share the bounded width, so no full-width/narrow imbalance.
-    match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
-        FormMaxWidth::Default => html,
-        FormMaxWidth::Narrow => {
-            format!("<div class=\"mx-auto w-full max-w-2xl\">{html}</div>")
-        }
-        FormMaxWidth::Wide => {
-            format!("<div class=\"mx-auto w-full max-w-4xl\">{html}</div>")
-        }
+        );
     }
+
+    let cols = props.columns.clamp(1, 12);
+    let mut col_classes = format!("grid-cols-{cols}");
+    if let Some(md) = props.md_columns {
+        col_classes.push_str(&format!(" md:grid-cols-{}", md.clamp(1, 12)));
+    }
+    if let Some(lg) = props.lg_columns {
+        col_classes.push_str(&format!(" lg:grid-cols-{}", lg.clamp(1, 12)));
+    }
+    format!("<div class=\"grid w-full {col_classes} {gap}\">{body}</div>")
 }
 
 // SVG chevron used to indicate the collapsed/expanded state.
@@ -1743,24 +1730,6 @@ mod tests {
         assert!(
             html.contains("border border-border"),
             "missing variant defaults to Bordered, got: {html}"
-        );
-    }
-
-    #[test]
-    fn grid_max_width_narrow_wraps_centered_column() {
-        // A constrained page-root Grid centers AS A UNIT (mx-auto) — the
-        // focused-column pattern, distinct from Card/Form left-anchoring.
-        let spec = build_spec(vec![(
-            "root",
-            Element::new("Grid")
-                .prop("columns", 1)
-                .prop("max_width", "narrow"),
-        )]);
-        let el = spec.elements.get("root").unwrap();
-        let html = render_grid(el, &spec, &json!({}), 1);
-        assert!(
-            html.starts_with("<div class=\"mx-auto w-full max-w-2xl\">"),
-            "focused-column wrapper missing; got: {html}"
         );
     }
 
