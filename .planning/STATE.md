@@ -4,7 +4,7 @@ milestone: v16.5
 milestone_name: JSON-UI Design System
 status: verifying
 stopped_at: 253-05 complete — 0.2.85 published
-last_updated: "2026-07-04T14:07:56.473Z"
+last_updated: "2026-07-04T14:52:35.546Z"
 last_activity: 2026-07-04
 progress:
   total_phases: 127
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 253 (MCP surface + docs + publish) — EXECUTING
-Plan: 5 of 5
+Phase: 253
+Plan: Not started
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
@@ -117,6 +117,7 @@ Progress: [██████████] 100%
 | 250 | 3 | - | - |
 | 251 | 4 | - | - |
 | 252 | 6 | - | - |
+| 253 | 5 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
