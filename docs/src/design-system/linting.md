@@ -47,7 +47,7 @@ Use `design_lint` inside an agent session to validate a spec before saving it. P
 }
 ```
 
-Combining `spec_lint` with `json_ui_validate_spec` gives full coverage: structural and catalog validity first, then design-pattern conformance.
+Combining `design_lint` with `json_ui_validate_spec` gives full coverage: structural and catalog validity first, then design-pattern conformance.
 
 ## Output Shape
 

@@ -1831,6 +1831,37 @@ mod tests {
     }
 
     #[test]
+    fn grid_spans_emit_base_col_span_on_multi_column_grid() {
+        // columns > 1 → the BASE col-span class is emitted (review WR-01: it
+        // must also exist in the generated CSS via the input.css safelist).
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("Grid")
+                    .prop("columns", 3)
+                    .prop("spans", json!([2, 1]))
+                    .child("a")
+                    .child("b"),
+            ),
+            ("a", Element::new("Text").prop("content", "A")),
+            ("b", Element::new("Text").prop("content", "B")),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("<div class=\"col-span-2\">"),
+            "base col-span-2 wrapper missing; got: {html}"
+        );
+        let base_css = include_str!("../../assets/ferro-base.css");
+        for cls in [".col-span-2", ".col-span-3", ".col-span-4"] {
+            assert!(
+                base_css.contains(cls),
+                "{cls} utility missing from ferro-base.css — safelist drift"
+            );
+        }
+    }
+
+    #[test]
     fn card_max_width_narrow_wraps_left_anchored() {
         let spec = build_spec(vec![(
             "root",

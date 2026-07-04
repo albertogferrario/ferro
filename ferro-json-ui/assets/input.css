@@ -73,6 +73,13 @@
 @source inline("duration-fast duration-base duration-slow ease-base font-display ring-ring");
 
 /*
+ * Base-breakpoint column spans — generated at runtime via format!() in
+ * render_grid (Grid `spans` prop), so the scanner cannot detect them.
+ * md:col-span-2/3 survive as literals in render_form_section.
+ */
+@source inline("col-span-2 col-span-3 col-span-4");
+
+/*
  * Motion duration utilities. Tailwind v4 does not generate duration-*
  * utilities from a --duration-* theme namespace, so these are defined
  * explicitly. Fallbacks keep 23-slot v1 themes working.
