@@ -1448,10 +1448,8 @@ impl FerroMcpService {
             `generation_context` for per-intent pattern expectations before authoring."
     )]
     pub async fn design_lint(&self, params: Parameters<DesignLintParams>) -> String {
-        let result = tools::design_lint::execute(
-            params.0.spec_json.as_deref(),
-            params.0.path.as_deref(),
-        );
+        let result =
+            tools::design_lint::execute(params.0.spec_json.as_deref(), params.0.path.as_deref());
         serde_json::to_string_pretty(&result).unwrap_or_else(|_| "[]".to_string())
     }
 

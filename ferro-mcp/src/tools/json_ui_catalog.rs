@@ -21,6 +21,8 @@ pub struct JsonUiCatalog {
     /// Spec-level directives recognized by `ferro-json-ui` resolve pipeline
     /// (Phase 163: `$each`, `$if`).
     pub directives: Vec<DirectiveInfo>,
+    /// Design system vocabulary and per-component design guidance (D-05).
+    pub design_system: DesignVocabulary,
 }
 
 /// A spec-level directive (e.g., `$each`, `$if`) discoverable by agents.
@@ -40,6 +42,57 @@ pub struct DirectiveInfo {
     /// malformed (cross-reference for diagnostic output).
     pub validation_errors: Vec<String>,
 }
+
+/// Design vocabulary derived from the canonical enums and the rule registry.
+///
+/// `variant/tone/size` come straight off `ferro_json_ui::component::{Variant,Tone,Size}`
+/// via strum — no hand-listed array, so drift is impossible by construction (D-05).
+/// `component_guidance` maps each builtin component to the design rules that reference it,
+/// derived from the explicit `RULE_COMPONENTS` mapping joined to `design::rules()` (D-05).
+#[derive(Debug, Serialize)]
+pub struct DesignVocabulary {
+    /// Canonical variant values (visual weight of interactive elements).
+    pub variant_values: Vec<String>,
+    /// Canonical tone values (semantic status color for stateful display components).
+    pub tone_values: Vec<String>,
+    /// Canonical size values.
+    pub size_values: Vec<String>,
+    /// Design rules that reference each builtin component, keyed by component type name.
+    pub component_guidance: std::collections::HashMap<String, Vec<DesignRuleRef>>,
+}
+
+/// Minimal rule metadata for agent consumption (no check fn — not serializable).
+#[derive(Debug, Serialize)]
+pub struct DesignRuleRef {
+    pub id: &'static str,
+    pub title: &'static str,
+    pub rationale: &'static str,
+}
+
+/// Explicit component→rule mapping (rule id → builtin component type names).
+///
+/// D-05 wants per-component catalog guidance, but `DesignRule` has no `components`
+/// field. Rather than text-scanning rule prose (fragile), the mapping is stated
+/// explicitly here and bidirectionally drift-guarded by the test below: every rule id
+/// must exist in `design::rules()`, every registry rule id must be mapped, and every
+/// component name must be a real builtin. Component names are BUILTIN_TYPES members
+/// only — ConfirmDialog (an action property), RichTextEditor (a plugin), and Textarea
+/// (removed in 253-04) are deliberately absent.
+static RULE_COMPONENTS: &[(&str, &[&str])] = &[
+    ("page-header", &["PageHeader"]),
+    ("prefer-data-table", &["Table", "DataTable"]),
+    (
+        "list-empty-state",
+        &["DataTable", "MediaCardGrid", "EmptyState"],
+    ),
+    ("row-actions-grouped", &["ActionGroup", "Button"]),
+    ("breadcrumb-on-subpages", &["Breadcrumb", "PageHeader"]),
+    ("process-kanban", &["KanbanBoard"]),
+    ("card-actions-in-menu", &["KanbanBoard", "ActionGroup"]),
+    ("create-separate-page", &["Modal", "Form"]),
+    ("form-default-values", &["Form", "Input", "Select"]),
+    ("destructive-confirmation", &["Button"]),
+];
 
 /// A single component in the catalog.
 #[derive(Debug, Serialize)]
@@ -140,6 +193,49 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         },
     ];
 
+    // ── Design system vocabulary (D-05) ─────────────────────────────────────
+    use ferro_json_ui::component::{Size, Tone, Variant};
+    use ferro_json_ui::design::rules as design_rules;
+    use strum::VariantArray;
+
+    let variant_values: Vec<String> = Variant::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+    let tone_values: Vec<String> = Tone::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+    let size_values: Vec<String> = Size::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+
+    // Rule metadata (title/rationale) keyed by id — captured so DesignRule need not be named.
+    let rules_by_id: std::collections::HashMap<&str, (&'static str, &'static str)> = design_rules()
+        .iter()
+        .map(|r| (r.id, (r.title, r.rationale)))
+        .collect();
+
+    // Invert RULE_COMPONENTS into a component-keyed guidance map.
+    let mut component_guidance: std::collections::HashMap<String, Vec<DesignRuleRef>> =
+        std::collections::HashMap::new();
+    for (rule_id, rule_components) in RULE_COMPONENTS {
+        let (title, rationale) = *rules_by_id
+            .get(rule_id)
+            .expect("RULE_COMPONENTS rule id must exist in design::rules() (drift guard)");
+        for &component in *rule_components {
+            component_guidance
+                .entry(component.to_string())
+                .or_default()
+                .push(DesignRuleRef {
+                    id: rule_id,
+                    title,
+                    rationale,
+                });
+        }
+    }
+
     JsonUiCatalog {
         components,
         plugin_components,
@@ -148,6 +244,12 @@ pub fn execute(component: Option<&str>) -> JsonUiCatalog {
         json_schema: cat.json_schema().clone(),
         component_schemas,
         directives,
+        design_system: DesignVocabulary {
+            variant_values,
+            tone_values,
+            size_values,
+            component_guidance,
+        },
     }
 }
 
@@ -594,5 +696,70 @@ mod tests {
             .and_then(|v| v.as_array())
             .expect("directives is an array");
         assert_eq!(directives.len(), 2);
+    }
+
+    #[test]
+    fn design_system_vocabulary_present() {
+        let catalog = execute(None);
+        assert!(catalog
+            .design_system
+            .variant_values
+            .iter()
+            .any(|v| v == "primary"));
+        assert!(catalog
+            .design_system
+            .tone_values
+            .iter()
+            .any(|v| v == "destructive"));
+        assert!(catalog.design_system.size_values.iter().any(|v| v == "md"));
+        assert_eq!(catalog.design_system.variant_values.len(), 5);
+        assert_eq!(catalog.design_system.tone_values.len(), 4);
+        assert_eq!(catalog.design_system.size_values.len(), 3);
+    }
+
+    #[test]
+    fn design_system_component_guidance_drift_guarded() {
+        use std::collections::HashSet;
+        let catalog = execute(None);
+        let cg = &catalog.design_system.component_guidance;
+
+        // Component-keyed guidance is present and matches the D-05 mapping.
+        assert!(cg.values().any(|v| !v.is_empty()));
+        assert!(cg
+            .get("DataTable")
+            .is_some_and(|r| r.iter().any(|x| x.id == "prefer-data-table")));
+        assert!(cg
+            .get("EmptyState")
+            .is_some_and(|r| r.iter().any(|x| x.id == "list-empty-state")));
+
+        let registry_ids: HashSet<&str> = ferro_json_ui::design::rules()
+            .iter()
+            .map(|r| r.id)
+            .collect();
+        let mapped_ids: HashSet<&str> = RULE_COMPONENTS.iter().map(|(id, _)| *id).collect();
+        // Direction 1: every mapped rule id exists in the registry.
+        for id in &mapped_ids {
+            assert!(
+                registry_ids.contains(id),
+                "RULE_COMPONENTS references unknown rule id `{id}`"
+            );
+        }
+        // Direction 2: every registry rule id is mapped (no silent drift when a rule is added).
+        for id in &registry_ids {
+            assert!(
+                mapped_ids.contains(id),
+                "design rule `{id}` is not mapped in RULE_COMPONENTS"
+            );
+        }
+        // Direction 3: every component name is a real builtin (from the catalog output).
+        let builtins: HashSet<&str> = catalog.components.iter().map(|c| c.name.as_str()).collect();
+        for (_, comps) in RULE_COMPONENTS {
+            for &c in *comps {
+                assert!(
+                    builtins.contains(c),
+                    "RULE_COMPONENTS references non-builtin component `{c}`"
+                );
+            }
+        }
     }
 }

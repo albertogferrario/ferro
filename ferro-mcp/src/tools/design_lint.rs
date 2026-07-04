@@ -103,7 +103,11 @@ mod tests {
             Some(r#"{"$schema":"ferro-json-ui/v2","root":"missing","elements":{}}"#),
             None,
         );
-        assert_eq!(findings.len(), 1, "expected exactly 1 finding, got: {findings:?}");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected exactly 1 finding, got: {findings:?}"
+        );
         assert_eq!(findings[0].finding.rule, "spec-parse");
         assert_eq!(findings[0].file, "<inline>");
         assert_eq!(findings[0].finding.severity, Severity::Warning);
@@ -125,7 +129,11 @@ mod tests {
     #[test]
     fn both_none_returns_tool_input_warning() {
         let findings = execute(None, None);
-        assert_eq!(findings.len(), 1, "expected exactly 1 finding, got: {findings:?}");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected exactly 1 finding, got: {findings:?}"
+        );
         assert_eq!(findings[0].finding.rule, "tool-input");
         assert_eq!(findings[0].finding.severity, Severity::Warning);
     }
@@ -133,7 +141,11 @@ mod tests {
     #[test]
     fn both_some_returns_tool_input_warning() {
         let findings = execute(Some(CLEAN), Some("x"));
-        assert_eq!(findings.len(), 1, "expected exactly 1 finding, got: {findings:?}");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected exactly 1 finding, got: {findings:?}"
+        );
         assert_eq!(findings[0].finding.rule, "tool-input");
         assert_eq!(findings[0].finding.severity, Severity::Warning);
     }
