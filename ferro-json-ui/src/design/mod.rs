@@ -324,9 +324,14 @@ mod docs_drift_tests {
     #[test]
     fn patterns_md_matches_rule_registry() {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
-        let path = std::path::Path::new(&manifest_dir).join("../docs/src/design-system/patterns.md");
-        let content = std::fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("patterns.md not found at {}: {e} (D-09 drift guard)", path.display()));
+        let path =
+            std::path::Path::new(&manifest_dir).join("../docs/src/design-system/patterns.md");
+        let content = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            panic!(
+                "patterns.md not found at {}: {e} (D-09 drift guard)",
+                path.display()
+            )
+        });
 
         // Forward: registry -> docs
         for rule in rules() {

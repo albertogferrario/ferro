@@ -15,7 +15,7 @@ use serde::Serialize;
 /// Identical to `ferro_cli::commands::design_lint::FileFinding` by design (D-02).
 #[derive(Debug, Serialize)]
 pub struct FileFinding {
-    /// "<inline>" for spec_json input; the given path for path input.
+    /// `"<inline>"` for spec_json input; the given path for path input.
     pub file: String,
     #[serde(flatten)]
     pub finding: Finding,
