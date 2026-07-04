@@ -1,4 +1,11 @@
-@import "tailwindcss";
+/*
+ * source(none) disables Tailwind v4's automatic whole-project content scan;
+ * only the explicit @source directives below are scanned. Without it, any
+ * repository file containing class-like tokens (planning docs, unrelated
+ * crates, untracked local files) leaks utilities into the generated CSS and
+ * makes regeneration non-deterministic across checkouts.
+ */
+@import "tailwindcss" source(none);
 
 /* Scan ferro-json-ui and framework Rust source files for utility class literals. */
 @source "../../ferro-json-ui/src";
