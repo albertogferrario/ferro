@@ -92,6 +92,7 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     ("create-separate-page", &["Modal", "Form"]),
     ("form-default-values", &["Form", "Input", "Select"]),
     ("destructive-confirmation", &["Button"]),
+    ("prefer-components", &["RawHtml"]),
 ];
 
 /// A single component in the catalog.

@@ -477,3 +477,42 @@ Edit form detected (one field has a `$data` default_value), but another field is
 ```json
 { "design": { "intent": "collect", "allow": ["destructive-confirmation"] } }
 ```
+
+## `prefer-components`
+
+**Title:** Prefer catalog components over RawHtml
+
+**Rationale:** UI inside a RawHtml escape hatch is invisible to the design system: tokens, variants, and every other lint rule cannot see it. Each use should be a deliberate, `allow`-justified exception.
+
+**Intents:** all
+
+**Severity:** info — the escape hatch is legitimate; the rule makes it visible, it never fails `--deny`.
+
+### Conforming example
+
+```json
+{
+  "elements": {
+    "greeting": { "type": "Text", "props": { "content": "Benvenuto" } }
+  }
+}
+```
+
+### Violating example
+
+```json
+{
+  "elements": {
+    "custom_widget": {
+      "type": "RawHtml",
+      "props": { "html": { "$data": "/widget_html" } }
+    }
+  }
+}
+```
+
+### How to allow
+
+```json
+{ "design": { "intent": "collect", "allow": ["prefer-components"] } }
+```

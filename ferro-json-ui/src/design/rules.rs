@@ -74,6 +74,13 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &[], // all intents
         check: check_destructive_confirmation,
     },
+    DesignRule {
+        id: "prefer-components",
+        title: "Prefer catalog components over RawHtml",
+        rationale: "UI inside a RawHtml escape hatch is invisible to the design system: tokens, variants, and every other lint rule cannot see it. Each use should be a deliberate, `allow`-justified exception.",
+        intents: &[], // all intents
+        check: check_prefer_components,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -383,6 +390,22 @@ fn check_destructive_confirmation(spec: &Spec, _intent: Option<&str>) -> Vec<Fin
         }
     }
     findings
+}
+
+fn check_prefer_components(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    spec.elements
+        .iter()
+        .filter(|(_, el)| el.type_name == "RawHtml")
+        .map(|(id, _)| Finding {
+            rule: "prefer-components",
+            element_id: Some(id.clone()),
+            severity: Severity::Info,
+            message: format!("Element `{id}` is a RawHtml escape hatch."),
+            suggestion: "Compose from catalog components where possible; if the escape is \
+                 deliberate, add `prefer-components` to `design.allow` with the reason in review."
+                .into(),
+        })
+        .collect()
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────
@@ -989,6 +1012,52 @@ mod tests {
         assert!(
             findings.is_empty(),
             "pure create form (no $data default_value on any field) must produce 0 findings, got: {findings:#?}"
+        );
+    }
+
+    // ── prefer-components ─────────────────────────────────────────────────────
+
+    #[test]
+    fn prefer_components_violating_raw_html_element() {
+        // A RawHtml element → 1 Info finding naming the element.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "RawHtml", "props": {"html": "<b>hi</b>"}}
+                },
+                "design": {"intent": "browse"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "prefer-components");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 prefer-components finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Info);
+    }
+
+    #[test]
+    fn prefer_components_conforming_no_raw_html() {
+        // No RawHtml anywhere → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {
+                    "r": {"type": "Text", "props": {"content": "hi"}}
+                },
+                "design": {"intent": "browse"}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "prefer-components");
+        assert!(
+            findings.is_empty(),
+            "component-only spec should be conforming, got: {findings:#?}"
         );
     }
 
