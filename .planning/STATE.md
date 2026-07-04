@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v16.5
 milestone_name: JSON-UI Design System
-status: verifying
-stopped_at: Phase 253 context gathered
-last_updated: "2026-07-04T00:10:46.750Z"
-last_activity: 2026-07-03
+status: executing
+stopped_at: Completed 253-mcp-surface-docs-publish 253-01-PLAN.md
+last_updated: "2026-07-04T01:05:35.649Z"
+last_activity: 2026-07-04
 progress:
   total_phases: 127
   completed_phases: 109
-  total_plans: 447
-  completed_plans: 446
-  percent: 100
+  total_plans: 452
+  completed_plans: 447
+  percent: 99
 ---
 
 # Project State
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 252 — Design module + lint + CLI
+**Current focus:** Phase 253 — MCP surface + docs + publish
 
 ## Current Position
 
 Latest shipped: v16.2 ferro-inertia first-load HTML shell (Phase 238). Also shipped but **not yet archived**: v16.1 ferro-payments (Phases 233–236, `ferro-payments` 0.1.0→0.1.3, workspace published through 0.2.75) and v16.0 Write-Boundary AX (Phases 231–232, StateMachine-derived executor + single `framework::write` kernel). Phase 237 (ActionGroup/DropdownMenu) also complete (4/4 plans).
 
-Phase: 253
-Plan: Not started
+Phase: 253 (MCP surface + docs + publish) — EXECUTING
+Plan: 2 of 5
 Requirements: `.planning/REQUIREMENTS.md` (CRUD-01..07 all complete). Phase 243.1 added derived/read-only-field handling on top of Track A (Gate F + recompute hook); per-field AX `description` deferred to Future Direction B (see design spec).
 Next: v16.5 JSON-UI Design System (Phases 250–253) started 2026-07-03 — Phase 250 (token vocabulary v2 + default theme refresh) in discussion. v16.3 (Track A, Phases 239–243 + 243.1) complete, shipped in 0.2.80, NOT archived (`/gsd-complete-milestone` still pending; v16.0/v16.1/v16.2 also remain shipped-but-unarchived). v16.4 Work Distribution (244–249) queued, independent of v16.5.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Status: Phase complete — ready for verification
+Status: Ready to execute
 
-Last activity: 2026-07-03
+Last activity: 2026-07-04
 Workspace version: 0.2.77 (master; ferro-payments independently versioned at 0.1.3).
 
 > **Operator actions pending (from v14.0 / prior milestones):**
@@ -215,6 +215,7 @@ Progress: [██████████] 100%
 | Phase 252 P05 | 288 | 2 tasks | 3 files |
 | Phase 252 P04 | 325 | 2 tasks | 1 files |
 | Phase 252 P06 | 768 | 2 tasks | 5 files |
+| Phase 253-mcp-surface-docs-publish P01 | 420 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -275,7 +276,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-04T00:10:46.703Z
-Stopped at: Phase 253 context gathered
-Resume file: .planning/phases/253-mcp-surface-docs-publish/253-CONTEXT.md
+Last session: 2026-07-04T01:05:35.566Z
+Stopped at: Completed 253-mcp-surface-docs-publish 253-01-PLAN.md
+Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
