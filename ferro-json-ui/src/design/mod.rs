@@ -312,3 +312,42 @@ mod drift_tests {
         );
     }
 }
+
+// ── D-09 docs drift test ──────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod docs_drift_tests {
+    use super::rules;
+
+    /// D-09: every rule id in the registry has a section in patterns.md,
+    /// and every rule id documented in patterns.md exists in the registry.
+    #[test]
+    fn patterns_md_matches_rule_registry() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(&manifest_dir).join("../docs/src/design-system/patterns.md");
+        let content = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("patterns.md not found at {}: {e} (D-09 drift guard)", path.display()));
+
+        // Forward: registry -> docs
+        for rule in rules() {
+            assert!(
+                content.contains(rule.id),
+                "patterns.md is missing rule id `{}` — add a section for it (D-09)",
+                rule.id
+            );
+        }
+        // Reverse: docs -> registry. Documented ids appear as `## `<id>`` headers.
+        let known: std::collections::HashSet<&str> = rules().iter().map(|r| r.id).collect();
+        for line in content.lines() {
+            let t = line.trim();
+            if let Some(rest) = t.strip_prefix("## `") {
+                if let Some(id) = rest.strip_suffix('`') {
+                    assert!(
+                        known.contains(id),
+                        "patterns.md documents unknown rule id `{id}` — not in design::rules() (D-09)"
+                    );
+                }
+            }
+        }
+    }
+}
