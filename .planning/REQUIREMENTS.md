@@ -192,7 +192,7 @@ intent-keyed lint rules enforced at the agent-authoring boundary. Anchor spec:
 - [x] **DS-07**: ferro-mcp gains a `design_lint` tool (inline spec or path);
   `json_ui_catalog` extends with the canonical variant vocabulary and per-component
   design guidance; `generation_context` gains a design-system summary.
-- [ ] **DS-08**: New `docs/src/design-system/` chapter (principles, token v2 reference,
+- [x] **DS-08**: New `docs/src/design-system/` chapter (principles, token v2 reference,
   variant vocabulary, pattern catalog, linting guide); single crates.io publish at the
   end of the milestone.
 
