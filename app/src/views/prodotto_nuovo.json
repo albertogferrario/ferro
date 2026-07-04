@@ -7,8 +7,8 @@
   "elements": {
     "root": {
       "type": "Grid",
-      "props": { "columns": 1, "max_width": "narrow" },
-      "children": ["page_header", "form_card"]
+      "props": { "columns": 1 },
+      "children": ["page_header", "content_row"]
     },
     "page_header": {
       "type": "PageHeader",
@@ -19,6 +19,11 @@
         ]
       }
     },
+    "content_row": {
+      "type": "Grid",
+      "props": { "columns": 1, "md_columns": 2, "gap": "lg" },
+      "children": ["form_card", "info_card"]
+    },
     "form_card": {
       "type": "Card",
       "props": {
@@ -26,6 +31,35 @@
         "description": "Compila i campi e salva per aggiungere il prodotto al catalogo."
       },
       "children": ["form"]
+    },
+    "info_card": {
+      "type": "Card",
+      "props": {
+        "title": "Suggerimenti",
+        "description": "Come compilare la scheda prodotto."
+      },
+      "children": ["tip_nome", "tip_prezzo", "tip_quantita"]
+    },
+    "tip_nome": {
+      "type": "Text",
+      "props": {
+        "content": "Il nome appare nel catalogo e nelle ricevute: usa una descrizione breve e riconoscibile.",
+        "element": "p"
+      }
+    },
+    "tip_prezzo": {
+      "type": "Text",
+      "props": {
+        "content": "Il prezzo è IVA inclusa e usa il punto come separatore decimale (es. 12.50).",
+        "element": "p"
+      }
+    },
+    "tip_quantita": {
+      "type": "Text",
+      "props": {
+        "content": "La quantità indica lo stock iniziale: potrai aggiornarla in qualsiasi momento dalla lista prodotti.",
+        "element": "p"
+      }
     },
     "form": {
       "type": "Form",
