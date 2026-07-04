@@ -98,6 +98,9 @@ fn emit_submit(e: &mut Emit, service: &ServiceDef) -> Option<String> {
         return None;
     };
     let event_name = crud_name(verb, service);
+    // The submit event references the whole form scope; contract it so the
+    // host knows the surface reads `/form` as a unit.
+    e.contract.bind("/form", None, None);
     let context = serde_json::json!({"form": {"path": "/form"}});
     Some(action_button(e, "submit", "Save", &event_name, context))
 }
