@@ -105,6 +105,12 @@ pub struct Spec {
     /// Optional layout name (e.g. `"dashboard"`, `"app"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout: Option<String>,
+    /// Viewport-fill workspace flag. When true, dashboard-family layouts pin
+    /// the page to the viewport height (via the `ferro-fill` body class) so a
+    /// fill-mode Grid root scrolls its panes internally instead of the
+    /// document scrolling. For full-height screens like a POS register.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub fill_viewport: bool,
     /// Arbitrary data payload consumed by data-path references inside elements.
     #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
     pub data: Value,
@@ -319,6 +325,7 @@ impl Spec {
             elements: raw.elements.0,
             title: raw.title,
             layout: raw.layout,
+            fill_viewport: raw.fill_viewport,
             data: raw.data,
             design: raw.design,
         };
@@ -450,6 +457,7 @@ impl SpecBuilder {
             elements: self.elements,
             title: self.title,
             layout: self.layout,
+            fill_viewport: false,
             data: self.data,
             design: None,
         };
@@ -657,6 +665,8 @@ struct SpecWire {
     title: Option<TitleBinding>,
     #[serde(default)]
     layout: Option<String>,
+    #[serde(default)]
+    fill_viewport: bool,
     #[serde(default)]
     data: Value,
     #[serde(default)]

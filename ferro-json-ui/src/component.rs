@@ -903,6 +903,14 @@ pub struct GridProps {
     /// Ignored in `scrollable` mode.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spans: Vec<u8>,
+    /// Fill mode for viewport workspaces (pages with `Spec.fill_viewport`):
+    /// the grid stretches to its parent's height with equal-height rows and
+    /// every child cell scrolls internally. The document never scrolls —
+    /// each pane does. Combine with `spans` for asymmetric panes (e.g. a
+    /// POS register: 1/3 cart + 2/3 product grid). Ignored in `scrollable`
+    /// mode.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<bool>,
 }
 
 fn default_grid_columns() -> u8 {

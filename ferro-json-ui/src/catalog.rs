@@ -1677,6 +1677,7 @@ mod tests {
             elements,
             title: None,
             layout: None,
+            fill_viewport: false,
             data: Value::Null,
             design: None,
         }
@@ -1928,6 +1929,7 @@ mod tests {
             elements,
             title: None,
             layout: None,
+            fill_viewport: false,
             data: Value::Null,
             design: None,
         };

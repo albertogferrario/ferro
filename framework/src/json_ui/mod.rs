@@ -161,11 +161,25 @@ impl JsonUi {
             format!("{}{}", head, result.css_head)
         };
 
+        // Spec-level viewport-fill: append the `ferro-fill` scope class so the
+        // base CSS pins the layout shell to the viewport height. Composed with
+        // the layout's `bg-surface` default, which only applies to an empty
+        // body_class — fill pages must not lose it.
+        let body_class = if spec.fill_viewport {
+            if config.body_class.is_empty() {
+                "bg-surface ferro-fill".to_string()
+            } else {
+                format!("{} ferro-fill", config.body_class)
+            }
+        } else {
+            config.body_class.clone()
+        };
+
         let ctx = LayoutContext {
             title,
             content: &result.html,
             head: &full_head,
-            body_class: &config.body_class,
+            body_class: &body_class,
             view_json: &spec_json,
             data_json: &data_json,
             scripts: &result.scripts,

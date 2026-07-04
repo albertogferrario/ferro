@@ -818,6 +818,9 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
     // `spans` entry) is wrapped so the wrapper becomes the multi-track grid
     // item. Span classes are limited to the utilities the base CSS ships:
     // col-span-2..4 on the base grid, md:col-span-2..3 at the md breakpoint.
+    // In fill mode every child cell additionally becomes an internal scroll
+    // pane (`min-h-0 h-full overflow-y-auto`).
+    let fill = props.fill == Some(true) && props.scrollable != Some(true);
     let body: String = el
         .children
         .iter()
@@ -825,15 +828,17 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         .map(|(i, cid)| {
             let rendered = render_element(cid, spec, data, depth + 1);
             let span = props.spans.get(i).copied().unwrap_or(1);
-            if span < 2 || props.scrollable == Some(true) {
-                return rendered;
-            }
             let mut classes: Vec<String> = Vec::new();
-            if props.columns > 1 {
-                classes.push(format!("col-span-{}", span.clamp(2, 4)));
+            if span >= 2 && props.scrollable != Some(true) {
+                if props.columns > 1 {
+                    classes.push(format!("col-span-{}", span.clamp(2, 4)));
+                }
+                if props.md_columns.is_some() {
+                    classes.push(format!("md:col-span-{}", span.clamp(2, 3)));
+                }
             }
-            if props.md_columns.is_some() {
-                classes.push(format!("md:col-span-{}", span.clamp(2, 3)));
+            if fill {
+                classes.push("min-h-0 h-full overflow-y-auto".to_string());
             }
             if classes.is_empty() {
                 rendered
@@ -856,6 +861,11 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
     }
     if let Some(lg) = props.lg_columns {
         col_classes.push_str(&format!(" lg:grid-cols-{}", lg.clamp(1, 12)));
+    }
+    if fill {
+        // Height-true grid: fills the parent, rows share the height equally,
+        // panes (wrapped above) scroll internally.
+        col_classes.push_str(" h-full min-h-0 auto-rows-fr");
     }
     format!("<div class=\"grid w-full {col_classes} {gap}\">{body}</div>")
 }
@@ -1752,6 +1762,41 @@ mod tests {
         assert!(
             html.contains("border border-border"),
             "missing variant defaults to Bordered, got: {html}"
+        );
+    }
+
+    #[test]
+    fn grid_fill_renders_height_true_grid_with_scroll_panes() {
+        // fill: true → grid gets h-full/min-h-0/auto-rows-fr; every child cell
+        // becomes an internal scroll pane. Composes with spans.
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("Grid")
+                    .prop("columns", 1)
+                    .prop("md_columns", 3)
+                    .prop("fill", true)
+                    .prop("spans", json!([1, 2]))
+                    .child("a")
+                    .child("b"),
+            ),
+            ("a", Element::new("Text").prop("content", "A")),
+            ("b", Element::new("Text").prop("content", "B")),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("h-full min-h-0 auto-rows-fr"),
+            "fill grid classes missing; got: {html}"
+        );
+        assert_eq!(
+            html.matches("min-h-0 h-full overflow-y-auto").count(),
+            2,
+            "both children must be scroll panes; got: {html}"
+        );
+        assert!(
+            html.contains("md:col-span-2 min-h-0 h-full overflow-y-auto"),
+            "span and fill classes must merge on one wrapper; got: {html}"
         );
     }
 
