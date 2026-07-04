@@ -42,6 +42,30 @@ Ferro-side responses shipped in this phase (pre-publish):
 - DataTable's existing mobile card fallback covers the cassa cart's bespoke
   mobile-CSS reimplementation.
 
+### Consolidation audit: cassa vs. new-booking (operator request at the gate)
+
+Both `cassa/orders_nuovo.json` and `calendario/booking_new.json` share the same
+four RawHtml picker sections (cart, search, products, cart runtime) plus
+submit/cancel chrome; their divergent elements (booking: date/time/duration/
+guest fields + duration lock; cassa: customer name/order id) are legitimate
+per-page composition. **In-app, a single source of truth already exists**:
+`helpers::build_product_picker_html()` serves both pages, parameterized by
+`people_ui`, per-product staff eligibility, and error-restore state.
+
+The consolidation gap is at the DESIGN-SYSTEM layer, not between the two pages:
+the shared builder is ~1100 lines of app-level HTML/CSS/JS string-building —
+invisible to `design:lint` (RawHtml is a lint blind spot), unusable by other
+ferro apps, and growing a bool/Option flag surface per feature. The
+consolidation move is to promote the picker into the catalog (see the POS
+component suite below), with `build_product_picker_html`'s signature as the
+battle-tested requirements spec. Both pages then swap four RawHtml elements
+for one component and stay coherent by construction.
+
+Shipped now: **`prefer-components` lint rule (Info)** — every RawHtml element
+is surfaced as a finding so escape hatches are visible in lint reports and must
+be `allow`-justified. Info severity: never fails `--deny`; the gestiscilo sweep
+will show exactly where the design system falls short of real pages.
+
 Remaining gaps for the next design-system iteration (POS component suite):
 - Product tap-grid with category filter + search (ProductTile exists but lacks
   category tokens, staff pickers, cart synchronization).
