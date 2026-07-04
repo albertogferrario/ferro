@@ -9,6 +9,13 @@ all-features = true
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
+    # rmcp 0.12 — DNS rebinding in rmcp's streamable HTTP SERVER transport
+    # (patched only in the 1.4.0 major). Ferro never compiles that transport:
+    # ferro-mcp uses transport-io (stdio); ferro-mcp-server enables only
+    # server/macros/base64 and serves /mcp through ferro's own router.
+    # Re-evaluate on the rmcp 1.x upgrade (tracked in phase 253 deferred items).
+    "RUSTSEC-2026-0189",
+
     # instant 0.1.13 — unmaintained. Pure time-utility crate, no security surface.
     # Transitive via parking_lot in the aws-smithy / tower stacks.
     "RUSTSEC-2024-0384",
