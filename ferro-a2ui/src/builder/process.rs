@@ -4,6 +4,7 @@
 
 use crate::actions::{action_button, action_passes_guards};
 use crate::builder::{display_fields, emit_title, Emit};
+use crate::catalog::CatalogTier;
 use crate::component::Component;
 use crate::context::{A2uiContext, EmissionMode};
 use ferro_projections::render::field_display_name;
@@ -32,6 +33,10 @@ pub(crate) fn emit(
         match slot.as_str() {
             "title" => children.push(emit_title(e, service)),
             "body" => children.push(match mode {
+                // Materialized emission stays a Basic composition even at the
+                // Ferro tier — guard-accurate per-record cards need explicit
+                // components, not a data-bound board.
+                EmissionMode::Template if ctx.tier == CatalogTier::Ferro => emit_kanban_board(e),
                 EmissionMode::Template => emit_template_lanes(e, service, machine),
                 EmissionMode::Materialized => emit_materialized_lanes(e, service, ctx, machine),
             }),
@@ -39,6 +44,13 @@ pub(crate) fn emit(
         }
     }
     Ok(children)
+}
+
+/// Ferro-tier template body: a `KanbanBoard` bound to `/lanes`.
+fn emit_kanban_board(e: &mut Emit) -> String {
+    e.contract.bind("/lanes", None, None);
+    e.push(Component::new("lanes", "KanbanBoard").bound_prop("lanes", "/lanes"));
+    "lanes".to_string()
 }
 
 fn emit_template_lanes(e: &mut Emit, service: &ServiceDef, machine: &StateMachine) -> String {
@@ -211,6 +223,19 @@ mod tests {
         );
         assert!(contract.paths().contains(&"/lanes/0/items"));
         assert!(contract.paths().contains(&"/lanes/*/items/*/customer_name"));
+    }
+
+    #[test]
+    fn ferro_tier_template_mode_emits_kanban_board() {
+        let ctx = A2uiContext {
+            tier: crate::CatalogTier::Ferro,
+            ..Default::default()
+        };
+        let (cs, contract) = render(&ctx);
+        let lanes = cs.iter().find(|c| c.id == "lanes").unwrap();
+        assert_eq!(lanes.component, "KanbanBoard");
+        assert_eq!(lanes.props["lanes"], serde_json::json!({"path": "/lanes"}));
+        assert!(contract.paths().contains(&"/lanes"));
     }
 
     #[test]

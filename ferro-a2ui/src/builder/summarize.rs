@@ -1,16 +1,15 @@
 //! Summarize archetype: stat cards for aggregate numeric fields.
 
 use crate::builder::{emit_title, Emit};
+use crate::catalog::CatalogTier;
 use crate::component::Component;
 use crate::context::A2uiContext;
 use ferro_projections::render::field_display_name;
-use ferro_projections::{DataType, Error, FieldMeaning, ServiceDef};
+use ferro_projections::{DataType, Error, FieldDef, FieldMeaning, ServiceDef};
 use ferro_theme::IntentSlotTemplate;
 
-/// Emits the `stats` Row of stat Cards; `None` when the service has no
-/// Money/Percentage/Quantity fields.
-pub(crate) fn emit_stat_cards(e: &mut Emit, service: &ServiceDef) -> Option<String> {
-    let stat_fields: Vec<_> = service
+fn stat_fields(service: &ServiceDef) -> Vec<&FieldDef> {
+    service
         .fields
         .iter()
         .filter(|f| {
@@ -20,7 +19,50 @@ pub(crate) fn emit_stat_cards(e: &mut Emit, service: &ServiceDef) -> Option<Stri
                     FieldMeaning::Money | FieldMeaning::Percentage | FieldMeaning::Quantity
                 )
         })
-        .collect();
+        .collect()
+}
+
+/// Contracts both the pre-formatted display string and the raw value for a
+/// stat field, returning the display path the component binds.
+fn bind_stat(e: &mut Emit, f: &FieldDef) -> String {
+    let display_path = format!("/stats/{}/display", f.name);
+    // Host pre-formats display strings server-side (spec: Value formatting);
+    // the raw value is contracted alongside for future client-side formatting.
+    e.contract
+        .bind(display_path.clone(), Some(DataType::String), Some(&f.name));
+    e.contract.bind(
+        format!("/stats/{}/value", f.name),
+        Some(f.data_type),
+        Some(&f.name),
+    );
+    display_path
+}
+
+/// Ferro-tier `stats`: a Row of `StatCard`s; `None` when no stat fields exist.
+pub(crate) fn emit_stat_cards_ferro(e: &mut Emit, service: &ServiceDef) -> Option<String> {
+    let fields = stat_fields(service);
+    if fields.is_empty() {
+        return None;
+    }
+    let mut cards = Vec::new();
+    for f in fields {
+        let card_id = format!("{}_stat", f.name);
+        let display_path = bind_stat(e, f);
+        e.push(
+            Component::new(card_id.clone(), "StatCard")
+                .bound_prop("value", display_path)
+                .prop("label", field_display_name(&f.name)),
+        );
+        cards.push(card_id);
+    }
+    e.push(Component::new("stats", "Row").children_ids(cards));
+    Some("stats".to_string())
+}
+
+/// Emits the `stats` Row of stat Cards; `None` when the service has no
+/// Money/Percentage/Quantity fields.
+pub(crate) fn emit_stat_cards(e: &mut Emit, service: &ServiceDef) -> Option<String> {
+    let stat_fields = stat_fields(service);
     if stat_fields.is_empty() {
         return None;
     }
@@ -30,16 +72,7 @@ pub(crate) fn emit_stat_cards(e: &mut Emit, service: &ServiceDef) -> Option<Stri
         let col_id = format!("{}_stat_col", f.name);
         let value_id = format!("{}_stat_value", f.name);
         let label_id = format!("{}_stat_label", f.name);
-        let display_path = format!("/stats/{}/display", f.name);
-        // Host pre-formats display strings server-side (spec: Value formatting);
-        // the raw value is contracted alongside for future client-side formatting.
-        e.contract
-            .bind(display_path.clone(), Some(DataType::String), Some(&f.name));
-        e.contract.bind(
-            format!("/stats/{}/value", f.name),
-            Some(f.data_type),
-            Some(&f.name),
-        );
+        let display_path = bind_stat(e, f);
         e.push(
             Component::new(value_id.clone(), "Text")
                 .bound_prop("text", display_path)
@@ -54,10 +87,23 @@ pub(crate) fn emit_stat_cards(e: &mut Emit, service: &ServiceDef) -> Option<Stri
     Some("stats".to_string())
 }
 
+/// Tier-dispatching `stats` slot emission, shared with Analyze.
+pub(crate) fn emit_stats_slot(
+    e: &mut Emit,
+    service: &ServiceDef,
+    ctx: &A2uiContext,
+) -> Option<String> {
+    if ctx.tier == CatalogTier::Ferro {
+        emit_stat_cards_ferro(e, service)
+    } else {
+        emit_stat_cards(e, service)
+    }
+}
+
 pub(crate) fn emit(
     e: &mut Emit,
     service: &ServiceDef,
-    _ctx: &A2uiContext,
+    ctx: &A2uiContext,
     template: &IntentSlotTemplate,
 ) -> Result<Vec<String>, Error> {
     let mut children = Vec::new();
@@ -65,7 +111,7 @@ pub(crate) fn emit(
         match slot.as_str() {
             "title" => children.push(emit_title(e, service)),
             "stats" => {
-                if let Some(id) = emit_stat_cards(e, service) {
+                if let Some(id) = emit_stats_slot(e, service, ctx) {
                     children.push(id);
                 }
             }
@@ -112,6 +158,31 @@ mod tests {
             by_id("total_stat_label").props["text"],
             serde_json::json!("Total")
         );
+        let paths = out.data_contract.paths();
+        assert!(paths.contains(&"/stats/total/display"));
+        assert!(paths.contains(&"/stats/total/value"));
+    }
+
+    #[test]
+    fn ferro_tier_emits_stat_card_components() {
+        let ctx = A2uiContext {
+            tier: crate::CatalogTier::Ferro,
+            ..Default::default()
+        };
+        let out = A2uiRenderer
+            .render(&order_service(), &scored(Intent::Summarize), &ctx)
+            .unwrap();
+        let A2uiMessage::CreateSurface(cs) = &out.messages[0] else {
+            panic!()
+        };
+        let card = cs.components.iter().find(|c| c.id == "total_stat").unwrap();
+        assert_eq!(card.component, "StatCard");
+        assert_eq!(
+            card.props["value"],
+            serde_json::json!({"path": "/stats/total/display"})
+        );
+        assert_eq!(card.props["label"], serde_json::json!("Total"));
+        // same contract as the Basic tier
         let paths = out.data_contract.paths();
         assert!(paths.contains(&"/stats/total/display"));
         assert!(paths.contains(&"/stats/total/value"));

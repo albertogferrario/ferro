@@ -1,6 +1,7 @@
 //! Track archetype: timeline list of events.
 
 use crate::builder::{emit_title, Emit};
+use crate::catalog::CatalogTier;
 use crate::component::Component;
 use crate::context::A2uiContext;
 use ferro_projections::{Error, FieldMeaning, ServiceDef};
@@ -18,10 +19,17 @@ fn first_field_with<'a>(service: &'a ServiceDef, meanings: &[FieldMeaning]) -> O
     })
 }
 
+/// Ferro-tier `fields`: a `Timeline` bound to `/events`.
+fn emit_timeline_component(e: &mut Emit) -> String {
+    e.contract.bind("/events", None, None);
+    e.push(Component::new("timeline", "Timeline").bound_prop("events", "/events"));
+    "timeline".to_string()
+}
+
 pub(crate) fn emit(
     e: &mut Emit,
     service: &ServiceDef,
-    _ctx: &A2uiContext,
+    ctx: &A2uiContext,
     template: &IntentSlotTemplate,
 ) -> Result<Vec<String>, Error> {
     let time_field = first_field_with(
@@ -49,6 +57,9 @@ pub(crate) fn emit(
     for slot in &template.slots {
         match slot.as_str() {
             "title" => children.push(emit_title(e, service)),
+            "fields" if ctx.tier == CatalogTier::Ferro => {
+                children.push(emit_timeline_component(e));
+            }
             "fields" => {
                 e.contract.bind("/events", None, None);
                 e.contract
@@ -115,5 +126,26 @@ mod tests {
         assert!(paths.contains(&"/events"));
         assert!(paths.contains(&"/events/*/created_at"));
         assert!(paths.contains(&"/events/*/status"));
+    }
+
+    #[test]
+    fn ferro_tier_track_emits_timeline_component() {
+        let ctx = A2uiContext {
+            tier: crate::CatalogTier::Ferro,
+            ..Default::default()
+        };
+        let out = A2uiRenderer
+            .render(&order_service(), &scored(Intent::Track), &ctx)
+            .unwrap();
+        let A2uiMessage::CreateSurface(cs) = &out.messages[0] else {
+            panic!()
+        };
+        let timeline = cs.components.iter().find(|c| c.id == "timeline").unwrap();
+        assert_eq!(timeline.component, "Timeline");
+        assert_eq!(
+            timeline.props["events"],
+            serde_json::json!({"path": "/events"})
+        );
+        assert!(out.data_contract.paths().contains(&"/events"));
     }
 }

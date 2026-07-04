@@ -2,10 +2,12 @@
 
 use crate::actions::{action_button, crud_name};
 use crate::builder::{display_fields, emit_title, Emit};
+use crate::catalog::CatalogTier;
 use crate::component::Component;
 use crate::context::A2uiContext;
 use ferro_projections::{Error, ServiceDef};
 use ferro_theme::IntentSlotTemplate;
+use serde_json::Value;
 
 /// Emits the `items` List with a shared row template; returns its ID.
 /// Bindings inside the template are relative (resolved per list item);
@@ -29,17 +31,43 @@ pub(crate) fn emit_item_list(e: &mut Emit, service: &ServiceDef) -> String {
     "items".to_string()
 }
 
+/// Ferro-tier `items`: a `DataTable` bound to `/items` with named columns.
+pub(crate) fn emit_datatable(e: &mut Emit, service: &ServiceDef) -> String {
+    e.contract.bind("/items", None, None);
+    for f in display_fields(service) {
+        e.contract.bind(
+            format!("/items/*/{}", f.name),
+            Some(f.data_type),
+            Some(&f.name),
+        );
+    }
+    let columns: Vec<Value> = display_fields(service)
+        .iter()
+        .map(|f| Value::String(f.name.clone()))
+        .collect();
+    e.push(
+        Component::new("items", "DataTable")
+            .bound_prop("rows", "/items")
+            .prop("columns", columns),
+    );
+    "items".to_string()
+}
+
 pub(crate) fn emit(
     e: &mut Emit,
     service: &ServiceDef,
-    _ctx: &A2uiContext,
+    ctx: &A2uiContext,
     template: &IntentSlotTemplate,
 ) -> Result<Vec<String>, Error> {
     let mut children = Vec::new();
     for slot in &template.slots {
         match slot.as_str() {
             "title" => children.push(emit_title(e, service)),
-            "fields" => children.push(emit_item_list(e, service)),
+            "fields" => children.push(if ctx.tier == CatalogTier::Ferro {
+                emit_datatable(e, service)
+            } else {
+                emit_item_list(e, service)
+            }),
             "pagination" => {
                 let name = crud_name("list", service);
                 children.push(action_button(
@@ -121,6 +149,28 @@ mod tests {
         ] {
             assert!(paths.contains(&p), "missing {p}");
         }
+    }
+
+    #[test]
+    fn ferro_tier_browse_emits_datatable() {
+        let ctx = A2uiContext {
+            tier: crate::CatalogTier::Ferro,
+            ..Default::default()
+        };
+        let out = A2uiRenderer
+            .render(&order_service(), &scored(Intent::Browse), &ctx)
+            .unwrap();
+        assert_eq!(out.catalog_id, crate::catalog::FERRO_CATALOG_ID);
+        let A2uiMessage::CreateSurface(cs) = &out.messages[0] else {
+            panic!()
+        };
+        let items = cs.components.iter().find(|c| c.id == "items").unwrap();
+        assert_eq!(items.component, "DataTable");
+        assert_eq!(items.props["rows"], serde_json::json!({"path": "/items"}));
+        assert_eq!(
+            items.props["columns"],
+            serde_json::json!(["customer_name", "total", "status", "notes"])
+        );
     }
 
     #[test]
