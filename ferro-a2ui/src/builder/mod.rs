@@ -1,6 +1,8 @@
 //! Emission core: dispatches intents to archetype builders and assembles
 //! the `createSurface` skeleton.
 
+mod collect;
+
 use crate::component::Component;
 use crate::context::A2uiContext;
 use crate::message::{A2uiMessage, CreateSurface};
@@ -34,7 +36,6 @@ pub(crate) fn display_fields(service: &ServiceDef) -> Vec<&FieldDef> {
 }
 
 /// Writable, non-system fields in declaration order.
-#[allow(dead_code)] // consumed by archetype builders (Task 8)
 pub(crate) fn writable_fields(service: &ServiceDef) -> Vec<&FieldDef> {
     service
         .fields
@@ -90,10 +91,11 @@ pub(crate) fn build(
     let template = resolve_template(intent, mode, ctx.templates.as_ref());
     let mut emit = Emit::default();
 
-    // Archetype dispatch — per-intent arms land in Tasks 8–14; the template
-    // is consumed by those arms as they replace this placeholder.
-    let _ = &template;
-    let child_ids = emit_generic(&mut emit, service)?;
+    // Archetype dispatch — remaining arms land in Tasks 9–14.
+    let child_ids = match intent.label() {
+        "collect" => collect::emit(&mut emit, service, ctx, &template)?,
+        _ => emit_generic(&mut emit, service)?,
+    };
 
     let root = Component::new("root", "Column").children_ids(child_ids);
     let mut components = vec![root];
