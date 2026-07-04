@@ -10,6 +10,8 @@ pub struct GenerationContext {
     pub common_patterns: CommonPatterns,
     pub avoid: Vec<String>,
     pub imports: ImportTemplates,
+    /// Design system summary for JSON-UI spec authoring (D-06).
+    pub design_system: DesignSystemSummary,
 }
 
 /// Naming conventions for different framework artifacts
@@ -55,8 +57,228 @@ pub struct ImportTemplates {
     pub json_ui_view: String,
 }
 
+/// Design system summary for agent-authoring context (D-06).
+#[derive(Debug, Serialize)]
+pub struct DesignSystemSummary {
+    /// Semantic token vocabulary (30 slots). Each entry: CSS variable name + one-line purpose.
+    pub tokens: &'static [TokenInfo],
+    /// Design rules grouped by intent key: rule id + title + rationale.
+    pub intent_patterns: std::collections::HashMap<String, Vec<IntentPattern>>,
+    /// Canonical variant/tone/size value lists.
+    pub canonical_variants: CanonicalVariants,
+    /// Pointer to full design system documentation.
+    pub docs: &'static str,
+}
+
+/// One semantic token slot: CSS variable name + one-line purpose.
+#[derive(Debug, Serialize)]
+pub struct TokenInfo {
+    pub name: &'static str,
+    pub purpose: &'static str,
+}
+
+/// Rule metadata for a specific intent, derived from the rule registry.
+#[derive(Debug, Serialize)]
+pub struct IntentPattern {
+    pub rule_id: &'static str,
+    pub title: &'static str,
+    pub rationale: &'static str,
+}
+
+/// Canonical shared enum values across JSON-UI components.
+#[derive(Debug, Serialize)]
+pub struct CanonicalVariants {
+    pub variant: Vec<String>,
+    pub tone: Vec<String>,
+    pub size: Vec<String>,
+}
+
+/// Semantic token descriptions — maintained in parallel with `ferro_theme::token::ALL_TOKENS`.
+///
+/// Order and count MUST match ALL_TOKENS exactly. The count drift guard test
+/// (`token_description_count_matches_all_tokens`) enforces this at CI time.
+static DESIGN_TOKEN_DESCRIPTIONS: &[TokenInfo] = &[
+    TokenInfo {
+        name: "--color-background",
+        purpose: "Page/canvas background",
+    },
+    TokenInfo {
+        name: "--color-surface",
+        purpose: "Component surface (cards, panels)",
+    },
+    TokenInfo {
+        name: "--color-card",
+        purpose: "Card background (may differ from surface)",
+    },
+    TokenInfo {
+        name: "--color-border",
+        purpose: "Dividers, input borders, separators",
+    },
+    TokenInfo {
+        name: "--color-text",
+        purpose: "Primary text",
+    },
+    TokenInfo {
+        name: "--color-text-muted",
+        purpose: "Secondary/muted text, placeholders",
+    },
+    TokenInfo {
+        name: "--color-primary",
+        purpose: "Primary action color (buttons, links)",
+    },
+    TokenInfo {
+        name: "--color-primary-foreground",
+        purpose: "Text on primary-colored surfaces",
+    },
+    TokenInfo {
+        name: "--color-secondary",
+        purpose: "Secondary action / subdued UI elements",
+    },
+    TokenInfo {
+        name: "--color-secondary-foreground",
+        purpose: "Text on secondary-colored surfaces",
+    },
+    TokenInfo {
+        name: "--color-accent",
+        purpose: "Accent highlight (hover, selection)",
+    },
+    TokenInfo {
+        name: "--color-destructive",
+        purpose: "Destructive actions and danger states",
+    },
+    TokenInfo {
+        name: "--color-success",
+        purpose: "Success / positive states",
+    },
+    TokenInfo {
+        name: "--color-warning",
+        purpose: "Warning / caution states",
+    },
+    TokenInfo {
+        name: "--radius-sm",
+        purpose: "Small corner radius (badges, chips)",
+    },
+    TokenInfo {
+        name: "--radius-md",
+        purpose: "Medium corner radius (buttons, inputs)",
+    },
+    TokenInfo {
+        name: "--radius-lg",
+        purpose: "Large corner radius (cards, modals)",
+    },
+    TokenInfo {
+        name: "--radius-full",
+        purpose: "Full / pill corner radius (avatars)",
+    },
+    TokenInfo {
+        name: "--shadow-sm",
+        purpose: "Small elevation shadow",
+    },
+    TokenInfo {
+        name: "--shadow-md",
+        purpose: "Medium elevation shadow (dropdowns)",
+    },
+    TokenInfo {
+        name: "--shadow-lg",
+        purpose: "Large elevation shadow (modals)",
+    },
+    TokenInfo {
+        name: "--font-sans",
+        purpose: "Body / UI sans-serif font stack",
+    },
+    TokenInfo {
+        name: "--font-mono",
+        purpose: "Monospace font stack (code, IDs)",
+    },
+    TokenInfo {
+        name: "--spacing",
+        purpose: "Base spacing unit (density scale)",
+    },
+    TokenInfo {
+        name: "--motion-duration-fast",
+        purpose: "Fast transitions (100-150 ms)",
+    },
+    TokenInfo {
+        name: "--motion-duration-base",
+        purpose: "Standard transitions (200-250 ms)",
+    },
+    TokenInfo {
+        name: "--motion-duration-slow",
+        purpose: "Slow transitions (300-400 ms)",
+    },
+    TokenInfo {
+        name: "--motion-ease",
+        purpose: "Default easing curve",
+    },
+    TokenInfo {
+        name: "--color-ring",
+        purpose: "Focus ring / outline color",
+    },
+    TokenInfo {
+        name: "--font-display",
+        purpose: "Display/heading font (defaults to --font-sans)",
+    },
+];
+
 /// Execute the generation context tool - returns comprehensive framework conventions
 pub fn execute() -> GenerationContext {
+    // ── Design system summary (D-06) ─────────────────────────────────────────
+    use ferro_json_ui::component::{Size, Tone, Variant};
+    use ferro_json_ui::design::rules as design_rules;
+    use strum::VariantArray;
+
+    let variant_values: Vec<String> = Variant::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+    let tone_values: Vec<String> = Tone::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+    let size_values: Vec<String> = Size::VARIANTS
+        .iter()
+        .map(|v| v.as_ref().to_string())
+        .collect();
+
+    // Group rules by intent; rules with empty intents go into an "all" bucket.
+    let mut intent_patterns: std::collections::HashMap<String, Vec<IntentPattern>> =
+        std::collections::HashMap::new();
+    for rule in design_rules() {
+        if rule.intents.is_empty() {
+            intent_patterns
+                .entry("all".to_string())
+                .or_default()
+                .push(IntentPattern {
+                    rule_id: rule.id,
+                    title: rule.title,
+                    rationale: rule.rationale,
+                });
+        } else {
+            for &intent in rule.intents {
+                intent_patterns
+                    .entry(intent.to_string())
+                    .or_default()
+                    .push(IntentPattern {
+                        rule_id: rule.id,
+                        title: rule.title,
+                        rationale: rule.rationale,
+                    });
+            }
+        }
+    }
+
+    let design_system = DesignSystemSummary {
+        tokens: DESIGN_TOKEN_DESCRIPTIONS,
+        intent_patterns,
+        canonical_variants: CanonicalVariants {
+            variant: variant_values,
+            tone: tone_values,
+            size: size_values,
+        },
+        docs: "See docs/src/design-system/ for the full design system \
+               (principles, tokens, variants, patterns, linting).",
+    };
+
     GenerationContext {
         naming_conventions: NamingConventions {
             models: "PascalCase singular (User, BlogPost, Animal)".to_string(),
@@ -170,6 +392,7 @@ use serde::{Deserialize, Serialize};"#.to_string(),
             validation: r#"use ferro::{Validator, required, email, min, max, string, rules};"#.to_string(),
             json_ui_view: r#"use ferro::{JsonUi, Response};"#.to_string(),
         },
+        design_system,
     }
 }
 
@@ -211,6 +434,21 @@ mod tests {
         assert!(!context.imports.model.is_empty());
         assert!(!context.imports.validation.is_empty());
         assert!(!context.imports.json_ui_view.is_empty());
+
+        // Verify design system summary populated (D-06)
+        assert_eq!(context.design_system.tokens.len(), 30);
+        assert!(!context.design_system.intent_patterns.is_empty());
+        assert!(!context.design_system.canonical_variants.variant.is_empty());
+        assert!(!context.design_system.docs.is_empty());
+    }
+
+    #[test]
+    fn token_description_count_matches_all_tokens() {
+        assert_eq!(
+            DESIGN_TOKEN_DESCRIPTIONS.len(),
+            ferro_theme::token::ALL_TOKENS.len(),
+            "DESIGN_TOKEN_DESCRIPTIONS must have one entry per ALL_TOKENS slot (D-06 drift guard)"
+        );
     }
 
     #[test]
