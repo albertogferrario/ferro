@@ -5,6 +5,7 @@ mod browse;
 mod collect;
 mod focus;
 mod summarize;
+mod track;
 
 use crate::component::Component;
 use crate::context::A2uiContext;
@@ -88,11 +89,12 @@ pub(crate) fn build(
     let template = resolve_template(intent, mode, ctx.templates.as_ref());
     let mut emit = Emit::default();
 
-    // Archetype dispatch — remaining arms land in Tasks 12–14.
+    // Archetype dispatch — remaining arms land in Tasks 13–14.
     let child_ids = match intent.label() {
         "collect" => collect::emit(&mut emit, service, ctx, &template)?,
         "focus" => focus::emit(&mut emit, service, ctx, &template)?,
         "summarize" => summarize::emit(&mut emit, service, ctx, &template)?,
+        "track" => track::emit(&mut emit, service, ctx, &template)?,
         // Browse and custom intents share the browse shape (mirrors ferro-text).
         _ => browse::emit(&mut emit, service, ctx, &template)?,
     };
