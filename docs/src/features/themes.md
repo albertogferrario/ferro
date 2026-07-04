@@ -59,8 +59,8 @@ Every valid v1 theme (23 slots) remains a valid v2 theme without changes — the
 | Token | Default (light) | Purpose |
 |-------|----------------|---------|
 | `--color-background` | `oklch(99% 0.004 250)` | Page background |
-| `--color-surface` | `oklch(97% 0.006 250)` | Section/panel background |
-| `--color-card` | `oklch(95% 0.008 250)` | Card component background |
+| `--color-surface` | `oklch(100% 0 0)` | Section/panel background |
+| `--color-card` | `oklch(100% 0 0)` | Card component background |
 | `--color-border` | `oklch(90% 0.012 250)` | Borders and dividers |
 | `--color-text` | `oklch(20% 0.02 250)` | Primary text |
 | `--color-text-muted` | `oklch(50% 0.016 250)` | Secondary/placeholder text |
@@ -69,7 +69,7 @@ Every valid v1 theme (23 slots) remains a valid v2 theme without changes — the
 
 | Token | Default (light) | Purpose |
 |-------|----------------|---------|
-| `--color-primary` | `oklch(55% 0.2 250)` | Primary actions, links |
+| `--color-primary` | `oklch(20% 0.02 250)` | Primary actions, links |
 | `--color-primary-foreground` | `oklch(100% 0 0)` | Text on primary backgrounds |
 | `--color-secondary` | `oklch(70% 0.05 250)` | Secondary actions |
 | `--color-secondary-foreground` | `oklch(15% 0 0)` | Text on secondary backgrounds |
@@ -123,7 +123,7 @@ Base CSS collapses all three durations to `0.01ms` under `prefers-reduced-motion
 
 | Token | Default (light) | Purpose |
 |-------|-----------------|---------|
-| `--color-ring` | primary-family oklch (`oklch(55% 0.2 250)`) | Uniform `focus-visible` ring for interactive components — accessibility as a token |
+| `--color-ring` | accent-family oklch (`oklch(55% 0.2 250)`) | Uniform `focus-visible` ring for interactive components — accessibility as a token |
 
 ### Display Font Token (1)
 
