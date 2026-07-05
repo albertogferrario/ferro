@@ -29,6 +29,10 @@ pub(super) const SOURCE: &str = r#"
 
     function initNumpad(container) {
         var field = container.getAttribute('data-numpad-target');
+        // getAttribute returns the decoded raw string: strip characters that
+        // would break the attribute selector below (querySelector throws a
+        // SyntaxError on `"`, `\` or `]` inside the quoted value).
+        if (field) field = field.replace(/["\\\]]/g, '');
         var mode = container.getAttribute('data-numpad-mode') || 'quantity';
         var display = container.querySelector('[data-numpad-display]');
         var input = document.querySelector('input[data-numpad-input="' + field + '"]');

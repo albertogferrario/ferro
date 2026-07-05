@@ -46,21 +46,29 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(hero_lazy::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
-         \x20       setupScrollPreserve();\n\
-         \x20       setupSSE();\n\
-         \x20       setupTabs();\n\
-         \x20       setupDismissibles();\n\
-         \x20       setupNotifications();\n\
-         \x20       setupDropdowns();\n\
-         \x20       setupKanban();\n\
-         \x20       setupSidebar();\n\
-         \x20       setupFormGuards();\n\
-         \x20       setupTiles();\n\
-         \x20       setupNumpad();\n\
-         \x20       setupFilters();\n\
-         \x20       setupModals();\n\
-         \x20       setupToasts();\n\
-         \x20       setupLazyHeroes();\n\
+         \x20       // Run each setup in isolation: a throw in one concern (e.g. an\n\
+         \x20       // invalid selector built from a malformed attribute) must not\n\
+         \x20       // abort the remaining setups.\n\
+         \x20       var setups = [\n\
+         \x20           setupScrollPreserve,\n\
+         \x20           setupSSE,\n\
+         \x20           setupTabs,\n\
+         \x20           setupDismissibles,\n\
+         \x20           setupNotifications,\n\
+         \x20           setupDropdowns,\n\
+         \x20           setupKanban,\n\
+         \x20           setupSidebar,\n\
+         \x20           setupFormGuards,\n\
+         \x20           setupTiles,\n\
+         \x20           setupNumpad,\n\
+         \x20           setupFilters,\n\
+         \x20           setupModals,\n\
+         \x20           setupToasts,\n\
+         \x20           setupLazyHeroes\n\
+         \x20       ];\n\
+         \x20       for (var i = 0; i < setups.length; i++) {\n\
+         \x20           try { setups[i](); } catch (err) { /* isolated per concern */ }\n\
+         \x20       }\n\
          \x20   }\n\
          \x20   document.addEventListener('DOMContentLoaded', ferroRuntime);\n\
          })();\n",
@@ -214,30 +222,40 @@ mod tests {
         assert!(FERRO_RUNTIME_JS.trim_end().ends_with("})();"));
     }
 
+    /// Every setup must be registered in the dispatcher's `setups` array and
+    /// invoked through the per-concern try/catch loop so one throwing setup
+    /// cannot abort the rest.
     #[test]
     fn dispatcher_invokes_every_setup() {
         let js: &str = FERRO_RUNTIME_JS.as_str();
         let dispatcher_start = js.find("function ferroRuntime()").unwrap();
         let dispatcher = &js[dispatcher_start..];
-        for call in [
-            "setupSSE();",
-            "setupTabs();",
-            "setupToasts();",
-            "setupSidebar();",
-            "setupDropdowns();",
-            "setupModals();",
-            "setupDismissibles();",
-            "setupNotifications();",
-            "setupFormGuards();",
-            "setupTiles();",
-            "setupNumpad();",
-            "setupFilters();",
-            "setupKanban();",
-            "setupScrollPreserve();",
-            "setupLazyHeroes();",
+        for name in [
+            "setupSSE",
+            "setupTabs",
+            "setupToasts",
+            "setupSidebar",
+            "setupDropdowns",
+            "setupModals",
+            "setupDismissibles",
+            "setupNotifications",
+            "setupFormGuards",
+            "setupTiles",
+            "setupNumpad",
+            "setupFilters",
+            "setupKanban",
+            "setupScrollPreserve",
+            "setupLazyHeroes",
         ] {
-            assert!(dispatcher.contains(call), "dispatcher missing {call}");
+            assert!(
+                dispatcher.contains(name),
+                "dispatcher setups array missing {name}"
+            );
         }
+        assert!(
+            dispatcher.contains("try { setups[i](); } catch"),
+            "dispatcher must invoke setups through the per-concern try/catch"
+        );
     }
 
     #[test]

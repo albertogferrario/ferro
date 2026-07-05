@@ -15,6 +15,10 @@ pub(super) const SOURCE: &str = r#"
     function initQtyButton(btn, delta) {
         btn.addEventListener('click', function() {
             var field = btn.getAttribute(delta > 0 ? 'data-qty-inc' : 'data-qty-dec');
+            // getAttribute returns the decoded raw string: strip characters
+            // that would break the attribute selectors below (querySelector
+            // throws a SyntaxError on `"`, `\` or `]` inside the quoted value).
+            if (field) field = field.replace(/["\\\]]/g, '');
             var display = document.querySelector('[data-qty-display="' + field + '"]');
             var input = document.querySelector('[data-qty-input="' + field + '"]');
             if (!display || !input) return;
