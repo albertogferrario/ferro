@@ -367,7 +367,16 @@ impl<L: BillableLoader> PaymentService<L> {
         )
         .await?;
 
-        let urls = (self.return_url_builder)(billable);
+        let mut urls = (self.return_url_builder)(billable);
+        // Per-instance override (D-16): a billable may supply its own return URLs
+        // (e.g. a resource-scoped share page), preferred over the global closure.
+        // Existing billables return `None` from these methods and keep the closure.
+        if let Some(success) = billable.success_url() {
+            urls.success_url = success;
+        }
+        if let Some(cancel) = billable.cancel_url() {
+            urls.cancel_url = cancel;
+        }
         let req = CheckoutRequest {
             amount_cents: billable.amount_cents(),
             currency: billable.currency().to_string(),
@@ -984,6 +993,54 @@ mod tests {
         }
     }
 
+    /// A billable that overrides `success_url` / `cancel_url` (D-16). Proves the
+    /// per-instance URLs win over the global `return_url_builder` closure.
+    struct OverrideUrlBillable;
+
+    #[async_trait::async_trait]
+    impl Billable for OverrideUrlBillable {
+        fn kind(&self) -> BillableKind {
+            BillableKind::new("file_share")
+        }
+        fn id(&self) -> i64 {
+            7
+        }
+        fn tenant_id(&self) -> i64 {
+            1
+        }
+        fn amount_cents(&self) -> i64 {
+            2500
+        }
+        fn currency(&self) -> &str {
+            "EUR"
+        }
+        fn checkout_line_description(&self) -> String {
+            "File condivisi".to_string()
+        }
+        fn success_url(&self) -> Option<String> {
+            Some("https://example.com/f/tok123?paid=1".to_string())
+        }
+        fn cancel_url(&self) -> Option<String> {
+            Some("https://example.com/f/tok123".to_string())
+        }
+        async fn on_paid(&self, _txn: &sea_orm::DatabaseTransaction) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_released(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_refunded(
+            &self,
+            _txn: &sea_orm::DatabaseTransaction,
+            _amount_cents: i64,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Seed helpers
     // -----------------------------------------------------------------------
@@ -1283,6 +1340,37 @@ mod tests {
             "idempotency key must be deterministic"
         );
         assert_eq!(captured.connect_account_id.as_deref(), Some("acct_test"));
+    }
+
+    /// D-16: a billable that overrides `success_url` / `cancel_url` has those
+    /// URLs honored by `start_checkout` in preference to the global
+    /// `return_url_builder` closure. Existing billables (default `None`) keep the
+    /// closure's URLs — see `mock_gateway_records_calls` above for the closure path.
+    #[tokio::test]
+    async fn start_checkout_prefers_billable_return_urls() {
+        let db = fresh_db().await;
+        let mock = Arc::new(MockStripeGateway::default());
+
+        let svc = PaymentService::new(
+            db.clone(),
+            mock.clone(),
+            MockLoader,
+            Arc::new(ferro_stripe::MemoryProcessedLog::new()),
+            |_b| ReturnUrls {
+                success_url: "https://example.com/closure/success".to_string(),
+                cancel_url: "https://example.com/closure/cancel".to_string(),
+            },
+        );
+
+        svc.start_checkout(&OverrideUrlBillable, chrono::Duration::hours(24))
+            .await
+            .expect("start_checkout");
+
+        let calls = mock.checkout_calls.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        // The billable's per-instance URLs win over the closure's.
+        assert_eq!(calls[0].success_url, "https://example.com/f/tok123?paid=1");
+        assert_eq!(calls[0].cancel_url, "https://example.com/f/tok123");
     }
 
     // -----------------------------------------------------------------------

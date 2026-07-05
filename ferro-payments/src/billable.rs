@@ -35,6 +35,23 @@ pub trait Billable: Send + Sync {
         None
     }
 
+    /// Per-instance Stripe Checkout success URL. When `Some`, `start_checkout`
+    /// uses it in preference to the global `return_url_builder` closure (which
+    /// only sees `kind()` + `id()`). Default `None` keeps existing billables on
+    /// the closure. Lets a billable route the customer to a resource-scoped page
+    /// (e.g. a share `/f/{token}?paid=1`) rather than a generic checkout-result
+    /// page — avoiding a wrong-receipt info leak when the closure cannot derive
+    /// the correct destination from `kind()` + `id()` alone.
+    fn success_url(&self) -> Option<String> {
+        None
+    }
+
+    /// Per-instance Stripe Checkout cancel URL. Same precedence rule as
+    /// [`Billable::success_url`]. Default `None` keeps the closure.
+    fn cancel_url(&self) -> Option<String> {
+        None
+    }
+
     /// Side effect after the payment is confirmed paid. Runs inside the caller's txn.
     async fn on_paid(&self, txn: &DatabaseTransaction) -> Result<(), PaymentError>;
     /// Side effect after a reserved intent is released (expired/unpaid).
@@ -112,6 +129,13 @@ mod tests {
     fn connect_account_id_defaults_to_none() {
         let b = TestBillable;
         assert_eq!(b.connect_account_id(), None);
+    }
+
+    #[test]
+    fn return_urls_default_to_none() {
+        let b = TestBillable;
+        assert_eq!(b.success_url(), None);
+        assert_eq!(b.cancel_url(), None);
     }
 
     #[test]
