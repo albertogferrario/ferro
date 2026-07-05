@@ -1376,6 +1376,97 @@ pub struct ProductTileProps {
     pub stock_badge: Option<String>,
 }
 
+/// Props for the ProductGrid POS builtin — a touch-first, responsive product grid
+/// whose ProductTile children iterate via the `$each` contract (Phase 257 target).
+/// Renderer + registration land in Phase 256; this is the contract only.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ProductGridProps {
+    /// JSON pointer to the product array the grid iterates over via `$each`.
+    pub data_path: String,
+    /// Scope isolator that links this grid's hidden inputs to a sibling CartPanel.
+    pub form_id: String,
+    /// JSON pointer to a category string array for the integrated category strip.
+    /// Absent → no category strip is rendered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub categories_path: Option<String>,
+    /// Override for the base-viewport grid column count (Phase 256 render default is 2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub columns: Option<u8>,
+    /// Enables the client-side text-search input (Phase 255 `setupPosFilter`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search: Option<bool>,
+}
+
+/// Props for the CartPanel POS builtin — a server-rendered cart that pins and
+/// scrolls internally under `fill_viewport`. Renderer lands in Phase 256.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CartPanelProps {
+    /// Scope isolator matching the paired ProductGrid `form_id`.
+    pub form_id: String,
+    /// Placeholder text shown by the EmptyState when the cart has no line items.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_message: Option<String>,
+    /// Whether the Staff column is visible (gestiscilo booking mode).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_staff: Option<bool>,
+    /// Whether the People stepper column is visible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_people: Option<bool>,
+}
+
+/// Props for the CategoryNav POS builtin (standalone builtin, operator-locked).
+/// Filters visible product tiles client-side via `data-product-categories`
+/// matching (Phase 255 runtime). Renderer lands in Phase 256.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct CategoryNavProps {
+    /// Category labels rendered as filter tabs. May be `$data`-bound at render time.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub items: Vec<String>,
+    /// Label for the "show all" tab (Phase 256 render default is "Tutte").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub all_label: Option<String>,
+}
+
+/// Props for the QuantityStepper POS builtin — a reusable +/- stepper driving a
+/// hidden input on the ProductTile contract. Renderer lands in Phase 256.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct QuantityStepperProps {
+    /// Name of the hidden input this stepper increments/decrements.
+    pub field: String,
+    /// Lower bound (Phase 256 render default is 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<u32>,
+    /// Upper bound; unbounded when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<u32>,
+    /// Increment size (Phase 256 render default is 1).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step: Option<u32>,
+}
+
+/// Input mode for the Numpad — governs which characters the keypad accepts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum NumpadMode {
+    /// Integer entry only.
+    #[default]
+    Quantity,
+    /// Two-decimal-place monetary entry.
+    Price,
+}
+
+/// Props for the Numpad POS builtin — a tap-surface numeric keypad that writes to a
+/// target field and NEVER renders a native input (so the software keyboard is never
+/// triggered). Renderer lands in Phase 256.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NumpadProps {
+    /// Name of the input this numpad writes into.
+    pub target_field: String,
+    /// Entry mode (quantity | price). Defaults to quantity.
+    #[serde(default)]
+    pub mode: NumpadMode,
+}
+
 /// Lax deserializer for PageHeader.actions. Per D-19/F6:
 /// Accepts: missing field (via #[serde(default)]), null, [], empty string "",
 /// and array of strings. Rejects: non-empty strings, arrays of non-strings.
@@ -1869,6 +1960,31 @@ mod schema_smoke_tests {
         // Optional None fields are omitted.
         assert!(reserialized.get("placeholder").is_none());
         assert!(reserialized.get("error").is_none());
+    }
+
+    #[test]
+    fn schema_for_product_grid_props_generates() {
+        assert_schema_nonempty_object::<ProductGridProps>("ProductGridProps");
+    }
+
+    #[test]
+    fn schema_for_cart_panel_props_generates() {
+        assert_schema_nonempty_object::<CartPanelProps>("CartPanelProps");
+    }
+
+    #[test]
+    fn schema_for_category_nav_props_generates() {
+        assert_schema_nonempty_object::<CategoryNavProps>("CategoryNavProps");
+    }
+
+    #[test]
+    fn schema_for_quantity_stepper_props_generates() {
+        assert_schema_nonempty_object::<QuantityStepperProps>("QuantityStepperProps");
+    }
+
+    #[test]
+    fn schema_for_numpad_props_generates() {
+        assert_schema_nonempty_object::<NumpadProps>("NumpadProps");
     }
 }
 
