@@ -627,19 +627,22 @@ No external tool dependencies beyond the workspace toolchain. `scripts/gen-ferro
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`POS_TAP_HIGHLIGHT` Path A vs Path B**
+   - RESOLVED (Path B): `@utility pos-tap-highlight` adopted in Plan 254-02 Task 1 (input.css `@utility` analog, zero scanner risk).
    - What we know: Tailwind v4 arbitrary property syntax is supported; scanner behavior for vendor-prefixed arbitrary properties in Rust source files is uncertain
    - What's unclear: Whether `[-webkit-tap-highlight-color:transparent]` appearing as a Rust string literal is detected by the Tailwind v4 content scanner
    - Recommendation: Use Path B (`@utility pos-tap-highlight`) for zero risk; include a verification step if Path A is chosen
 
 2. **`POS_HIT_TARGET_NUMPAD` (56px) — Phase 254 or 256?**
+   - RESOLVED (Phase 254): `POS_HIT_TARGET_NUMPAD = "min-h-[56px] min-w-[56px]"` ships in Plan 254-02 Task 1 (pure declaration; classes.rs is its home; Phase 256 consumes it).
    - What we know: Numpad keys should be ≥56px per STACK.md; this phase declares `NumpadProps` but not its renderer
    - What's unclear: Whether declaring a 56px constant now is premature (the renderer that uses it lands in Phase 256)
    - Recommendation: Include `POS_HIT_TARGET_NUMPAD = "min-h-[56px] min-w-[56px]"` in Phase 254 since the constant is in `classes.rs` which is the right home and Phase 256 will need it immediately
 
 3. **`infer.rs` ProductGrid → collect inference branch (D-17 discretionary)**
+   - RESOLVED (skipped): infer.rs is not touched in Phase 254 — the four rules use `intents: &[]` with internal presence gates and fire regardless of inferred intent; revisit on gestiscilo adoption friction (CONTEXT deferred section).
    - What we know: Current `infer_intent` doesn't recognize ProductGrid; a spec with ProductGrid only gets `None` intent → `declare-intent` Info finding; POS lint rules use `intents: &[]` so they run regardless
    - What's unclear: Whether adding inference now helps (rules run regardless) or just adds complexity
    - Recommendation: Skip in Phase 254; the rules fire correctly via the internal presence gate; revisit after gestiscilo adoption (friction loop per CONTEXT deferred section)
