@@ -2413,7 +2413,10 @@ mod product_tile_contract_tests {
         );
         assert!(tile.image_url.is_none(), "image_url must default to None");
         assert!(tile.color.is_none(), "color must default to None");
-        assert!(tile.stock_badge.is_none(), "stock_badge must default to None");
+        assert!(
+            tile.stock_badge.is_none(),
+            "stock_badge must default to None"
+        );
         let serialized = serde_json::to_string(&tile).expect("must serialize");
         assert!(
             !serialized.contains("categories"),
@@ -2458,8 +2461,8 @@ mod product_tile_contract_tests {
     #[test]
     fn grid_props_row_weights_round_trips() {
         // Empty row_weights must be skipped in serialization.
-        let default_grid: GridProps =
-            serde_json::from_value(serde_json::json!({})).expect("must deserialize default GridProps");
+        let default_grid: GridProps = serde_json::from_value(serde_json::json!({}))
+            .expect("must deserialize default GridProps");
         let json = serde_json::to_string(&default_grid).expect("must serialize");
         assert!(
             !json.contains("row_weights"),
