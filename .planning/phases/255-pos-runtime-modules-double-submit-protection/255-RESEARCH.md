@@ -676,21 +676,21 @@ Note: `Array.prototype.some` is ES5-compatible. Alternatively use a manual for-l
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact neutral names for V-05 constants**
    - What we know: `POS_` prefix must go; class VALUE strings are unchanged
    - What's unclear: Preferred naming convention — option A: drop prefix entirely (`TOUCH_ACTION`, `HIT_TARGET_MIN`); option B: domain prefix `TOUCH_` (`TOUCH_ACTION_MANIPULATION`, `TOUCH_HIT_TARGET_MIN`)
-   - Recommendation: Drop prefix, keep names descriptive — `TOUCH_ACTION`, `HIT_TARGET_MIN`, `HIT_TARGET_NUMPAD`, `PRESS_ACTIVE`, `OVERSCROLL_CONTAIN`, `TAP_HIGHLIGHT`
+   - RESOLVED: Plan 255-01 Task 2 locks the exact names — `TOUCH_ACTION`, `HIT_TARGET_MIN`, `HIT_TARGET_NUMPAD`, `PRESS_ACTIVE`, `OVERSCROLL_CONTAIN`, `TAP_HIGHLIGHT` (within the V-05 Claude's-Discretion grant in CONTEXT.md)
 
 2. **`data-filter-tab` token normalization**
    - What we know: Phase 256 will render FilterTabs; this phase only defines the runtime contract
    - What's unclear: Should `setupFilters` normalize tab token values (`.replace(/ /g, '-')`) or assume Phase 256 will pre-normalize?
-   - Recommendation: Normalize in runtime (defensive) — the runtime comment states the normalization contract; Phase 256 should also pre-normalize but the runtime handles it either way
+   - RESOLVED: CONTEXT.md D-09 — tokens are space→hyphen normalized at render time; the runtime compares verbatim, case-insensitively. Plan 255-04 Task 3 comments the normalization contract in the module source
 
-3. **`Any.prototype.some` vs. for-loop in filter runtime**
+3. **`Array.prototype.some` vs. for-loop in filter runtime**
    - What we know: All other runtime modules use only `for` loops (no array methods)
-   - Recommendation: Use manual `for` loop for strict consistency with house ES5 style
+   - RESOLVED: manual `for` loop per ES5 house style; Plan 255-04 verify blocks grep-reject `.some(`
 
 ---
 
