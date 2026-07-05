@@ -481,8 +481,9 @@ fn check_pos_grid_fill(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
         rule: "pos-grid-fill",
         element_id: Some(spec.root.clone()),
         severity: Severity::Warning,
-        message: "fill_viewport spec has a root Grid without fill:true; panes lose internal scroll."
-            .into(),
+        message:
+            "fill_viewport spec has a root Grid without fill:true; panes lose internal scroll."
+                .into(),
         suggestion: "Add fill: true to the root Grid props.".into(),
     }]
 }
@@ -492,10 +493,7 @@ fn check_pos_cart_present(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
         .elements
         .values()
         .any(|el| el.type_name == "ProductGrid");
-    let has_cart = spec
-        .elements
-        .values()
-        .any(|el| el.type_name == "CartPanel");
+    let has_cart = spec.elements.values().any(|el| el.type_name == "CartPanel");
     if !has_grid || has_cart {
         return vec![];
     }
@@ -1330,6 +1328,277 @@ mod tests {
         assert!(
             findings.is_empty(),
             "non-destructive Button should be conforming, got: {findings:#?}"
+        );
+    }
+
+    // ── pos-fill-viewport ────────────────────────────────────────────────────
+
+    #[test]
+    fn pos_fill_viewport_violating_product_grid_no_fill_viewport() {
+        // ProductGrid present, fill_viewport absent → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "ProductGrid"}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 pos-fill-viewport finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn pos_fill_viewport_conforming_fill_viewport_set() {
+        // ProductGrid present and fill_viewport: true → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {"r": {"type": "ProductGrid"}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        assert!(
+            findings.is_empty(),
+            "fill_viewport set must be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn pos_fill_viewport_data_bound_no_misfire() {
+        // No POS type names present, only a DataTable with a $data binding → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": false,
+                "elements": {"r": {"type": "DataTable", "props": {"data_path": {"$data": "/products"}}}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        assert!(
+            findings.is_empty(),
+            "spec without POS type names must not misfire: {findings:#?}"
+        );
+    }
+
+    // ── pos-grid-fill ────────────────────────────────────────────────────────
+
+    #[test]
+    fn pos_grid_fill_violating_fill_viewport_root_grid_no_fill() {
+        // fill_viewport: true, root element is Grid without fill prop → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {"r": {"type": "Grid", "props": {"columns": 2}}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 pos-grid-fill finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn pos_grid_fill_conforming_root_grid_with_fill_true() {
+        // fill_viewport: true, root Grid with fill: true → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {"r": {"type": "Grid", "props": {"columns": 2, "fill": true}}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        assert!(
+            findings.is_empty(),
+            "root Grid with fill:true must be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn pos_grid_fill_data_bound_no_misfire() {
+        // fill_viewport: true, root Grid with fill: true carrying a $data-bound child prop → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {
+                    "r": {"type": "Grid", "props": {"columns": 2, "fill": true}},
+                    "tbl": {"type": "DataTable", "props": {"rows": {"$data": "/rows"}}}
+                },
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        assert!(
+            findings.is_empty(),
+            "$data-bound child must not misfire pos-grid-fill: {findings:#?}"
+        );
+    }
+
+    // ── pos-cart-present ─────────────────────────────────────────────────────
+
+    #[test]
+    fn pos_cart_present_violating_product_grid_no_cart_panel() {
+        // ProductGrid present, CartPanel absent → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "elements": {"r": {"type": "ProductGrid"}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-cart-present");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 pos-cart-present finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn pos_cart_present_conforming_both_product_grid_and_cart_panel() {
+        // Both ProductGrid and CartPanel present → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {
+                    "r": {"type": "Grid", "props": {"fill": true}},
+                    "grid": {"type": "ProductGrid"},
+                    "cart": {"type": "CartPanel"}
+                },
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-cart-present");
+        assert!(
+            findings.is_empty(),
+            "ProductGrid + CartPanel must be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn pos_cart_present_data_bound_no_misfire() {
+        // ProductGrid + CartPanel both present with $data-bound props → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {
+                    "r": {"type": "Grid", "props": {"fill": true}},
+                    "grid": {"type": "ProductGrid", "props": {"items": {"$data": "/products"}}},
+                    "cart": {"type": "CartPanel", "props": {"lines": {"$data": "/cart/lines"}}}
+                },
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-cart-present");
+        assert!(
+            findings.is_empty(),
+            "$data-bound ProductGrid+CartPanel must not misfire: {findings:#?}"
+        );
+    }
+
+    // ── fill-viewport-layout-unknown ─────────────────────────────────────────
+
+    #[test]
+    fn fill_viewport_layout_unknown_violating_fill_viewport_auth_layout() {
+        // fill_viewport: true with layout: "auth" → 1 Warning.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "layout": "auth",
+                "elements": {"r": {"type": "Grid"}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "fill-viewport-layout-unknown");
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 fill-viewport-layout-unknown finding, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn fill_viewport_layout_unknown_conforming_fill_viewport_app_layout() {
+        // fill_viewport: true with layout: "app" → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "layout": "app",
+                "elements": {"r": {"type": "Grid", "props": {"fill": true}}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "fill-viewport-layout-unknown");
+        assert!(
+            findings.is_empty(),
+            "fill_viewport + layout:app must be conforming, got: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn fill_viewport_layout_unknown_data_bound_no_misfire() {
+        // fill_viewport: true, layout: "app", element with $data-bound prop → 0 findings.
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "layout": "app",
+                "elements": {
+                    "r": {"type": "Grid", "props": {"fill": true}},
+                    "tbl": {"type": "DataTable", "props": {"rows": {"$data": "/rows"}}}
+                },
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "fill-viewport-layout-unknown");
+        assert!(
+            findings.is_empty(),
+            "$data-bound element on conforming layout must not misfire: {findings:#?}"
         );
     }
 }
