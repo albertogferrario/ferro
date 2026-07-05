@@ -55,11 +55,11 @@ pub use component::{
     DropdownMenuAction, EmptyStateProps, FormMaxWidth, FormProps, FormSectionProps, GapSize,
     GridProps, HeaderProps, IconPosition, ImageProps, InputProps, InputType, KanbanBoardProps,
     KanbanColumnProps, ModalProps, NotificationDropdownProps, NotificationItem, Orientation,
-    PageHeaderProps, PaginationProps, TileProps, ProgressProps, RawHtmlProps,
-    RichTextEditorProps, SegmentedControlProps, SegmentedItem, SelectOption, SelectProps,
-    SeparatorProps, SidebarGroup, SidebarLayoutItem, SidebarLayoutProps, SidebarNavItem,
-    SidebarProps, Size, SkeletonProps, SortDirection, StatCardProps, SwitchProps, Tab, TableProps,
-    TabsProps, TextElement, TextProps, ToastProps, Tone, Variant,
+    PageHeaderProps, PaginationProps, ProgressProps, RawHtmlProps, RichTextEditorProps,
+    SegmentedControlProps, SegmentedItem, SelectOption, SelectProps, SeparatorProps, SidebarGroup,
+    SidebarLayoutItem, SidebarLayoutProps, SidebarNavItem, SidebarProps, Size, SkeletonProps,
+    SortDirection, StatCardProps, SwitchProps, Tab, TableProps, TabsProps, TextElement, TextProps,
+    TileProps, ToastProps, Tone, Variant,
 };
 pub use config::JsonUiConfig;
 pub use design::{lint, rules, DesignMeta, DesignRule, Finding, Severity, KNOWN_INTENTS};

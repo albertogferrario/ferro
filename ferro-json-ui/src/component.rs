@@ -2406,8 +2406,7 @@ mod tile_contract_tests {
     #[test]
     fn tile_legacy_json_round_trips_unchanged() {
         let json = r#"{"item_id":"p1","name":"Widget","price":"€10,00","field":"qty_p1"}"#;
-        let tile: TileProps =
-            serde_json::from_str(json).expect("legacy json must deserialize");
+        let tile: TileProps = serde_json::from_str(json).expect("legacy json must deserialize");
         assert!(
             tile.categories.is_empty(),
             "categories must default to empty vec"

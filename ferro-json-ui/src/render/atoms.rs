@@ -13,16 +13,15 @@ use crate::component::{
     ActionCardProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps, ButtonProps, ButtonType,
     CalendarCellProps, ChecklistProps, DescriptionListProps, DropdownMenuAction, EmptyStateProps,
     HeaderProps, IconPosition, ImageProps, NotificationDropdownProps, Orientation, PaginationProps,
-    ProductTileProps, ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps,
-    Size, SkeletonProps, StatCardProps, StreamTextProps, TextElement, TextProps, ToastProps, Tone,
-    Variant,
+    ProgressProps, RawHtmlProps, SeparatorProps, SidebarNavItem, SidebarProps, Size, SkeletonProps,
+    StatCardProps, StreamTextProps, TextElement, TextProps, TileProps, ToastProps, Tone, Variant,
 };
 use crate::spec::{Element, Spec};
 
 use super::classes::{
-    DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST, POS_HIT_TARGET_MIN,
-    POS_TOUCH_ACTION, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS,
-    TOAST_TONE_WARNING,
+    DISABLED_BASE, FOCUS_RING, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST,
+    TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
+    TOUCH_ACTION,
 };
 use super::html_escape;
 
@@ -1353,17 +1352,12 @@ pub(crate) fn render_action_card(
     html
 }
 
-// ── 23. ProductTile ──────────────────────────────────────────────────────
+// ── 23. Tile ──────────────────────────────────────────────────────
 
-pub(crate) fn render_product_tile(
-    el: &Element,
-    _spec: &Spec,
-    _data: &Value,
-    _depth: usize,
-) -> String {
-    let props: ProductTileProps = match decode_props(&el.props) {
+pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+    let props: TileProps = match decode_props(&el.props) {
         Ok(p) => p,
-        Err(e) => return decode_diagnostic("ProductTile", e),
+        Err(e) => return decode_diagnostic("Tile", e),
     };
     let name = html_escape(&props.name);
     let price = html_escape(&props.price);
@@ -1376,9 +1370,9 @@ pub(crate) fn render_product_tile(
         // space inside a category name would split it into two tokens.
         // Normalize spaces to hyphens; the Phase 255 filter runtime applies
         // the same normalization to category labels before matching (see
-        // `ProductTileProps::categories`).
+        // `TileProps::categories`).
         format!(
-            " data-product-categories=\"{}\"",
+            " data-filter-tokens=\"{}\"",
             html_escape(
                 &props
                     .categories
@@ -1391,18 +1385,18 @@ pub(crate) fn render_product_tile(
     };
 
     format!(
-        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 {POS_TOUCH_ACTION}\"{categories_attr}>\
+        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 {TOUCH_ACTION}\" data-filter-text=\"{name}\"{categories_attr}>\
          <div class=\"flex items-start justify-between gap-2\">\
          <span class=\"text-sm font-semibold text-text\">{name}</span>\
          <span class=\"text-sm font-semibold text-text-muted\">{price}</span>\
          </div>\
          <div class=\"flex items-center justify-between gap-2\">\
          <button type=\"button\" data-qty-dec=\"{field}\" \
-         class=\"{POS_HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
+         class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Diminuisci quantit\u{00E0} {name}\">\u{2212}</button>\
          <span data-qty-display=\"{field}\" class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{qty}</span>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
-         class=\"{POS_HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
+         class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Aumenta quantit\u{00E0} {name}\">+</button>\
          </div>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
@@ -2268,20 +2262,20 @@ mod tests {
         assert!(html.contains("<a href=\"/go\""), "got: {html}");
     }
 
-    // ── 23. ProductTile ────────────────────────────────────────────────
+    // ── 23. Tile ────────────────────────────────────────────────
 
-    /// INT-pass (251-02): ProductTile +/- buttons migrated to the ring token.
+    /// INT-pass (251-02): Tile +/- buttons migrated to the ring token.
     #[test]
-    fn product_tile_buttons_carry_token_focus_ring() {
+    fn tile_buttons_carry_token_focus_ring() {
         let spec = spec_with_root(
-            Element::new("ProductTile")
-                .prop("product_id", "1")
+            Element::new("Tile")
+                .prop("item_id", "1")
                 .prop("name", "Caffè")
                 .prop("price", "€1,20")
                 .prop("field", "qty_1"),
         );
         let el = spec.elements.get("root").unwrap();
-        let html = render_product_tile(el, &spec, &json!({}), 1);
+        let html = render_tile(el, &spec, &json!({}), 1);
         assert!(
             html.contains("focus-visible:ring-ring"),
             "+/- buttons must carry the token ring; got: {html}"
@@ -2293,16 +2287,16 @@ mod tests {
     }
 
     #[test]
-    fn product_tile_emits_name_and_price() {
+    fn tile_emits_name_and_price() {
         let spec = spec_with_root(
-            Element::new("ProductTile")
-                .prop("product_id", "p1")
+            Element::new("Tile")
+                .prop("item_id", "p1")
                 .prop("name", "Widget")
                 .prop("price", "9.99")
                 .prop("field", "qty_p1"),
         );
         let el = spec.elements.get("root").unwrap();
-        let html = render_product_tile(el, &spec, &json!({}), 1);
+        let html = render_tile(el, &spec, &json!({}), 1);
         assert!(html.contains("Widget"));
         assert!(html.contains("9.99"));
         assert!(html.contains("data-qty-inc=\"qty_p1\""), "got: {html}");
@@ -2543,12 +2537,12 @@ mod tests {
         );
     }
 
-    // ── 23. ProductTile ─────────────────────────────────────────────────
+    // ── 23. Tile ─────────────────────────────────────────────────
 
-    fn make_product_tile(categories: Vec<&str>) -> (crate::spec::Element, Spec) {
+    fn make_tile(categories: Vec<&str>) -> (crate::spec::Element, Spec) {
         use crate::spec::Element as SpecElement;
-        let mut el_builder = SpecElement::new("ProductTile")
-            .prop("product_id", "p1")
+        let mut el_builder = SpecElement::new("Tile")
+            .prop("item_id", "p1")
             .prop("name", "Espresso")
             .prop("price", "€2,50")
             .prop("field", "qty_espresso");
@@ -2561,56 +2555,64 @@ mod tests {
     }
 
     #[test]
-    fn product_tile_legacy_render_is_byte_identical() {
-        use crate::render::classes::{POS_HIT_TARGET_MIN, POS_TOUCH_ACTION};
-        let (el, spec) = make_product_tile(vec![]);
-        let html = render_product_tile(&el, &spec, &json!({}), 1);
+    fn tile_legacy_render_is_byte_identical() {
+        use crate::render::classes::{HIT_TARGET_MIN, TOUCH_ACTION};
+        let (el, spec) = make_tile(vec![]);
+        let html = render_tile(&el, &spec, &json!({}), 1);
         assert!(
-            html.contains(POS_TOUCH_ACTION),
-            "POS_TOUCH_ACTION missing; got: {html}"
+            html.contains(TOUCH_ACTION),
+            "TOUCH_ACTION missing; got: {html}"
         );
         assert_eq!(
-            html.matches(POS_HIT_TARGET_MIN).count(),
+            html.matches(HIT_TARGET_MIN).count(),
             2,
             "expected two hit-target classes; got: {html}"
         );
         assert!(
-            !html.contains("data-product-categories"),
-            "legacy tile must not emit data-product-categories; got: {html}"
+            !html.contains("data-filter-tokens"),
+            "legacy tile must not emit data-filter-tokens; got: {html}"
+        );
+        // D-08: data-filter-text is always emitted (it is the universal tile marker
+        // and full-text search source for setupFilters).
+        assert!(
+            html.contains("data-filter-text=\"Espresso\""),
+            "data-filter-text must always be emitted; got: {html}"
         );
     }
 
     #[test]
-    fn product_tile_emits_data_product_categories() {
-        let (el, spec) = make_product_tile(vec!["drinks", "food"]);
-        let html = render_product_tile(&el, &spec, &json!({}), 1);
+    fn tile_emits_data_filter_tokens() {
+        let (el, spec) = make_tile(vec!["drinks", "food"]);
+        let html = render_tile(&el, &spec, &json!({}), 1);
         assert_eq!(
-            html.matches("data-product-categories").count(),
+            html.matches("data-filter-tokens").count(),
             1,
-            "expected exactly one data-product-categories attribute; got: {html}"
+            "expected exactly one data-filter-tokens attribute; got: {html}"
         );
         assert!(
-            html.contains("data-product-categories=\"drinks food\""),
-            "expected space-separated categories; got: {html}"
+            html.contains("data-filter-tokens=\"drinks food\""),
+            "expected space-separated tokens; got: {html}"
         );
     }
 
     #[test]
-    fn product_tile_normalizes_spaces_in_category_names() {
+    fn tile_normalizes_spaces_in_category_names() {
         // Token-list contract: a space inside a category name would split it
         // into two tokens, so render normalizes spaces to hyphens (WR-01).
-        let (el, spec) = make_product_tile(vec!["Bevande calde", "food"]);
-        let html = render_product_tile(&el, &spec, &json!({}), 1);
+        let (el, spec) = make_tile(vec!["Bevande calde", "food"]);
+        let html = render_tile(&el, &spec, &json!({}), 1);
         assert!(
-            html.contains("data-product-categories=\"Bevande-calde food\""),
+            html.contains("data-filter-tokens=\"Bevande-calde food\""),
             "expected space-in-name normalized to hyphen; got: {html}"
         );
     }
 
     #[test]
-    fn product_tile_escapes_categories() {
-        let (el, spec) = make_product_tile(vec!["caf\u{00E9}", "\"special\""]);
-        let html = render_product_tile(&el, &spec, &json!({}), 1);
+    fn tile_escapes_categories() {
+        // T-255-01: XSS regression guard — html_escape must be applied to
+        // category values emitted in data-filter-tokens.
+        let (el, spec) = make_tile(vec!["caf\u{00E9}", "\"special\""]);
+        let html = render_tile(&el, &spec, &json!({}), 1);
         assert!(
             !html.contains("\"special\""),
             "raw double-quote must not appear in attribute value; got: {html}"

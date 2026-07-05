@@ -32,9 +32,9 @@ use crate::component::{
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
     KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
-    PaginationProps, TileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
-    SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
-    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
+    PaginationProps, ProgressProps, RawHtmlProps, SegmentedControlProps, SelectProps,
+    SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
+    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, TileProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
