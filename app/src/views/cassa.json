@@ -58,7 +58,8 @@
       "type": "Button",
       "props": {
         "label": "Conferma ordine",
-        "variant": "primary"
+        "variant": "primary",
+        "disable_on_submit": true
       },
       "action": { "handler": "/cassa/conferma", "method": "POST" }
     },

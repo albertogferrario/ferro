@@ -147,6 +147,54 @@ The `channel` argument parameterizes the audit reason prefix: a successful write
 | `WriteError` | Self-contained kernel error enum |
 | `WriteResult<T>` | `Result<T, WriteError>` |
 
+## Double-submit protection for forms
+
+Preventing a form from being submitted twice requires a layered approach. Each layer covers a different failure mode:
+
+### (1) Client guard — `disable_on_submit`
+
+Set `disable_on_submit: true` on the confirm Button's props:
+
+```json
+{
+  "type": "Button",
+  "props": {
+    "label": "Conferma ordine",
+    "variant": "primary",
+    "disable_on_submit": true
+  },
+  "action": { "handler": "/cassa/conferma", "method": "POST" }
+}
+```
+
+The renderer emits `data-disable-on-submit` on the button element. The runtime `setupFormGuards` picks up that attribute and binds a `submit` event listener on the enclosing form. On the first submission the button is disabled (`disabled` attribute + `opacity-50 cursor-not-allowed`). A second submission attempt calls `e.preventDefault()`. On bfcache restore (`pageshow` with `event.persisted`) the guard resets so the user can submit again after navigating back.
+
+This guard is a **UX affordance**, not a security control. It prevents accidental double-taps but can be bypassed (JS off, crafted request).
+
+### (2) Server dedupe — `idempotency_key`
+
+Include a per-render UUID hidden input named `idempotency_key` in the form. The `dispatch_write` pipeline step 2 checks `inputs["idempotency_key"]` against `(tenant_id, key)` and returns the stored result without re-executing when a duplicate is detected (step 5 seals the key after the first success):
+
+```html
+<input type="hidden" name="idempotency_key" value="<per-render UUID>">
+```
+
+This is the authoritative dedupe boundary — it works even when the client guard is bypassed, because the key is bound to the authenticated `tenant_id` (never from the payload alone). The kernel stores and checks the key in the existing `dispatch_write` idempotency hook; no new mechanism is needed.
+
+### (3) PRG — redirect after POST
+
+After a successful write the handler should redirect (303 See Other). This prevents the browser's back/refresh from re-posting the form regardless of whether the client guard or server dedupe fired.
+
+### Summary
+
+| Layer | Mechanism | Covers |
+|-------|-----------|--------|
+| Client guard | `disable_on_submit: true` → `data-disable-on-submit` → `setupFormGuards` | Accidental double-tap |
+| Server dedupe | `idempotency_key` hidden input → `dispatch_write` step 2/5 | Retry after network error, JS-bypassed guard |
+| PRG | Redirect after POST | Browser back/refresh re-POST |
+
+All three layers are independent and complementary. The client guard alone is not a security control; the `dispatch_write` idempotency hook is.
+
 ## See also
 
 - [Transition Planning](transition-planning.md) — deriving the write target (`to_state`, guard) from the StateMachine.
