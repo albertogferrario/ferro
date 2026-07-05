@@ -2622,4 +2622,36 @@ mod tests {
             "double-quote must be HTML-escaped; got: {html}"
         );
     }
+
+    #[test]
+    fn tile_escapes_filter_text() {
+        // T-255-07: XSS guard — html_escape applied to props.name in the
+        // unconditional data-filter-text attribute (D-08).
+        use crate::spec::Element as SpecElement;
+        let el_builder = SpecElement::new("Tile")
+            .prop("item_id", "p1")
+            .prop("name", "Ba\"r <item>")
+            .prop("price", "\u{20AC}1,00")
+            .prop("field", "qty_test");
+        let spec = spec_with_root(el_builder);
+        let el = spec.elements.get("root").unwrap().clone();
+        let html = render_tile(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-filter-text="),
+            "data-filter-text must always be emitted; got: {html}"
+        );
+        // Raw double-quote must not break the attribute boundary.
+        assert!(
+            !html.contains("data-filter-text=\"Ba\""),
+            "raw double-quote must not break attribute boundary in data-filter-text; got: {html}"
+        );
+        assert!(
+            html.contains("&quot;") || html.contains("&#34;"),
+            "double-quote in name must be HTML-escaped in data-filter-text; got: {html}"
+        );
+        assert!(
+            html.contains("&lt;"),
+            "less-than in name must be HTML-escaped in data-filter-text; got: {html}"
+        );
+    }
 }
