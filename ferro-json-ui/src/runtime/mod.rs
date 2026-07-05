@@ -7,11 +7,13 @@
 
 mod dismissibles;
 mod dropdowns;
+mod filters;
 mod form_guards;
 mod hero_lazy;
 mod kanban;
 mod modals;
 mod notifications;
+mod numpad;
 mod scroll_preserve;
 mod sidebar;
 mod sse;
@@ -37,6 +39,8 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(sidebar::SOURCE);
     s.push_str(form_guards::SOURCE);
     s.push_str(tiles::SOURCE);
+    s.push_str(numpad::SOURCE);
+    s.push_str(filters::SOURCE);
     s.push_str(kanban::SOURCE);
     s.push_str(scroll_preserve::SOURCE);
     s.push_str(hero_lazy::SOURCE);
@@ -52,6 +56,8 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20       setupSidebar();\n\
          \x20       setupFormGuards();\n\
          \x20       setupTiles();\n\
+         \x20       setupNumpad();\n\
+         \x20       setupFilters();\n\
          \x20       setupModals();\n\
          \x20       setupToasts();\n\
          \x20       setupLazyHeroes();\n\
@@ -189,6 +195,8 @@ mod tests {
             "setupNotifications",
             "setupFormGuards",
             "setupTiles",
+            "setupNumpad",
+            "setupFilters",
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
@@ -222,6 +230,8 @@ mod tests {
             "setupNotifications();",
             "setupFormGuards();",
             "setupTiles();",
+            "setupNumpad();",
+            "setupFilters();",
             "setupKanban();",
             "setupScrollPreserve();",
             "setupLazyHeroes();",
@@ -242,5 +252,46 @@ mod tests {
         // matching sibling-runtime convention; assert the single-quoted literal.
         assert!(FERRO_RUNTIME_JS.contains("'auto'"));
         assert!(FERRO_RUNTIME_JS.contains("unobserve"));
+    }
+
+    /// SC-3: inline-source assertions confirming the numpad and filter runtime
+    /// contracts are present in the assembled bundle.
+    #[test]
+    fn runtime_exposes_numpad_and_filter_contract() {
+        // Numpad attribute contract
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-numpad-key"),
+            "bundle must contain data-numpad-key attribute selector"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-numpad-target"),
+            "bundle must contain data-numpad-target attribute"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-numpad-input"),
+            "bundle must contain data-numpad-input attribute"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-numpad-display"),
+            "bundle must contain data-numpad-display attribute"
+        );
+        // D-04: every key tap dispatches a bubbling input event
+        assert!(
+            FERRO_RUNTIME_JS.contains("bubbles: true"),
+            "bundle must dispatch bubbling input event on numpad key tap (D-04)"
+        );
+        // Filter attribute contract
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-filter-tokens"),
+            "bundle must contain data-filter-tokens for token matching"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-filter-search"),
+            "bundle must contain data-filter-search for text filtering"
+        );
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-filter-text"),
+            "bundle must contain data-filter-text as the universal tile marker"
+        );
     }
 }
