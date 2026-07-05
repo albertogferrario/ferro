@@ -516,3 +516,183 @@ Edit form detected (one field has a `$data` default_value), but another field is
 ```json
 { "design": { "intent": "collect", "allow": ["prefer-components"] } }
 ```
+
+---
+
+## `pos-fill-viewport`
+
+**Title:** POS register pages must fill the viewport
+
+**Rationale:** A ProductGrid, CartPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.
+
+**Intents:** all (applies to any spec containing POS component types)
+
+### Conforming example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "app",
+  "elements": {
+    "r": { "type": "Grid", "props": { "fill": true } }
+  }
+}
+```
+
+### Violating example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "elements": {
+    "r": { "type": "ProductGrid" }
+  }
+}
+```
+
+### How to allow
+
+Add `"allow": ["pos-fill-viewport"]` to the `design` object when the spec is
+intentionally not fill-mode (e.g., a product browse page, not a register):
+
+```json
+{ "design": { "allow": ["pos-fill-viewport"] } }
+```
+
+---
+
+## `pos-grid-fill`
+
+**Title:** The register-root Grid must set fill:true under fill_viewport
+
+**Rationale:** A fill_viewport spec whose root Grid lacks fill:true loses per-pane internal scroll — the panes scroll the page instead.
+
+**Intents:** all (applies to any fill_viewport spec whose root element is a Grid)
+
+### Conforming example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "app",
+  "elements": {
+    "r": { "type": "Grid", "props": { "columns": 2, "fill": true } }
+  }
+}
+```
+
+### Violating example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "app",
+  "elements": {
+    "r": { "type": "Grid", "props": { "columns": 2 } }
+  }
+}
+```
+
+### How to allow
+
+```json
+{ "design": { "allow": ["pos-grid-fill"] } }
+```
+
+---
+
+## `pos-cart-present`
+
+**Title:** A ProductGrid register needs a CartPanel
+
+**Rationale:** A ProductGrid with no CartPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.
+
+**Intents:** all (applies to any spec containing a ProductGrid)
+
+### Conforming example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "app",
+  "elements": {
+    "r": { "type": "Grid", "props": { "fill": true } },
+    "grid": { "type": "ProductGrid" },
+    "cart": { "type": "CartPanel" }
+  }
+}
+```
+
+### Violating example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "elements": {
+    "r": { "type": "ProductGrid" }
+  }
+}
+```
+
+### How to allow
+
+Add `"allow": ["pos-cart-present"]` when a ProductGrid is used in a non-register
+context (e.g., a product catalogue browse page with no cart):
+
+```json
+{ "design": { "allow": ["pos-cart-present"] } }
+```
+
+---
+
+## `fill-viewport-layout-unknown`
+
+**Title:** fill_viewport requires an app-shell layout
+
+**Rationale:** The ferro-fill CSS chain only supports the app and dashboard layouts; on any other layout fill_viewport silently degrades to whole-page scroll.
+
+**Intents:** all (applies to any spec with fill_viewport: true)
+
+### Conforming example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "app",
+  "elements": {
+    "r": { "type": "Grid", "props": { "fill": true } }
+  }
+}
+```
+
+### Violating example
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "r",
+  "fill_viewport": true,
+  "layout": "auth",
+  "elements": {
+    "r": { "type": "Grid" }
+  }
+}
+```
+
+### How to allow
+
+```json
+{ "design": { "allow": ["fill-viewport-layout-unknown"] } }
+```

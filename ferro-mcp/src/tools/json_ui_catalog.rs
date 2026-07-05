@@ -93,6 +93,13 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     ("form-default-values", &["Form", "Input", "Select"]),
     ("destructive-confirmation", &["Button"]),
     ("prefer-components", &["RawHtml"]),
+    // POS rules (Phase 254). Mapped to Grid (register root) until Phase 256
+    // registers ProductGrid/CartPanel/Numpad, which extends these associations
+    // in the same commit that adds them to BUILTIN_TYPES (D-14 handoff).
+    ("pos-fill-viewport", &["Grid"]),
+    ("pos-grid-fill", &["Grid"]),
+    ("pos-cart-present", &["Grid"]),
+    ("fill-viewport-layout-unknown", &[]),
 ];
 
 /// A single component in the catalog.

@@ -81,6 +81,34 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &[], // all intents
         check: check_prefer_components,
     },
+    DesignRule {
+        id: "pos-fill-viewport",
+        title: "POS register pages must fill the viewport",
+        rationale: "A ProductGrid, CartPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.",
+        intents: &[], // all intents — internal presence gate is inside check_pos_fill_viewport
+        check: check_pos_fill_viewport,
+    },
+    DesignRule {
+        id: "pos-grid-fill",
+        title: "The register-root Grid must set fill:true under fill_viewport",
+        rationale: "A fill_viewport spec whose root Grid lacks fill:true loses per-pane internal scroll — the panes scroll the page instead.",
+        intents: &[], // all intents — fill_viewport gate is inside check_pos_grid_fill
+        check: check_pos_grid_fill,
+    },
+    DesignRule {
+        id: "pos-cart-present",
+        title: "A ProductGrid register needs a CartPanel",
+        rationale: "A ProductGrid with no CartPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.",
+        intents: &[], // all intents — internal presence gate is inside check_pos_cart_present
+        check: check_pos_cart_present,
+    },
+    DesignRule {
+        id: "fill-viewport-layout-unknown",
+        title: "fill_viewport requires an app-shell layout",
+        rationale: "The ferro-fill CSS chain only supports the app and dashboard layouts; on any other layout fill_viewport silently degrades to whole-page scroll.",
+        intents: &[], // all intents — fill_viewport gate is inside check_fill_viewport_layout_unknown
+        check: check_fill_viewport_layout_unknown,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -406,6 +434,94 @@ fn check_prefer_components(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
                 .into(),
         })
         .collect()
+}
+
+// ── POS rules (Phase 254, POS-11) ─────────────────────────────────────────────
+
+/// Component type names that indicate a POS register composition.
+/// Matched against raw spec type_name strings; lint never consults BUILTIN_TYPES (D-13).
+const POS_TRIGGER_TYPES: &[&str] = &["ProductGrid", "CartPanel", "Numpad"];
+
+fn check_pos_fill_viewport(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let has_pos = spec
+        .elements
+        .values()
+        .any(|el| POS_TRIGGER_TYPES.contains(&el.type_name.as_str()));
+    if !has_pos || spec.fill_viewport {
+        return vec![];
+    }
+    vec![Finding {
+        rule: "pos-fill-viewport",
+        element_id: None,
+        severity: Severity::Warning,
+        message: "Spec contains POS components but fill_viewport is not set.".into(),
+        suggestion: "Set fill_viewport: true at the spec level and fill: true on the root Grid."
+            .into(),
+    }]
+}
+
+fn check_pos_grid_fill(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    if !spec.fill_viewport {
+        return vec![];
+    }
+    // Register-root Grid identification: the spec root element when it is a Grid.
+    let root = match spec.elements.get(&spec.root) {
+        Some(el) if el.type_name == "Grid" => el,
+        _ => return vec![],
+    };
+    let fill_set = root
+        .props
+        .get("fill")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if fill_set {
+        return vec![];
+    }
+    vec![Finding {
+        rule: "pos-grid-fill",
+        element_id: Some(spec.root.clone()),
+        severity: Severity::Warning,
+        message: "fill_viewport spec has a root Grid without fill:true; panes lose internal scroll."
+            .into(),
+        suggestion: "Add fill: true to the root Grid props.".into(),
+    }]
+}
+
+fn check_pos_cart_present(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    let has_grid = spec
+        .elements
+        .values()
+        .any(|el| el.type_name == "ProductGrid");
+    let has_cart = spec
+        .elements
+        .values()
+        .any(|el| el.type_name == "CartPanel");
+    if !has_grid || has_cart {
+        return vec![];
+    }
+    vec![Finding {
+        rule: "pos-cart-present",
+        element_id: None,
+        severity: Severity::Warning,
+        message: "ProductGrid present but no CartPanel anywhere in the spec.".into(),
+        suggestion: "Add a CartPanel element so the register can accumulate the sale.".into(),
+    }]
+}
+
+fn check_fill_viewport_layout_unknown(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    if !spec.fill_viewport || is_app_shell_layout(spec) {
+        return vec![];
+    }
+    vec![Finding {
+        rule: "fill-viewport-layout-unknown",
+        element_id: None,
+        severity: Severity::Warning,
+        message: "fill_viewport is set but the layout is not in the supported set (\"app\", \"dashboard\")."
+            .into(),
+        suggestion:
+            "Use layout: \"app\" or \"dashboard\"; fill_viewport degrades to whole-page scroll on other layouts."
+                .into(),
+    }]
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────
