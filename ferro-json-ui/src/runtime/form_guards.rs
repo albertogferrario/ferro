@@ -34,6 +34,10 @@ pub(super) const SOURCE: &str = r#"
             if (!form) return;
             btn._submitted = false;
             form.addEventListener('submit', function(e) {
+                // An earlier handler (e.g. an inline confirm()) already
+                // cancelled this submission — no request was sent, so do not
+                // latch or the form becomes unsubmittable until reload.
+                if (e.defaultPrevented) return;
                 if (btn._submitted) { e.preventDefault(); return; }
                 btn._submitted = true;
                 btn.setAttribute('disabled', 'disabled');
