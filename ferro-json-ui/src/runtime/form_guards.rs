@@ -60,7 +60,7 @@ pub(super) const SOURCE: &str = r#"
         for (var q = 0; q < qtyInputs.length; q++) inputs.push(qtyInputs[q]);
         // Find the submit button — inside the form, or linked via the
         // `form="<id>"` attribute from an external chrome (e.g. PageHeader).
-        // Skip ProductTile +/- controls (they have data-qty-* attrs).
+        // Skip Tile +/- controls (they have data-qty-* attrs).
         var submitBtn = findGuardedSubmit(form);
         if (!submitBtn) {
             var allBtns = form.querySelectorAll('button:not([data-qty-inc]):not([data-qty-dec])');

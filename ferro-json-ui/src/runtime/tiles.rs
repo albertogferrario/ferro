@@ -1,7 +1,7 @@
 pub(super) const SOURCE: &str = r#"
-    // ── Product tile quantity controls ───────────────────────────────────
+    // ── Tile quantity controls ───────────────────────────────────────────
 
-    function setupProductTiles() {
+    function setupTiles() {
         var incBtns = document.querySelectorAll('[data-qty-inc]');
         for (var i = 0; i < incBtns.length; i++) {
             initQtyButton(incBtns[i], 1);

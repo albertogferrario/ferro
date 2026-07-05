@@ -12,11 +12,11 @@ mod hero_lazy;
 mod kanban;
 mod modals;
 mod notifications;
-mod product_tiles;
 mod scroll_preserve;
 mod sidebar;
 mod sse;
 mod tabs;
+mod tiles;
 mod toasts;
 
 use std::sync::LazyLock;
@@ -36,7 +36,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(modals::SOURCE);
     s.push_str(sidebar::SOURCE);
     s.push_str(form_guards::SOURCE);
-    s.push_str(product_tiles::SOURCE);
+    s.push_str(tiles::SOURCE);
     s.push_str(kanban::SOURCE);
     s.push_str(scroll_preserve::SOURCE);
     s.push_str(hero_lazy::SOURCE);
@@ -51,7 +51,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20       setupKanban();\n\
          \x20       setupSidebar();\n\
          \x20       setupFormGuards();\n\
-         \x20       setupProductTiles();\n\
+         \x20       setupTiles();\n\
          \x20       setupModals();\n\
          \x20       setupToasts();\n\
          \x20       setupLazyHeroes();\n\
@@ -188,7 +188,7 @@ mod tests {
             "setupDismissibles",
             "setupNotifications",
             "setupFormGuards",
-            "setupProductTiles",
+            "setupTiles",
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
@@ -221,7 +221,7 @@ mod tests {
             "setupDismissibles();",
             "setupNotifications();",
             "setupFormGuards();",
-            "setupProductTiles();",
+            "setupTiles();",
             "setupKanban();",
             "setupScrollPreserve();",
             "setupLazyHeroes();",
