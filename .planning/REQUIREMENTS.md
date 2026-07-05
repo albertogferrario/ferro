@@ -280,7 +280,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
   hit-target constants — is centralized in `render/classes.rs` and applied across all POS
   components; every emitted class is a full literal (Tailwind-scanner/safelist-safe).
   *(Delivered 254 as `POS_*` constants; prefix neutralized in Phase 255.)*
-- [ ] **POS-08**: POS forms are double-submit protected — a `data-disable-on-submit`
+- [x] **POS-08**: POS forms are double-submit protected — a `data-disable-on-submit`
   runtime guard plus the documented idempotency-key pattern on the existing
   `framework::write` idempotency hook.
 

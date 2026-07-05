@@ -3955,13 +3955,13 @@ Plans:
 3. Numpad key taps write to the declared target hidden field and dispatch an `input` event (form-guard compatible); token/text filtering toggles tile visibility client-side via `data-filter-tokens` matching and `data-filter-text` search with no server round-trip — confirmed by inline-source inspection and HTML attribute assertions.
 4. The selection-mutation confirm button emits a `data-disable-on-submit` attribute; the runtime guard disables it after the first click; the idempotency-key pattern is documented with the `framework::write` idempotency hook reference.
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 255-01-PLAN.md — Vocab rename core: Props structs/fields (Tile/TileGrid/SelectionPanel/FilterTabs, product_id→item_id) + POS_ touch constants + render_tile/data-filter-tokens (wave 1)
 - [x] 255-02-PLAN.md — Vocab rename runtime+lint: tiles.rs/setupTiles + drift lists + register-* rule ids + REGISTER_TRIGGER_TYPES + form_guards comment (wave 2)
 - [x] 255-03-PLAN.md — Vocab rename mirrors: ferro-mcp catalog + /cassa type/field + docs migration note; global SC-0 zero-hits gate (wave 3)
-- [ ] 255-04-PLAN.md — Runtime modules: numpad.rs + filters.rs + always-on data-filter-text + mod.rs wiring + SC-3 inline test (wave 4)
+- [x] 255-04-PLAN.md — Runtime modules: numpad.rs + filters.rs + always-on data-filter-text + mod.rs wiring + SC-3 inline test (wave 4)
 - [ ] 255-05-PLAN.md — Double-submit (POS-08): ButtonProps.disable_on_submit + form_guards guard (bfcache-safe) + /cassa demo + idempotency docs + CI gate (wave 5)
 
 **UI hint**: yes
