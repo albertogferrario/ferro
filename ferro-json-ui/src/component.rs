@@ -1362,6 +1362,11 @@ pub struct ProductTileProps {
     /// `data-product-categories` attribute, emitted only when non-empty; the
     /// Phase 255 `setupPosFilter` runtime reads it. Plural because a product may
     /// belong to several categories (a one-element vec covers the singular case).
+    ///
+    /// Token-list constraint: because the attribute is space-separated, spaces
+    /// inside a category name are normalized to hyphens at render time
+    /// (`"Bevande calde"` becomes the token `Bevande-calde`). Filter runtimes
+    /// must apply the same normalization to category labels before matching.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<String>,
     /// Optional product image URL. Declared here for the Phase 256 tile visual;
@@ -1419,7 +1424,9 @@ pub struct CartPanelProps {
 /// matching (Phase 255 runtime). Renderer lands in Phase 256.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CategoryNavProps {
-    /// Category labels rendered as filter tabs. May be `$data`-bound at render time.
+    /// Category labels rendered as filter tabs. May be `$data`-bound at render
+    /// time. Matching against `data-product-categories` tokens must normalize
+    /// spaces to hyphens, mirroring `ProductTileProps::categories` rendering.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<String>,
     /// Label for the "show all" tab (Phase 256 render default is "Tutte").

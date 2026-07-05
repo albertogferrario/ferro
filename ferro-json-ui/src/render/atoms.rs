@@ -1372,9 +1372,21 @@ pub(crate) fn render_product_tile(
     let categories_attr = if props.categories.is_empty() {
         String::new()
     } else {
+        // Token-list contract: the attribute value is space-separated, so a
+        // space inside a category name would split it into two tokens.
+        // Normalize spaces to hyphens; the Phase 255 filter runtime applies
+        // the same normalization to category labels before matching (see
+        // `ProductTileProps::categories`).
         format!(
             " data-product-categories=\"{}\"",
-            html_escape(&props.categories.join(" "))
+            html_escape(
+                &props
+                    .categories
+                    .iter()
+                    .map(|c| c.replace(' ', "-"))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            )
         )
     };
 
@@ -2580,6 +2592,18 @@ mod tests {
         assert!(
             html.contains("data-product-categories=\"drinks food\""),
             "expected space-separated categories; got: {html}"
+        );
+    }
+
+    #[test]
+    fn product_tile_normalizes_spaces_in_category_names() {
+        // Token-list contract: a space inside a category name would split it
+        // into two tokens, so render normalizes spaces to hyphens (WR-01).
+        let (el, spec) = make_product_tile(vec!["Bevande calde", "food"]);
+        let html = render_product_tile(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-product-categories=\"Bevande-calde food\""),
+            "expected space-in-name normalized to hyphen; got: {html}"
         );
     }
 
