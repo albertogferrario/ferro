@@ -31,7 +31,7 @@ The sections below document every built-in component: its props table (with JSON
 | **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
 | **Action** | ActionCard |
 | **Onboarding** | Checklist |
-| **Commerce** | ProductTile |
+| **Commerce** | Tile |
 | **Kanban** | KanbanBoard, KanbanColumn |
 | **Extensible** | RawHtml, Plugin (see [Plugins](plugins.md)) |
 
@@ -99,6 +99,16 @@ Behavior and visual deltas to expect when migrating:
 - Relationship (link) buttons lose the underline-link look — the `link` variant is removed; use `"ghost"`.
 - ActionCard's neutral left border changed from `border-l-primary` to `border-l-border`; a `success` tone arm is new.
 - CalendarCell `dot_colors` still accepts raw Tailwind class strings (pre-existing behavior outside the semantic vocabulary; a candidate for the design lint).
+
+## Component rename migration (v16.6)
+
+The commerce tile builtin and its associated prop and data attribute were renamed in v16.6 to domain-neutral identifiers. There are no aliases: old type strings and prop names fail spec validation. Migration action:
+
+| Renamed in v16.6 | New surface | Migration action |
+|------------------|-------------|------------------|
+| Commerce tile builtin (formerly the product-prefixed type string) | `Tile` | Change `"type"` in every spec to `"Tile"` |
+| Tile primary-id prop (formerly the product-prefixed prop name) | `item_id` | Rename the prop in every Tile element |
+| Tile category data attribute (formerly the product-prefixed data attribute) | `data-filter-tokens` | Update any custom runtime that reads the old attribute |
 
 ---
 
@@ -1397,23 +1407,23 @@ Each item object:
 
 ## Commerce Components
 
-### ProductTile
+### Tile
 
-Touch-friendly product tile with quantity controls. Renders the product name, price, and +/− buttons that drive a hidden form input via the JS runtime — used for POS-style product selection inside an order form.
+Touch-friendly tile with quantity controls. Renders the item name, price, and +/− buttons that drive a hidden form input via the JS runtime — used for touch-first item selection inside an order form.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `product_id` | `string` | Product identifier |
-| `name` | `string` | Product name |
+| `item_id` | `string` | Item identifier |
+| `name` | `string` | Item name |
 | `price` | `string` | Formatted price string (e.g., `"€29.00"`) |
 | `field` | `string` | Form field name the selected quantity is written to |
 | `default_quantity` | `number \| null` | Initial quantity (default: 0) |
 
 ```json
-"product_tile": {
-  "type": "ProductTile",
+"tile": {
+  "type": "Tile",
   "props": {
-    "product_id": { "$data": "/product/id" },
+    "item_id": { "$data": "/product/id" },
     "name": { "$data": "/product/name" },
     "price": { "$data": "/product/price_formatted" },
     "field": "quantities[1]"
@@ -1421,7 +1431,7 @@ Touch-friendly product tile with quantity controls. Renders the product name, pr
 }
 ```
 
-Place ProductTile elements inside a `Form` — the quantity value submits with the surrounding form.
+Place Tile elements inside a `Form` — the quantity value submits with the surrounding form.
 
 ---
 
