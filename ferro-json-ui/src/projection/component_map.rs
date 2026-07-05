@@ -350,6 +350,7 @@ pub fn build_relationship_button_props(rel: &RelationshipDef) -> serde_json::Val
         icon_position: None,
         button_type: None,
         form: None,
+        disable_on_submit: None,
     })
     .expect("ButtonProps serialization cannot fail")
 }

@@ -199,8 +199,16 @@ fn render_button_inner(props: &ButtonProps) -> String {
         None => String::new(),
     };
 
+    // Double-submit guard marker (D-16): the runtime setupFormGuards hook picks up
+    // this attribute and disables the button after the first submission (bfcache-safe).
+    let disable_on_submit_attr = if props.disable_on_submit == Some(true) {
+        " data-disable-on-submit"
+    } else {
+        ""
+    };
+
     format!(
-        "<button{type_attr}{form_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
+        "<button{type_attr}{form_attr}{disable_on_submit_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 

@@ -315,6 +315,12 @@ pub struct ButtonProps {
     /// that form, by matching the form's `id`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub form: Option<String>,
+    /// When `true`, emits `data-disable-on-submit` on the rendered button; the runtime guard
+    /// disables this button after the first form submission to prevent double-posting (D-16).
+    /// Pairs with a per-render `idempotency_key` hidden input for server-side deduplication
+    /// (see `dispatch_write` step 2 in docs/src/features/write-kernel.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disable_on_submit: Option<bool>,
 }
 
 /// Props for Input component.
