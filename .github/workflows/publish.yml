@@ -33,6 +33,11 @@ jobs:
       # is published to crates.io in Wave 3). Workspace-root Cargo.toml IS a
       # publishable change (workspace version / dep updates).
       #
+      # ferro-a2ui/ is excluded: the crate is experimental (publish = false,
+      # absent from the wave list), so its changes cannot affect any published
+      # crate. Remove the exclusion when ferro-a2ui is added to the publish
+      # waves (gated on A2UI v1.0 stable).
+      #
       # First-run edge case: no v* tag yet → treat as library change (publish).
       - name: Check for library crate changes
         id: gate
@@ -50,6 +55,7 @@ jobs:
             while IFS= read -r path; do
               case "$path" in
                 app/*) continue ;;
+                ferro-a2ui/*) continue ;;
                 docs/*|.github/*|.planning/*|scripts/*) continue ;;
                 *.md|LICENSE|.gitignore|.editorconfig|rustfmt.toml) continue ;;
                 bacon.toml|deny.toml|dev.sh|llms.txt|rust-toolchain.toml) continue ;;
