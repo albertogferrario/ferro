@@ -153,17 +153,24 @@ Preventing a form from being submitted twice requires a layered approach. Each l
 
 ### (1) Client guard — `disable_on_submit`
 
-Set `disable_on_submit: true` on the confirm Button's props:
+Set `disable_on_submit: true` on the confirm Button's props. The button must participate in a form — either as a child of a `Form` element (shown below) or linked to one via the HTML5 `form` attribute (`ButtonProps.form` matching the Form's `id`). A standalone Button with an element-level POST action is not form-wrapped, so the guard never binds:
 
 ```json
-{
+"confirm_form": {
+  "type": "Form",
+  "props": {
+    "action": { "handler": "/cassa/conferma", "method": "POST" }
+  },
+  "children": ["btn_confirm"]
+},
+"btn_confirm": {
   "type": "Button",
   "props": {
     "label": "Conferma ordine",
     "variant": "primary",
+    "button_type": "submit",
     "disable_on_submit": true
-  },
-  "action": { "handler": "/cassa/conferma", "method": "POST" }
+  }
 }
 ```
 

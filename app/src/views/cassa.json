@@ -26,7 +26,7 @@
         "title": "Ordine corrente",
         "badge": { "$data": "/badge_articoli" }
       },
-      "children": ["cart_table", "cart_total", "btn_confirm"]
+      "children": ["cart_table", "cart_total", "confirm_form"]
     },
     "cart_table": {
       "type": "DataTable",
@@ -54,14 +54,21 @@
         "value": { "$data": "/totale" }
       }
     },
+    "confirm_form": {
+      "type": "Form",
+      "props": {
+        "action": { "handler": "/cassa/conferma", "method": "POST" }
+      },
+      "children": ["btn_confirm"]
+    },
     "btn_confirm": {
       "type": "Button",
       "props": {
         "label": "Conferma ordine",
         "variant": "primary",
+        "button_type": "submit",
         "disable_on_submit": true
-      },
-      "action": { "handler": "/cassa/conferma", "method": "POST" }
+      }
     },
     "products_pane": {
       "type": "Grid",
