@@ -285,7 +285,7 @@ barcode keyboard-wedge deferred.
 
 ### Agent-Authoring Boundary
 
-- [ ] **POS-11**: POS design-lint rules ship — `pos-fill-viewport`, `pos-grid-fill`,
+- [x] **POS-11**: POS design-lint rules ship — `pos-fill-viewport`, `pos-grid-fill`,
   `pos-cart-present`, `fill-viewport-layout-unknown` — each with violating/conforming AND
   data-bound fixtures; `RULE_COMPONENTS` mapping updated.
 - [ ] **POS-12**: The MCP + docs surface is extended — `json_ui_catalog` entries/count for
