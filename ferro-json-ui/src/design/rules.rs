@@ -469,10 +469,14 @@ fn check_pos_grid_fill(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
         Some(el) if el.type_name == "Grid" => el,
         _ => return vec![],
     };
+    // Non-null acceptance: lint runs on the pre-resolve spec, where `fill` may
+    // legitimately be `$data`-bound. Mirror the list-empty-state and
+    // breadcrumb-on-subpages pattern — any non-null value other than a literal
+    // `false` counts as set.
     let fill_set = root
         .props
         .get("fill")
-        .and_then(|v| v.as_bool())
+        .map(|v| !v.is_null() && v.as_bool() != Some(false))
         .unwrap_or(false);
     if fill_set {
         return vec![];
@@ -1458,6 +1462,28 @@ mod tests {
         assert!(
             findings.is_empty(),
             "$data-bound child must not misfire pos-grid-fill: {findings:#?}"
+        );
+    }
+
+    #[test]
+    fn pos_grid_fill_data_bound_fill_no_misfire() {
+        // WR-02 regression guard: fill_viewport: true, root Grid whose `fill`
+        // prop itself is $data-bound → 0 findings (non-null acceptance,
+        // mirroring the list-empty-state/breadcrumb-on-subpages guards).
+        let spec = Spec::from_json(
+            r#"{
+                "$schema": "ferro-json-ui/v2",
+                "root": "r",
+                "fill_viewport": true,
+                "elements": {"r": {"type": "Grid", "props": {"columns": 2, "fill": {"$data": "/ui/fill"}}}},
+                "design": {}
+            }"#,
+        )
+        .unwrap();
+        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        assert!(
+            findings.is_empty(),
+            "$data-bound fill prop must not misfire pos-grid-fill: {findings:#?}"
         );
     }
 
