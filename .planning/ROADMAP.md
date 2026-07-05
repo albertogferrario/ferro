@@ -3908,7 +3908,7 @@ phase pins.
 ### Phases
 
 - [x] **Phase 254: Props Contracts + Touch Foundation + Design Rules** — ProductTile additive props (POS-02), shared POS touch constants in `render/classes.rs` (POS-07), Grid `row_weights` prop on `GridProps` (substrate), four POS design-lint rules with violating/conforming/data-bound fixtures (POS-11); all new `*Props` struct declarations (ProductGridProps, CartPanelProps, CategoryNavProps, QuantityStepperProps, NumpadProps). (completed 2026-07-05)
-- [ ] **Phase 255: POS Runtime Modules + Double-Submit Protection** — vocabulary-neutralization refactor of the 254 contracts (operator decision 2026-07-05: `ProductTile`→`Tile`, `ProductGridProps`→`TileGridProps`, `CartPanelProps`→`SelectionPanelProps` minus consumer-specific props, `CategoryNavProps`→`FilterTabsProps`, `pos-*`→`register-*` lint ids, `POS_*` constant prefix dropped, `data-product-*`→`data-filter-*`); `setupNumpad()` (tap-surface keypad writing to a target field) and `setupFilters()` (token/text tile-visibility filtering via `data-filter-tokens` + `data-filter-text` match) runtime modules, `runtime/mod.rs` wiring, `data-disable-on-submit` double-submit guard + documented idempotency-key pattern (POS-08). NO cart-state JS — form-state accumulation stays on the existing tiles hidden-input contract (`data-qty-*`, unchanged).
+- [x] **Phase 255: POS Runtime Modules + Double-Submit Protection** — vocabulary-neutralization refactor of the 254 contracts (operator decision 2026-07-05: `ProductTile`→`Tile`, `ProductGridProps`→`TileGridProps`, `CartPanelProps`→`SelectionPanelProps` minus consumer-specific props, `CategoryNavProps`→`FilterTabsProps`, `pos-*`→`register-*` lint ids, `POS_*` constant prefix dropped, `data-product-*`→`data-filter-*`); `setupNumpad()` (tap-surface keypad writing to a target field) and `setupFilters()` (token/text tile-visibility filtering via `data-filter-tokens` + `data-filter-text` match) runtime modules, `runtime/mod.rs` wiring, `data-disable-on-submit` double-submit guard + documented idempotency-key pattern (POS-08). NO cart-state JS — form-state accumulation stays on the existing tiles hidden-input contract (`data-qty-*`, unchanged). (completed 2026-07-05)
 - [ ] **Phase 256: Component Renderers + BUILTIN Lockstep** — `render_tile_grid` (integrated filter strip + search), `render_filter_tabs`, `render_selection_panel`, `render_quantity_stepper`, `render_numpad`; Grid `row_weights` render path (POS-09); `BUILTIN_TYPES` + dispatch arms + `BUILTIN_SPECS` + imports per component; drift-guard count bumps both sites; `gen-ferro-base-css.sh` regen. Delivers POS-01, 03, 04, 05, 06, 09.
 - [ ] **Phase 257: Projection Builder — Register Layout Template** — `layout: "Register"` arm in `builder.rs::build_display_spec()`; `emit_register_root()` emitting fill-viewport Grid with selection_pane + tiles_pane; `Spec::builder().fill_viewport(bool)`; `ElementBuilder.each(path, as_)`; `IntentSlotTemplate` Collect→Register; `/cassa` sample app flipped to projection-derived spec. Delivers POS-10.
 - [ ] **Phase 258: MCP Surface + Docs + Publish** — `json_ui_catalog` count + component names updated; `generation_context` register composition guidance; `docs/src` updates; single crates.io publish. Delivers POS-12, POS-13.
@@ -3955,14 +3955,14 @@ Plans:
 3. Numpad key taps write to the declared target hidden field and dispatch an `input` event (form-guard compatible); token/text filtering toggles tile visibility client-side via `data-filter-tokens` matching and `data-filter-text` search with no server round-trip — confirmed by inline-source inspection and HTML attribute assertions.
 4. The selection-mutation confirm button emits a `data-disable-on-submit` attribute; the runtime guard disables it after the first click; the idempotency-key pattern is documented with the `framework::write` idempotency hook reference.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 255-01-PLAN.md — Vocab rename core: Props structs/fields (Tile/TileGrid/SelectionPanel/FilterTabs, product_id→item_id) + POS_ touch constants + render_tile/data-filter-tokens (wave 1)
 - [x] 255-02-PLAN.md — Vocab rename runtime+lint: tiles.rs/setupTiles + drift lists + register-* rule ids + REGISTER_TRIGGER_TYPES + form_guards comment (wave 2)
 - [x] 255-03-PLAN.md — Vocab rename mirrors: ferro-mcp catalog + /cassa type/field + docs migration note; global SC-0 zero-hits gate (wave 3)
 - [x] 255-04-PLAN.md — Runtime modules: numpad.rs + filters.rs + always-on data-filter-text + mod.rs wiring + SC-3 inline test (wave 4)
-- [ ] 255-05-PLAN.md — Double-submit (POS-08): ButtonProps.disable_on_submit + form_guards guard (bfcache-safe) + /cassa demo + idempotency docs + CI gate (wave 5)
+- [x] 255-05-PLAN.md — Double-submit (POS-08): ButtonProps.disable_on_submit + form_guards guard (bfcache-safe) + /cassa demo + idempotency docs + CI gate (wave 5)
 
 **UI hint**: yes
 
