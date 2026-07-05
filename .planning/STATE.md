@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v16.6
 milestone_name: POS Component Suite
-status: roadmap-created
-stopped_at: "Roadmap created for v16.6 — Phase 254 (Props Contracts + Touch Foundation + Design Rules) ready for planning"
-last_updated: "2026-07-04T19:25:15.595Z"
-last_activity: 2026-07-04
+status: Roadmap created; awaiting /gsd-plan-phase 254
+stopped_at: Phase 254 context gathered
+last_updated: "2026-07-05T00:17:53.307Z"
+last_activity: "2026-07-04 — Roadmap created for v16.6 POS Component Suite (5 phases: 254-258)"
 progress:
-  total_phases: 127
+  total_phases: 131
   completed_phases: 110
   total_plans: 452
   completed_plans: 451
@@ -281,7 +281,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-04T19:25:15.574Z
-Stopped at: 0.2.86 published (RUSTSEC patch + review fixes); v16.5 complete; next: /gsd-complete-milestone archival backlog + gestiscilo Phase 232
-Resume file: None
+Last session: 2026-07-05T00:17:53.295Z
+Stopped at: Phase 254 context gathered
+Resume file: .planning/phases/254-props-contracts-touch-foundation-design-rules/254-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
