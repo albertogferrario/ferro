@@ -37,25 +37,25 @@ pub(crate) const INTERACTIVE_BASE: &str = concat!(
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 );
 
-/// POS touch-manipulation scroll optimisation for tap targets. Full literal.
-pub const POS_TOUCH_ACTION: &str = "touch-manipulation";
+/// Touch-manipulation scroll optimisation for tap targets. Full literal.
+pub const TOUCH_ACTION: &str = "touch-manipulation";
 
-/// Minimum 44px hit target for POS interactive elements (WCAG 2.5.5). Full literal.
-pub const POS_HIT_TARGET_MIN: &str = "min-h-[44px] min-w-[44px]";
+/// Minimum 44px hit target for interactive elements (WCAG 2.5.5). Full literal.
+pub const HIT_TARGET_MIN: &str = "min-h-[44px] min-w-[44px]";
 
 /// Enlarged 56px hit target for Numpad keys (Phase 256 consumer). Full literal.
-pub const POS_HIT_TARGET_NUMPAD: &str = "min-h-[56px] min-w-[56px]";
+pub const HIT_TARGET_NUMPAD: &str = "min-h-[56px] min-w-[56px]";
 
-/// Press-state feedback for POS tap surfaces: scale-down + border tint.
+/// Press-state feedback for tap surfaces: scale-down + border tint.
 /// Token-compliant (`active:bg-border` = `--color-border`); no raw palette class.
-pub const POS_PRESS_ACTIVE: &str = "active:scale-95 active:bg-border";
+pub const PRESS_ACTIVE: &str = "active:scale-95 active:bg-border";
 
-/// Prevents scroll bounce from escaping a POS pane boundary. Full literal.
-pub const POS_OVERSCROLL_CONTAIN: &str = "overscroll-contain";
+/// Prevents scroll bounce from escaping a pane boundary. Full literal.
+pub const OVERSCROLL_CONTAIN: &str = "overscroll-contain";
 
-/// Removes the default iOS tap-highlight rectangle on POS touch targets.
+/// Removes the default iOS tap-highlight rectangle on touch targets.
 /// Backed by `@utility pos-tap-highlight` in input.css (Path B — guaranteed CSS).
-pub const POS_TAP_HIGHLIGHT: &str = "pos-tap-highlight";
+pub const TAP_HIGHLIGHT: &str = "pos-tap-highlight";
 
 #[cfg(test)]
 mod tests {
@@ -77,10 +77,10 @@ mod tests {
         assert!(DISABLED_BASE.contains("disabled:pointer-events-none"));
     }
 
-    /// D-07: no render file (outside classes.rs) may inline the POS touch literals.
+    /// D-07: no render file (outside classes.rs) may inline the touch literals.
     /// Auto-covers Phase 256 render files via read_dir — no manual re-enrollment.
     #[test]
-    fn pos_render_functions_use_constants_not_literals() {
+    fn render_functions_use_constants_not_literals() {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
         let render_dir = std::path::Path::new(&manifest_dir).join("src/render");
         let guarded = [
@@ -108,18 +108,18 @@ mod tests {
     }
 
     #[test]
-    fn pos_constants_are_full_literals_and_token_compliant() {
-        assert_eq!(POS_TOUCH_ACTION, "touch-manipulation");
-        assert_eq!(POS_HIT_TARGET_MIN, "min-h-[44px] min-w-[44px]");
-        assert_eq!(POS_HIT_TARGET_NUMPAD, "min-h-[56px] min-w-[56px]");
-        assert_eq!(POS_OVERSCROLL_CONTAIN, "overscroll-contain");
-        assert_eq!(POS_TAP_HIGHLIGHT, "pos-tap-highlight");
-        assert!(POS_PRESS_ACTIVE.contains("active:scale-95"));
-        assert!(POS_PRESS_ACTIVE.contains("active:bg-border"));
+    fn touch_constants_are_full_literals_and_token_compliant() {
+        assert_eq!(TOUCH_ACTION, "touch-manipulation");
+        assert_eq!(HIT_TARGET_MIN, "min-h-[44px] min-w-[44px]");
+        assert_eq!(HIT_TARGET_NUMPAD, "min-h-[56px] min-w-[56px]");
+        assert_eq!(OVERSCROLL_CONTAIN, "overscroll-contain");
+        assert_eq!(TAP_HIGHLIGHT, "pos-tap-highlight");
+        assert!(PRESS_ACTIVE.contains("active:scale-95"));
+        assert!(PRESS_ACTIVE.contains("active:bg-border"));
         for raw in ["red-", "blue-", "orange-", "zinc-", "gray-", "slate-"] {
             assert!(
-                !POS_PRESS_ACTIVE.contains(raw),
-                "raw palette class in POS_PRESS_ACTIVE"
+                !PRESS_ACTIVE.contains(raw),
+                "raw palette class in PRESS_ACTIVE"
             );
         }
     }

@@ -64,7 +64,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "Header",
     "CalendarCell",
     "ActionCard",
-    "ProductTile",
+    "Tile",
     "RawHtml",
     "StreamText",
     // Containers (containers.rs)
@@ -197,7 +197,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "Header" => atoms::render_header(el, spec, data, depth),
         "CalendarCell" => atoms::render_calendar_cell(el, spec, data, depth),
         "ActionCard" => atoms::render_action_card(el, spec, data, depth),
-        "ProductTile" => atoms::render_product_tile(el, spec, data, depth),
+        "Tile" => atoms::render_tile(el, spec, data, depth),
         "RawHtml" => atoms::render_raw_html(el, spec, data, depth),
         "StreamText" => atoms::render_streamtext(el, spec, data, depth),
         // Containers
