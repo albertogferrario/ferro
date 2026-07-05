@@ -254,6 +254,16 @@ mod tests {
         assert!(FERRO_RUNTIME_JS.contains("unobserve"));
     }
 
+    /// SC-4: inline-source assertion confirming the double-submit guard contract
+    /// is present in the assembled bundle (setupFormGuards extension, D-13/D-14/D-15).
+    #[test]
+    fn runtime_wires_disable_on_submit() {
+        assert!(
+            FERRO_RUNTIME_JS.contains("data-disable-on-submit"),
+            "bundle must contain data-disable-on-submit for the double-submit guard (SC-4)"
+        );
+    }
+
     /// SC-3: inline-source assertions confirming the numpad and filter runtime
     /// contracts are present in the assembled bundle.
     #[test]
