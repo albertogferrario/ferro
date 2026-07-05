@@ -117,7 +117,10 @@ mod tests {
         assert!(POS_PRESS_ACTIVE.contains("active:scale-95"));
         assert!(POS_PRESS_ACTIVE.contains("active:bg-border"));
         for raw in ["red-", "blue-", "orange-", "zinc-", "gray-", "slate-"] {
-            assert!(!POS_PRESS_ACTIVE.contains(raw), "raw palette class in POS_PRESS_ACTIVE");
+            assert!(
+                !POS_PRESS_ACTIVE.contains(raw),
+                "raw palette class in POS_PRESS_ACTIVE"
+            );
         }
     }
 }
