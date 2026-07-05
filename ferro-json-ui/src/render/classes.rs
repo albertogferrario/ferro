@@ -37,6 +37,26 @@ pub(crate) const INTERACTIVE_BASE: &str = concat!(
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 );
 
+/// POS touch-manipulation scroll optimisation for tap targets. Full literal.
+pub const POS_TOUCH_ACTION: &str = "touch-manipulation";
+
+/// Minimum 44px hit target for POS interactive elements (WCAG 2.5.5). Full literal.
+pub const POS_HIT_TARGET_MIN: &str = "min-h-[44px] min-w-[44px]";
+
+/// Enlarged 56px hit target for Numpad keys (Phase 256 consumer). Full literal.
+pub const POS_HIT_TARGET_NUMPAD: &str = "min-h-[56px] min-w-[56px]";
+
+/// Press-state feedback for POS tap surfaces: scale-down + border tint.
+/// Token-compliant (`active:bg-border` = `--color-border`); no raw palette class.
+pub const POS_PRESS_ACTIVE: &str = "active:scale-95 active:bg-border";
+
+/// Prevents scroll bounce from escaping a POS pane boundary. Full literal.
+pub const POS_OVERSCROLL_CONTAIN: &str = "overscroll-contain";
+
+/// Removes the default iOS tap-highlight rectangle on POS touch targets.
+/// Backed by `@utility pos-tap-highlight` in input.css (Path B — guaranteed CSS).
+pub const POS_TAP_HIGHLIGHT: &str = "pos-tap-highlight";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -55,5 +75,19 @@ mod tests {
         assert!(MOTION_FAST.contains("duration-fast") && MOTION_FAST.contains("ease-base"));
         assert!(MOTION_BASE.contains("duration-base") && MOTION_BASE.contains("ease-base"));
         assert!(DISABLED_BASE.contains("disabled:pointer-events-none"));
+    }
+
+    #[test]
+    fn pos_constants_are_full_literals_and_token_compliant() {
+        assert_eq!(POS_TOUCH_ACTION, "touch-manipulation");
+        assert_eq!(POS_HIT_TARGET_MIN, "min-h-[44px] min-w-[44px]");
+        assert_eq!(POS_HIT_TARGET_NUMPAD, "min-h-[56px] min-w-[56px]");
+        assert_eq!(POS_OVERSCROLL_CONTAIN, "overscroll-contain");
+        assert_eq!(POS_TAP_HIGHLIGHT, "pos-tap-highlight");
+        assert!(POS_PRESS_ACTIVE.contains("active:scale-95"));
+        assert!(POS_PRESS_ACTIVE.contains("active:bg-border"));
+        for raw in ["red-", "blue-", "orange-", "zinc-", "gray-", "slate-"] {
+            assert!(!POS_PRESS_ACTIVE.contains(raw), "raw palette class in POS_PRESS_ACTIVE");
+        }
     }
 }
