@@ -903,6 +903,14 @@ pub struct GridProps {
     /// Ignored in `scrollable` mode.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spans: Vec<u8>,
+    /// Per-row height weights for fill-mode grids. Positional alignment with
+    /// `children` (missing entries default to equal weight). A row with weight N
+    /// receives N fractional units of available height — e.g. `row_weights: [2, 1]`
+    /// gives the first row 2/3 and the second 1/3. Meaningful only when
+    /// `fill: true`; ignored in `scrollable` mode. The render path (fractional
+    /// `grid-template-rows` via inline style) lands in Phase 256.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub row_weights: Vec<u8>,
     /// Fill mode for viewport workspaces (pages with `Spec.fill_viewport`):
     /// the grid stretches to its parent's height with equal-height rows and
     /// every child cell scrolls internally. The document never scrolls —
@@ -1349,6 +1357,23 @@ pub struct ProductTileProps {
     pub field: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_quantity: Option<u32>,
+    /// Category memberships for client-side filtering. Rendered by
+    /// `render_product_tile` (Phase 254) as a space-separated
+    /// `data-product-categories` attribute, emitted only when non-empty; the
+    /// Phase 255 `setupPosFilter` runtime reads it. Plural because a product may
+    /// belong to several categories (a one-element vec covers the singular case).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub categories: Vec<String>,
+    /// Optional product image URL. Declared here for the Phase 256 tile visual;
+    /// not rendered in Phase 254 (D-03).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_url: Option<String>,
+    /// Optional accent color token for the tile. Phase 256 visual (D-03).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// Optional stock badge text (e.g. "Low", "Out"). Phase 256 visual (D-03).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stock_badge: Option<String>,
 }
 
 /// Lax deserializer for PageHeader.actions. Per D-19/F6:
