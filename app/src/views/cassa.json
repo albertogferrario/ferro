@@ -68,10 +68,10 @@
       "children": ["tile"]
     },
     "tile": {
-      "type": "ProductTile",
+      "type": "Tile",
       "$each": { "path": "/prodotti", "as": "p" },
       "props": {
-        "product_id": { "$data": "/p/id" },
+        "item_id": { "$data": "/p/id" },
         "name": { "$data": "/p/nome" },
         "price": { "$data": "/p/prezzo" },
         "field": { "$data": "/p/field" }
