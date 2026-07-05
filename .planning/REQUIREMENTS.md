@@ -228,7 +228,7 @@ register/counter ("cassa") mode; seed finding: the ~1500-line RawHtml product pi
 audited in `.planning/phases/253-mcp-surface-docs-publish/253-FRICTION.md`.
 
 **Milestone goal:** Touch-first sale-screen components in the ferro-json-ui builtin
-catalog — product grid, cart panel, numpad, quantity/category primitives — at a tablet
+catalog — tile grid, selection panel, numpad, quantity/filter primitives — at a tablet
 interaction quality bar, derivable from a `ServiceDef` through the projection layer and
 agent-authorable through the v16.5 MCP + design-lint boundary.
 
@@ -238,25 +238,37 @@ seven-intent vocabulary is unchanged.
 
 **Scope decisions (2026-07-04):** form-state cart only (client CartRuntime deferred —
 consequence accepted: gestiscilo's RawHtml elimination is partial until it ships);
-CategoryNav is a standalone builtin; Grid `row_weights` included; Numpad included;
-barcode keyboard-wedge deferred.
+FilterTabs (née CategoryNav) is a standalone builtin; Grid `row_weights` included;
+Numpad included; barcode keyboard-wedge deferred.
+
+**Vocabulary decision (2026-07-05):** the builtin catalog uses domain-neutral,
+structural nouns only — mirroring the seven structural intents. Commerce naming is
+confined to sample apps and docs examples. Renames (applied in Phase 255, all
+pre-publish): `ProductTile`→`Tile` (incl. the published component — breaking,
+migration table entry required), `ProductGrid`→`TileGrid`, `CartPanel`→`SelectionPanel`
+(consumer-specific props removed), `CategoryNav`→`FilterTabs`; runtime attributes
+`data-product-*`→`data-filter-*`; lint rule ids `pos-*`→`register-*`; no
+consumer-specific props in any `ferro-*` crate. The `Register` layout template name
+(POS-10) is retained as a structural layout term.
 
 ## v16.6 Requirements
 
 ### Components
 
-- [ ] **POS-01**: A spec author binds a products data path to a `ProductGrid` builtin and
-  gets a responsive, touch-first product grid (ProductTile children via `$each`) with
+- [ ] **POS-01**: A spec author binds an items data path to a `TileGrid` builtin and
+  gets a responsive, touch-first tile grid (Tile children via `$each`) with
   built-in client-side text search filtering.
 - [x] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
   `stock_badge` — with existing specs rendering unchanged (serde-backward-compatible).
-- [ ] **POS-03**: A `CategoryNav` standalone builtin filters visible product tiles by
-  category client-side (show/hide), touch targets ≥44px.
-- [ ] **POS-04**: A `CartPanel` builtin renders a server-rendered cart (line items with
-  per-line quantity stepper + remove, running total, EmptyState when empty, confirm-action
-  slot) that pins and internally scrolls within a `fill_viewport` layout.
+  *(Delivered 254 under the old name; component renamed `Tile` in Phase 255.)*
+- [ ] **POS-03**: A `FilterTabs` standalone builtin filters visible tiles by
+  filter token client-side (show/hide), touch targets ≥44px.
+- [ ] **POS-04**: A `SelectionPanel` builtin renders a server-rendered running selection
+  (line items with per-line quantity stepper + remove, running total, EmptyState when
+  empty, confirm-action slot) that pins and internally scrolls within a `fill_viewport`
+  layout.
 - [ ] **POS-05**: A `QuantityStepper` standalone builtin provides a reusable +/− numeric
-  stepper on the ProductTile hidden-input contract, usable in cart lines and forms.
+  stepper on the Tile hidden-input contract, usable in selection lines and forms.
 - [ ] **POS-06**: A `Numpad` builtin provides a custom tap-surface numeric keypad
   (≥56px keys) writing to a target field — never a native input, so the software keyboard
   is never triggered.
@@ -267,6 +279,7 @@ barcode keyboard-wedge deferred.
   press states on the motion tokens, tap-highlight reset, overscroll containment, minimum
   hit-target constants — is centralized in `render/classes.rs` and applied across all POS
   components; every emitted class is a full literal (Tailwind-scanner/safelist-safe).
+  *(Delivered 254 as `POS_*` constants; prefix neutralized in Phase 255.)*
 - [ ] **POS-08**: POS forms are double-submit protected — a `data-disable-on-submit`
   runtime guard plus the documented idempotency-key pattern on the existing
   `framework::write` idempotency hook.
@@ -288,8 +301,11 @@ barcode keyboard-wedge deferred.
 - [x] **POS-11**: POS design-lint rules ship — `pos-fill-viewport`, `pos-grid-fill`,
   `pos-cart-present`, `fill-viewport-layout-unknown` — each with violating/conforming AND
   data-bound fixtures; `RULE_COMPONENTS` mapping updated.
+  *(Delivered 254 under the old ids; renamed `register-fill-viewport`,
+  `register-grid-fill`, `register-selection-present` in Phase 255.)*
 - [ ] **POS-12**: The MCP + docs surface is extended — `json_ui_catalog` entries/count for
-  the new components, `generation_context` POS composition guidance, `docs/src` updates.
+  the new components, `generation_context` register composition guidance, `docs/src`
+  updates.
 
 ### Release
 

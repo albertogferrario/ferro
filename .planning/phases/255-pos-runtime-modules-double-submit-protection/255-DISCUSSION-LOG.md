@@ -110,5 +110,33 @@
 
 - CartRuntime (operator-deferred, Future Requirements)
 - Barcode keyboard-wedge module (operator-deferred)
-- `pos-text-input-position` lint rule candidate (PITFALLS.md Pitfall 4)
+- `register-text-input-position` lint rule candidate (PITFALLS.md Pitfall 4)
 - "Uncategorized" virtual sentinel tab (Phase 256 render decision)
+- `TileProps.price` field naming (retained; revisit on non-commerce consumer friction)
+
+---
+
+## Operator Redirection (2026-07-05, same day — INTERACTIVE)
+
+Before planning started, the operator raised a scope concern: POS/commerce-specific
+code may not belong in ferro's builtin catalog. Options presented: (A) continue as
+scoped; (B) keep mechanisms, neutralize vocabulary; (C) split commerce into a
+separate crate; (D) ship only generic parts, pause 256/257.
+
+**Operator selected: B** — with four naming confirmations:
+
+| Question | Options | Selected |
+|----------|---------|----------|
+| Component names | FilterTabs / TileGrid / SelectionPanel (Recommended) · FilterNav / SelectionGrid / TallyPanel | FilterTabs / TileGrid / SelectionPanel ✓ |
+| Filter attribute vocabulary | data-filter-* family (Recommended) · keep data-product-* | data-filter-* ✓ |
+| Lint rule ids | register-* prefix (Recommended) · fully neutral no-register | register-* ✓ |
+| ProductTile (published) | Keep name (Recommended) · Rename to Tile now | **Rename to Tile now** ✓ (operator chose the non-recommended full-purity option) |
+
+Consequences folded into this phase as decisions V-01..V-08 (CONTEXT.md):
+`setupPosFilter`→`setupFilters`, `data-product-categories`→`data-filter-tokens`,
+`data-product-name`→`data-filter-text`, `data-pos-filter`→`data-filter-scope`,
+`data-pos-search`→`data-filter-search`, `runtime/pos_filter.rs`→`runtime/filters.rs`,
+plus the 254-contract renames and removal of the gestiscilo-specific
+`show_staff`/`show_people` props from SelectionPanelProps. ROADMAP.md and
+REQUIREMENTS.md v16.6 sections updated to the neutral vocabulary; `POS-xx`
+requirement IDs and phase names retained as planning-internal use-case framing.
