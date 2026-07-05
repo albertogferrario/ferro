@@ -82,23 +82,23 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         check: check_prefer_components,
     },
     DesignRule {
-        id: "pos-fill-viewport",
-        title: "POS register pages must fill the viewport",
-        rationale: "A ProductGrid, CartPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.",
+        id: "register-fill-viewport",
+        title: "Register pages must fill the viewport",
+        rationale: "A TileGrid, SelectionPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.",
         intents: &[], // all intents — internal presence gate is inside check_pos_fill_viewport
         check: check_pos_fill_viewport,
     },
     DesignRule {
-        id: "pos-grid-fill",
+        id: "register-grid-fill",
         title: "The register-root Grid must set fill:true under fill_viewport",
         rationale: "A fill_viewport spec whose root Grid lacks fill:true loses per-pane internal scroll — the panes scroll the page instead.",
         intents: &[], // all intents — fill_viewport gate is inside check_pos_grid_fill
         check: check_pos_grid_fill,
     },
     DesignRule {
-        id: "pos-cart-present",
-        title: "A ProductGrid register needs a CartPanel",
-        rationale: "A ProductGrid with no CartPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.",
+        id: "register-selection-present",
+        title: "A TileGrid register needs a SelectionPanel",
+        rationale: "A TileGrid with no SelectionPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.",
         intents: &[], // all intents — internal presence gate is inside check_pos_cart_present
         check: check_pos_cart_present,
     },
@@ -436,25 +436,25 @@ fn check_prefer_components(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
         .collect()
 }
 
-// ── POS rules (Phase 254, POS-11) ─────────────────────────────────────────────
+// ── Register rules (Phase 254, POS-11) ───────────────────────────────────────
 
-/// Component type names that indicate a POS register composition.
+/// Component type names that indicate a register composition.
 /// Matched against raw spec type_name strings; lint never consults BUILTIN_TYPES (D-13).
-const POS_TRIGGER_TYPES: &[&str] = &["ProductGrid", "CartPanel", "Numpad"];
+const REGISTER_TRIGGER_TYPES: &[&str] = &["TileGrid", "SelectionPanel", "Numpad"];
 
 fn check_pos_fill_viewport(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
     let has_pos = spec
         .elements
         .values()
-        .any(|el| POS_TRIGGER_TYPES.contains(&el.type_name.as_str()));
+        .any(|el| REGISTER_TRIGGER_TYPES.contains(&el.type_name.as_str()));
     if !has_pos || spec.fill_viewport {
         return vec![];
     }
     vec![Finding {
-        rule: "pos-fill-viewport",
+        rule: "register-fill-viewport",
         element_id: None,
         severity: Severity::Warning,
-        message: "Spec contains POS components but fill_viewport is not set.".into(),
+        message: "Spec contains register components but fill_viewport is not set.".into(),
         suggestion: "Set fill_viewport: true at the spec level and fill: true on the root Grid."
             .into(),
     }]
@@ -482,7 +482,7 @@ fn check_pos_grid_fill(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
         return vec![];
     }
     vec![Finding {
-        rule: "pos-grid-fill",
+        rule: "register-grid-fill",
         element_id: Some(spec.root.clone()),
         severity: Severity::Warning,
         message:
@@ -493,20 +493,20 @@ fn check_pos_grid_fill(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
 }
 
 fn check_pos_cart_present(spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
-    let has_grid = spec
+    let has_grid = spec.elements.values().any(|el| el.type_name == "TileGrid");
+    let has_cart = spec
         .elements
         .values()
-        .any(|el| el.type_name == "ProductGrid");
-    let has_cart = spec.elements.values().any(|el| el.type_name == "CartPanel");
+        .any(|el| el.type_name == "SelectionPanel");
     if !has_grid || has_cart {
         return vec![];
     }
     vec![Finding {
-        rule: "pos-cart-present",
+        rule: "register-selection-present",
         element_id: None,
         severity: Severity::Warning,
-        message: "ProductGrid present but no CartPanel anywhere in the spec.".into(),
-        suggestion: "Add a CartPanel element so the register can accumulate the sale.".into(),
+        message: "TileGrid present but no SelectionPanel anywhere in the spec.".into(),
+        suggestion: "Add a SelectionPanel element so the register can accumulate the sale.".into(),
     }]
 }
 
@@ -1335,43 +1335,43 @@ mod tests {
         );
     }
 
-    // ── pos-fill-viewport ────────────────────────────────────────────────────
+    // ── register-fill-viewport ──────────────────────────────────────────────
 
     #[test]
-    fn pos_fill_viewport_violating_product_grid_no_fill_viewport() {
-        // ProductGrid present, fill_viewport absent → 1 Warning.
+    fn register_fill_viewport_violating_tile_grid_no_fill_viewport() {
+        // TileGrid present, fill_viewport absent → 1 Warning.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
                 "root": "r",
-                "elements": {"r": {"type": "ProductGrid"}},
+                "elements": {"r": {"type": "TileGrid"}},
                 "design": {}
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        let findings = findings_for(lint(&spec), "register-fill-viewport");
         assert_eq!(
             findings.len(),
             1,
-            "expected 1 pos-fill-viewport finding, got: {findings:#?}"
+            "expected 1 register-fill-viewport finding, got: {findings:#?}"
         );
         assert_eq!(findings[0].severity, Severity::Warning);
     }
 
     #[test]
-    fn pos_fill_viewport_conforming_fill_viewport_set() {
-        // ProductGrid present and fill_viewport: true → 0 findings.
+    fn register_fill_viewport_conforming_fill_viewport_set() {
+        // TileGrid present and fill_viewport: true → 0 findings.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
                 "root": "r",
                 "fill_viewport": true,
-                "elements": {"r": {"type": "ProductGrid"}},
+                "elements": {"r": {"type": "TileGrid"}},
                 "design": {}
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        let findings = findings_for(lint(&spec), "register-fill-viewport");
         assert!(
             findings.is_empty(),
             "fill_viewport set must be conforming, got: {findings:#?}"
@@ -1379,8 +1379,8 @@ mod tests {
     }
 
     #[test]
-    fn pos_fill_viewport_data_bound_no_misfire() {
-        // No POS type names present, only a DataTable with a $data binding → 0 findings.
+    fn register_fill_viewport_data_bound_no_misfire() {
+        // No register type names present, only a DataTable with a $data binding → 0 findings.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
@@ -1391,17 +1391,17 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-fill-viewport");
+        let findings = findings_for(lint(&spec), "register-fill-viewport");
         assert!(
             findings.is_empty(),
-            "spec without POS type names must not misfire: {findings:#?}"
+            "spec without register type names must not misfire: {findings:#?}"
         );
     }
 
-    // ── pos-grid-fill ────────────────────────────────────────────────────────
+    // ── register-grid-fill ──────────────────────────────────────────────────
 
     #[test]
-    fn pos_grid_fill_violating_fill_viewport_root_grid_no_fill() {
+    fn register_grid_fill_violating_fill_viewport_root_grid_no_fill() {
         // fill_viewport: true, root element is Grid without fill prop → 1 Warning.
         let spec = Spec::from_json(
             r#"{
@@ -1413,17 +1413,17 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        let findings = findings_for(lint(&spec), "register-grid-fill");
         assert_eq!(
             findings.len(),
             1,
-            "expected 1 pos-grid-fill finding, got: {findings:#?}"
+            "expected 1 register-grid-fill finding, got: {findings:#?}"
         );
         assert_eq!(findings[0].severity, Severity::Warning);
     }
 
     #[test]
-    fn pos_grid_fill_conforming_root_grid_with_fill_true() {
+    fn register_grid_fill_conforming_root_grid_with_fill_true() {
         // fill_viewport: true, root Grid with fill: true → 0 findings.
         let spec = Spec::from_json(
             r#"{
@@ -1435,7 +1435,7 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        let findings = findings_for(lint(&spec), "register-grid-fill");
         assert!(
             findings.is_empty(),
             "root Grid with fill:true must be conforming, got: {findings:#?}"
@@ -1443,7 +1443,7 @@ mod tests {
     }
 
     #[test]
-    fn pos_grid_fill_data_bound_no_misfire() {
+    fn register_grid_fill_data_bound_no_misfire() {
         // fill_viewport: true, root Grid with fill: true carrying a $data-bound child prop → 0 findings.
         let spec = Spec::from_json(
             r#"{
@@ -1458,15 +1458,15 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        let findings = findings_for(lint(&spec), "register-grid-fill");
         assert!(
             findings.is_empty(),
-            "$data-bound child must not misfire pos-grid-fill: {findings:#?}"
+            "$data-bound child must not misfire register-grid-fill: {findings:#?}"
         );
     }
 
     #[test]
-    fn pos_grid_fill_data_bound_fill_no_misfire() {
+    fn register_grid_fill_data_bound_fill_no_misfire() {
         // WR-02 regression guard: fill_viewport: true, root Grid whose `fill`
         // prop itself is $data-bound → 0 findings (non-null acceptance,
         // mirroring the list-empty-state/breadcrumb-on-subpages guards).
@@ -1480,39 +1480,39 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-grid-fill");
+        let findings = findings_for(lint(&spec), "register-grid-fill");
         assert!(
             findings.is_empty(),
-            "$data-bound fill prop must not misfire pos-grid-fill: {findings:#?}"
+            "$data-bound fill prop must not misfire register-grid-fill: {findings:#?}"
         );
     }
 
-    // ── pos-cart-present ─────────────────────────────────────────────────────
+    // ── register-selection-present ───────────────────────────────────────────
 
     #[test]
-    fn pos_cart_present_violating_product_grid_no_cart_panel() {
-        // ProductGrid present, CartPanel absent → 1 Warning.
+    fn register_selection_present_violating_tile_grid_no_selection_panel() {
+        // TileGrid present, SelectionPanel absent → 1 Warning.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
                 "root": "r",
-                "elements": {"r": {"type": "ProductGrid"}},
+                "elements": {"r": {"type": "TileGrid"}},
                 "design": {}
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-cart-present");
+        let findings = findings_for(lint(&spec), "register-selection-present");
         assert_eq!(
             findings.len(),
             1,
-            "expected 1 pos-cart-present finding, got: {findings:#?}"
+            "expected 1 register-selection-present finding, got: {findings:#?}"
         );
         assert_eq!(findings[0].severity, Severity::Warning);
     }
 
     #[test]
-    fn pos_cart_present_conforming_both_product_grid_and_cart_panel() {
-        // Both ProductGrid and CartPanel present → 0 findings.
+    fn register_selection_present_conforming_both_tile_grid_and_selection_panel() {
+        // Both TileGrid and SelectionPanel present → 0 findings.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
@@ -1520,23 +1520,23 @@ mod tests {
                 "fill_viewport": true,
                 "elements": {
                     "r": {"type": "Grid", "props": {"fill": true}},
-                    "grid": {"type": "ProductGrid"},
-                    "cart": {"type": "CartPanel"}
+                    "grid": {"type": "TileGrid"},
+                    "cart": {"type": "SelectionPanel"}
                 },
                 "design": {}
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-cart-present");
+        let findings = findings_for(lint(&spec), "register-selection-present");
         assert!(
             findings.is_empty(),
-            "ProductGrid + CartPanel must be conforming, got: {findings:#?}"
+            "TileGrid + SelectionPanel must be conforming, got: {findings:#?}"
         );
     }
 
     #[test]
-    fn pos_cart_present_data_bound_no_misfire() {
-        // ProductGrid + CartPanel both present with $data-bound props → 0 findings.
+    fn register_selection_present_data_bound_no_misfire() {
+        // TileGrid + SelectionPanel both present with $data-bound props → 0 findings.
         let spec = Spec::from_json(
             r#"{
                 "$schema": "ferro-json-ui/v2",
@@ -1544,17 +1544,17 @@ mod tests {
                 "fill_viewport": true,
                 "elements": {
                     "r": {"type": "Grid", "props": {"fill": true}},
-                    "grid": {"type": "ProductGrid", "props": {"items": {"$data": "/products"}}},
-                    "cart": {"type": "CartPanel", "props": {"lines": {"$data": "/cart/lines"}}}
+                    "grid": {"type": "TileGrid", "props": {"items": {"$data": "/products"}}},
+                    "cart": {"type": "SelectionPanel", "props": {"lines": {"$data": "/cart/lines"}}}
                 },
                 "design": {}
             }"#,
         )
         .unwrap();
-        let findings = findings_for(lint(&spec), "pos-cart-present");
+        let findings = findings_for(lint(&spec), "register-selection-present");
         assert!(
             findings.is_empty(),
-            "$data-bound ProductGrid+CartPanel must not misfire: {findings:#?}"
+            "$data-bound TileGrid+SelectionPanel must not misfire: {findings:#?}"
         );
     }
 

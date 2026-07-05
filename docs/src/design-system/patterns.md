@@ -519,13 +519,13 @@ Edit form detected (one field has a `$data` default_value), but another field is
 
 ---
 
-## `pos-fill-viewport`
+## `register-fill-viewport`
 
-**Title:** POS register pages must fill the viewport
+**Title:** Register pages must fill the viewport
 
-**Rationale:** A ProductGrid, CartPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.
+**Rationale:** A TileGrid, SelectionPanel, or Numpad outside a fill_viewport spec causes silent whole-page scroll, breaking the register feel.
 
-**Intents:** all (applies to any spec containing POS component types)
+**Intents:** all (applies to any spec containing register component types)
 
 ### Conforming example
 
@@ -548,23 +548,23 @@ Edit form detected (one field has a `$data` default_value), but another field is
   "$schema": "ferro-json-ui/v2",
   "root": "r",
   "elements": {
-    "r": { "type": "ProductGrid" }
+    "r": { "type": "TileGrid" }
   }
 }
 ```
 
 ### How to allow
 
-Add `"allow": ["pos-fill-viewport"]` to the `design` object when the spec is
+Add `"allow": ["register-fill-viewport"]` to the `design` object when the spec is
 intentionally not fill-mode (e.g., a product browse page, not a register):
 
 ```json
-{ "design": { "allow": ["pos-fill-viewport"] } }
+{ "design": { "allow": ["register-fill-viewport"] } }
 ```
 
 ---
 
-## `pos-grid-fill`
+## `register-grid-fill`
 
 **Title:** The register-root Grid must set fill:true under fill_viewport
 
@@ -603,18 +603,18 @@ intentionally not fill-mode (e.g., a product browse page, not a register):
 ### How to allow
 
 ```json
-{ "design": { "allow": ["pos-grid-fill"] } }
+{ "design": { "allow": ["register-grid-fill"] } }
 ```
 
 ---
 
-## `pos-cart-present`
+## `register-selection-present`
 
-**Title:** A ProductGrid register needs a CartPanel
+**Title:** A TileGrid register needs a SelectionPanel
 
-**Rationale:** A ProductGrid with no CartPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.
+**Rationale:** A TileGrid with no SelectionPanel anywhere is an incomplete register — the operator has products but nowhere to accumulate the sale.
 
-**Intents:** all (applies to any spec containing a ProductGrid)
+**Intents:** all (applies to any spec containing a TileGrid)
 
 ### Conforming example
 
@@ -626,8 +626,8 @@ intentionally not fill-mode (e.g., a product browse page, not a register):
   "layout": "app",
   "elements": {
     "r": { "type": "Grid", "props": { "fill": true } },
-    "grid": { "type": "ProductGrid" },
-    "cart": { "type": "CartPanel" }
+    "grid": { "type": "TileGrid" },
+    "cart": { "type": "SelectionPanel" }
   }
 }
 ```
@@ -639,18 +639,18 @@ intentionally not fill-mode (e.g., a product browse page, not a register):
   "$schema": "ferro-json-ui/v2",
   "root": "r",
   "elements": {
-    "r": { "type": "ProductGrid" }
+    "r": { "type": "TileGrid" }
   }
 }
 ```
 
 ### How to allow
 
-Add `"allow": ["pos-cart-present"]` when a ProductGrid is used in a non-register
-context (e.g., a product catalogue browse page with no cart):
+Add `"allow": ["register-selection-present"]` when a TileGrid is used in a non-register
+context (e.g., a product catalogue browse page with no selection panel):
 
 ```json
-{ "design": { "allow": ["pos-cart-present"] } }
+{ "design": { "allow": ["register-selection-present"] } }
 ```
 
 ---
