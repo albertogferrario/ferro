@@ -257,15 +257,21 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 - [ ] **POS-01**: A spec author binds an items data path to a `TileGrid` builtin and
   gets a responsive, touch-first tile grid (Tile children via `$each`) with
-  built-in client-side text search filtering.
+  built-in client-side text search filtering. Tiles are **tap-to-add-only**
+  surfaces (operator decision 2026-07-05): one tap adds one unit; no on-tile
+  +/- steppers or quantity display — quantity editing lives in the
+  SelectionPanel (POS-04).
 - [x] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
   `stock_badge` — with existing specs rendering unchanged (serde-backward-compatible).
   *(Delivered 254 under the old name; component renamed `Tile` in Phase 255.)*
 - [ ] **POS-03**: A `FilterTabs` standalone builtin filters visible tiles by
   filter token client-side (show/hide), touch targets ≥44px.
-- [ ] **POS-04**: A `SelectionPanel` builtin renders a server-rendered running selection
-  (line items with per-line quantity stepper + remove, running total, EmptyState when
-  empty, confirm-action slot) that pins and internally scrolls within a `fill_viewport`
+- [ ] **POS-04**: A `SelectionPanel` builtin renders the running selection as a **live
+  client-side view of the form state** (operator decision 2026-07-05, un-deferring the
+  CartRuntime slice): lines appear as tiles are tapped, each line has a per-line
+  QuantityStepper + remove, the running total is client-computed in integer cents,
+  EmptyState shows when nothing is selected, and a confirm-action slot hosts the
+  single confirm POST. The panel pins and internally scrolls within a `fill_viewport`
   layout.
 - [ ] **POS-05**: A `QuantityStepper` standalone builtin provides a reusable +/− numeric
   stepper on the Tile hidden-input contract, usable in selection lines and forms.
@@ -315,9 +321,16 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 ## Future Requirements (deferred)
 
-- **CartRuntime** — client-side live cart (tap → cart panel update + running total, single
+- ~~**CartRuntime** — client-side live cart (tap → cart panel update + running total, single
   commit POST) via a `runtime/cart_runtime.rs` module with a documented `data-cart-target`
-  extension hook. Deferred by scope decision; revisit on gestiscilo adoption friction.
+  extension hook. Deferred by scope decision; revisit on gestiscilo adoption friction.~~
+  **UN-DEFERRED into Phase 256 (operator decision 2026-07-05):** the register interaction
+  model is tap-tile-adds-one / quantities-edited-in-the-SelectionPanel (Shopify POS model),
+  which requires the panel to be a live client-side view of the form state — lines
+  appear/update as tiles are tapped, per-line QuantityStepper edit + remove, running total
+  in integer cents. The form-state contract is unchanged (hidden inputs, single confirm
+  POST); no `data-cart-target` props hook (254 D-18 still holds — the runtime binds by
+  attribute contract, not props extension).
 - **Barcode keyboard-wedge input** — keystroke-timing scanner detection (~40 lines runtime
   JS, `data-barcode-max-gap` tuning attribute).
 - **Layout-name-independent `ferro-fill` chain** — removes the dashboard-family selector
