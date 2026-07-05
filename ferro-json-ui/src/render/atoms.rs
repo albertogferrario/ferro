@@ -1680,6 +1680,32 @@ mod tests {
         assert!(html.contains("rel=\"noopener noreferrer\""), "got: {html}");
     }
 
+    #[test]
+    fn render_button_emits_disable_on_submit() {
+        let spec = spec_with_root(
+            Element::new("Button")
+                .prop("label", "Confirm")
+                .prop("disable_on_submit", true),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-disable-on-submit"),
+            "Button with disable_on_submit:true must carry data-disable-on-submit; got: {html}"
+        );
+    }
+
+    #[test]
+    fn render_button_omits_disable_on_submit_by_default() {
+        let spec = spec_with_root(Element::new("Button").prop("label", "Go"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("data-disable-on-submit"),
+            "Button without disable_on_submit must NOT carry data-disable-on-submit; got: {html}"
+        );
+    }
+
     // ── 3. Badge ────────────────────────────────────────────────────────
 
     #[test]
