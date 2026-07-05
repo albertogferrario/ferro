@@ -263,7 +263,7 @@ barcode keyboard-wedge deferred.
 
 ### Touch Interaction Quality
 
-- [ ] **POS-07**: A shared POS touch foundation — `touch-action: manipulation`, `:active`
+- [x] **POS-07**: A shared POS touch foundation — `touch-action: manipulation`, `:active`
   press states on the motion tokens, tap-highlight reset, overscroll containment, minimum
   hit-target constants — is centralized in `render/classes.rs` and applied across all POS
   components; every emitted class is a full literal (Tailwind-scanner/safelist-safe).

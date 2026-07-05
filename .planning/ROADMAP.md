@@ -3906,7 +3906,7 @@ phase pins.
 
 ### Phases
 
-- [ ] **Phase 254: Props Contracts + Touch Foundation + Design Rules** — ProductTile additive props (POS-02), shared POS touch constants in `render/classes.rs` (POS-07), Grid `row_weights` prop on `GridProps` (substrate), four POS design-lint rules with violating/conforming/data-bound fixtures (POS-11); all new `*Props` struct declarations (ProductGridProps, CartPanelProps, CategoryNavProps, QuantityStepperProps, NumpadProps).
+- [x] **Phase 254: Props Contracts + Touch Foundation + Design Rules** — ProductTile additive props (POS-02), shared POS touch constants in `render/classes.rs` (POS-07), Grid `row_weights` prop on `GridProps` (substrate), four POS design-lint rules with violating/conforming/data-bound fixtures (POS-11); all new `*Props` struct declarations (ProductGridProps, CartPanelProps, CategoryNavProps, QuantityStepperProps, NumpadProps). (completed 2026-07-05)
 - [ ] **Phase 255: POS Runtime Modules + Double-Submit Protection** — `setupNumpad()` (tap-surface keypad writing to a target field) and `setupPosFilter()` (category/search tile-visibility filtering via `data-product-categories` + text match) runtime modules, `runtime/mod.rs` wiring, `data-disable-on-submit` double-submit guard + documented idempotency-key pattern (POS-08). NO cart-state JS — form-state accumulation stays on the existing `product_tiles.rs` hidden-input contract.
 - [ ] **Phase 256: Component Renderers + BUILTIN Lockstep** — `render_product_grid` (integrated CategoryStrip + search), `render_category_nav`, `render_cart_panel`, `render_quantity_stepper`, `render_numpad`; Grid `row_weights` render path (POS-09); `BUILTIN_TYPES` + dispatch arms + `BUILTIN_SPECS` + imports per component; drift-guard count bumps both sites; `gen-ferro-base-css.sh` regen. Delivers POS-01, 03, 04, 05, 06, 09.
 - [ ] **Phase 257: Projection Builder — Register Layout Template** — `layout: "Register"` arm in `builder.rs::build_display_spec()`; `emit_register_root()` emitting fill-viewport Grid with cart_pane + products_pane; `Spec::builder().fill_viewport(bool)`; `ElementBuilder.each(path, as_)`; `IntentSlotTemplate` Collect→Register; `/cassa` sample app flipped to projection-derived spec. Delivers POS-10.
@@ -3928,11 +3928,11 @@ phase pins.
 3. The four POS lint rules (`pos-fill-viewport`, `pos-grid-fill`, `pos-cart-present`, `fill-viewport-layout-unknown`) each pass three fixture tests: a violating spec returns the expected finding severity; a conforming spec returns no finding; a data-bound (`$data.*`-scoped) spec does not misfire.
 4. `component_rule_mapping_is_exhaustive` passes for all four new rule ids and their component-name associations in `RULE_COMPONENTS`.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 254-01-PLAN.md — Component props contracts: ProductTile additive fields + GridProps.row_weights + five new *Props structs (wave 1)
-- [ ] 254-02-PLAN.md — Touch foundation: POS constants + drift guard + render_product_tile migration/data-attr + input.css @utility + ferro-base.css regen (wave 2)
+- [x] 254-02-PLAN.md — Touch foundation: POS constants + drift guard + render_product_tile migration/data-attr + input.css @utility + ferro-base.css regen (wave 2)
 - [x] 254-03-PLAN.md — POS design-lint rules: 4 rules + 12 fixtures + patterns.md sections + RULE_COMPONENTS (wave 1)
 
 **UI hint**: yes
