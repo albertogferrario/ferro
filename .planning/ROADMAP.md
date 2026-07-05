@@ -3975,6 +3975,8 @@ Plans:
 4. `Grid` `row_weights` emits fractional `grid-template-rows` CSS (weights `[2, 1]` → `"2fr 1fr"`) in the rendered style attribute; HTML assertion confirms the value for a spec with `row_weights` set; existing Grid specs without `row_weights` are unaffected.
 5. `FilterTabs` renders touch targets ≥ 44px and filters tile visibility client-side via `data-filter-tokens` attribute matching; a `TileGrid` spec with `categories_path` bound correctly populates the filter strip.
 
+**Design reference (operator, 2026-07-05):** Shopify POS interaction patterns — dense image-led tile grid with instant search, side-pinned selection pane with per-line quantity edits, horizontal filter-tab strip, large tap targets. Inspiration for layout/density/interaction only: vocabulary stays structural and all visuals compose from semantic tokens.
+
 **Plans:** TBD
 **UI hint**: yes
 
