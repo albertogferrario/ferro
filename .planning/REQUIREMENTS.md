@@ -248,7 +248,7 @@ barcode keyboard-wedge deferred.
 - [ ] **POS-01**: A spec author binds a products data path to a `ProductGrid` builtin and
   gets a responsive, touch-first product grid (ProductTile children via `$each`) with
   built-in client-side text search filtering.
-- [ ] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
+- [x] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
   `stock_badge` — with existing specs rendering unchanged (serde-backward-compatible).
 - [ ] **POS-03**: A `CategoryNav` standalone builtin filters visible product tiles by
   category client-side (show/hide), touch targets ≥44px.

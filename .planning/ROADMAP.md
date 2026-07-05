@@ -3928,10 +3928,10 @@ phase pins.
 3. The four POS lint rules (`pos-fill-viewport`, `pos-grid-fill`, `pos-cart-present`, `fill-viewport-layout-unknown`) each pass three fixture tests: a violating spec returns the expected finding severity; a conforming spec returns no finding; a data-bound (`$data.*`-scoped) spec does not misfire.
 4. `component_rule_mapping_is_exhaustive` passes for all four new rule ids and their component-name associations in `RULE_COMPONENTS`.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 254-01-PLAN.md — Component props contracts: ProductTile additive fields + GridProps.row_weights + five new *Props structs (wave 1)
+- [x] 254-01-PLAN.md — Component props contracts: ProductTile additive fields + GridProps.row_weights + five new *Props structs (wave 1)
 - [ ] 254-02-PLAN.md — Touch foundation: POS constants + drift guard + render_product_tile migration/data-attr + input.css @utility + ferro-base.css regen (wave 2)
 - [ ] 254-03-PLAN.md — POS design-lint rules: 4 rules + 12 fixtures + patterns.md sections + RULE_COMPONENTS (wave 1)
 
