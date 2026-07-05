@@ -1347,21 +1347,21 @@ pub struct ActionCardProps {
 
 /// Props for a touch-friendly product tile with quantity controls.
 ///
-/// Renders product name, price, and +/- buttons that drive a hidden input
-/// via JS. Used for POS-style product selection during order creation.
+/// Renders item name, price, and +/- buttons that drive a hidden input
+/// via JS. Used for touch-first selection screens (e.g. POS-style order creation).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct ProductTileProps {
-    pub product_id: String,
+pub struct TileProps {
+    pub item_id: String,
     pub name: String,
     pub price: String,
     pub field: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_quantity: Option<u32>,
     /// Category memberships for client-side filtering. Rendered by
-    /// `render_product_tile` (Phase 254) as a space-separated
-    /// `data-product-categories` attribute, emitted only when non-empty; the
-    /// Phase 255 `setupPosFilter` runtime reads it. Plural because a product may
-    /// belong to several categories (a one-element vec covers the singular case).
+    /// `render_tile` as a space-separated `data-filter-tokens` attribute,
+    /// emitted only when non-empty; the `setupFilters` runtime reads it.
+    /// Plural because an item may belong to several categories (a one-element
+    /// vec covers the singular case).
     ///
     /// Token-list constraint: because the attribute is space-separated, spaces
     /// inside a category name are normalized to hyphens at render time
@@ -1369,7 +1369,7 @@ pub struct ProductTileProps {
     /// must apply the same normalization to category labels before matching.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub categories: Vec<String>,
-    /// Optional product image URL. Declared here for the Phase 256 tile visual;
+    /// Optional item image URL. Declared here for the Phase 256 tile visual;
     /// not rendered in Phase 254 (D-03).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
@@ -1381,14 +1381,14 @@ pub struct ProductTileProps {
     pub stock_badge: Option<String>,
 }
 
-/// Props for the ProductGrid POS builtin — a touch-first, responsive product grid
-/// whose ProductTile children iterate via the `$each` contract (Phase 257 target).
+/// Props for the TileGrid builtin — a touch-first, responsive tile grid
+/// whose Tile children iterate via the `$each` contract (Phase 257 target).
 /// Renderer + registration land in Phase 256; this is the contract only.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct ProductGridProps {
+pub struct TileGridProps {
     /// JSON pointer to the product array the grid iterates over via `$each`.
     pub data_path: String,
-    /// Scope isolator that links this grid's hidden inputs to a sibling CartPanel.
+    /// Scope isolator that links this grid's hidden inputs to a sibling SelectionPanel.
     pub form_id: String,
     /// JSON pointer to a category string array for the integrated category strip.
     /// Absent → no category strip is rendered.
@@ -1397,36 +1397,30 @@ pub struct ProductGridProps {
     /// Override for the base-viewport grid column count (Phase 256 render default is 2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<u8>,
-    /// Enables the client-side text-search input (Phase 255 `setupPosFilter`).
+    /// Enables the client-side text-search input (Phase 255 `setupFilters`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search: Option<bool>,
 }
 
-/// Props for the CartPanel POS builtin — a server-rendered cart that pins and
-/// scrolls internally under `fill_viewport`. Renderer lands in Phase 256.
+/// Props for the SelectionPanel builtin — a server-rendered selection summary that
+/// pins and scrolls internally under `fill_viewport`. Renderer lands in Phase 256.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct CartPanelProps {
-    /// Scope isolator matching the paired ProductGrid `form_id`.
+pub struct SelectionPanelProps {
+    /// Scope isolator matching the paired TileGrid `form_id`.
     pub form_id: String,
-    /// Placeholder text shown by the EmptyState when the cart has no line items.
+    /// Placeholder text shown by the EmptyState when the panel has no line items.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_message: Option<String>,
-    /// Whether the Staff column is visible (gestiscilo booking mode).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub show_staff: Option<bool>,
-    /// Whether the People stepper column is visible.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub show_people: Option<bool>,
 }
 
-/// Props for the CategoryNav POS builtin (standalone builtin, operator-locked).
-/// Filters visible product tiles client-side via `data-product-categories`
-/// matching (Phase 255 runtime). Renderer lands in Phase 256.
+/// Props for the FilterTabs builtin (standalone builtin, operator-locked).
+/// Filters visible tiles client-side via `data-filter-tokens` matching
+/// (Phase 255 runtime). Renderer lands in Phase 256.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-pub struct CategoryNavProps {
+pub struct FilterTabsProps {
     /// Category labels rendered as filter tabs. May be `$data`-bound at render
-    /// time. Matching against `data-product-categories` tokens must normalize
-    /// spaces to hyphens, mirroring `ProductTileProps::categories` rendering.
+    /// time. Matching against `data-filter-tokens` must normalize spaces to
+    /// hyphens, mirroring `TileProps::categories` rendering.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<String>,
     /// Label for the "show all" tab (Phase 256 render default is "Tutte").
@@ -1435,7 +1429,7 @@ pub struct CategoryNavProps {
 }
 
 /// Props for the QuantityStepper POS builtin — a reusable +/- stepper driving a
-/// hidden input on the ProductTile contract. Renderer lands in Phase 256.
+/// hidden input on the Tile contract. Renderer lands in Phase 256.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct QuantityStepperProps {
     /// Name of the hidden input this stepper increments/decrements.
@@ -1755,8 +1749,8 @@ mod schema_smoke_tests {
     }
 
     #[test]
-    fn schema_for_product_tile_props_generates() {
-        assert_schema_nonempty_object::<ProductTileProps>("ProductTileProps");
+    fn schema_for_tile_props_generates() {
+        assert_schema_nonempty_object::<TileProps>("TileProps");
     }
 
     #[test]
@@ -1970,18 +1964,18 @@ mod schema_smoke_tests {
     }
 
     #[test]
-    fn schema_for_product_grid_props_generates() {
-        assert_schema_nonempty_object::<ProductGridProps>("ProductGridProps");
+    fn schema_for_tile_grid_props_generates() {
+        assert_schema_nonempty_object::<TileGridProps>("TileGridProps");
     }
 
     #[test]
-    fn schema_for_cart_panel_props_generates() {
-        assert_schema_nonempty_object::<CartPanelProps>("CartPanelProps");
+    fn schema_for_selection_panel_props_generates() {
+        assert_schema_nonempty_object::<SelectionPanelProps>("SelectionPanelProps");
     }
 
     #[test]
-    fn schema_for_category_nav_props_generates() {
-        assert_schema_nonempty_object::<CategoryNavProps>("CategoryNavProps");
+    fn schema_for_filter_tabs_props_generates() {
+        assert_schema_nonempty_object::<FilterTabsProps>("FilterTabsProps");
     }
 
     #[test]
@@ -2400,19 +2394,19 @@ mod page_header_actions_tests {
 }
 
 #[cfg(test)]
-mod product_tile_contract_tests {
-    //! Backward-compatibility and field-contract tests for ProductTileProps and GridProps.
+mod tile_contract_tests {
+    //! Backward-compatibility and field-contract tests for TileProps and GridProps.
     //! RED-phase guard: these tests are written before the new fields exist and must
     //! fail to compile until the GREEN-phase fields are added.
 
     use super::*;
 
-    /// Legacy ProductTile JSON (no new fields) must deserialize cleanly and
+    /// Legacy Tile JSON (no new fields) must deserialize cleanly and
     /// re-serialize without emitting the new keys — SC-1 / D-04 backward-compat.
     #[test]
-    fn product_tile_legacy_json_round_trips_unchanged() {
-        let json = r#"{"product_id":"p1","name":"Widget","price":"€10,00","field":"qty_p1"}"#;
-        let tile: ProductTileProps =
+    fn tile_legacy_json_round_trips_unchanged() {
+        let json = r#"{"item_id":"p1","name":"Widget","price":"€10,00","field":"qty_p1"}"#;
+        let tile: TileProps =
             serde_json::from_str(json).expect("legacy json must deserialize");
         assert!(
             tile.categories.is_empty(),
@@ -2443,11 +2437,11 @@ mod product_tile_contract_tests {
         );
     }
 
-    /// ProductTileProps with categories set must re-serialize with the categories key present.
+    /// TileProps with categories set must re-serialize with the categories key present.
     #[test]
-    fn product_tile_with_categories_serializes() {
-        let tile = ProductTileProps {
-            product_id: "p2".to_string(),
+    fn tile_with_categories_serializes() {
+        let tile = TileProps {
+            item_id: "p2".to_string(),
             name: "Espresso".to_string(),
             price: "\u{20ac}2,00".to_string(),
             field: "qty_p2".to_string(),

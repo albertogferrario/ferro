@@ -32,7 +32,7 @@ use crate::component::{
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
     KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
-    PaginationProps, ProductTileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
+    PaginationProps, TileProps, ProgressProps, RawHtmlProps, SegmentedControlProps,
     SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
     StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, ToastProps,
 };
@@ -250,9 +250,9 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         &[],
     ),
     (
-        "ProductTile",
-        "Touch-friendly POS tile with name, price, and +/- quantity controls.",
-        || to_value(schema_for!(ProductTileProps)).unwrap(),
+        "Tile",
+        "Touch-friendly tile with name, price, and +/- quantity controls.",
+        || to_value(schema_for!(TileProps)).unwrap(),
         &[],
     ),
     (
