@@ -20,8 +20,9 @@ use crate::component::{
 use crate::spec::{Element, Spec};
 
 use super::classes::{
-    DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST, TOAST_TONE_DESTRUCTIVE,
-    TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
+    DISABLED_BASE, FOCUS_RING, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST, POS_HIT_TARGET_MIN,
+    POS_TOUCH_ACTION, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS,
+    TOAST_TONE_WARNING,
 };
 use super::html_escape;
 
@@ -1368,20 +1369,28 @@ pub(crate) fn render_product_tile(
     let price = html_escape(&props.price);
     let field = html_escape(&props.field);
     let qty = props.default_quantity.unwrap_or(0);
+    let categories_attr = if props.categories.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " data-product-categories=\"{}\"",
+            html_escape(&props.categories.join(" "))
+        )
+    };
 
     format!(
-        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 touch-manipulation\">\
+        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 {POS_TOUCH_ACTION}\"{categories_attr}>\
          <div class=\"flex items-start justify-between gap-2\">\
          <span class=\"text-sm font-semibold text-text\">{name}</span>\
          <span class=\"text-sm font-semibold text-text-muted\">{price}</span>\
          </div>\
          <div class=\"flex items-center justify-between gap-2\">\
          <button type=\"button\" data-qty-dec=\"{field}\" \
-         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
+         class=\"{POS_HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Diminuisci quantit\u{00E0} {name}\">\u{2212}</button>\
          <span data-qty-display=\"{field}\" class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{qty}</span>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
-         class=\"min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
+         class=\"{POS_HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
          aria-label=\"Aumenta quantit\u{00E0} {name}\">+</button>\
          </div>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
@@ -2519,6 +2528,72 @@ mod tests {
         assert!(
             html.contains("static"),
             "static value must appear when value_path is absent; got: {html}"
+        );
+    }
+
+    // ── 23. ProductTile ─────────────────────────────────────────────────
+
+    fn make_product_tile(categories: Vec<&str>) -> (crate::spec::Element, Spec) {
+        use crate::spec::Element as SpecElement;
+        let mut el_builder = SpecElement::new("ProductTile")
+            .prop("product_id", "p1")
+            .prop("name", "Espresso")
+            .prop("price", "€2,50")
+            .prop("field", "qty_espresso");
+        if !categories.is_empty() {
+            el_builder = el_builder.prop("categories", categories);
+        }
+        let spec = spec_with_root(el_builder);
+        let el = spec.elements.get("root").unwrap().clone();
+        (el, spec)
+    }
+
+    #[test]
+    fn product_tile_legacy_render_is_byte_identical() {
+        use crate::render::classes::{POS_HIT_TARGET_MIN, POS_TOUCH_ACTION};
+        let (el, spec) = make_product_tile(vec![]);
+        let html = render_product_tile(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains(POS_TOUCH_ACTION),
+            "POS_TOUCH_ACTION missing; got: {html}"
+        );
+        assert_eq!(
+            html.matches(POS_HIT_TARGET_MIN).count(),
+            2,
+            "expected two hit-target classes; got: {html}"
+        );
+        assert!(
+            !html.contains("data-product-categories"),
+            "legacy tile must not emit data-product-categories; got: {html}"
+        );
+    }
+
+    #[test]
+    fn product_tile_emits_data_product_categories() {
+        let (el, spec) = make_product_tile(vec!["drinks", "food"]);
+        let html = render_product_tile(&el, &spec, &json!({}), 1);
+        assert_eq!(
+            html.matches("data-product-categories").count(),
+            1,
+            "expected exactly one data-product-categories attribute; got: {html}"
+        );
+        assert!(
+            html.contains("data-product-categories=\"drinks food\""),
+            "expected space-separated categories; got: {html}"
+        );
+    }
+
+    #[test]
+    fn product_tile_escapes_categories() {
+        let (el, spec) = make_product_tile(vec!["caf\u{00E9}", "\"special\""]);
+        let html = render_product_tile(&el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("\"special\""),
+            "raw double-quote must not appear in attribute value; got: {html}"
+        );
+        assert!(
+            html.contains("&quot;") || html.contains("&#34;"),
+            "double-quote must be HTML-escaped; got: {html}"
         );
     }
 }

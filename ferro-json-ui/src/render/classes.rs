@@ -77,6 +77,36 @@ mod tests {
         assert!(DISABLED_BASE.contains("disabled:pointer-events-none"));
     }
 
+    /// D-07: no render file (outside classes.rs) may inline the POS touch literals.
+    /// Auto-covers Phase 256 render files via read_dir — no manual re-enrollment.
+    #[test]
+    fn pos_render_functions_use_constants_not_literals() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let render_dir = std::path::Path::new(&manifest_dir).join("src/render");
+        let guarded = [
+            "touch-manipulation",
+            "min-h-[44px] min-w-[44px]",
+            "min-h-[56px] min-w-[56px]",
+        ];
+        for entry in std::fs::read_dir(&render_dir).expect("src/render readable") {
+            let path = entry.unwrap().path();
+            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+                continue;
+            }
+            let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+            if filename == "classes.rs" {
+                continue;
+            }
+            let source = std::fs::read_to_string(&path).unwrap();
+            for lit in &guarded {
+                assert!(
+                    !source.contains(lit),
+                    "{filename}: raw POS literal {lit:?} — import from render::classes instead"
+                );
+            }
+        }
+    }
+
     #[test]
     fn pos_constants_are_full_literals_and_token_compliant() {
         assert_eq!(POS_TOUCH_ACTION, "touch-manipulation");
