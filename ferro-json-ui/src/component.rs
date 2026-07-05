@@ -2250,3 +2250,96 @@ mod page_header_actions_tests {
         assert!(result.is_err(), "array of non-strings must be rejected");
     }
 }
+
+#[cfg(test)]
+mod product_tile_contract_tests {
+    //! Backward-compatibility and field-contract tests for ProductTileProps and GridProps.
+    //! RED-phase guard: these tests are written before the new fields exist and must
+    //! fail to compile until the GREEN-phase fields are added.
+
+    use super::*;
+
+    /// Legacy ProductTile JSON (no new fields) must deserialize cleanly and
+    /// re-serialize without emitting the new keys — SC-1 / D-04 backward-compat.
+    #[test]
+    fn product_tile_legacy_json_round_trips_unchanged() {
+        let json = r#"{"product_id":"p1","name":"Widget","price":"€10,00","field":"qty_p1"}"#;
+        let tile: ProductTileProps =
+            serde_json::from_str(json).expect("legacy json must deserialize");
+        assert!(
+            tile.categories.is_empty(),
+            "categories must default to empty vec"
+        );
+        assert!(tile.image_url.is_none(), "image_url must default to None");
+        assert!(tile.color.is_none(), "color must default to None");
+        assert!(tile.stock_badge.is_none(), "stock_badge must default to None");
+        let serialized = serde_json::to_string(&tile).expect("must serialize");
+        assert!(
+            !serialized.contains("categories"),
+            "re-serialized must not contain 'categories'; got: {serialized}"
+        );
+        assert!(
+            !serialized.contains("image_url"),
+            "re-serialized must not contain 'image_url'; got: {serialized}"
+        );
+        assert!(
+            !serialized.contains("color"),
+            "re-serialized must not contain 'color'; got: {serialized}"
+        );
+        assert!(
+            !serialized.contains("stock_badge"),
+            "re-serialized must not contain 'stock_badge'; got: {serialized}"
+        );
+    }
+
+    /// ProductTileProps with categories set must re-serialize with the categories key present.
+    #[test]
+    fn product_tile_with_categories_serializes() {
+        let tile = ProductTileProps {
+            product_id: "p2".to_string(),
+            name: "Espresso".to_string(),
+            price: "\u{20ac}2,00".to_string(),
+            field: "qty_p2".to_string(),
+            default_quantity: None,
+            categories: vec!["drinks".to_string(), "food".to_string()],
+            image_url: None,
+            color: None,
+            stock_badge: None,
+        };
+        let serialized = serde_json::to_string(&tile).expect("must serialize");
+        assert!(
+            serialized.contains(r#""categories":["drinks","food"]"#),
+            "serialized must contain categories array; got: {serialized}"
+        );
+    }
+
+    /// GridProps with empty row_weights omits the key; with weights set, round-trips.
+    #[test]
+    fn grid_props_row_weights_round_trips() {
+        // Empty row_weights must be skipped in serialization.
+        let default_grid: GridProps =
+            serde_json::from_value(serde_json::json!({})).expect("must deserialize default GridProps");
+        let json = serde_json::to_string(&default_grid).expect("must serialize");
+        assert!(
+            !json.contains("row_weights"),
+            "empty row_weights must be skipped in serialization; got: {json}"
+        );
+
+        // Non-empty row_weights must appear in serialization and round-trip.
+        let with_weights: GridProps =
+            serde_json::from_value(serde_json::json!({"row_weights": [2, 1]}))
+                .expect("must deserialize GridProps with row_weights");
+        let json2 = serde_json::to_string(&with_weights).expect("must serialize with weights");
+        assert!(
+            json2.contains(r#""row_weights":[2,1]"#),
+            "row_weights must appear in serialization; got: {json2}"
+        );
+        let parsed: GridProps =
+            serde_json::from_str(&json2).expect("must deserialize from serialized");
+        assert_eq!(
+            parsed.row_weights,
+            vec![2u8, 1u8],
+            "row_weights must round-trip unchanged"
+        );
+    }
+}
