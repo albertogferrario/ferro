@@ -723,19 +723,19 @@ function initSelectionPanel(panel) {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **D-03: Is `Tone` the right vocabulary for tile accent color?**
+1. **D-03: Is `Tone` the right vocabulary for tile accent color?** — RESOLVED: `TileProps.color` becomes `Option<Tone>` with an exhaustive match to full-literal accent classes (Plan 01 Tasks 1–2).
    - What we know: `TileProps.color: Option<String>` is declared as an arbitrary string, not a Tone. An exhaustive match would need to parse the string to a Tone value.
    - What's unclear: should the type be `Option<Tone>` (enforce the enum at the type boundary) or remain `Option<String>` with a runtime match?
    - Recommendation: Change `TileProps.color` to `Option<Tone>` in the same commit as writing `render_tile` (no breaking change since not published). If planning determines Tone is wrong, drop `color` rendering.
 
-2. **TileGrid: atoms.rs or containers.rs?**
+2. **TileGrid: atoms.rs or containers.rs?** — RESOLVED: `render_tile_grid` lives in `containers.rs` (recurses children); `render_filter_tabs`/`render_quantity_stepper`/`render_numpad` live in `atoms.rs` (Plans 02–03).
    - What we know: TileGrid iterates `el.children` via `render_element` → it IS a container.
    - What's unclear: the file organization comment says atoms = leaves (no recursive children).
    - Recommendation: Put `render_tile_grid` in `containers.rs`. Put `render_filter_tabs`, `render_quantity_stepper`, `render_numpad` in `atoms.rs` (they don't recurse children).
 
-3. **D-26: Which rule should Numpad be added to?**
+3. **D-26: Which rule should Numpad be added to?** — RESOLVED: Numpad is appended to `register-selection-present` in its registering commit (Plan 03 Task 2).
    - What we know: `RULE_COMPONENTS` has `register-fill-viewport`, `register-grid-fill`, `register-selection-present`. The Numpad is used inside a `SelectionPanel` or standalone for price entry.
    - Recommendation: `register-selection-present` maps to the overall register composition; Numpad could be added there alongside SelectionPanel. Or leave Numpad unmapped (no rule references it). Verify `component_rule_mapping_is_exhaustive` test semantics — it may only require that MAPPED component names be real builtins, not that every builtin is mapped.
 

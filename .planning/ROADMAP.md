@@ -3987,7 +3987,12 @@ Plans:
 
 **Interaction model (operator, 2026-07-05):** tiles are **tap-to-add-only** — one tap adds one unit; NO on-tile +/- steppers or qty display (the 255 `render_tile` stepper markup is redesigned here). ALL quantity editing happens in the SelectionPanel: lines appear/update live as tiles are tapped, each line hosts a QuantityStepper + remove, the running total is client-computed in integer cents (the un-deferred CartRuntime slice; `.planning/research/STACK.md` §Cart Runtime Module is the design anchor). The form-state contract is unchanged — hidden inputs accumulate, one confirm POST; the panel is a client-side VIEW of that state, never a second source of truth. The Phase 255 runtime already supports the wiring (`initQtyButton` field lookups are document-wide), so a tile-as-add-button and panel-line steppers drive the same hidden inputs.
 
-**Plans:** TBD
+**Plans:** 5 plans (linear waves 1-5; lockstep registration forces sequential BUILTIN edits)
+- [ ] 256-01-PLAN.md — Props substrate (price_cents, color→Tone, SelectionPanel currency) + Tile tap-to-add redesign + Grid row_weights
+- [ ] 256-02-PLAN.md — Register TileGrid + FilterTabs (shared tab-strip helper, integrated strip, search, SC-5)
+- [ ] 256-03-PLAN.md — Register QuantityStepper + Numpad + SelectionPanel render (count → 52)
+- [ ] 256-04-PLAN.md — SelectionPanel live reconciler runtime (selection.rs) + initQtyButton bounds + bundle wiring
+- [ ] 256-05-PLAN.md — ferro-base.css regen + tap-to-add migration note + schema-export verify + full gate
 **UI hint**: yes
 
 ---
