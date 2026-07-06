@@ -266,7 +266,9 @@ pub use ferro_projections::{
 };
 // Re-export visual renderer types from ferro-json-ui
 #[cfg(feature = "projections")]
-pub use ferro_json_ui::{JsonUiRenderer, RenderMode, VisualContext};
+pub use ferro_json_ui::{
+    default_template, register_template, JsonUiRenderer, RenderMode, VisualContext,
+};
 // Re-export text renderer from ferro-text
 #[cfg(feature = "projections")]
 pub use ferro_text::TextRenderer;

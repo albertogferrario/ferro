@@ -22,7 +22,6 @@ routes! {
     get!("/pagamenti", controllers::pagamenti::index).name("pagamenti.index"),
     get!("/cassa", controllers::cassa::index).name("cassa.index"),
     post!("/cassa/conferma", controllers::cassa::conferma).name("cassa.conferma"),
-    post!("/cassa/rimuovi/:id", controllers::cassa::rimuovi).name("cassa.rimuovi"),
     get!("/ordini", controllers::ordini::index).name("ordini.index"),
     post!("/ordini/:id/elimina", controllers::ordini::elimina).name("ordini.elimina"),
     get!("/prodotti", controllers::prodotti::index).name("prodotti.index"),
