@@ -129,6 +129,44 @@ The existing flat `SpecBuilder::element(id, builder)` API remains available for 
 
 Reach for `SpecBuilder` only after confirming the case cannot be expressed with `$each` and `$if`. Most controller code that hand-builds heterogeneous shapes is doing one of two things that the directives already cover: iterating a list (use `$each`) or branching on a flag (use `$if`). Truly heterogeneous runtime construction — a graph whose nesting structure depends on runtime values, not just per-element data — is the only case where Rust construction is the right tool.
 
+### Builder API additions
+
+Two methods extend the builder API for register compositions:
+
+**`SpecBuilder::fill_viewport(bool) -> Self`**
+
+Sets `fill_viewport` on the built `Spec`. Default is `false`. Required when the spec contains `TileGrid`, `SelectionPanel`, or `Numpad` — lint rule `register-fill-viewport` fires otherwise. See [Layouts → fill\_viewport](layouts.md#fill_viewport).
+
+**`ElementBuilder::each(path: impl Into<String>, as_: impl Into<String>) -> Self`**
+
+Consuming setter for the `$each` directive field. Equivalent to hand-constructing `{"path": ..., "as": ...}` in JSON; used in register compositions to iterate the items array for the `Tile` template. See the [`$each` directive](expressions.md#each) for the full directive reference.
+
+```rust
+use ferro::json_ui::{Element, Spec, SpecBuilder};
+
+let spec: Spec = SpecBuilder::new()
+    .title("Register")
+    .layout("dashboard")
+    .fill_viewport(true)
+    .element_nested(
+        "root",
+        Element::new("Grid")
+            .prop("fill", true)
+            .child_nested(
+                Element::new("TileGrid")
+                    .prop("data_path", "/data/products")
+                    .prop("form_id", "sale_form")
+                    .child_nested(
+                        Element::new("Tile")
+                            .each("/data/products", "product")
+                            .prop("item_id", serde_json::json!({ "$data": "/product/id" }))
+                            .prop("name",     serde_json::json!({ "$data": "/product/name" })),
+                    ),
+            ),
+    )
+    .build()?;
+```
+
 ## Namespace: element-level vs prop-level directives
 
 Directives split into two namespaces, distinguished by where they appear in the JSON.
