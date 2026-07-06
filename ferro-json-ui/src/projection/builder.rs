@@ -1565,4 +1565,174 @@ mod tests {
             "ImageUrl column format must be Image"
         );
     }
+
+    // -- Register projection integration tests (SC-1, D-05, D-08, D-14) --
+
+    /// Shared fixture: a minimal register ServiceDef with three meanings and one action.
+    /// Uses English field names — ferro-* crates are project-agnostic (CLAUDE.md).
+    fn register_service() -> ServiceDef {
+        use ferro_projections::{Intent, IntentHint};
+        ServiceDef::new("shop")
+            .display_name("Shop")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("price", DataType::String, FieldMeaning::Money)
+            .action(ActionDef::new("confirm").display_name("Confirm"))
+            .intent_hint(IntentHint::Primary(Intent::Collect))
+    }
+
+    #[test]
+    fn register_projection_is_catalog_valid() {
+        // SC-1: from_service_def_with_catalog panics on catalog-invalid specs in
+        // debug builds; Ok return proves catalog validity.
+        let service = register_service();
+        let intents = derive_intents(&service);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &clean_catalog())
+            .expect("register spec must be catalog-valid");
+
+        // fill_viewport + dashboard layout set by the Register arm.
+        assert!(spec.fill_viewport, "spec.fill_viewport must be true");
+        assert_eq!(
+            spec.layout.as_deref(),
+            Some("dashboard"),
+            "spec.layout must be dashboard"
+        );
+
+        // Root element is a Grid with fill=true.
+        let root = spec.elements.get(&spec.root).expect("root element exists");
+        assert_eq!(root.type_name, "Grid", "root must be a Grid");
+        assert_eq!(
+            root.props.get("fill").and_then(|v| v.as_bool()),
+            Some(true),
+            "root Grid must have fill:true"
+        );
+
+        // Exactly one element has an $each directive and it is a Tile.
+        let each_elements: Vec<_> = spec
+            .elements
+            .values()
+            .filter(|el| el.each.is_some())
+            .collect();
+        assert_eq!(each_elements.len(), 1, "exactly one $each element expected");
+        assert_eq!(
+            each_elements[0].type_name, "Tile",
+            "the $each element must be a Tile"
+        );
+
+        // TileGrid, SelectionPanel, and Form must all be present.
+        let type_names: Vec<&str> = spec
+            .elements
+            .values()
+            .map(|e| e.type_name.as_str())
+            .collect();
+        assert!(
+            type_names.contains(&"TileGrid"),
+            "spec must contain a TileGrid"
+        );
+        assert!(
+            type_names.contains(&"SelectionPanel"),
+            "spec must contain a SelectionPanel"
+        );
+        assert!(
+            type_names.contains(&"Form"),
+            "spec must contain a Form element"
+        );
+    }
+
+    #[test]
+    fn register_projection_is_lint_clean() {
+        // D-05: the Register spec must yield zero findings for all four register
+        // lint rules — this is the acceptance harness for the design rules.
+        let service = register_service();
+        let intents = derive_intents(&service);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &clean_catalog())
+            .expect("register spec must build");
+
+        let findings = crate::lint(&spec);
+        let register_rules = [
+            "register-fill-viewport",
+            "register-grid-fill",
+            "register-selection-present",
+            "fill-viewport-layout-unknown",
+        ];
+        let hits: Vec<_> = findings
+            .iter()
+            .filter(|f| register_rules.contains(&f.rule))
+            .collect();
+        assert!(
+            hits.is_empty(),
+            "register spec must be lint-clean for the four register rules, got: {hits:#?}"
+        );
+    }
+
+    #[test]
+    fn register_projection_no_actions_errors() {
+        // D-08: a ServiceDef with no actions must produce RegisterMissingAction,
+        // not silent broken output.
+        use ferro_projections::{Intent, IntentHint};
+        let service_no_actions = ServiceDef::new("shop")
+            .display_name("Shop")
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .field("name", DataType::String, FieldMeaning::EntityName)
+            .field("price", DataType::String, FieldMeaning::Money)
+            .intent_hint(IntentHint::Primary(Intent::Collect));
+        let intents = derive_intents(&service_no_actions);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let err = Spec::from_service_def_with_catalog(
+            &service_no_actions,
+            &intents,
+            &ctx,
+            &clean_catalog(),
+        )
+        .expect_err("no-actions register service must error");
+        assert!(
+            matches!(err, ProjectionError::RegisterMissingAction { .. }),
+            "error must be RegisterMissingAction, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn register_projection_populated_data_validates() {
+        // D-14: the emitted spec with populated data must pass catalog.validate —
+        // covering the validate_directives path-resolves-to-array branch.
+        let service = register_service();
+        let intents = derive_intents(&service);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let mut spec =
+            Spec::from_service_def_with_catalog(&service, &intents, &ctx, &clean_catalog())
+                .expect("register spec must build");
+
+        // Inject one product row matching the per-row data contract (D-10):
+        // entity fields + fixed keys price_cents (integer) and field (string).
+        spec.data = serde_json::json!({
+            "shop": [
+                {
+                    "id": "1",
+                    "name": "Widget",
+                    "price": "€ 1.20",
+                    "price_cents": 120,
+                    "field": "qty_1"
+                }
+            ]
+        });
+        let cat = clean_catalog();
+        assert!(
+            cat.validate(&spec).is_ok(),
+            "register spec with populated data must pass catalog validation"
+        );
+    }
 }
