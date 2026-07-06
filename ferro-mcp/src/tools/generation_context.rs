@@ -578,16 +578,30 @@ mod tests {
             );
         }
 
-        // 2. Every derived lint rule id exists in the rule registry.
+        // 2. Every id the guidance hardcodes exists in the rule registry, and is
+        // derived into `lint_rules`. The expected list is duplicated here on
+        // purpose — asserting against the derived output alone would be vacuous
+        // (it is filtered from the registry by construction).
         let rule_ids: HashSet<&str> = ferro_json_ui::design::rules()
             .iter()
             .map(|r| r.id)
             .collect();
-        for r in &ctx.register_composition.lint_rules {
+        let derived: HashSet<&str> = ctx
+            .register_composition
+            .lint_rules
+            .iter()
+            .map(|r| r.id)
+            .collect();
+        for id in [
+            "register-fill-viewport",
+            "register-grid-fill",
+            "register-selection-present",
+            "fill-viewport-layout-unknown",
+        ] {
+            assert!(rule_ids.contains(id), "registry lost rule `{id}`");
             assert!(
-                rule_ids.contains(r.id),
-                "register guidance references unknown rule `{}`",
-                r.id
+                derived.contains(id),
+                "guidance failed to derive rule `{id}`"
             );
         }
 
