@@ -20,8 +20,8 @@ use crate::spec::{Element, Spec};
 
 use super::classes::{
     DISABLED_BASE, FOCUS_RING, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST,
-    TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
-    TOUCH_ACTION,
+    PRESS_ACTIVE, TAP_HIGHLIGHT, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS,
+    TOAST_TONE_WARNING, TOUCH_ACTION,
 };
 use super::html_escape;
 
@@ -1363,6 +1363,8 @@ pub(crate) fn render_action_card(
 // ── 23. Tile ──────────────────────────────────────────────────────
 
 pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+    use crate::component::Tone;
+
     let props: TileProps = match decode_props(&el.props) {
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Tile", e),
@@ -1371,14 +1373,14 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
     let price = html_escape(&props.price);
     let field = html_escape(&props.field);
     let qty = props.default_quantity.unwrap_or(0);
+
+    // Token-list contract: the attribute value is space-separated, so a
+    // space inside a category name would split it into two tokens.
+    // Normalize spaces to hyphens; the Phase 255 filter runtime applies
+    // the same normalization to category labels before matching.
     let categories_attr = if props.categories.is_empty() {
         String::new()
     } else {
-        // Token-list contract: the attribute value is space-separated, so a
-        // space inside a category name would split it into two tokens.
-        // Normalize spaces to hyphens; the Phase 255 filter runtime applies
-        // the same normalization to category labels before matching (see
-        // `TileProps::categories`).
         format!(
             " data-filter-tokens=\"{}\"",
             html_escape(
@@ -1392,21 +1394,63 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
         )
     };
 
+    // Emit data-unit-price only when price_cents is set (D-04).
+    let unit_price_attr = match props.price_cents {
+        Some(cents) => format!(" data-unit-price=\"{cents}\""),
+        None => String::new(),
+    };
+
+    // Exhaustive match on Tone → full-literal border class (D-03, SC-3).
+    // NEVER format!("border-{color}") — enum enforcement makes unknown values impossible.
+    let border_class = match props.color {
+        None | Some(Tone::Neutral) => "border border-border",
+        Some(Tone::Success) => "border border-success",
+        Some(Tone::Warning) => "border border-warning",
+        Some(Tone::Destructive) => "border border-destructive",
+    };
+
+    // Optional image area (D-03): lazy-loaded when image_url is set.
+    let image_html = match &props.image_url {
+        Some(url) => {
+            let escaped_url = html_escape(url);
+            format!(
+                "<img src=\"{escaped_url}\" alt=\"{name}\" loading=\"lazy\" \
+                 class=\"w-full aspect-square object-cover rounded-md\">"
+            )
+        }
+        None => String::new(),
+    };
+
+    // Optional stock badge chip (D-03).
+    let badge_html = match &props.stock_badge {
+        Some(badge) => {
+            let escaped_badge = html_escape(badge);
+            format!(
+                "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 \
+                 text-xs font-medium bg-secondary/10 text-secondary-foreground\">\
+                 {escaped_badge}</span>"
+            )
+        }
+        None => String::new(),
+    };
+
+    // Tile structure (D-01/D-02):
+    // - Outer <div> wrapper carries filter/unit-price data attrs + tone border.
+    // - Inner <button> is the entire tap surface (data-qty-inc).
+    // - Hidden input is a SIBLING of the button (inputs inside <button> are
+    //   invalid HTML — D-01 note).
     format!(
-        "<div class=\"rounded-lg border border-border bg-card p-4 flex flex-col gap-3 {TOUCH_ACTION}\" data-filter-text=\"{name}\"{categories_attr}>\
-         <div class=\"flex items-start justify-between gap-2\">\
-         <span class=\"text-sm font-semibold text-text\">{name}</span>\
-         <span class=\"text-sm font-semibold text-text-muted\">{price}</span>\
-         </div>\
-         <div class=\"flex items-center justify-between gap-2\">\
-         <button type=\"button\" data-qty-dec=\"{field}\" \
-         class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
-         aria-label=\"Diminuisci quantit\u{00E0} {name}\">\u{2212}</button>\
-         <span data-qty-display=\"{field}\" class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{qty}</span>\
+        "<div class=\"{border_class} bg-card rounded-lg {TOUCH_ACTION}\" \
+         data-filter-text=\"{name}\"{categories_attr}{unit_price_attr}>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
-         class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md border border-border bg-surface text-text text-lg font-semibold hover:bg-border {INTERACTIVE_BASE}\" \
-         aria-label=\"Aumenta quantit\u{00E0} {name}\">+</button>\
-         </div>\
+         class=\"{HIT_TARGET_MIN} {TOUCH_ACTION} {PRESS_ACTIVE} {TAP_HIGHLIGHT} {INTERACTIVE_BASE} \
+         w-full flex flex-col gap-2 p-3 rounded-lg text-left\" \
+         aria-label=\"Add {name}\">\
+         {image_html}\
+         <span class=\"text-sm font-semibold text-text\">{name}</span>\
+         <span class=\"text-sm text-text-muted\">{price}</span>\
+         {badge_html}\
+         </button>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
          </div>"
     )
@@ -2588,29 +2632,95 @@ mod tests {
         (el, spec)
     }
 
+    /// Tap-to-add redesign (D-01/D-02): tile root is a wrapper <div>; inner
+    /// <button> carries data-qty-inc; hidden input is a sibling of the button.
+    /// No on-tile qty display, no dec button, no Italian aria-labels.
     #[test]
-    fn tile_legacy_render_is_byte_identical() {
-        use crate::render::classes::{HIT_TARGET_MIN, TOUCH_ACTION};
+    fn tile_tap_to_add_emits_qty_inc_button() {
+        use crate::spec::Element as SpecElement;
+        let spec = spec_with_root(
+            SpecElement::new("Tile")
+                .prop("item_id", "p1")
+                .prop("name", "Coffee")
+                .prop("price", "€2,00")
+                .prop("field", "p1"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile(el, &spec, &json!({}), 1);
+
+        assert!(
+            html.contains("data-qty-inc=\"p1\""),
+            "must emit data-qty-inc; got: {html}"
+        );
+        assert!(
+            html.contains("data-qty-input=\"p1\""),
+            "must emit hidden input; got: {html}"
+        );
+        assert!(
+            !html.contains("data-qty-display"),
+            "tap-to-add: no on-tile qty display; got: {html}"
+        );
+        assert!(
+            !html.contains("data-qty-dec"),
+            "tap-to-add: no dec button on tile; got: {html}"
+        );
+        assert!(
+            html.contains("Add Coffee"),
+            "neutral English aria-label must say 'Add <name>'; got: {html}"
+        );
+        // data-filter-text always emitted (D-09 / universal tile marker).
+        assert!(
+            html.contains("data-filter-text=\"Coffee\""),
+            "data-filter-text must always be emitted; got: {html}"
+        );
+        // Input must NOT be a descendant of <button> (invalid HTML).
+        let btn_end = html.find("</button>").expect("must have </button>");
+        let input_pos = html
+            .find("data-qty-input")
+            .expect("must have data-qty-input");
+        assert!(
+            input_pos > btn_end,
+            "hidden input must be a sibling of <button>, not inside it; got: {html}"
+        );
+    }
+
+    /// Text-only tile (no image_url) must not emit an <img> element.
+    #[test]
+    fn tile_text_only_when_no_image() {
         let (el, spec) = make_tile(vec![]);
         let html = render_tile(&el, &spec, &json!({}), 1);
         assert!(
-            html.contains(TOUCH_ACTION),
-            "TOUCH_ACTION missing; got: {html}"
+            !html.contains("<img"),
+            "no image_url → no <img> in output; got: {html}"
         );
-        assert_eq!(
-            html.matches(HIT_TARGET_MIN).count(),
-            2,
-            "expected two hit-target classes; got: {html}"
+    }
+
+    /// Tile with image_url emits a lazy-loaded <img>; stock_badge renders a chip.
+    #[test]
+    fn tile_renders_image_and_badge() {
+        use crate::spec::Element as SpecElement;
+        let spec = spec_with_root(
+            SpecElement::new("Tile")
+                .prop("item_id", "p2")
+                .prop("name", "Latte")
+                .prop("price", "€3,50")
+                .prop("field", "qty_latte")
+                .prop("image_url", "https://example.com/latte.jpg")
+                .prop("stock_badge", "Low"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("<img"),
+            "image_url set → must emit <img>; got: {html}"
         );
         assert!(
-            !html.contains("data-filter-tokens"),
-            "legacy tile must not emit data-filter-tokens; got: {html}"
+            html.contains("loading=\"lazy\""),
+            "image must be lazy-loaded; got: {html}"
         );
-        // D-08: data-filter-text is always emitted (it is the universal tile marker
-        // and full-text search source for setupFilters).
         assert!(
-            html.contains("data-filter-text=\"Espresso\""),
-            "data-filter-text must always be emitted; got: {html}"
+            html.contains("Low"),
+            "stock_badge must render badge chip; got: {html}"
         );
     }
 

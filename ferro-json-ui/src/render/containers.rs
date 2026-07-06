@@ -867,7 +867,21 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         // panes (wrapped above) scroll internally.
         col_classes.push_str(" h-full min-h-0 auto-rows-fr");
     }
-    format!("<div class=\"grid w-full {col_classes} {gap}\">{body}</div>")
+    // D-24: fractional row sizing — only in fill mode, only when weights are set.
+    // Ignored in scrollable mode (handled above) and when row_weights is empty.
+    // Emit weights verbatim as {n}fr — validation/clamping is a lint concern, not render.
+    let row_style = if fill && !props.row_weights.is_empty() {
+        let rows = props
+            .row_weights
+            .iter()
+            .map(|w| format!("{w}fr"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        format!(" style=\"grid-template-rows: {rows}\"")
+    } else {
+        String::new()
+    };
+    format!("<div class=\"grid w-full {col_classes} {gap}\"{row_style}>{body}</div>")
 }
 
 // SVG chevron used to indicate the collapsed/expanded state.
@@ -2871,6 +2885,59 @@ mod tests {
         assert!(
             !html.contains(">Hidden<"),
             "Hidden item should be absent (fail-closed): {html}"
+        );
+    }
+
+    // ── Grid row_weights (D-24, POS-09) ──────────────────────────────────
+
+    /// fill:true + row_weights [2,1] → inline style="grid-template-rows: 2fr 1fr".
+    #[test]
+    fn grid_row_weights_emits_fractional_rows() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Grid")
+                .prop("columns", 1)
+                .prop("fill", true)
+                .prop("row_weights", vec![2u8, 1u8]),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("style=\"grid-template-rows: 2fr 1fr\""),
+            "fill+row_weights must emit fractional grid-template-rows; got: {html}"
+        );
+    }
+
+    /// fill:true + empty row_weights → NO style attribute (byte-identical to today).
+    #[test]
+    fn grid_without_row_weights_emits_no_style() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Grid").prop("columns", 2).prop("fill", true),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("style="),
+            "empty row_weights must emit no style attribute; got: {html}"
+        );
+    }
+
+    /// fill:false (scrollable) + row_weights → no style attribute (ignored in scrollable mode).
+    #[test]
+    fn grid_scrollable_ignores_row_weights() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Grid")
+                .prop("columns", 1)
+                .prop("scrollable", true)
+                .prop("row_weights", vec![3u8, 1u8]),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_grid(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("style="),
+            "row_weights ignored in scrollable mode — no style attr; got: {html}"
         );
     }
 }

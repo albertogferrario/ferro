@@ -1379,12 +1379,23 @@ pub struct TileProps {
     /// not rendered in Phase 254 (D-03).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_url: Option<String>,
-    /// Optional accent color token for the tile. Phase 256 visual (D-03).
+    /// Optional accent tone for the tile border (Phase 256 visual, D-03).
+    /// Maps through an exhaustive match to a full-literal border class in
+    /// `render_tile`; `None` or `Neutral` → the default `border-border`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    pub color: Option<Tone>,
     /// Optional stock badge text (e.g. "Low", "Out"). Phase 256 visual (D-03).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stock_badge: Option<String>,
+    /// Machine-readable unit price in integer cents. Rendered as
+    /// `data-unit-price="{cents}"` on the tile root wrapper. The client-computed
+    /// running total (SelectionPanel, Phase 256) reads this attribute because
+    /// `price` is a display string that cannot be parsed. Both fields are
+    /// expected to agree — the Phase 257 projector emits both from one source.
+    /// The runtime treats a missing attribute as 0 cents. Integer cents only —
+    /// never float (see PITFALLS.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price_cents: Option<u64>,
 }
 
 /// Props for the TileGrid builtin — a touch-first, responsive tile grid
@@ -1417,6 +1428,12 @@ pub struct SelectionPanelProps {
     /// Placeholder text shown by the EmptyState when the panel has no line items.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_message: Option<String>,
+    /// Optional currency symbol (e.g. "€") emitted as `data-selection-currency`
+    /// on the running-total element. Neutral default is no symbol — the runtime
+    /// formats the integer-cents total with two decimals and a "." separator and
+    /// prepends this symbol only when present. No locale tables; display only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
 }
 
 /// Props for the FilterTabs builtin (standalone builtin, operator-locked).
@@ -1429,7 +1446,9 @@ pub struct FilterTabsProps {
     /// hyphens, mirroring `TileProps::categories` rendering.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub items: Vec<String>,
-    /// Label for the "show all" tab (Phase 256 render default is "Tutte").
+    /// Label for the "show all" tab. Phase 256 render default is "All" (neutral
+    /// English — this crate is project-agnostic). Pass `all_label: "Tutte"` or
+    /// any locale string from the consumer.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub all_label: Option<String>,
 }
@@ -2455,6 +2474,7 @@ mod tile_contract_tests {
             image_url: None,
             color: None,
             stock_badge: None,
+            price_cents: None,
         };
         let serialized = serde_json::to_string(&tile).expect("must serialize");
         assert!(
@@ -2490,6 +2510,115 @@ mod tile_contract_tests {
             parsed.row_weights,
             vec![2u8, 1u8],
             "row_weights must round-trip unchanged"
+        );
+    }
+
+    /// TileProps.price_cents round-trips; absent price_cents is skipped.
+    #[test]
+    fn tile_props_price_cents_round_trips() {
+        // Absent price_cents must not appear in serialization.
+        let no_price: TileProps = serde_json::from_str(
+            r#"{"item_id":"p1","name":"Coffee","price":"€2,00","field":"qty_p1"}"#,
+        )
+        .expect("must deserialize");
+        assert!(
+            no_price.price_cents.is_none(),
+            "price_cents must default to None"
+        );
+        let json = serde_json::to_string(&no_price).expect("must serialize");
+        assert!(
+            !json.contains("price_cents"),
+            "absent price_cents must be skipped; got: {json}"
+        );
+
+        // price_cents: Some(250) must round-trip.
+        let with_price: TileProps =
+            serde_json::from_str(r#"{"item_id":"p1","name":"Coffee","price":"€2,50","field":"qty_p1","price_cents":250}"#)
+                .expect("must deserialize with price_cents");
+        assert_eq!(
+            with_price.price_cents,
+            Some(250u64),
+            "price_cents must round-trip"
+        );
+        let json2 = serde_json::to_string(&with_price).expect("must serialize");
+        assert!(
+            json2.contains(r#""price_cents":250"#),
+            "price_cents must appear in serialization; got: {json2}"
+        );
+        let parsed: TileProps =
+            serde_json::from_str(&json2).expect("must deserialize from serialized");
+        assert_eq!(
+            parsed.price_cents,
+            Some(250u64),
+            "price_cents must round-trip unchanged"
+        );
+    }
+
+    /// TileProps.color as Option<Tone> round-trips; arbitrary string fails.
+    #[test]
+    fn tile_props_color_tone_round_trips_and_rejects_unknown() {
+        // color: Some(Tone::Success) must round-trip.
+        let with_color: TileProps = serde_json::from_str(
+            r#"{"item_id":"p1","name":"Tea","price":"€1,00","field":"qty_p1","color":"success"}"#,
+        )
+        .expect("must deserialize color:success");
+        assert_eq!(
+            with_color.color,
+            Some(Tone::Success),
+            "color:success must deserialize to Tone::Success"
+        );
+        let json = serde_json::to_string(&with_color).expect("must serialize");
+        assert!(
+            json.contains(r#""color":"success""#),
+            "Tone::Success must serialize as \"success\"; got: {json}"
+        );
+        let parsed: TileProps =
+            serde_json::from_str(&json).expect("must deserialize from serialized");
+        assert_eq!(
+            parsed.color,
+            Some(Tone::Success),
+            "color must round-trip unchanged"
+        );
+
+        // Arbitrary string "blue" must fail to deserialize (enum-enforced).
+        let result: Result<TileProps, _> = serde_json::from_str(
+            r#"{"item_id":"p1","name":"Tea","price":"€1,00","field":"qty_p1","color":"blue"}"#,
+        );
+        assert!(
+            result.is_err(),
+            "color:\"blue\" must fail to deserialize — Tone enum enforced"
+        );
+    }
+
+    /// SelectionPanelProps.currency round-trips; absent currency is skipped.
+    #[test]
+    fn selection_panel_props_currency_round_trips() {
+        // Absent currency must not appear in serialization.
+        let no_currency: SelectionPanelProps =
+            serde_json::from_str(r#"{"form_id":"order-form"}"#).expect("must deserialize");
+        assert!(
+            no_currency.currency.is_none(),
+            "currency must default to None"
+        );
+        let json = serde_json::to_string(&no_currency).expect("must serialize");
+        assert!(
+            !json.contains("currency"),
+            "absent currency must be skipped; got: {json}"
+        );
+
+        // currency: Some("€") must round-trip.
+        let with_currency: SelectionPanelProps =
+            serde_json::from_str(r#"{"form_id":"order-form","currency":"€"}"#)
+                .expect("must deserialize with currency");
+        assert_eq!(
+            with_currency.currency,
+            Some("€".to_string()),
+            "currency must round-trip"
+        );
+        let json2 = serde_json::to_string(&with_currency).expect("must serialize");
+        assert!(
+            json2.contains(r#""currency":"€""#),
+            "currency must appear in serialization; got: {json2}"
         );
     }
 }

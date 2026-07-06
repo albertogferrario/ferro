@@ -21,12 +21,14 @@ pub(super) const SOURCE: &str = r#"
             if (field) field = field.replace(/["\\\]]/g, '');
             var display = document.querySelector('[data-qty-display="' + field + '"]');
             var input = document.querySelector('[data-qty-input="' + field + '"]');
-            if (!display || !input) return;
+            // display may be null for tap-to-add tiles (D-02: no on-tile qty display).
+            // Only input is required; display is updated only when present.
+            if (!input) return;
             var current = parseInt(input.value, 10) || 0;
             var next = current + delta;
             if (next < 0) next = 0;
             input.value = next;
-            display.textContent = next;
+            if (display) display.textContent = next;
             // Notify form guards of the change
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
