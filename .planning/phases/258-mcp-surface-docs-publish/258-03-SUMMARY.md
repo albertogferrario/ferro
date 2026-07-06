@@ -161,3 +161,14 @@ None - plan executed exactly as written. The stash of `.planning/config.json` wa
 ---
 *Phase: 258-mcp-surface-docs-publish*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+- SUMMARY.md: FOUND at `.planning/phases/258-mcp-surface-docs-publish/258-03-SUMMARY.md`
+- Task commit 34279ca7: FOUND in git log
+- crates.io ferro-rs: 0.2.89 (API verified)
+- crates.io ferro-payments: 0.1.6 (API verified)
+- git tag v0.2.89: FOUND at `refs/tags/v0.2.89`
+- HEAD=master: CONFIRMED
+- origin/master == HEAD (34279ca7): CONFIRMED
+- Gestiscilo handoff brief: embedded in SUMMARY.md
