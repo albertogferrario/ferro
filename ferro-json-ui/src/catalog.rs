@@ -501,24 +501,28 @@ fn hoist_defs(schema: &mut Value, shared_defs: &mut serde_json::Map<String, Valu
 /// Hand-assemble the full spec JSON Schema document from per-component schemas.
 ///
 /// Root: `$schema`, `root`, `elements` (HashMap<String, Element>), optional `title` /
-/// `layout` / `data`. `$defs/Element` uses a `oneOf` at the element level —
-/// each variant pins `"type": { "const": "X" }` on the element object itself and
-/// validates `props` against that component's Props schema (CONTEXT D-13).
+/// `layout` / `fill_viewport` / `data` / `design`. `$defs/Element` uses a `oneOf`
+/// at the element level — each variant pins `"type": { "const": "X" }` on the
+/// element object itself and validates `props` against that component's Props
+/// schema (CONTEXT D-13).
 ///
 /// Variants are sorted by name to guarantee deterministic output (CONTEXT D-18).
 ///
 /// `$defs` from every per-component schema are hoisted to the root so that `$ref`
 /// pointers (e.g., `#/$defs/ConfirmDialog`) resolve against the assembled document.
 fn assemble_full_schema(per_component: &HashMap<String, Value>) -> Result<Value, CatalogError> {
-    // Start with Action and Visibility defs — their nested types ($defs) are hoisted too.
+    // Start with Action, Visibility and DesignMeta defs — their nested types
+    // ($defs) are hoisted too.
     let mut action_schema = sanitize_schema(to_value(schema_for!(crate::action::Action))?);
     let mut visibility_schema =
         sanitize_schema(to_value(schema_for!(crate::visibility::Visibility))?);
+    let mut design_schema = sanitize_schema(to_value(schema_for!(crate::spec::DesignMeta))?);
 
-    // Collect shared $defs — starts with action + visibility nested types.
+    // Collect shared $defs — starts with action + visibility + design nested types.
     let mut shared_defs: serde_json::Map<String, Value> = serde_json::Map::new();
     hoist_defs(&mut action_schema, &mut shared_defs);
     hoist_defs(&mut visibility_schema, &mut shared_defs);
+    hoist_defs(&mut design_schema, &mut shared_defs);
 
     // Deterministic oneOf at the Element level — sorted by name (CONTEXT D-18).
     // Each variant describes a complete element object: pins `type` via const on the
@@ -562,6 +566,9 @@ fn assemble_full_schema(per_component: &HashMap<String, Value>) -> Result<Value,
     shared_defs
         .entry("Visibility".to_string())
         .or_insert(visibility_schema);
+    shared_defs
+        .entry("DesignMeta".to_string())
+        .or_insert(design_schema);
     // Element is the discriminated union itself — oneOf over all component variants.
     shared_defs.insert(
         "Element".to_string(),
@@ -582,7 +589,9 @@ fn assemble_full_schema(per_component: &HashMap<String, Value>) -> Result<Value,
             },
             "title":    { "type": ["string", "null"] },
             "layout":   { "type": ["string", "null"] },
-            "data":     true
+            "fill_viewport": { "type": "boolean", "default": false },
+            "data":     true,
+            "design":   { "$ref": "#/$defs/DesignMeta" }
         },
         "$defs": shared_defs
     }))
@@ -2493,6 +2502,36 @@ mod tests {
         assert!(
             matches!(err, SpecError::EachPathNotArray { .. }),
             "expected EachPathNotArray, got: {err:?}"
+        );
+    }
+
+    /// The assembled full Spec schema must expose every `Spec` root field —
+    /// agents discover the spec shape from this document (MCP `json_ui_schema`),
+    /// so an omitted field is undiscoverable and schema-strict consumers would
+    /// reject valid specs.
+    #[test]
+    fn full_schema_root_exposes_all_spec_fields() {
+        let cat = Catalog::build_builtins_only().expect("build");
+        let schema = cat.json_schema();
+        let props = schema
+            .get("properties")
+            .and_then(|v| v.as_object())
+            .expect("root properties object");
+        for key in [
+            "$schema",
+            "root",
+            "elements",
+            "title",
+            "layout",
+            "fill_viewport",
+            "data",
+            "design",
+        ] {
+            assert!(props.contains_key(key), "root schema must expose '{key}'");
+        }
+        assert!(
+            schema.pointer("/$defs/DesignMeta").is_some(),
+            "DesignMeta def must be hoisted into $defs"
         );
     }
 }
