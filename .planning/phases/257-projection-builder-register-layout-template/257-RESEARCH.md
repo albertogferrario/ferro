@@ -643,22 +643,22 @@ No new threat vectors introduced. The projection pipeline is a server-side spec 
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Confirm-action selection rule (D-08)**
    - What we know: `service.actions` is a `Vec<ServiceAction>`; `emit_datatable_root` uses them for row actions
    - What's unclear: Which action becomes the Form submit? First? Named "conferma"? First with method=POST?
-   - Recommendation: Use first action with method=Post; error (not silent omit) if no Post action found; document convention in rustdoc
+   - RESOLVED: First `service.actions` entry becomes the Form submit; error via `ProjectionError::RegisterMissingAction` (not silent omit) if the service has no actions; convention documented in rustdoc (Plan 257-02 Task 2 Step A).
 
 2. **Per-row `field` key convention (D-10)**
    - What we know: Current `cassa.rs` synthesises `field: "qty_{id}"` client-side; `TileProps.field` is a required String
    - What's unclear: Should the projector emit a $data binding for `field` that expects the row to contain a `field` key, or synthesise the `qty_{id}` pattern itself?
-   - Recommendation: Require the row to carry a `field` key (simpler, consistent with data-contract pattern); document the key name in rustdoc and in the cassa controller comment
+   - RESOLVED: The row carries a `field` key (data-contract pattern, no new renderer surface); key name documented in `emit_register_root` rustdoc and in the cassa controller (Plan 257-02 Task 2 Step B.3, Plan 257-03 Task 1).
 
 3. **Whether `derive_intents` scores Collect primary for the sample ServiceDef (D-11)**
    - What we know: `IntentHint::Primary(Collect)` is available as a fallback
    - What's unclear: Whether the ServiceDef fields (items collection + qty fields + confirm action) naturally score Collect
-   - Recommendation: Include `IntentHint::Primary(Intent::Collect)` in the sample ServiceDef unconditionally; remove only after verifying derivation scores Collect highest without it
+   - RESOLVED: `IntentHint::Primary(Intent::Collect)` is included unconditionally in both the test fixture and the sample ServiceDef (Plans 257-02 + 257-03).
 
 ---
 
