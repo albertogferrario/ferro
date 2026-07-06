@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.6
 milestone_name: POS Component Suite
 status: executing
-stopped_at: Phase 258 context gathered
-last_updated: "2026-07-06T15:54:48.023Z"
-last_activity: 2026-07-06 -- Phase 258 planning complete
+stopped_at: Completed 258-01-PLAN.md
+last_updated: "2026-07-06T16:05:33.308Z"
+last_activity: 2026-07-06
 progress:
   total_phases: 132
   completed_phases: 114
   total_plans: 472
-  completed_plans: 468
+  completed_plans: 469
   percent: 99
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 257 — projection-builder-register-layout-template
+**Current focus:** Phase 258 — MCP Surface + Docs + Publish
 
 ## Current Position
 
-Phase: 258
-Plan: Not started
+Phase: 258 (MCP Surface + Docs + Publish) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-06 -- Phase 258 planning complete
+Last activity: 2026-07-06
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
 
@@ -240,6 +240,7 @@ Progress: [██████████] 100%
 | Phase 257-projection-builder-register-layout-template P01 | 23 | 3 tasks | 2 files |
 | Phase 257 P02 | 35 | 3 tasks | 4 files |
 | Phase 257-projection-builder-register-layout-template P03 | 25 | 2 tasks | 6 files |
+| Phase 258-mcp-surface-docs-publish P01 | 25 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -301,7 +302,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-06T15:22:12.321Z
-Stopped at: Phase 258 context gathered
-Resume file: .planning/phases/258-mcp-surface-docs-publish/258-CONTEXT.md
+Last session: 2026-07-06T16:05:33.299Z
+Stopped at: Completed 258-01-PLAN.md
+Resume file: None
 Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
