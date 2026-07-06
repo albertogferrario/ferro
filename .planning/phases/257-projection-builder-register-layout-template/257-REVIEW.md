@@ -1,154 +1,112 @@
 ---
 phase: 257-projection-builder-register-layout-template
-reviewed: 2026-07-06T11:09:26Z
+reviewed: 2026-07-06T14:04:03Z
 depth: standard
-files_reviewed: 11
+files_reviewed: 14
 files_reviewed_list:
   - app/src/controllers/cassa.rs
   - app/src/routes.rs
   - app/src/tests/cassa_render.rs
   - app/src/tests/mod.rs
+  - ferro-json-ui/assets/ferro-base.css
   - ferro-json-ui/src/catalog.rs
+  - ferro-json-ui/src/component.rs
   - ferro-json-ui/src/lib.rs
   - ferro-json-ui/src/projection/builder.rs
   - ferro-json-ui/src/projection/error.rs
   - ferro-json-ui/src/projection/intent_layout.rs
+  - ferro-json-ui/src/render/form.rs
   - ferro-json-ui/src/spec.rs
   - framework/src/lib.rs
 findings:
-  critical: 1
-  warning: 4
-  info: 2
-  total: 7
+  critical: 0
+  warning: 1
+  info: 3
+  total: 4
 status: issues_found
 ---
 
-# Phase 257: Code Review Report
+# Phase 257: Code Review Report (Re-review after 257-04)
 
-**Reviewed:** 2026-07-06T11:09:26Z
+**Reviewed:** 2026-07-06T14:04:03Z
 **Depth:** standard
-**Files Reviewed:** 11
+**Files Reviewed:** 14
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Register layout arm of the projection builder (`emit_register_root`), the `register_template()` Collect→Register theme override, the `ElementBuilder::each` / `SpecBuilder::fill_viewport` setters, the `Catalog::validate` `$each`-template guard, and the `/cassa` sample-app flip to a projection-derived spec.
+Re-review of the Register layout phase after the gap-closure plan 257-04 (commits `eef721b9`, `156150e0`) landed the Form fill height-chain: `FormProps.fill: Option<bool>` (component.rs), fill-aware class selection in `render_form` (form.rs), `fill: Some(true)` on the `sale_form` in `emit_register_root` (builder.rs), a regenerated `ferro-base.css`, and new assertions in `app/src/tests/cassa_render.rs`.
 
-The core library work is solid: `emit_register_root` is meaning-driven (no hardcoded field names in the mapping path), errors correctly on action-less services (`RegisterMissingAction`), binds tile props exclusively via `$data` pointer objects, keeps integer-cents on the `price_cents` contract, and stays project-agnostic (neutral English defaults, English fixture names in library tests, Italian copy confined to app-land). The catalog's Stage 2 continue + Stage 3 props-key removal for template elements is correctly scoped to the envelope copy and does not mutate the spec. Framework re-exports are correctly feature-gated.
+**All Critical and Warning findings from the previous review iteration are verified fixed in the current tree:**
 
-However, the phase's flagship deliverable is silently broken: the `/cassa` handler passes its product rows at the wrong nesting level relative to the projection's `/data/{service}` path convention, so the `$each` template expands to **zero tiles** and the register renders an empty product grid. The phase's tests pass anyway because none of them asserts that a product actually renders — and two library tests that claim to cover the "each-path resolves to array" branch are vacuous for the same nesting reason.
+- **CR-01 (empty tile grid):** the `/cassa` handler now nests rows as `{ "data": { "cassa": [...] } }` (cassa.rs:85), and the app test asserts a real product renders (`html.contains("Caffè")`, cassa_render.rs:69-71). The `$each` over `/data/cassa` resolves.
+- **WR-01 (vacuous tests):** `catalog_each_template_populated_data` and `register_projection_populated_data_validates` now nest fixture data under `"data"` so the path genuinely resolves; the negative counterpart `catalog_each_template_path_not_array_rejected_at_build` asserts `SpecError::EachPathNotArray`; the register test re-validates through `Spec::from_json` (the layer that runs `validate_directives`).
+- **WR-02 (fallback leak class):** the `emit_register_root` fallback now filters `f.readable && lookup_meaning(&f.meaning).display.is_some()` (builder.rs), with regression test `register_projection_fallback_excludes_sensitive_fields` confirming Sensitive fields are never bound into tile props.
+- **WR-04 (schema gap):** `assemble_full_schema` now exposes `fill_viewport` and `design` at the root, hoists `DesignMeta` into `$defs`, and the drift guard `full_schema_root_exposes_all_spec_fields` pins every Spec root field.
+- **WR-03 (docs/src coverage):** verified still absent from docs/src, but explicitly deferred to Phase 258 per locked decision D-19 (rustdoc coverage on the new public surface confirmed complete). Not re-raised.
 
-## Critical Issues
+**The newest 257-04 changes are sound:**
 
-### CR-01: /cassa register renders zero product tiles — handler data not nested under `data`, so `$each` over `/data/cassa` never resolves
+- `FormProps.fill` is additive (`Option<bool>` with `skip_serializing_if`), well-documented, and the input-mode builder path threads `fill: None` so existing Collect forms are unaffected.
+- `render_form`'s fill branch (form.rs:98-102) emits full class literals (Tailwind `@source` scanner discipline respected) and the default branch is byte-identical to prior renders — both pinned by tests (`render_form_fill_true_emits_height_chain`, `render_form_default_class_is_byte_identical`).
+- The regenerated `ferro-base.css` was verified to contain all fill-chain selectors: `.\[\&\>\*\]\:flex-1>*`, `.\[\&\>\*\]\:min-h-0>*`, `.min-h-0`, `.h-full`, `.flex-col`.
+- `emit_register_root` sets `fill: Some(true)` on the `sale_form`, pinned by `register_projection_sale_form_carries_fill` and the app-level class-chain assertion in cassa_render.rs:77-80. The height chain is coherent: root Grid (fill) → sale_form (`flex flex-col h-full min-h-0`, sole child gets `flex-1 min-h-0`) → panes Grid (`h-full` resolves against a real height).
+- Catalog Stage-3 template-props removal is schema-safe: element variant schemas only `require: ["type"]`, so removing `props` from the envelope copy of `$each` templates cannot fail the oneOf match; `.prop()` insert semantics correctly let the `$data` pointer objects override the placeholder `TileProps` values.
+- The removed `cassa.rimuovi` route has no dangling references (handler deleted, no remaining consumers in app or library source).
+- Project-agnostic discipline holds: library fixtures use neutral English names, Italian display copy is confined to app-land, `RegisterMissingAction` fails loud on action-less services.
 
-**File:** `app/src/controllers/cassa.rs:83` (also `app/src/tests/cassa_render.rs:45`)
-**Issue:** The projection builder emits `each.path = "/data/cassa"` and `TileGrid.data_path = "/data/cassa"` (`ferro-json-ui/src/projection/builder.rs:636,712`), following the documented projection convention where the handler provides `{ "data": { "<service>": [ ... ] } }` (docs/src/json-ui/data-binding.md §data_path Reference: "Handler provides `{ "data": { "staff": [ ... ] } }`"). The handler instead passes:
-
-```rust
-let data = serde_json::json!({ "cassa": cassa_products() });
-```
-
-The failure chain is deterministic:
-1. `JsonUi::render` → `merge_data` does a shallow top-level merge → `spec.data = {"cassa": [...]}` (framework/src/json_ui/mod.rs:87-90).
-2. `expand_directives` → `expand_each` resolves `each.path` with `resolve_path(spec.data, "/data/cassa")` (ferro-json-ui/src/resolve.rs:305-308); `resolve_path` walks literal segments `["data", "cassa"]` (ferro-json-ui/src/data.rs:19-45) — there is no `"data"` key → `None` → `rows = []`.
-3. The `tile_tmpl` template is removed and replaced by zero clones (resolve.rs:335-339); `rewrite_parent_children` prunes the TileGrid's child list to empty.
-4. `render_tile_grid` renders only `el.children` (ferro-json-ui/src/render/containers.rs:962-966) — the product grid is empty. The SelectionPanel, search input, and confirm button still render, which is exactly what the app test asserts, so the suite stays green while the page shows no products.
-
-The old hand-written `cassa.json` used un-prefixed paths (`/prodotti`) matched to un-nested handler data, so this regressed when the page was flipped to projection-derived.
-
-**Fix:**
-```rust
-// app/src/controllers/cassa.rs (handler)
-let data = serde_json::json!({ "data": { "cassa": cassa_products() } });
-
-// app/src/tests/cassa_render.rs (same nesting), plus a content assertion that
-// would have caught this:
-let data = json!({ "data": { "cassa": cassa_products() } });
-let resp = JsonUi::render(&spec, &data).expect("render ok");
-let html = resp.body();
-assert!(html.contains("Caffè"), "product tiles must render from $each expansion");
-```
+One new Warning on the fill/max_width interaction, plus the two acknowledged Info carry-overs and one naming nit.
 
 ## Warnings
 
-### WR-01: "populated data" tests claim to cover the `$each` path-resolves-to-array branch but are vacuous (same nesting bug as CR-01)
+### WR-01: `fill: true` + `max_width` silently breaks the height chain — the same bug class 257-04 just closed
 
-**File:** `ferro-json-ui/src/catalog.rs:2439-2474` and `ferro-json-ui/src/projection/builder.rs:1705-1737`
-**Issue:** Both tests state they cover "the validate_directives path-resolves-to-array branch (D-14)":
-- `catalog_each_template_populated_data` builds a spec with `.data(json!({"items": [...]}))` while `each.path = "/data/items"`. In `validate_directives` the check is `if let Some(value) = resolve_path(&spec.data, &each.path)` (spec.rs:862-870) — the path does not resolve (`{"items": ...}` has no `"data"` key), so the `EachPathNotArray` branch silently skips and the test passes vacuously.
-- `register_projection_populated_data_validates` assigns `spec.data = json!({"shop": [...]})` **after** `build()` and then calls `cat.validate(&spec)` — but `Catalog::validate` never runs `validate_directives` at all (that runs only inside `Spec::build`/`Spec::from_json` via `validate_structure`, spec.rs:741-752). The stated branch cannot be exercised on this path, resolved or not.
-
-These tests institutionalize the same `/data`-nesting confusion that produced CR-01.
-
-**Fix:** Nest the fixture data under `"data"` (`json!({"data": {"items": [...]}})`) so the path actually resolves, and exercise the branch through a build (or `Spec::from_json`) with the data attached. Add the negative case:
-```rust
-let err = Spec::builder()
-    .data(json!({"data": {"items": {"not": "an array"}}}))
-    .element("tile_tmpl", Element::new("Tile").each("/data/items", "p"))
-    .build()
-    .unwrap_err();
-assert!(matches!(err, SpecError::EachPathNotArray { .. }));
-```
-
-### WR-02: `emit_register_root` fallback field selection contradicts the documented T-257-03 exclusion invariant
-
-**File:** `ferro-json-ui/src/projection/builder.rs:624-634`
-**Issue:** The comment claims "Sensitive/ForeignKey/system meanings are structurally excluded because field_name_by only matches Identifier / EntityName / Money (T-257-03)" — but the fallback path is not filtered at all:
+**File:** `ferro-json-ui/src/render/form.rs:98-102` and `140-144`
+**Issue:** When a spec author sets both `fill: true` and `max_width: narrow|wide` on a Form, the max-width wrapper is applied unconditionally:
 
 ```rust
-let fallback = service
-    .fields
-    .first()
-    .map(|f| f.name.clone())
-    .unwrap_or_else(|| "id".to_string());
+let html = match props.max_width.as_ref().unwrap_or(&FormMaxWidth::Default) {
+    FormMaxWidth::Default => html,
+    FormMaxWidth::Narrow => format!("<div class=\"max-w-2xl\">{html}</div>"),
+    FormMaxWidth::Wide => format!("<div class=\"max-w-4xl\">{html}</div>"),
+};
 ```
 
-`fallback` ignores both `readable` and meaning. For a service with no Identifier/EntityName/Money field whose first declared field is e.g. `Sensitive` or `readable = false`, `id_field`/`money_field` bind that field name into tile props as `{"$data": "/p/<name>"}`, and `$each` expansion inlines the row value into rendered tile attributes — the exact leak class the sibling emitters guard against with `lookup_meaning(...).column/display.is_some()`.
+The wrapper `<div>` carries no `h-full`/`min-h-0`, so the form's `h-full` resolves against an auto-height parent and computes to auto — the entire fill chain dies silently, reproducing exactly the "footer off-viewport" failure mode that UAT caught and 257-04 fixed. The register builder never emits this combination (`max_width: None` in `emit_register_root`), but the component surface allows it, no lint rule covers it, and the failure produces no diagnostic. This is a latent authoring trap on a prop pair whose interaction is invisible until live geometry testing.
+**Fix:** Make the wrapper fill-aware so the chain survives:
 
-**Fix:** Filter the fallback by readability and display eligibility, mirroring the other emitters:
 ```rust
-let fallback = service
-    .fields
-    .iter()
-    .find(|f| f.readable && lookup_meaning(&f.meaning).display.is_some())
-    .map(|f| f.name.clone())
-    .unwrap_or_else(|| "id".to_string());
+let wrapper_classes = if props.fill == Some(true) {
+    ("max-w-2xl h-full min-h-0", "max-w-4xl h-full min-h-0")
+} else {
+    ("max-w-2xl", "max-w-4xl")
+};
 ```
-(Alternatively: return a `ProjectionError` when none of the three meanings is present — a register without a name/price binding is arguably broken by construction, like the no-actions case.)
 
-### WR-03: New public API surface undocumented in docs/src/
-
-**File:** `ferro-json-ui/src/spec.rs:401-404,525-531`, `ferro-json-ui/src/projection/intent_layout.rs:50-66`, `framework/src/lib.rs:270`
-**Issue:** `register_template()` (now a framework re-export), `ElementBuilder::each(path, as_)`, and `SpecBuilder::fill_viewport(bool)` have no coverage anywhere under `docs/src/` (verified by grep: `register_template` appears nowhere in docs/; `.each(`/`fill_viewport` appear in neither spec-construction.md, expressions.md, nor layouts.md — only the design-system patterns.md lint-rule examples mention `fill_viewport` as a JSON key). Project CLAUDE.md requires "Update documentation in docs/src/ (required)" for every user-facing feature.
-**Fix:** Add to `docs/src/json-ui/spec-construction.md`: builder-side `$each` (`.each(...)` + `$data` row-scoped props) and `.fill_viewport(true)` with the dashboard/app layout + root `fill:true` preconditions; document `register_template()` (Collect→Register override, `RegisterMissingAction` contract, the `price_cents`/`field` per-row data contract, and the `{"data": {...}}` handler payload shape).
-
-### WR-04: `fill_viewport` (and `design`) missing from the assembled full Spec JSON Schema
-
-**File:** `ferro-json-ui/src/catalog.rs:571-588`
-**Issue:** `assemble_full_schema` declares root properties `$schema`, `root`, `elements`, `title`, `layout`, `data` — but not `fill_viewport` (this phase's root flag) or `design`. Validation only passes because the root object does not set `additionalProperties: false`. The consequence is a contract gap, not a validation failure: this schema is advertised as "the full Spec shape (D-13)" and is consumed by agents via the MCP `json_ui_schema` surface, so a spec-authoring agent cannot discover `fill_viewport` from the schema, and any schema-strict external consumer would reject valid register specs. MCP surface accuracy is held to the same quality bar as the Rust API per project instructions. (The `design` omission is pre-existing; `fill_viewport` is new in this phase family.)
-**Fix:** Add to the root `properties` map in `assemble_full_schema`:
-```rust
-"fill_viewport": { "type": "boolean", "default": false },
-"design": { "$ref": "#/$defs/DesignMeta" }  // hoist schema_for!(DesignMeta) into shared_defs
-```
+(or, if a width-constrained fill workspace is considered nonsensical, ignore `max_width` when `fill == Some(true)` and emit a `<!-- ferro-json-ui: max_width ignored in fill mode -->` diagnostic comment, matching the existing decode-failure diagnostic discipline). Either way, add a unit test pinning the chosen behavior.
 
 ## Info
 
-### IN-01: `$each` template skip disables props validation even for literal (non-expression) props
+### IN-01: `$each` template skip disables props validation even for literal (non-expression) props — carried over, acknowledged
 
-**File:** `ferro-json-ui/src/catalog.rs:753-763`
-**Issue:** Stage 2 skips per-element Props validation entirely when `el.each.is_some()`. This is broader than needed: a template element with an invalid *literal* prop (e.g. a mistyped enum value alongside the `$data` bindings) passes static validation and only surfaces at render time — as a decode-failure HTML comment, or via the render-time re-validation in `JsonUi::resolve` which logs at error level but does not fail. The trade-off is documented in the comment; acceptable for now.
-**Fix (optional):** Instead of skipping, validate a copy with expression-valued keys removed and `required` checks relaxed for the removed keys — catches literal-prop typos at build time while leaving data-bound props to the runtime resolver.
+**File:** `ferro-json-ui/src/catalog.rs:759-770`
+**Issue:** Stage 2 skips per-element Props validation entirely when `el.each.is_some()`. A template element with an invalid *literal* prop (e.g. a mistyped enum value alongside the `$data` bindings) passes static validation and only surfaces at render time. The trade-off is documented in the code comment and was accepted in the previous iteration (out of fix scope).
+**Fix (optional):** Validate a copy with expression-valued keys removed and `required` relaxed for the removed keys — catches literal-prop typos at build time while leaving data-bound props to the runtime resolver.
 
-### IN-02: `register_template` slot list uses a name outside the declared 8-slot vocabulary
+### IN-02: `register_template` slot list uses `"items"`, outside the declared 8-slot vocabulary — carried over, acknowledged
 
 **File:** `ferro-json-ui/src/projection/intent_layout.rs:54`
-**Issue:** `slots: vec!["items".into(), "actions".into()]` — `"items"` is not part of the 8-slot vocabulary this module's header declares (`title, body, fields, actions, relationships, pagination, metadata, stats`). The doc comment correctly notes the list is informational for the Register arm, but a non-vocabulary slot name invites drift if a future refactor starts dispatching Register slots.
+**Issue:** `slots: vec!["items".into(), "actions".into()]` — `"items"` is not in the module-header vocabulary (`title, body, fields, actions, relationships, pagination, metadata, stats`). Documented as informational for the Register arm, but a non-vocabulary name invites drift if a future refactor starts dispatching Register slots.
 **Fix:** Use existing vocabulary names (`"fields"`, `"actions"`) or add `"items"` to the ferro-theme slot vocabulary documentation.
+
+### IN-03: `SpecBuilder.fill_viewport_` trailing-underscore field is inconsistent with sibling fields
+
+**File:** `ferro-json-ui/src/spec.rs:362,373,401-404`
+**Issue:** The builder field is named `fill_viewport_` to avoid clashing with the `fill_viewport(mut self, v: bool)` method — but Rust fields and methods live in separate namespaces, and the same struct already proves it: `title`, `layout`, and `data` fields coexist with identically-named methods. The underscore is unnecessary and breaks the struct's own naming pattern.
+**Fix:** Rename the field to `fill_viewport` (private field; zero API impact).
 
 ---
 
-_Reviewed: 2026-07-06T11:09:26Z_
+_Reviewed: 2026-07-06T14:04:03Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
