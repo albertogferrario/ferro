@@ -76,7 +76,7 @@ pub(super) const SOURCE: &str = r#"
                 if (field) field = field.replace(/["\\\]]/g, '');
                 input = form.querySelector('[data-qty-input="' + field + '"]');
                 if (input) {
-                    input.value = parseInt(input.value, 10) + 1;
+                    input.value = (parseInt(input.value, 10) || 0) + 1;
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                 }
             } else if (decBtn) {
@@ -84,7 +84,7 @@ pub(super) const SOURCE: &str = r#"
                 if (field) field = field.replace(/["\\\]]/g, '');
                 input = form.querySelector('[data-qty-input="' + field + '"]');
                 if (input) {
-                    input.value = Math.max(0, parseInt(input.value, 10) - 1);
+                    input.value = Math.max(0, (parseInt(input.value, 10) || 0) - 1);
                     input.dispatchEvent(new Event('input', { bubbles: true }));
                 }
             } else if (remBtn) {
