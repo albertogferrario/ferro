@@ -15,6 +15,7 @@ mod modals;
 mod notifications;
 mod numpad;
 mod scroll_preserve;
+mod selection;
 mod sidebar;
 mod sse;
 mod tabs;
@@ -41,6 +42,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(tiles::SOURCE);
     s.push_str(numpad::SOURCE);
     s.push_str(filters::SOURCE);
+    s.push_str(selection::SOURCE);
     s.push_str(kanban::SOURCE);
     s.push_str(scroll_preserve::SOURCE);
     s.push_str(hero_lazy::SOURCE);
@@ -62,6 +64,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20           setupTiles,\n\
          \x20           setupNumpad,\n\
          \x20           setupFilters,\n\
+         \x20           setupSelection,\n\
          \x20           setupModals,\n\
          \x20           setupToasts,\n\
          \x20           setupLazyHeroes\n\
@@ -205,6 +208,7 @@ mod tests {
             "setupTiles",
             "setupNumpad",
             "setupFilters",
+            "setupSelection",
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
@@ -243,6 +247,7 @@ mod tests {
             "setupTiles",
             "setupNumpad",
             "setupFilters",
+            "setupSelection",
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
