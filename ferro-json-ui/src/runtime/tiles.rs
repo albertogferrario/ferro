@@ -25,8 +25,12 @@ pub(super) const SOURCE: &str = r#"
             // Only input is required; display is updated only when present.
             if (!input) return;
             var current = parseInt(input.value, 10) || 0;
-            var next = current + delta;
-            if (next < 0) next = 0;
+            // D-22: honor QuantityStepper declared bounds (defaults: step 1, min 0, no max)
+            var step = parseInt(btn.getAttribute('data-qty-step'), 10) || 1;
+            var min  = parseInt(btn.getAttribute('data-qty-min'),  10) || 0;
+            var rawMax = btn.getAttribute('data-qty-max');
+            var max  = rawMax !== null ? parseInt(rawMax, 10) : Infinity;
+            var next = Math.min(Math.max(current + delta * step, min), max);
             input.value = next;
             if (display) display.textContent = next;
             // Notify form guards of the change
