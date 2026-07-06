@@ -32,7 +32,7 @@ use crate::component::{
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
     EmptyStateProps, FilterTabsProps, FormProps, FormSectionProps, GridProps, HeaderProps,
     ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps, ModalProps,
-    NotificationDropdownProps, PageHeaderProps, PaginationProps, ProgressProps,
+    NotificationDropdownProps, NumpadProps, PageHeaderProps, PaginationProps, ProgressProps,
     QuantityStepperProps, RawHtmlProps, SegmentedControlProps, SelectProps, SeparatorProps,
     SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps,
     TableProps, TabsProps, TextProps, TileGridProps, TileProps, ToastProps,
@@ -278,6 +278,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "QuantityStepper",
         "Reusable +/- numeric stepper with its own hidden input on the data-qty contract; honors optional min/max/step bounds.",
         || to_value(schema_for!(QuantityStepperProps)).unwrap(),
+        &[],
+    ),
+    (
+        "Numpad",
+        "Tap-surface numeric keypad (quantity or price mode) writing to a hidden field; never renders a native input so the software keyboard is not triggered.",
+        || to_value(schema_for!(NumpadProps)).unwrap(),
         &[],
     ),
     // === Containers (containers.rs) ===
@@ -1235,8 +1241,8 @@ mod tests {
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
         // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs)
-        // → 50 (QuantityStepper).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 50);
+        // → 50 (QuantityStepper) → 51 (Numpad).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 51);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────

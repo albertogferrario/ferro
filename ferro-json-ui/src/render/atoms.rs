@@ -19,9 +19,9 @@ use crate::component::{
 use crate::spec::{Element, Spec};
 
 use super::classes::{
-    DISABLED_BASE, FOCUS_RING, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_BASE, MOTION_FAST,
-    PRESS_ACTIVE, TAP_HIGHLIGHT, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS,
-    TOAST_TONE_WARNING, TOUCH_ACTION,
+    DISABLED_BASE, FOCUS_RING, HIT_TARGET_MIN, HIT_TARGET_NUMPAD, INTERACTIVE_BASE, MOTION_BASE,
+    MOTION_FAST, PRESS_ACTIVE, TAP_HIGHLIGHT, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL,
+    TOAST_TONE_SUCCESS, TOAST_TONE_WARNING, TOUCH_ACTION,
 };
 use super::html_escape;
 
@@ -1627,6 +1627,85 @@ pub(crate) fn render_quantity_stepper(
     )
 }
 
+// ── 25. Numpad ────────────────────────────────────────────────────────────
+
+/// Renders a `Numpad` — a tap-surface 3×4 keypad that writes to a hidden
+/// field and NEVER renders a native input (so the mobile software keyboard
+/// is never triggered).
+///
+/// Emits the exact Phase-255 attribute contract (D-23):
+/// - Container with `data-numpad` + `data-numpad-target="{field}"`, plus
+///   `data-numpad-mode="price"` only when `mode: Price` (absent in Quantity mode).
+/// - `data-numpad-display` element the runtime overwrites on each key tap.
+/// - 12-key 3×4 grid (1–9, clear, 0, backspace); each button carries
+///   `data-numpad-key` and `HIT_TARGET_NUMPAD` (≥56px).
+/// - `data-numpad-input` hidden field adjacent to the container.
+///
+/// The running total in T-256-10 is display-only — the server must
+/// re-validate the submitted cents value.
+pub(crate) fn render_numpad(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
+    use crate::component::{NumpadMode, NumpadProps};
+
+    let props: NumpadProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("Numpad", e),
+    };
+
+    let field = html_escape(&props.target_field);
+    let mode_attr = match props.mode {
+        NumpadMode::Price => " data-numpad-mode=\"price\"",
+        NumpadMode::Quantity => "",
+    };
+
+    let key_classes = format!(
+        "{HIT_TARGET_NUMPAD} {TOUCH_ACTION} {PRESS_ACTIVE} {TAP_HIGHLIGHT} flex items-center \
+         justify-center rounded-md border border-border bg-surface text-text text-lg \
+         font-semibold hover:bg-border {INTERACTIVE_BASE}"
+    );
+
+    // Key order: 1–9, then clear / 0 / backspace (3×4 grid, left-to-right, top-to-bottom).
+    // Values are server-authored constants — no user input reaches data-numpad-key (T-256-09).
+    let key_buttons: String = [
+        ("1", "1"),
+        ("2", "2"),
+        ("3", "3"),
+        ("4", "4"),
+        ("5", "5"),
+        ("6", "6"),
+        ("7", "7"),
+        ("8", "8"),
+        ("9", "9"),
+        ("clear", "Clear"),
+        ("0", "0"),
+        ("backspace", "Backspace"),
+    ]
+    .iter()
+    .map(|(key_val, aria_label)| {
+        let glyph = match *key_val {
+            "backspace" => "\u{232B}",
+            "clear" => "C",
+            _ => key_val,
+        };
+        format!(
+            "<button type=\"button\" data-numpad-key=\"{key_val}\" \
+             class=\"{key_classes}\" aria-label=\"{aria_label}\">{glyph}</button>"
+        )
+    })
+    .collect();
+
+    format!(
+        "<div class=\"flex flex-col gap-2\">\
+         <div data-numpad data-numpad-target=\"{field}\"{mode_attr} \
+         class=\"flex flex-col gap-2\">\
+         <div data-numpad-display \
+         class=\"text-2xl font-semibold text-text text-right px-2\">0</div>\
+         <div class=\"grid grid-cols-3 gap-1\">{key_buttons}</div>\
+         </div>\
+         <input type=\"hidden\" name=\"{field}\" data-numpad-input=\"{field}\" value=\"\">\
+         </div>"
+    )
+}
+
 // ────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -3104,6 +3183,91 @@ mod tests {
         assert!(
             !html2.contains("data-qty-step"),
             "no step when unset; got: {html2}"
+        );
+    }
+
+    // ── 25. Numpad ──────��───────────────────────────────────────────────────
+
+    #[test]
+    fn numpad_emits_contract() {
+        let spec = spec_with_root(Element::new("Numpad").prop("target_field", "total_cents"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_numpad(el, &spec, &json!({}), 1);
+        assert!(html.contains("data-numpad"), "container attr; got: {html}");
+        assert!(
+            html.contains("data-numpad-target=\"total_cents\""),
+            "target attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-numpad-display"),
+            "display attr; got: {html}"
+        );
+        // All 12 key values must be present
+        for k in &[
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "0",
+            "clear",
+            "backspace",
+        ] {
+            let attr = format!("data-numpad-key=\"{k}\"");
+            assert!(html.contains(&attr), "missing key {k}; got: {html}");
+        }
+        assert!(
+            html.contains("data-numpad-input=\"total_cents\""),
+            "hidden input attr; got: {html}"
+        );
+        // Must NOT render a native text or number input
+        assert!(
+            !html.contains("type=\"text\""),
+            "no native text input allowed; got: {html}"
+        );
+        assert!(
+            !html.contains("type=\"number\""),
+            "no native number input allowed; got: {html}"
+        );
+    }
+
+    #[test]
+    fn numpad_price_mode() {
+        // Price mode → data-numpad-mode="price"
+        let spec_price = spec_with_root(
+            Element::new("Numpad")
+                .prop("target_field", "total_cents")
+                .prop("mode", "price"),
+        );
+        let el = spec_price.elements.get("root").unwrap();
+        let html = render_numpad(el, &spec_price, &json!({}), 1);
+        assert!(
+            html.contains("data-numpad-mode=\"price\""),
+            "price mode attr missing; got: {html}"
+        );
+        // Quantity mode (default) → attribute absent
+        let spec_qty = spec_with_root(Element::new("Numpad").prop("target_field", "total_cents"));
+        let el2 = spec_qty.elements.get("root").unwrap();
+        let html2 = render_numpad(el2, &spec_qty, &json!({}), 1);
+        assert!(
+            !html2.contains("data-numpad-mode"),
+            "quantity mode must not emit mode attr; got: {html2}"
+        );
+    }
+
+    #[test]
+    fn numpad_keys_56px() {
+        let spec = spec_with_root(Element::new("Numpad").prop("target_field", "total_cents"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_numpad(el, &spec, &json!({}), 1);
+        let count = html.matches("min-h-[56px] min-w-[56px]").count();
+        assert_eq!(
+            count, 12,
+            "all 12 keys must carry HIT_TARGET_NUMPAD (>=56px); count={count}; got: {html}"
         );
     }
 }
