@@ -95,3 +95,6 @@ pub mod projection;
 
 #[cfg(feature = "projections")]
 pub use projection::{JsonUiRenderer, ProjectionError, RenderMode, VisualContext};
+
+#[cfg(feature = "projections")]
+pub use projection::intent_layout::{default_template, register_template};

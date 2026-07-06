@@ -48,10 +48,14 @@ pub fn pick_intent_template<'a>(
 /// `default_template(Collect)` (Form layout) is unaffected — existing Collect
 /// projections keep rendering as forms.
 pub fn register_template() -> ThemeTemplates {
-    // Stub for TDD RED phase — returns incorrect value so the test can fail.
-    // Replaced with correct implementation in the GREEN commit.
     ThemeTemplates {
-        collect: None,
+        collect: Some(IntentModeTemplates {
+            display: IntentSlotTemplate {
+                slots: vec!["items".into(), "actions".into()],
+                layout: Some("Register".into()),
+            },
+            input: IntentSlotTemplate::default(),
+        }),
         browse: None,
         focus: None,
         process: None,
@@ -224,7 +228,9 @@ mod tests {
     #[test]
     fn register_template_overrides_collect() {
         let t = register_template();
-        let collect = t.collect.expect("register_template must set collect to Some");
+        let collect = t
+            .collect
+            .expect("register_template must set collect to Some");
         assert_eq!(
             collect.display.layout.as_deref(),
             Some("Register"),
