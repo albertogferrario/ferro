@@ -842,7 +842,7 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
                 }
             }
             if fill {
-                classes.push("min-h-0 h-full overflow-y-auto".to_string());
+                classes.push("min-h-0 h-full overflow-y-auto scrollbar-none".to_string());
             }
             if classes.is_empty() {
                 rendered
@@ -918,11 +918,14 @@ pub(crate) fn render_tile_grid(el: &Element, spec: &Spec, data: &Value, depth: u
 
     // Search input (D-19): `text-base` is mandatory — iOS Safari auto-zooms on
     // font-size < 16px on focus, which shifts the layout under the user's hand.
+    // D-28: neutral English placeholder default, overridable via `search_placeholder`.
     let search_html = if props.search == Some(true) {
+        let placeholder = html_escape(props.search_placeholder.as_deref().unwrap_or("Search"));
         format!(
-            "<input data-filter-search type=\"search\" placeholder=\"\" \
+            "<input data-filter-search type=\"search\" placeholder=\"{placeholder}\" \
              class=\"{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} \
-             text-base w-full rounded-md border border-border bg-surface px-3 text-text\">"
+             text-base w-full rounded-md border border-border bg-surface px-3 text-text \
+             placeholder:text-text-muted\">"
         )
     } else {
         String::new()
@@ -1586,23 +1589,30 @@ pub(crate) fn render_selection_panel(
          class=\"flex flex-col h-full min-h-0 {OVERSCROLL_CONTAIN}\">\
          <template data-selection-line-template>\
          <div data-selection-line \
-         class=\"flex items-center gap-2 py-2 border-b border-border\">\
-         <span data-selection-line-name class=\"flex-1 text-sm text-text\"></span>\
+         class=\"flex flex-col gap-1 py-2 border-b border-border\">\
+         <div class=\"flex items-center justify-between gap-2\">\
+         <span data-selection-line-name \
+         class=\"flex-1 min-w-0 truncate text-base font-medium text-text\"></span>\
+         <span data-selection-line-total \
+         class=\"text-base font-semibold text-text tabular-nums\"></span>\
+         </div>\
+         <div class=\"flex items-center gap-2\">\
          <button type=\"button\" data-selection-dec \
          class=\"{stepper_btn_classes}\" aria-label=\"Decrease\">\u{2212}</button>\
          <span data-selection-line-qty \
-         class=\"min-w-[2ch] text-center text-sm font-semibold text-text\"></span>\
+         class=\"min-w-[3ch] text-center text-sm font-semibold text-text tabular-nums\"></span>\
          <button type=\"button\" data-selection-inc \
          class=\"{stepper_btn_classes}\" aria-label=\"Increase\">+</button>\
+         <span class=\"flex-1\"></span>\
          <button type=\"button\" data-selection-remove \
          class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md \
          text-text-muted hover:text-destructive {INTERACTIVE_BASE}\" \
          aria-label=\"Remove\">\u{00D7}</button>\
-         <span data-selection-line-total \
-         class=\"text-sm font-semibold text-text\"></span>\
+         </div>\
          </div>\
          </template>\
-         <div data-selection-lines class=\"flex-1 overflow-y-auto min-h-0\"></div>\
+         <div data-selection-lines \
+         class=\"flex-1 overflow-y-auto min-h-0 scrollbar-none\"></div>\
          <div data-selection-empty \
          class=\"flex-1 flex items-center justify-center py-8 px-4\">\
          <div class=\"text-center\">\
@@ -1612,7 +1622,7 @@ pub(crate) fn render_selection_panel(
          py-3 border-t border-border\">\
          <span class=\"text-sm font-semibold text-text\">{total_label}</span>\
          <span data-selection-total{currency_attr} \
-         class=\"text-base font-semibold text-text\">0.00</span>\
+         class=\"text-base font-semibold text-text tabular-nums\">0.00</span>\
          </div>\
          <div class=\"flex-shrink-0 pt-2\">{confirm_children}</div>\
          </div>"
