@@ -359,6 +359,7 @@ impl Element {
 pub struct SpecBuilder {
     title: Option<TitleBinding>,
     layout: Option<String>,
+    fill_viewport_: bool,
     data: Value,
     root: Option<String>,
     elements: HashMap<String, Element>,
@@ -369,6 +370,7 @@ impl SpecBuilder {
         Self {
             title: None,
             layout: None,
+            fill_viewport_: false,
             data: Value::Null,
             root: None,
             elements: HashMap::new(),
@@ -390,6 +392,14 @@ impl SpecBuilder {
     /// Set the layout name.
     pub fn layout(mut self, l: impl Into<String>) -> Self {
         self.layout = Some(l.into());
+        self
+    }
+
+    /// Enable fill-viewport mode. For the ferro-fill CSS chain to activate, the
+    /// root Grid must also have `fill: true` and `spec.layout` must be an
+    /// app-shell layout (`"dashboard"` or `"app"`). Default is `false`.
+    pub fn fill_viewport(mut self, v: bool) -> Self {
+        self.fill_viewport_ = v;
         self
     }
 
@@ -457,7 +467,7 @@ impl SpecBuilder {
             elements: self.elements,
             title: self.title,
             layout: self.layout,
-            fill_viewport: false,
+            fill_viewport: self.fill_viewport_,
             data: self.data,
             design: None,
         };
@@ -500,6 +510,23 @@ impl ElementBuilder {
     /// Attach a visibility rule.
     pub fn visible(mut self, v: Visibility) -> Self {
         self.visible = Some(v);
+        self
+    }
+
+    /// Set the `$each` iteration directive on this element.
+    ///
+    /// `path` is a JSON-pointer to an array in `Spec.data`; `as_` is the
+    /// loop-variable name used inside this element's `$data` prop bindings
+    /// (e.g. `.each("/data/products", "p")` then `.prop("name", json!({"$data":"/p/name"}))`).
+    ///
+    /// Template elements carry data-bound props whose type cannot be checked
+    /// before `$each` expansion — `Catalog::validate` skips per-element Props
+    /// validation for elements whose `each` is `Some` (see catalog.rs).
+    pub fn each(mut self, path: impl Into<String>, as_: impl Into<String>) -> Self {
+        self.each = Some(EachDirective {
+            path: path.into(),
+            as_: as_.into(),
+        });
         self
     }
 
@@ -2182,5 +2209,40 @@ mod tests {
         assert!(spec.design.is_none(), "design should be None");
         let serialized = serde_json::to_string(&spec).unwrap();
         assert!(!serialized.contains("design"), "design key must be absent from output, got: {serialized}");
+    }
+
+    #[test]
+    fn each_builder_round_trip() {
+        let el = Element::new("Tile")
+            .each("/data/items", "p")
+            .build();
+        // The directive is set.
+        let directive = el.each.as_ref().expect("each must be Some");
+        assert_eq!(directive.path, "/data/items");
+        assert_eq!(directive.as_, "p");
+        // Serializes to {"$each": {"path": "...", "as": "..."}}.
+        let v = serde_json::to_value(&el).expect("serialize");
+        assert_eq!(v["$each"]["path"], "/data/items", "path mismatch in JSON");
+        assert_eq!(v["$each"]["as"], "p", "as mismatch in JSON (as_ must serialize as `as`)");
+        // Round-trip: deserialize back and assert the directive is preserved.
+        let back: Element = serde_json::from_value(v).expect("deserialize");
+        assert_eq!(back.each, el.each, "each directive must survive round-trip");
+    }
+
+    #[test]
+    fn fill_viewport_builder() {
+        // (a) explicit true threads through build().
+        let spec_true = Spec::builder()
+            .element("root", Element::new("Container"))
+            .fill_viewport(true)
+            .build()
+            .expect("build succeeds");
+        assert!(spec_true.fill_viewport, "fill_viewport must be true when set");
+        // (b) default (no call) remains false.
+        let spec_default = Spec::builder()
+            .element("root", Element::new("Container"))
+            .build()
+            .expect("build succeeds");
+        assert!(!spec_default.fill_viewport, "fill_viewport must default to false");
     }
 }
