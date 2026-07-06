@@ -4034,11 +4034,11 @@ Plans:
 3. `docs/src/json-ui/components.md` covers all five new components with props tables and at minimum one usage example per component; the mdBook docs build exits 0.
 4. The full CI-exact gate (`cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features`) is green; `cargo publish -p ferro-rs` exits 0; the published version on crates.io exceeds 0.2.86; gestiscilo's register phase can pin the new version.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 258-01-PLAN.md — ferro-mcp surface: BUILDER_API + RULE_COMPONENTS additive fixes; generation_context register_composition guidance (six D-03 items, drift-guarded) [POS-12]
-- [ ] 258-02-PLAN.md — docs/src: five component sections + register projection surface (fill_viewport, Register template, builder additions); mdBook build gate [POS-12]
+- [x] 258-02-PLAN.md — docs/src: five component sections + register projection surface (fill_viewport, Register template, builder additions); mdBook build gate [POS-12]
 - [ ] 258-03-PLAN.md — verify /cassa flip stands; full CI-exact gate; operator-gated single publish 0.2.89 (+ ferro-payments 0.1.6 rider); gestiscilo handoff brief [POS-13]
 **UI hint**: yes
 
