@@ -113,7 +113,8 @@ pub struct RegisterCompositionGuidance {
     /// (d) fill_viewport requirement: required when a spec has TileGrid/SelectionPanel/Numpad; root Grid
     /// needs `fill: true`; supported shell layouts are "app" and "dashboard" ONLY.
     pub fill_viewport_requirement: &'static str,
-    /// (e) The four register-* lint rule ids to check via design_lint, derived from design::rules().
+    /// (e) The four register-composition lint rule ids (three `register-*` rules plus
+    /// `fill-viewport-layout-unknown`) to check via design_lint, derived from design::rules().
     pub lint_rules: Vec<RegisterRuleRef>,
     /// (f) Pointer to register_template() (ferro-json-ui/src/projection/intent_layout.rs) — the
     /// one-call Collect->Register override; the projection-derived /cassa sample is the reference.
@@ -550,7 +551,7 @@ mod tests {
         assert_eq!(
             context.register_composition.lint_rules.len(),
             4,
-            "must derive all four register-* rules from design::rules()"
+            "must derive all four register-composition rules from design::rules()"
         );
     }
 
@@ -559,7 +560,9 @@ mod tests {
         use std::collections::HashSet;
         let ctx = execute();
 
-        // 1. Component names mentioned in the guidance exist as builtins.
+        // 1. Component names mentioned in the guidance exist as builtins, AND the
+        // guidance prose actually mentions them — renaming a component in the prose
+        // alone (e.g. SelectionPanel -> CartPanel) fails here, not just registry drift.
         let builtins: HashSet<String> = ferro_json_ui::global_catalog()
             .components_sorted()
             .map(|c| c.name.clone())
@@ -575,6 +578,20 @@ mod tests {
             assert!(
                 builtins.contains(name as &str),
                 "register guidance names non-builtin `{name}`"
+            );
+        }
+        let prose = format!(
+            "{} {} {}",
+            ctx.register_composition.when_to_use,
+            ctx.register_composition.form_state_contract,
+            ctx.register_composition.fill_viewport_requirement
+        );
+        // QuantityStepper is register vocabulary but intentionally absent from the
+        // prose (panel steppers are described by behavior, not component name).
+        for name in ["TileGrid", "SelectionPanel", "FilterTabs", "Numpad", "Tile"] {
+            assert!(
+                prose.contains(name),
+                "register guidance prose no longer mentions `{name}`"
             );
         }
 

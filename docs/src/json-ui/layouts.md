@@ -244,6 +244,7 @@ Set `fill_viewport` at the spec level and `fill: true` on the root `Grid` elemen
 | `fill_viewport: true` required | `register-fill-viewport` | Spec contains `TileGrid`, `SelectionPanel`, or `Numpad` but `fill_viewport` is not set |
 | Root `Grid` must have `fill: true` | `register-grid-fill` | `fill_viewport: true` but the root `Grid` element lacks `fill: true` |
 | Supported layouts only | `fill-viewport-layout-unknown` | `fill_viewport: true` with a layout other than `"app"` or `"dashboard"` |
+| `TileGrid` needs a paired `SelectionPanel` | `register-selection-present` | Spec contains a `TileGrid` but no `SelectionPanel` (applies regardless of `fill_viewport`) |
 
 Only the `"app"` and `"dashboard"` shell layouts support `fill_viewport`. Using any other layout with `fill_viewport: true` causes silent whole-page scroll — the `ferro-fill` CSS chain is only wired into these two built-in shells. Validate with `design_lint` to catch this before serving.
 
@@ -257,7 +258,7 @@ Pass it via `VisualContext`:
 
 ```rust
 use ferro::{
-    derive_intents, register_template, JsonUi, JsonUiRenderer, Renderer, Response,
+    derive_intents, handler, register_template, JsonUi, JsonUiRenderer, Renderer, Response,
     ServiceDef, VisualContext,
 };
 
