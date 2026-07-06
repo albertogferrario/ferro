@@ -55,17 +55,42 @@ reported: "Verified live via Chrome DevTools MCP at 1024×746 (post-fix,
   the confirm button — footer pins outside both. documentElement not
   scrollable. Screenshot: app/tmp/257-cassa-uat-tablet-postfix.png"
 
+### 3. Register visual quality (user-reported after test 2)
+
+expected: No visible scrollbars on the register panes; SelectionPanel line
+elements aligned between rows; product names legible; no unlabeled controls.
+result: pass (after fixes)
+reported: "User feedback on the test-2 state: visible scrollbars, cart line
+  elements misaligned between rows, product names unreadable, and an
+  unidentifiable empty block above the tile grid (the search input rendered
+  with an empty placeholder). Fixed in commit d9eb4ea3: scrollbar-none
+  utility on both register scrollers; SelectionPanel line template
+  restructured to a two-deck row (name text-base font-medium + tabular-nums
+  total on top, stepper + remove below) — the old single-row layout collapsed
+  names to zero width and clipped totals at tablet pane width;
+  TileGridProps.search_placeholder with neutral 'Search' default. Re-verified
+  live at 1024×746 and 1366×768: one x-position per control column across all
+  rows (2-digit qty included), scrollbar gutters 0px, names 16px/500 visible,
+  footer pinned, document never scrolls. Screenshots:
+  app/tmp/257-cassa-uat-tablet-visualfix4.png (final),
+  visualfix2/visualfix3 (intermediate), 257-cassa-uat-empty.png (EmptyState)."
+
 ## Summary
 
-total: 2
-passed: 1
+total: 3
+passed: 2
 issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 Note: test 1's original issue (footer off-viewport) is resolved — closed by
-gap plan 257-04 and re-verified live as test 2.
+gap plan 257-04 and re-verified live as test 2. Test 3's visual issues are
+resolved by commit d9eb4ea3 and re-verified live. Localization note: the
+panel EmptyState ("No items selected"), total label ("Total"), and search
+placeholder ("Search") are D-28 neutral English defaults — the sample app's
+projection can pass Italian overrides via SelectionPanelProps/TileGridProps
+if desired (candidate Phase 258 docs example).
 
 ## Gaps
 
