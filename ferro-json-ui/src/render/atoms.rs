@@ -1566,6 +1566,67 @@ pub(crate) fn render_streamtext(
     format!("<div data-ferro-stream-url=\"{escaped_url}\">{placeholder_html}{loading_html}</div>")
 }
 
+// ── 24. QuantityStepper ─────────────────────────────────────────────────
+
+/// Renders a self-contained `QuantityStepper` — dec button, qty display span,
+/// inc button, and a hidden input on the `data-qty-*` contract.
+///
+/// When `min`/`max`/`step` are set, emits `data-qty-min`/`data-qty-max`/
+/// `data-qty-step` on BOTH the inc and dec buttons so the `initQtyButton`
+/// runtime can enforce bounds (D-22). Initial displayed value = `min.unwrap_or(0)`.
+///
+/// The visual class composition on inc/dec buttons is identical to the
+/// SelectionPanel line steppers (D-22 shared-visual requirement).
+pub(crate) fn render_quantity_stepper(
+    el: &Element,
+    _spec: &Spec,
+    _data: &Value,
+    _depth: usize,
+) -> String {
+    use crate::component::QuantityStepperProps;
+
+    let props: QuantityStepperProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("QuantityStepper", e),
+    };
+
+    let field = html_escape(&props.field);
+    let initial = props.min.unwrap_or(0);
+
+    // Optional bounds attributes emitted on BOTH inc and dec buttons (D-22).
+    let min_attr = props
+        .min
+        .map(|v| format!(" data-qty-min=\"{v}\""))
+        .unwrap_or_default();
+    let max_attr = props
+        .max
+        .map(|v| format!(" data-qty-max=\"{v}\""))
+        .unwrap_or_default();
+    let step_attr = props
+        .step
+        .map(|v| format!(" data-qty-step=\"{v}\""))
+        .unwrap_or_default();
+
+    // Visual class composition — identical literal used in SelectionPanel line steppers.
+    let btn_classes = format!(
+        "{HIT_TARGET_MIN} {TOUCH_ACTION} {PRESS_ACTIVE} flex items-center justify-center \
+         rounded-md border border-border bg-surface text-text text-lg font-semibold \
+         hover:bg-border {INTERACTIVE_BASE}"
+    );
+
+    format!(
+        "<div class=\"flex items-center gap-2\">\
+         <button type=\"button\" data-qty-dec=\"{field}\"{min_attr}{max_attr}{step_attr} \
+         class=\"{btn_classes}\" aria-label=\"Decrease {field}\">\u{2212}</button>\
+         <span data-qty-display=\"{field}\" \
+         class=\"text-sm font-semibold text-text min-w-[2ch] text-center\">{initial}</span>\
+         <button type=\"button\" data-qty-inc=\"{field}\"{min_attr}{max_attr}{step_attr} \
+         class=\"{btn_classes}\" aria-label=\"Increase {field}\">+</button>\
+         <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{initial}\">\
+         </div>"
+    )
+}
+
 // ────────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2962,6 +3023,87 @@ mod tests {
         assert!(
             tile_html.contains("data-filter-tokens=\"Drinks\""),
             "Tile with categories:['Drinks'] must carry data-filter-tokens=\"Drinks\"; got: {tile_html}"
+        );
+    }
+
+    // ── 24. QuantityStepper ─────────────────────────────────────────────
+
+    #[test]
+    fn quantity_stepper_self_contained() {
+        let spec = spec_with_root(Element::new("QuantityStepper").prop("field", "qty_coffee"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_quantity_stepper(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-qty-dec=\"qty_coffee\""),
+            "dec button missing; got: {html}"
+        );
+        assert!(
+            html.contains("data-qty-display=\"qty_coffee\""),
+            "display span missing; got: {html}"
+        );
+        assert!(
+            html.contains("data-qty-inc=\"qty_coffee\""),
+            "inc button missing; got: {html}"
+        );
+        assert!(
+            html.contains("data-qty-input=\"qty_coffee\""),
+            "own hidden input missing; got: {html}"
+        );
+        assert!(
+            html.contains("name=\"qty_coffee\""),
+            "input must carry field name; got: {html}"
+        );
+    }
+
+    #[test]
+    fn quantity_stepper_targets_44px() {
+        let spec = spec_with_root(Element::new("QuantityStepper").prop("field", "qty_coffee"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_quantity_stepper(el, &spec, &json!({}), 1);
+        // Both dec and inc buttons must carry HIT_TARGET_MIN
+        let count = html.matches("min-h-[44px] min-w-[44px]").count();
+        assert!(
+            count >= 2,
+            "both buttons must be >=44px (HIT_TARGET_MIN x2); count={count}; got: {html}"
+        );
+    }
+
+    #[test]
+    fn quantity_stepper_emits_bounds() {
+        let spec = spec_with_root(
+            Element::new("QuantityStepper")
+                .prop("field", "qty_coffee")
+                .prop("min", 1u32)
+                .prop("max", 10u32)
+                .prop("step", 2u32),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_quantity_stepper(el, &spec, &json!({}), 1);
+        assert!(html.contains("data-qty-min=\"1\""), "min attr; got: {html}");
+        assert!(
+            html.contains("data-qty-max=\"10\""),
+            "max attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-qty-step=\"2\""),
+            "step attr; got: {html}"
+        );
+        // Absent when not set
+        let spec_no_bounds =
+            spec_with_root(Element::new("QuantityStepper").prop("field", "qty_coffee"));
+        let el2 = spec_no_bounds.elements.get("root").unwrap();
+        let html2 = render_quantity_stepper(el2, &spec_no_bounds, &json!({}), 1);
+        assert!(
+            !html2.contains("data-qty-min"),
+            "no min when unset; got: {html2}"
+        );
+        assert!(
+            !html2.contains("data-qty-max"),
+            "no max when unset; got: {html2}"
+        );
+        assert!(
+            !html2.contains("data-qty-step"),
+            "no step when unset; got: {html2}"
         );
     }
 }

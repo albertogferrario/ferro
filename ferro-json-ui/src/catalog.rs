@@ -32,10 +32,10 @@ use crate::component::{
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
     EmptyStateProps, FilterTabsProps, FormProps, FormSectionProps, GridProps, HeaderProps,
     ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps, ModalProps,
-    NotificationDropdownProps, PageHeaderProps, PaginationProps, ProgressProps, RawHtmlProps,
-    SegmentedControlProps, SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps,
-    SkeletonProps, StatCardProps, StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps,
-    TileGridProps, TileProps, ToastProps,
+    NotificationDropdownProps, PageHeaderProps, PaginationProps, ProgressProps,
+    QuantityStepperProps, RawHtmlProps, SegmentedControlProps, SelectProps, SeparatorProps,
+    SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps,
+    TableProps, TabsProps, TextProps, TileGridProps, TileProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -272,6 +272,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "StreamText",
         "Connects to a server-sent-events endpoint and renders token-by-token output as plain text. The SSE endpoint must emit `event: done` on completion to prevent auto-reconnect.",
         || to_value(schema_for!(StreamTextProps)).unwrap(),
+        &[],
+    ),
+    (
+        "QuantityStepper",
+        "Reusable +/- numeric stepper with its own hidden input on the data-qty contract; honors optional min/max/step bounds.",
+        || to_value(schema_for!(QuantityStepperProps)).unwrap(),
         &[],
     ),
     // === Containers (containers.rs) ===
@@ -1228,8 +1234,9 @@ mod tests {
         // BUILTIN_TYPES.len()), so a component addition breaks only this test.
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
-        // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 49);
+        // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs)
+        // → 50 (QuantityStepper).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 50);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────

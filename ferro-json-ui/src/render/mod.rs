@@ -68,6 +68,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "FilterTabs",
     "RawHtml",
     "StreamText",
+    "QuantityStepper",
     // Containers (containers.rs)
     "Card",
     "Modal",
@@ -203,6 +204,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "FilterTabs" => atoms::render_filter_tabs(el, spec, data, depth),
         "RawHtml" => atoms::render_raw_html(el, spec, data, depth),
         "StreamText" => atoms::render_streamtext(el, spec, data, depth),
+        "QuantityStepper" => atoms::render_quantity_stepper(el, spec, data, depth),
         // Containers
         "Card" => containers::render_card(el, spec, data, depth),
         "Modal" => containers::render_modal(el, spec, data, depth),
