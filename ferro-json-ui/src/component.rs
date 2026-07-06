@@ -1405,7 +1405,14 @@ pub struct TileProps {
 pub struct TileGridProps {
     /// JSON pointer to the product array the grid iterates over via `$each`.
     pub data_path: String,
-    /// Scope isolator that links this grid's hidden inputs to a sibling SelectionPanel.
+    /// The HTML `id` of the `Form` element that owns this grid's hidden
+    /// inputs. Both the grid and its paired SelectionPanel must be descendants
+    /// of that form (D-11): the selection runtime scopes its queries and its
+    /// input-event listener to `document.getElementById(form_id)`, so tiles
+    /// placed outside the form neither submit with it nor appear in the panel.
+    /// Emitted as `data-selection-form="{form_id}"` on the grid root — the
+    /// same attribute the SelectionPanel root carries — so the pairing is
+    /// introspectable in markup.
     pub form_id: String,
     /// JSON pointer to a category string array for the integrated category strip.
     /// Absent → no category strip is rendered.

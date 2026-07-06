@@ -892,7 +892,10 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
 
 /// Renders a `TileGrid` container.
 ///
-/// Emits `data-filter-scope` on the root div so `setupFilters` binds to it.
+/// Emits `data-filter-scope` on the root div so `setupFilters` binds to it,
+/// plus `data-selection-form="{form_id}"` — the same scope attribute the
+/// SelectionPanel root carries — declaring which `Form` owns the tiles' hidden
+/// inputs (D-11; the grid must be a descendant of that form).
 /// When `search: true` a `data-filter-search` input (16px, WCAG iOS zoom-safe)
 /// is prepended. When `categories_path` is set the path is resolved against
 /// `data` and an integrated category-filter strip is rendered via the shared
@@ -960,8 +963,13 @@ pub(crate) fn render_tile_grid(el: &Element, spec: &Spec, data: &Value, depth: u
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
+    // D-11: declare the owning form so the TileGrid↔SelectionPanel pairing is
+    // introspectable in markup (same attribute as the SelectionPanel root).
+    let form_id = html_escape(&props.form_id);
+
     format!(
-        "<div data-filter-scope class=\"flex flex-col gap-3 w-full {TOUCH_ACTION}\">\
+        "<div data-filter-scope data-selection-form=\"{form_id}\" \
+         class=\"flex flex-col gap-3 w-full {TOUCH_ACTION}\">\
          {search_html}\
          {strip_html}\
          <div class=\"grid {col_class} gap-3\">{body}</div>\
@@ -3138,6 +3146,22 @@ mod tests {
         assert!(
             html.contains("data-filter-scope"),
             "TileGrid root must carry data-filter-scope; got: {html}"
+        );
+    }
+
+    #[test]
+    fn tile_grid_emits_selection_form_scope() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-selection-form=\"order_form\""),
+            "TileGrid root must declare its owning form via data-selection-form (D-11); got: {html}"
         );
     }
 
