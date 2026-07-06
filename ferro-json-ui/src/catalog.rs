@@ -30,11 +30,12 @@ use crate::component::{
     ActionCardProps, ActionGroupProps, AlertProps, AvatarProps, BadgeProps, BreadcrumbProps,
     ButtonGroupProps, ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps,
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
-    EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
-    KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
-    PaginationProps, ProgressProps, RawHtmlProps, SegmentedControlProps, SelectProps,
-    SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps,
-    SwitchProps, TableProps, TabsProps, TextProps, TileGridProps, TileProps, ToastProps,
+    EmptyStateProps, FilterTabsProps, FormProps, FormSectionProps, GridProps, HeaderProps,
+    ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps, ModalProps,
+    NotificationDropdownProps, PageHeaderProps, PaginationProps, ProgressProps, RawHtmlProps,
+    SegmentedControlProps, SelectProps, SeparatorProps, SidebarLayoutProps, SidebarProps,
+    SkeletonProps, StatCardProps, StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps,
+    TileGridProps, TileProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -253,6 +254,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "Tile",
         "Touch-friendly tile with name, price, and +/- quantity controls.",
         || to_value(schema_for!(TileProps)).unwrap(),
+        &[],
+    ),
+    (
+        "FilterTabs",
+        "Standalone touch filter-tab strip that filters visible tiles client-side by category token; renders an All tab plus one tab per item.",
+        || to_value(schema_for!(FilterTabsProps)).unwrap(),
         &[],
     ),
     (
@@ -1221,8 +1228,8 @@ mod tests {
         // BUILTIN_TYPES.len()), so a component addition breaks only this test.
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
-        // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 48);
+        // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 49);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────

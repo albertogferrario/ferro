@@ -399,8 +399,8 @@ mod tests {
         // pub(crate) in ferro-json-ui, so this side can't assert it relationally).
         assert_eq!(
             catalog.components.len(),
-            48,
-            "Catalog should contain all 48 built-in components (incl. TileGrid), got {}",
+            49,
+            "Catalog should contain all 49 built-in components (incl. TileGrid, FilterTabs), got {}",
             catalog.components.len()
         );
 
@@ -447,6 +447,7 @@ mod tests {
             "CalendarCell",
             "ActionCard",
             "Tile",
+            "FilterTabs",
             "RawHtml",
             "StreamText",
             "Image",
@@ -630,6 +631,9 @@ mod tests {
                 // items and data_path are both #[serde(default)] — either is a valid
                 // sole source (same pattern as KanbanBoard); no single prop is required.
                 "SegmentedControl",
+                // items defaults to empty (renders just the All tab); all_label defaults
+                // to "All" — a zero-prop FilterTabs is a valid no-op All-only strip.
+                "FilterTabs",
             ];
             if !no_required.contains(&component.name.as_str()) {
                 assert!(

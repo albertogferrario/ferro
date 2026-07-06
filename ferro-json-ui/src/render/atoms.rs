@@ -1493,6 +1493,31 @@ pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> Stri
     format!("<div class=\"flex overflow-x-auto\" role=\"tablist\">{all_tab}{item_tabs}</div>")
 }
 
+// ── FilterTabs — standalone touch filter-tab strip ───────────────────────
+
+/// Renders a standalone `FilterTabs` component.
+///
+/// Wraps [`render_filter_tab_strip`] in a `data-filter-scope` root div so that
+/// `setupFilters` binds the tab-strip to the nearest enclosing scope. Placing a
+/// `FilterTabs` inside an existing `data-filter-scope` also works — `setupFilters`
+/// resolves the scope via nearest-ancestor semantics (D-18).
+pub(crate) fn render_filter_tabs(
+    el: &Element,
+    _spec: &Spec,
+    _data: &Value,
+    _depth: usize,
+) -> String {
+    use crate::component::FilterTabsProps;
+
+    let props: FilterTabsProps = match decode_props(&el.props) {
+        Ok(p) => p,
+        Err(e) => return decode_diagnostic("FilterTabs", e),
+    };
+    let all_label = props.all_label.as_deref().unwrap_or("All");
+    let strip = render_filter_tab_strip(&props.items, all_label);
+    format!("<div data-filter-scope class=\"w-full\">{strip}</div>")
+}
+
 // ── RawHtml — server-injected HTML island ────────────────────────────────
 
 pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {
@@ -2833,6 +2858,110 @@ mod tests {
         assert!(
             html.contains("&lt;"),
             "less-than in name must be HTML-escaped in data-filter-text; got: {html}"
+        );
+    }
+
+    // ── FilterTabs ──────────────────────────────────────────────────────
+
+    #[test]
+    fn filter_tabs_all_label_defaults_to_all() {
+        let spec = spec_with_root(Element::new("FilterTabs"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains(">All<"),
+            "default all_label must be 'All'; got: {html}"
+        );
+        assert!(
+            !html.contains("Tutte"),
+            "must not contain locale string 'Tutte'; got: {html}"
+        );
+    }
+
+    #[test]
+    fn filter_tabs_emits_scope_and_tabs() {
+        let spec = spec_with_root(
+            Element::new("FilterTabs")
+                .prop("items", vec!["Drinks", "Food"])
+                .prop("all_label", "All"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-filter-scope"),
+            "must carry data-filter-scope; got: {html}"
+        );
+        assert!(
+            html.contains("data-filter-tab=\"\""),
+            "All tab must carry empty data-filter-tab; got: {html}"
+        );
+        assert!(
+            html.contains("data-filter-tab=\"Drinks\""),
+            "must have Drinks tab; got: {html}"
+        );
+        assert!(
+            html.contains("data-filter-tab=\"Food\""),
+            "must have Food tab; got: {html}"
+        );
+    }
+
+    #[test]
+    fn filter_tabs_inactive_classes_match_runtime() {
+        // Exact class set that updateFilterTabClasses in runtime/filters.rs
+        // adds/removes on inactive tabs (D-12 lockstep).
+        let spec = spec_with_root(Element::new("FilterTabs").prop("items", vec!["Drinks"]));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("border-transparent"),
+            "inactive tab must have border-transparent; got: {html}"
+        );
+        assert!(
+            html.contains("text-text-muted"),
+            "inactive tab must have text-text-muted; got: {html}"
+        );
+        assert!(
+            html.contains("hover:text-text"),
+            "inactive tab must have hover:text-text; got: {html}"
+        );
+    }
+
+    #[test]
+    fn filter_tabs_targets_are_44px() {
+        let spec = spec_with_root(Element::new("FilterTabs").prop("items", vec!["Coffee"]));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("min-h-[44px]"),
+            "tabs must carry HIT_TARGET_MIN (min-h-[44px]); got: {html}"
+        );
+    }
+
+    #[test]
+    fn filter_tabs_tokens_match_tile_tokens() {
+        // SC-5 pairing: FilterTabs items["Drinks","Food"] emits data-filter-tab="Drinks".
+        // Tile with categories:["Drinks"] emits data-filter-tokens="Drinks" (space→hyphen).
+        let spec = spec_with_root(Element::new("FilterTabs").prop("items", vec!["Drinks", "Food"]));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-filter-tab=\"Drinks\""),
+            "FilterTabs emits tab token 'Drinks'; got: {html}"
+        );
+        // Tile side: render_tile emits data-filter-tokens="Drinks" for categories:["Drinks"]
+        let tile_spec = spec_with_root(
+            Element::new("Tile")
+                .prop("item_id", "p1")
+                .prop("name", "Espresso")
+                .prop("price", "€2,50")
+                .prop("field", "qty_espresso")
+                .prop("categories", vec!["Drinks"]),
+        );
+        let tile_el = tile_spec.elements.get("root").unwrap();
+        let tile_html = render_tile(tile_el, &tile_spec, &json!({}), 1);
+        assert!(
+            tile_html.contains("data-filter-tokens=\"Drinks\""),
+            "Tile with categories:['Drinks'] must carry data-filter-tokens=\"Drinks\"; got: {tile_html}"
         );
     }
 }
