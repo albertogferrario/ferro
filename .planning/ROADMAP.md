@@ -4011,8 +4011,8 @@ Plans:
 3. `Spec::builder().fill_viewport(true)` is emitted by the projector for the Register layout; the `fill_viewport` flag propagates through catalog validation; the HTML page carries the correct `fill_viewport` CSS class chain.
 4. `ElementBuilder.each(path, as_)` round-trips through serde; `catalog_validate` accepts the directive on a products-pane element; `$each`-scoped `$data.*` path handling is verified by an integration test against `catalog_validate`.
 
-**Plans:** 3 plans (3 waves)
-- [ ] 257-01-PLAN.md — Builder API (ElementBuilder.each, SpecBuilder.fill_viewport) + catalog_validate $each template-element fix
+**Plans:** 1/3 plans executed
+- [x] 257-01-PLAN.md — Builder API (ElementBuilder.each, SpecBuilder.fill_viewport) + catalog_validate $each template-element fix
 - [ ] 257-02-PLAN.md — register_template() helper + emit_register_root() + "Register" arm + fill_viewport/dashboard wiring (catalog-valid + lint-clean)
 - [ ] 257-03-PLAN.md — /cassa flip to projection-derived spec + cassa.json/rimuovi deletion + app render test (SC-2/SC-3)
 **UI hint**: yes

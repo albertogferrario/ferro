@@ -297,7 +297,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 ### Projection
 
-- [ ] **POS-10**: A `ServiceDef` renders a working sale screen via a `Register` layout
+- [x] **POS-10**: A `ServiceDef` renders a working sale screen via a `Register` layout
   template under the **Collect** intent (builder `emit_register_root` +
   `ElementBuilder.each()` + `fill_viewport` emission) — the seven-intent vocabulary is
   unchanged.
