@@ -1,8 +1,8 @@
 ---
 phase: 257-projection-builder-register-layout-template
-verified: 2026-07-06T16:00:00Z
-status: human_needed
-score: 5/6
+verified: 2026-07-06T16:45:00Z
+status: passed
+score: 6/6
 overrides_applied: 0
 re_verification:
   previous_status: human_needed
@@ -24,9 +24,28 @@ human_verification:
 # Phase 257: Projection Builder Register Layout Template — Verification Report (Re-verification)
 
 **Phase Goal:** A `ServiceDef` with products and cart fields derives a working sale screen within the existing Collect intent; the `/cassa` sample app serves the projection-derived spec without any `RawHtml`.
-**Verified:** 2026-07-06T16:00:00Z
-**Status:** human_needed
+**Verified:** 2026-07-06T16:45:00Z
+**Status:** passed (human item verified live — see resolution below)
 **Re-verification:** Yes — after gap-closure plan 257-04 (Form fill height-chain)
+
+## Human Verification Resolution (2026-07-06T16:45:00Z)
+
+Truth 6 verified live via Chrome DevTools MCP at 1024×746 against a running
+app instance (operator-approved server start):
+- `form#sale_form` height 673px (was 1076px pre-fix) with classes
+  `flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0`
+- Total row at y=652–672 and "Conferma ordine" at y=686–722 — both fully
+  in-viewport, including with 10 cart lines present (Total 29.50 correct)
+- Two independent scrollers: tiles pane (`md:col-span-2 min-h-0 h-full
+  overflow-y-auto`, 673/1076) and cart lines (`flex-1 overflow-y-auto
+  min-h-0`, 573/610); the confirm button is inside neither — the footer
+  pins outside both scroll areas
+- `documentElement` not scrollable (746/746)
+- Post-fix screenshot: `app/tmp/257-cassa-uat-tablet-postfix.png`
+  (compare pre-fix `app/tmp/257-cassa-uat-tablet.png`)
+
+Score updated 5/6 → 6/6. The 256 D-15 pinned-footer contract is restored
+on the projection-derived page.
 
 ## Re-verification Context
 
@@ -51,9 +70,9 @@ This re-verification:
 | 3 | `Spec::builder().fill_viewport(true)` is emitted by the projector for Register; `fill_viewport` propagates through catalog validation; HTML carries the `ferro-fill` class chain | VERIFIED | `builder = builder.fill_viewport(true).layout("dashboard")` at builder.rs:279; `register_projection_is_catalog_valid` asserts `spec.fill_viewport == true`; `cassa_render_is_projection_derived_fill_viewport` asserts `html.contains("ferro-fill")` |
 | 4 (257-04) | `render_form` emits the fill height-chain class string ONLY when `FormProps.fill == Some(true)`; with fill absent/false the emitted `<form>` class attribute is byte-identical to before | VERIFIED | `let form_classes = if props.fill == Some(true)` at form.rs:98; fill literal `"flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0"` at form.rs:99; default literal byte-identical at :101; `render_form_fill_true_emits_height_chain` asserts fill class present AND `flex flex-wrap` absent; `render_form_default_class_is_byte_identical` asserts exact default class AND `h-full`/`min-h-0` absent |
 | 5 (257-04) | `emit_register_root` emits the `sale_form` Form element with `fill: Some(true)`, putting the Form into the fill-height chain between the outer fill-Grid cell and the inner panes Grid | VERIFIED | `fill: Some(true)` in FormProps at builder.rs:770; comment cites 256 D-15 height-chain purpose; `register_projection_sale_form_carries_fill` test asserts `form_el.props.get("fill").and_then(v.as_bool()) == Some(true)`; `build_input_spec` FormProps at :180 remains `fill: None` (additive, backward-compatible) |
-| 6 (257-04) | Under `fill_viewport`, the register's SelectionPanel footer (Total + "Conferma ordine") stays inside the viewport while panes scroll independently — 256 D-15 contract restored | HUMAN_NEEDED | CSS height-chain is structurally wired: `[&>*]:flex-1` and `[&>*]:min-h-0` present in ferro-base.css as `.\\[\\&\\>\\*\\]\\:flex-1>*`/`.\\[\\&\\>\\*\\]\\:min-h-0>*`; app test asserts `html.contains("[&>*]:flex-1 [&>*]:min-h-0")` at cassa_render.rs:78. Live browser geometry cannot be asserted by HTML-string tests — requires human UAT re-verify |
+| 6 (257-04) | Under `fill_viewport`, the register's SelectionPanel footer (Total + "Conferma ordine") stays inside the viewport while panes scroll independently — 256 D-15 contract restored | VERIFIED (live) | Chrome DevTools MCP at 1024×746: footer at y=652–722 in-viewport with 10 cart lines; two independent scrollers (tiles pane, cart lines), confirm button outside both; documentElement not scrollable. Screenshot `app/tmp/257-cassa-uat-tablet-postfix.png`. See Human Verification Resolution above |
 
-**Score:** 5/6 truths verified (1 human_needed)
+**Score:** 6/6 truths verified
 
 ### Deferred Items
 

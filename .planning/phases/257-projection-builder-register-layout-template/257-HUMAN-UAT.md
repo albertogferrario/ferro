@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 257-projection-builder-register-layout-template
 source: [257-VERIFICATION.md]
 started: 2026-07-06T13:20:00Z
-updated: 2026-07-06T16:30:00Z
+updated: 2026-07-06T16:45:00Z
 ---
 
 ## Current Test
 
-Test 2 — live geometry re-verify after 257-04 fix
+[testing complete]
 
 ## Tests
 
@@ -43,22 +43,35 @@ scroll. Compare against the pre-fix screenshot at
 `flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0` on the sale_form
 so it constrains to the outer fill-grid cell height instead of rendering
 content-sized.
-result: [pending]
+result: pass
+reported: "Verified live via Chrome DevTools MCP at 1024×746 (post-fix,
+  commit 156150e0): form#sale_form now 673px with classes 'flex flex-col
+  h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0' (was 1076px content-sized).
+  Total row at y=652-672 and 'Conferma ordine' at y=686-722 — both fully
+  in the 746px viewport with 10 cart lines present (Total 29.50, integer-
+  cents correct). Two independent scrollers: tiles pane
+  ('md:col-span-2 min-h-0 h-full overflow-y-auto', 673/1076) and cart
+  lines ('flex-1 overflow-y-auto min-h-0', 573/610), neither containing
+  the confirm button — footer pins outside both. documentElement not
+  scrollable. Screenshot: app/tmp/257-cassa-uat-tablet-postfix.png"
 
 ## Summary
 
 total: 2
-passed: 0
-issues: 1
-pending: 1
+passed: 1
+issues: 0
+pending: 0
 skipped: 0
 blocked: 0
+
+Note: test 1's original issue (footer off-viewport) is resolved — closed by
+gap plan 257-04 and re-verified live as test 2.
 
 ## Gaps
 
 ```yaml
 - truth: "Under fill_viewport, the SelectionPanel pins with header/total/confirm visible while its lines container and the tiles pane scroll independently (256 D-15); the operator can always see and reach the running total and confirm button"
-  status: fixed_pending_reverify
+  status: resolved
   reason: "User-observed (live browser, 1024×768): Total row at y=1032-1081 and confirm button at y=1089-1125 are outside the 746px viewport; body overflow hidden so they are only reachable by scrolling the ENTIRE workspace (both panes move together) inside the outer fill-grid cell. FIXED by gap-closure plan 257-04 (commits eef721b9, 156150e0): FormProps.fill + fill-aware render_form + emit_register_root fill:true — verified mechanistically (class-chain assertions at 3 layers), live geometry re-check pending as test 2"
   severity: major
   test: 1
