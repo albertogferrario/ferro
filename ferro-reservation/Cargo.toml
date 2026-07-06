@@ -1,0 +1,40 @@
+[package]
+name = "ferro-reservation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Generic hold/commit/release resource reservation kernel for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["reservation", "booking", "sea-orm", "concurrency", "ferro"]
+categories = ["database", "asynchronous"]
+readme = "README.md"
+homepage = "https://ferro-rs.dev"
+
+[dependencies]
+sea-orm = "1.0"
+sea-orm-migration = "1.0"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+async-trait = "0.1"
+ferro-orm    = { path = "../ferro-orm",    version = "0.2" }
+ferro-events = { path = "../ferro-events", version = "0.2" }
+ferro-audit  = { path = "../ferro-audit",  version = "0.2" }
+sqlx         = { version = "0.8", optional = true }
+
+[features]
+# Enable Postgres SQLSTATE 40001 detection in the kernel's is_serialization_failure helper.
+# Required when consumers use a Postgres backend. Plan 02 wires the full postgres dep chain.
+sqlx-postgres = ["sea-orm/sqlx-postgres", "dep:sqlx"]
+
+# Gate Postgres integration tests behind this feature.
+# Enable with: cargo test -p ferro-reservation --features postgres-tests
+postgres-tests = ["sqlx-postgres"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+proptest = "1"

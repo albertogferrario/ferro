@@ -1,0 +1,8 @@
+error[E0308]: mismatched types
+  --> tests/ui/action/fail/non_action_result_return.rs:12:1
+   |
+12 | #[action(redirect_to = "/dashboard")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Result<(), ActionError>`, found `Result<HttpResponse, _>`
+   |
+   = note: expected enum `Result<(), ActionError>`
+              found enum `Result<HttpResponse, _>`

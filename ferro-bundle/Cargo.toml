@@ -1,0 +1,23 @@
+[package]
+name = "ferro-bundle"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "In-memory immutable byte-blob serving with content-hashed URLs for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["bundle", "static", "cache", "etag", "ferro"]
+categories = ["web-programming"]
+readme = "README.md"
+
+[dependencies]
+sha2 = "0.10"
+hex = "0.4"
+dashmap = "6"
+bytes = "1"
+thiserror = "2"
+ferro-rs = { path = "../framework", version = "0.2" }
+
+[dev-dependencies]
+# Integration tests construct synthetic registry state and call a private
+# serve_inner helper directly (per RESEARCH OQ #3 resolution). No additional
+# test crates needed.

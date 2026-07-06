@@ -1,0 +1,26 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "metadata_list": {
+      "type": "DescriptionList",
+      "props": {
+        "items": [
+          {
+            "label": "Id",
+            "value": ""
+          }
+        ]
+      }
+    },
+    "root": {
+      "type": "StatCard",
+      "props": {
+        "label": "Price",
+        "value": "",
+        "value_path": "/data/product/price"
+      }
+    }
+  },
+  "title": "Product"
+}

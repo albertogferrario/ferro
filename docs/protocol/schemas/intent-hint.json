@@ -1,0 +1,80 @@
+{
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/Intent"
+        }
+      },
+      "required": [
+        "primary"
+      ],
+      "additionalProperties": false,
+      "description": "Force this intent as the primary classification."
+    },
+    {
+      "type": "object",
+      "properties": {
+        "exclude": {
+          "$ref": "#/$defs/Intent"
+        }
+      },
+      "required": [
+        "exclude"
+      ],
+      "additionalProperties": false,
+      "description": "Exclude this intent from consideration."
+    }
+  ],
+  "description": "Manual override for intent derivation when structural analysis is wrong.\n\n`Primary` forces an intent as the top classification.\n`Exclude` removes an intent from consideration entirely.\n\nSerializes as externally tagged: `{\"primary\": \"browse\"}` or `{\"exclude\": \"process\"}`.",
+  "title": "IntentHint",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Intent": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "browse",
+          "description": "Collection navigation: has_many relationships, EntityName fields."
+        },
+        {
+          "type": "string",
+          "const": "focus",
+          "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+        },
+        {
+          "type": "string",
+          "const": "collect",
+          "description": "Data capture: many writable fields, write_only present."
+        },
+        {
+          "type": "string",
+          "const": "process",
+          "description": "Workflow with state progression: guarded transitions."
+        },
+        {
+          "type": "string",
+          "const": "summarize",
+          "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+        },
+        {
+          "type": "string",
+          "const": "analyze",
+          "description": "Time-series exploration: DateTime + numeric measures."
+        },
+        {
+          "type": "string",
+          "const": "track",
+          "description": "Timeline/audit trail: Status + temporal ordering."
+        },
+        {
+          "type": "string",
+          "description": "Escape hatch for intents not structurally derivable."
+        }
+      ],
+      "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent."
+    }
+  },
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/intent-hint.json"
+}

@@ -1,0 +1,15 @@
+error: #[resource_get]: unterminated `{` placeholder in `on_miss` — missing closing `}`
+  --> tests/ui/resource/fail/resource_get_unterminated_placeholder.rs:30:1
+   |
+30 | #[resource_get(Model, on_miss = "/x/{id")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `resource_get` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `id`
+  --> tests/ui/resource/fail/resource_get_unterminated_placeholder.rs:23:9
+   |
+23 |         id: i64,
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_id`
+   |
+   = note: `#[warn(unused_variables)]` on by default

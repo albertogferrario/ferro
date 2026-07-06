@@ -1,0 +1,93 @@
+# Cancer Framework
+
+> A Laravel-inspired web framework for Rust with routing, middleware,
+> database ORM, sessions, caching, queues, events, notifications,
+> broadcasting, storage, and Inertia.js integration.
+
+## AI-Assisted Development (cancer-mcp)
+
+The cancer-mcp crate provides MCP tools for AI agents (like Laravel Boost):
+
+| Tool | Description |
+|------|-------------|
+| `application_info` | Framework version, environment, installed crates, models |
+| `list_routes` | All registered routes with methods, paths, handlers |
+| `list_middleware` | Global and route middleware chain |
+| `list_migrations` | Database migrations with status |
+| `list_jobs` | Background jobs defined in the app |
+| `list_events` | Events and their listeners |
+| `list_commands` | Available CLI commands |
+| `database_schema` | Table schemas and relationships |
+| `database_query` | Execute SQL queries |
+| `read_logs` | Application log output |
+| `last_error` | Most recent error with stack trace |
+| `get_config` | Configuration values |
+| `search_docs` | Search framework documentation |
+| `tinker` | Interactive REPL for testing |
+| `generate_types` | Generate TypeScript types from Rust |
+
+Source: [cancer-mcp](cancer-mcp/src)
+
+## Documentation
+
+- [Getting Started](README.md)
+- [Middleware Guide](docs/middleware.md)
+- [CLI Reference](cancer-cli/README.md)
+
+## Core Framework
+
+- [Framework Source](framework/src)
+- [Routing](framework/src/routing)
+- [HTTP](framework/src/http)
+- [Database](framework/src/database)
+- [Validation](framework/src/validation)
+- [Middleware](framework/src/middleware)
+- [Sessions](framework/src/session)
+- [Authentication](framework/src/auth)
+- [Inertia.js](framework/src/inertia)
+
+## Satellite Crates
+
+- [cancer-events](cancer-events) - Event dispatcher with sync/async listeners
+- [cancer-queue](cancer-queue) - Background job processing with Redis
+- [cancer-notifications](cancer-notifications) - Multi-channel notifications (mail, database, slack)
+- [cancer-broadcast](cancer-broadcast) - WebSocket broadcasting with channels
+- [cancer-storage](cancer-storage) - File storage abstraction (local, S3, memory)
+- [cancer-cache](cancer-cache) - Caching with tags support
+- [cancer-macros](cancer-macros) - Procedural macros for handlers, requests, services
+- [inertia-rs](inertia-rs) - Inertia.js adapter for Rust
+
+## CLI Tool
+
+- [cancer-cli](cancer-cli) - Project scaffolding and code generators
+
+## Development Tools
+
+- [cancer-mcp](cancer-mcp) - MCP server for AI-assisted development
+- [Sample App](app) - Reference implementation
+
+## Key Patterns
+
+### Request Handling
+Handler functions receive Request, return Response (Result<HttpResponse, HttpResponse>).
+Use #[handler] macro for automatic dependency injection.
+
+### Dependency Injection
+Use #[service(ConcreteType)] on traits and #[injectable] on implementations.
+Services are resolved from the Container automatically.
+
+### Middleware
+Global middleware via global_middleware!() in bootstrap.rs.
+Route middleware via .middleware() on route definitions.
+
+### Database
+SeaORM-based with migrations. Models implement Entity trait.
+Use #[derive(Model)] for automatic CRUD operations.
+
+### Validation
+Laravel-style validation with rules! macro and Validator struct.
+Use #[derive(FormRequest)] for request validation.
+
+### Inertia.js
+Full-stack with React/TypeScript. Use Inertia::render() for responses.
+Compile-time component validation via macros.

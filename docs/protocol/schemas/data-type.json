@@ -1,0 +1,19 @@
+{
+  "type": "string",
+  "enum": [
+    "string",
+    "integer",
+    "float",
+    "boolean",
+    "date_time",
+    "date",
+    "json",
+    "binary",
+    "uuid",
+    "enum"
+  ],
+  "description": "Abstract data type categories for service fields.\n\nRepresents structural types independent of database storage details.\nMaps from database column types at introspection time.",
+  "title": "DataType",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/data-type.json"
+}

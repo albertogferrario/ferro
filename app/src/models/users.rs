@@ -1,0 +1,73 @@
+//! User model
+//!
+//! This file contains custom implementations for the User model.
+//! The base entity is auto-generated in src/models/entities/users.rs
+//!
+//! This file is NEVER overwritten by `ferro db:sync` - your custom code is safe here.
+
+// Re-export the auto-generated entity (includes FerroModel-generated boilerplate)
+pub use super::entities::users::*;
+
+use ferro::Authenticatable;
+use sea_orm::ColumnTrait;
+use std::any::Any;
+
+/// Type alias for convenient access
+#[allow(dead_code)]
+pub type User = Model;
+
+// ============================================================================
+// CUSTOM METHODS
+// Add your custom query and mutation methods below
+// ============================================================================
+
+impl Model {
+    pub async fn find_by_email(email: &str) -> Result<Option<Self>, ferro::FrameworkError> {
+        Self::query().filter(Column::Email.eq(email)).first().await
+    }
+
+    pub async fn find_by_id(id: i64) -> Result<Option<Self>, ferro::FrameworkError> {
+        Self::query().filter(Column::Id.eq(id)).first().await
+    }
+}
+
+// ============================================================================
+// RELATIONS
+// Define relationships to other entities here
+// ============================================================================
+
+// Example: One-to-Many relation
+// impl Entity {
+//     pub fn has_many_posts() -> RelationDef {
+//         Entity::has_many(super::posts::Entity).into()
+//     }
+// }
+
+// Example: Belongs-To relation
+// impl Entity {
+//     pub fn belongs_to_user() -> RelationDef {
+//         Entity::belongs_to(super::users::Entity)
+//             .from(Column::UserId)
+//             .to(super::users::Column::Id)
+//             .into()
+//     }
+// }
+
+// ============================================================================
+// AUTHENTICATION
+// Implements the Authenticatable trait for Auth::user() support
+// ============================================================================
+
+impl Authenticatable for Model {
+    fn auth_identifier(&self) -> i64 {
+        self.id as i64
+    }
+
+    fn auth_identifier_name(&self) -> &'static str {
+        "id"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}

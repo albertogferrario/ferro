@@ -1,0 +1,647 @@
+{
+  "task_id": "browse-aviary-band-records",
+  "target_intent": "Browse",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Creates a new aviary banding observation record from observer-supplied band identifier, species, and habitat zone.",
+            "display_name": "Record Sighting",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Identifier of the band attached to the observed bird.",
+                "meaning": "identifier",
+                "name": "band_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Name of the observed species.",
+                "meaning": "entity_name",
+                "name": "species_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Habitat zone label where the sighting occurred.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": true
+              }
+            ],
+            "name": "create_observation",
+            "preconditions": [
+              "band_id_present",
+              "species_name_present"
+            ]
+          },
+          {
+            "description": "Updates an existing banding observation entry.",
+            "display_name": "Edit Observation",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation record to edit.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Updated band identifier.",
+                "meaning": "identifier",
+                "name": "band_id",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated species name.",
+                "meaning": "entity_name",
+                "name": "species_name",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated habitat zone label.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": false
+              }
+            ],
+            "name": "edit_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          },
+          {
+            "description": "Removes an erroneous banding observation record from the registry.",
+            "display_name": "Delete Observation",
+            "effects": [
+              "remove_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation record to delete.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "delete_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          }
+        ],
+        "description": "A registry of aviary banding observations. Each record captures a band identifier, observed species, and habitat zone, supporting creation, editing, and deletion of sighting records, with listing by species and habitat zone.",
+        "display_name": "Banding Observation",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "band_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "species_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "habitat_zone",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "observed_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A non-empty band identifier must be supplied.",
+            "display_name": "Band ID Present",
+            "name": "band_id_present"
+          },
+          {
+            "description": "A non-empty species name must be supplied.",
+            "display_name": "Species Name Present",
+            "name": "species_name_present"
+          },
+          {
+            "description": "The targeted observation record must exist in the registry.",
+            "display_name": "Observation Exists",
+            "name": "observation_exists"
+          }
+        ],
+        "name": "banding_observation",
+        "relationships": []
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Creates a new banding observation record from an observer's sighting.",
+            "display_name": "Record Sighting",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "The band identifier read off the bird.",
+                "meaning": "entity_name",
+                "name": "band_identifier",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "The observed species name.",
+                "meaning": "category",
+                "name": "species_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "The habitat zone label where the sighting occurred.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": true
+              },
+              {
+                "data_type": "date_time",
+                "description": "When the sighting was observed.",
+                "meaning": "date_time",
+                "name": "observed_at",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Optional free-text observation notes.",
+                "meaning": "free_text",
+                "name": "notes",
+                "required": false
+              }
+            ],
+            "name": "create_observation",
+            "preconditions": [
+              "band_identifier_present",
+              "species_name_present"
+            ]
+          },
+          {
+            "description": "Updates the band identifier, species, habitat zone, or notes of an existing observation.",
+            "display_name": "Edit Entry",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation to edit.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Corrected band identifier.",
+                "meaning": "entity_name",
+                "name": "band_identifier",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Corrected species name.",
+                "meaning": "category",
+                "name": "species_name",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Corrected habitat zone label.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated observation notes.",
+                "meaning": "free_text",
+                "name": "notes",
+                "required": false
+              }
+            ],
+            "name": "edit_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          },
+          {
+            "description": "Deletes an erroneous observation record from the registry.",
+            "display_name": "Delete Record",
+            "effects": [
+              "remove_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation to delete.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "delete_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          }
+        ],
+        "description": "Registry of aviary banding observations. Each record captures a band identifier, the observed species, and a habitat zone label. Observers create new sighting records, edit existing entries, and delete erroneous records. Records can be listed and filtered by species and habitat zone.",
+        "display_name": "Banding Observation",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "band_identifier",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "species_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "habitat_zone",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "date_time",
+            "name": "observed_at",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A band identifier must be supplied for a new observation.",
+            "display_name": "Band Identifier Present",
+            "name": "band_identifier_present"
+          },
+          {
+            "description": "A species name must be supplied for a new observation.",
+            "display_name": "Species Name Present",
+            "name": "species_name_present"
+          },
+          {
+            "description": "The targeted observation record must exist before it can be edited or deleted.",
+            "display_name": "Observation Exists",
+            "name": "observation_exists"
+          }
+        ],
+        "name": "banding_observation",
+        "relationships": []
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "banding_observation_service"
+          },
+          "result_summary": "{\"error\": \"projection 'banding_observation_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Creates a new banding observation record with band identifier, species, and habitat zone.",
+            "display_name": "Record Sighting",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Band identifier read off the bird's leg ring.",
+                "meaning": "entity_name",
+                "name": "band_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Observed species name.",
+                "meaning": "category",
+                "name": "species_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Habitat zone label where the bird was sighted.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": true
+              },
+              {
+                "data_type": "date_time",
+                "description": "Timestamp of the sighting.",
+                "meaning": "date_time",
+                "name": "observed_at",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Free-text observer notes.",
+                "meaning": "free_text",
+                "name": "notes",
+                "required": false
+              }
+            ],
+            "name": "create_observation",
+            "preconditions": [
+              "band_id_present"
+            ]
+          },
+          {
+            "description": "Edits an existing banding observation entry.",
+            "display_name": "Edit Sighting",
+            "effects": [
+              "persist_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation to edit.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Band identifier.",
+                "meaning": "entity_name",
+                "name": "band_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Observed species name.",
+                "meaning": "category",
+                "name": "species_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Habitat zone label.",
+                "meaning": "category",
+                "name": "habitat_zone",
+                "required": true
+              },
+              {
+                "data_type": "date_time",
+                "description": "Timestamp of the sighting.",
+                "meaning": "date_time",
+                "name": "observed_at",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Free-text observer notes.",
+                "meaning": "free_text",
+                "name": "notes",
+                "required": false
+              }
+            ],
+            "name": "update_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          },
+          {
+            "description": "Deletes an erroneous banding observation record.",
+            "display_name": "Delete Sighting",
+            "effects": [
+              "remove_observation"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the observation to remove.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "delete_observation",
+            "preconditions": [
+              "observation_exists"
+            ]
+          }
+        ],
+        "description": "A registry of aviary banding observations. Each record captures a band identifier, the observed species, and the habitat zone where the sighting occurred. Observers create, edit, and delete sighting records, and browse the registry by species or habitat zone.",
+        "display_name": "Banding Observation",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "band_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "species_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "habitat_zone",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "date_time",
+            "name": "observed_at",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": false,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A band identifier must be supplied before a sighting can be recorded.",
+            "display_name": "Band Identifier Present",
+            "name": "band_id_present"
+          },
+          {
+            "description": "The target observation record must exist before it can be edited or deleted.",
+            "display_name": "Observation Exists",
+            "name": "observation_exists"
+          }
+        ],
+        "name": "banding_observation",
+        "relationships": []
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "banding_observation_service"
+          },
+          "result_summary": "{\"error\": \"projection 'banding_observation_service' not found. Available: []\"}"
+        }
+      ]
+    }
+  ]
+}

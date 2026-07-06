@@ -1,0 +1,41 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Card",
+      "props": {
+        "title": "Product",
+        "variant": "bordered"
+      },
+      "children": [
+        "fields_list"
+      ]
+    },
+    "fields_list": {
+      "type": "DescriptionList",
+      "props": {
+        "items": [
+          {
+            "label": "Name",
+            "value": ""
+          },
+          {
+            "format": "currency",
+            "label": "Price",
+            "value": ""
+          },
+          {
+            "label": "Stock",
+            "value": ""
+          },
+          {
+            "label": "Status",
+            "value": ""
+          }
+        ]
+      }
+    }
+  },
+  "title": "Product"
+}

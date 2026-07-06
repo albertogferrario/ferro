@@ -1,0 +1,38 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Pagamenti",
+  "layout": "dashboard",
+  "design": { "intent": "summarize" },
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1 },
+      "children": ["page_header", "stats_row", "payments_table"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": { "title": "Pagamenti" }
+    },
+    "stats_row": {
+      "type": "StatCard",
+      "props": {
+        "label": "Totale",
+        "value": { "$data": "/meta/totale_formattato" }
+      }
+    },
+    "payments_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "data", "label": "Data" },
+          { "key": "descrizione", "label": "Descrizione" },
+          { "key": "importo", "label": "Importo" },
+          { "key": "stato", "label": "Stato" }
+        ],
+        "data_path": "/pagamenti",
+        "empty_message": "Nessun pagamento trovato."
+      }
+    }
+  }
+}

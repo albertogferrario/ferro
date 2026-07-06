@@ -1,0 +1,19 @@
+
+body {
+  color: #333;
+  background:   white;
+  margin:  0;
+  padding: 0 16px;
+}
+
+.header {
+  display:   flex;
+  align-items:  center;
+  gap:   8px;
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+  }
+}

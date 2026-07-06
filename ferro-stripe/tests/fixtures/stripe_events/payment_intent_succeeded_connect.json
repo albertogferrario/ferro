@@ -1,0 +1,28 @@
+{
+  "id": "evt_test_pi_connect_001",
+  "object": "event",
+  "account": "acct_test_connect_001",
+  "api_version": "2023-10-16",
+  "created": 1700000009,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_test_connect_001",
+      "object": "payment_intent",
+      "amount": 5000,
+      "amount_capturable": 0,
+      "amount_received": 5000,
+      "currency": "usd",
+      "livemode": false,
+      "capture_method": "automatic",
+      "confirmation_method": "automatic",
+      "created": 1700000009,
+      "payment_method_types": ["card"],
+      "metadata": {},
+      "status": "succeeded"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "gate",
+  "elements": {
+    "gate": {"type": "Text", "props": {"content": "admin only"}, "visible": {"operator": "eq", "path": "/auth/admin", "value": true}}
+  }
+}

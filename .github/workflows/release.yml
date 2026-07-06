@@ -1,0 +1,280 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+  # Token-free auto-release: build the binaries once the Publish workflow succeeds on
+  # master (GITHUB_TOKEN can't trigger a tag-push/dispatch, but workflow_run is exempt).
+  workflow_run:
+    workflows: ["Publish"]
+    types: [completed]
+    branches: [master]
+  schedule:
+    - cron: '0 6 * * 1'   # Weekly Monday 06:00 UTC — published-library drift check
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Single source of truth for the release tag + whether to build, across all event
+  # types: tag-push / manual dispatch → github.ref_name; Publish-completed → vX.Y.Z from
+  # Cargo.toml (only when Publish succeeded).
+  meta:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.r.outputs.tag }}
+      proceed: ${{ steps.r.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: r
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EV="${{ github.event_name }}"
+          if [ "$EV" = "push" ] || [ "$EV" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EV" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            VER=$(grep -m1 'version = "' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+            # Publish "succeeds" even when it SKIPS (no library change). Only proceed when
+            # this version has no GitHub Release yet — i.e. Publish actually shipped a new one.
+            if gh release view "v$VER" >/dev/null 2>&1; then
+              echo "Release v$VER already exists — no new publish; skipping auto-release."
+              echo "proceed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+              echo "proceed=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: meta
+    if: needs.meta.outputs.proceed == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+
+          # macOS
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # Explicitly add the target to the active toolchain. The action's `targets:`
+      # input can miss when a repo-pinned toolchain or a preinstalled runner
+      # toolchain is selected, surfacing as "target may not be installed" / E0463
+      # when cross-compiling (e.g. x86_64-apple-darwin on an arm64 macos runner).
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install cross-compilation toolchain (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update -q
+          # gcc-aarch64-linux-gnu gives the compiler; libc6-dev-arm64-cross gives the
+          # aarch64 libc dev headers (bits/libc-header-start.h) that ring's C build needs.
+          # The latter is only a *recommended* dep, so --no-install-recommends would drop it.
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+      - name: Build (native)
+        run: cargo build --release --target ${{ matrix.target }} -p ferro-cli
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+
+      - name: Prepare artifact (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/ferro dist/
+          cd dist
+          tar -czvf ../ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }} ferro
+
+      - name: Prepare artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item target/${{ matrix.target }}/release/ferro.exe dist/
+          Compress-Archive -Path dist/ferro.exe -DestinationPath ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferro-${{ matrix.target }}
+          path: ferro-${{ needs.meta.outputs.tag }}-${{ matrix.target }}.${{ matrix.archive }}
+
+  release:
+    name: Create Release
+    if: needs.meta.outputs.proceed == 'true'
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: artifacts/**/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Note: the Homebrew formula is updated token-free by a scheduled self-poll workflow
+  # IN the tap repo (albertogferrario/homebrew-ferro → .github/workflows/update-formula.yml),
+  # which reads these public release assets and commits to itself. No cross-repo push from
+  # here, so no PAT/secret is needed on this side.
+
+  # Update install script with correct repo name
+  update-install-script:
+    name: Update Install Script
+    if: needs.meta.outputs.proceed == 'true'
+    needs: [meta, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update repo in install script
+        run: |
+          REPO="${{ github.repository }}"
+          sed -i "s|REPO=\"albertogferrario/ferro\"|REPO=\"$REPO\"|g" scripts/install.sh
+          sed -i "s|REPO=\"albertogferrario/ferro\"|REPO=\"$REPO\"|g" scripts/create-app.sh
+
+      - name: Commit changes
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add scripts/install.sh scripts/create-app.sh
+          # This job runs on a detached tag HEAD; only commit/push (to master) when
+          # the sed actually changed something — otherwise `git push` on detached HEAD
+          # fails (exit 128). The sed is a no-op while REPO already matches.
+          if git diff --staged --quiet; then
+            echo "Install scripts already correct — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: update install scripts with repo name"
+          git push origin HEAD:master
+
+  e2e-tag:
+    name: E2E from release artifact (tag)
+    needs: [meta, build]
+    if: needs.meta.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    # Blocking gate: COMP-04 resolved at 0.2.60 — the published scaffold compiles + boots,
+    # so a broken scaffold now fails this job loudly (was continue-on-error until 2026-06-14).
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+
+      - name: Download linux x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ferro-x86_64-unknown-linux-gnu
+          path: ./dist
+
+      - name: Extract and install ferro binary
+        run: |
+          tar -xzf ./dist/ferro-${{ needs.meta.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz -C ./dist
+          chmod +x ./dist/ferro
+          echo "$PWD/dist" >> $GITHUB_PATH
+
+      - name: Run COMP-04 scaffold sequence
+        run: |
+          set -euo pipefail
+          ferro --version
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+          ferro new bench-app --no-interaction --no-git
+          cd bench-app
+          ferro make:auth
+          ferro make:scaffold --no-smart-defaults -q -y --api Article title:string body:text
+          ferro make:scaffold --no-smart-defaults -q -y --api Product name:string price:float
+          ferro make:scaffold --no-smart-defaults -q -y --api Order status:string total:float
+          ferro make:scaffold --no-smart-defaults -q -y Post title:string body:text
+          ferro make:job EmailNotification
+          # DO NOT add [patch.crates-io] — must build against PUBLISHED ferro-rs (RESEARCH Pitfall 3)
+          RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build
+
+  e2e-drift:
+    name: E2E published artifact drift check (scheduled)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # Blocking gate: COMP-04 resolved at 0.2.60 — the published scaffold compiles + boots,
+    # so a broken scaffold now fails this job loudly (was continue-on-error until 2026-06-14).
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+
+      - name: Install ferro-cli from crates.io
+        run: cargo install ferro-cli   # drop --locked if ferro-cli is published without Cargo.lock (RESEARCH A3)
+
+      - name: Run COMP-04 scaffold sequence
+        run: |
+          set -euo pipefail
+          ferro --version
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+          ferro new bench-app --no-interaction --no-git
+          cd bench-app
+          ferro make:auth
+          ferro make:scaffold --no-smart-defaults -q -y --api Article title:string body:text
+          ferro make:scaffold --no-smart-defaults -q -y --api Product name:string price:float
+          ferro make:scaffold --no-smart-defaults -q -y --api Order status:string total:float
+          ferro make:scaffold --no-smart-defaults -q -y Post title:string body:text
+          ferro make:job EmailNotification
+          # DO NOT add [patch.crates-io] — must build against PUBLISHED ferro-rs
+          RUSTFLAGS="" CARGO_PROFILE_DEV_DEBUG=false CARGO_INCREMENTAL=0 cargo build

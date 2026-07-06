@@ -1,0 +1,17 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Focus
+  signals:
+    - free_text_fields+image_url_fields+url_fields
+    - 1_inline_relationships
+    - 1_parent_references
+    - baseline
+- intent: Collect
+  signals:
+    - high_writable_ratio
+- intent: Browse
+  signals:
+    - entity_name
+    - baseline

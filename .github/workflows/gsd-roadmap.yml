@@ -1,0 +1,147 @@
+name: GSD Roadmap
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: "Milestone name (e.g. v12.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Print phases without executing"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  run-roadmap:
+    name: GSD Roadmap — ${{ inputs.milestone }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run GSD Roadmap
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          MILESTONE="${{ inputs.milestone }}"
+          DRY_RUN="${{ inputs.dry_run }}"
+          GSD_TOOLS="$HOME/.claude/get-shit-done/bin/gsd-tools.cjs"
+
+          echo "============================================"
+          echo " GSD Roadmap: $MILESTONE"
+          echo "============================================"
+
+          PHASE_COUNT=0
+          COMPLETED=0
+
+          while true; do
+            # Re-read roadmap state before each phase (per D-04)
+            PHASES_JSON=$(node "$GSD_TOOLS" roadmap analyze 2>&1) || {
+              echo "Failed to read roadmap state"
+              exit 1
+            }
+
+            # Find the next incomplete phase
+            PHASE_NUM=$(echo "$PHASES_JSON" | node -e "
+              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              const incomplete = (data.phases || [])
+                .filter(p => p.disk_status !== 'complete')
+                .map(p => p.number);
+              if (incomplete.length > 0) console.log(incomplete[0]);
+              else console.log('DONE');
+            ")
+
+            if [ "$PHASE_NUM" = "DONE" ]; then
+              echo ""
+              echo "============================================"
+              echo " All phases complete for $MILESTONE"
+              echo " Completed: $COMPLETED phases"
+              echo "============================================"
+              break
+            fi
+
+            PHASE_COUNT=$((PHASE_COUNT + 1))
+
+            # Get phase name
+            PHASE_NAME=$(echo "$PHASES_JSON" | node -e "
+              const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+              const phase = (data.phases || []).find(p => p.number === '$PHASE_NUM');
+              console.log(phase ? phase.name : 'unknown');
+            ")
+
+            echo ""
+            echo "=========================================="
+            echo " Phase $PHASE_NUM: $PHASE_NAME"
+            echo "=========================================="
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "[dry-run] Would run: claude --print -p '/gsd:discuss-phase $PHASE_NUM --auto' ..."
+              COMPLETED=$((COMPLETED + 1))
+              continue
+            fi
+
+            LOG_FILE="/tmp/phase-${PHASE_NUM}-output.log"
+
+            # Per D-02: one fresh claude CLI invocation per phase
+            # Run discuss → plan → execute in a single session
+            claude --print \
+              --dangerously-skip-permissions \
+              -p "/gsd:discuss-phase $PHASE_NUM --auto && /gsd:plan-phase $PHASE_NUM --auto && /gsd:execute-phase $PHASE_NUM --auto --no-transition" \
+              2>&1 | tee "$LOG_FILE"
+
+            EXIT_CODE=${PIPESTATUS[0]}
+
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo ""
+              echo "Phase $PHASE_NUM failed with exit code $EXIT_CODE"
+
+              # Per D-05 + D-06: stop and open GitHub issue
+              LAST_LINES=$(tail -50 "$LOG_FILE")
+              PHASE_DIR=$(ls -d .planning/phases/${PHASE_NUM}-* 2>/dev/null | head -1)
+
+              gh issue create \
+                --title "Phase ${PHASE_NUM} failed: ${PHASE_NAME}" \
+                --body "## Phase ${PHASE_NUM} failed
+
+          **Milestone:** ${MILESTONE}
+          **Exit code:** ${EXIT_CODE}
+          **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          **Phase directory:** \`${PHASE_DIR:-unknown}\`
+
+          ### Last 50 lines of output
+
+          \`\`\`
+          ${LAST_LINES}
+          \`\`\`"
+
+              exit 1
+            fi
+
+            # Push commits from this phase
+            git push origin HEAD || true
+            COMPLETED=$((COMPLETED + 1))
+          done

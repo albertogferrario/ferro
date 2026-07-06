@@ -1,0 +1,10 @@
+{
+  "turn_id": "cancel-order",
+  "nl_message": "submit order 7",
+  "expected_tool": "submit",
+  "recorded_selection": {
+    "tool_name": "submit",
+    "arguments": { "id": 7 },
+    "confidence": 0.9
+  }
+}

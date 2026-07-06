@@ -1,0 +1,158 @@
+/*
+ * source(none) disables Tailwind v4's automatic whole-project content scan;
+ * only the explicit @source directives below are scanned. Without it, any
+ * repository file containing class-like tokens (planning docs, unrelated
+ * crates, untracked local files) leaks utilities into the generated CSS and
+ * makes regeneration non-deterministic across checkouts.
+ */
+@import "tailwindcss" source(none);
+
+/* Scan ferro-json-ui and framework Rust source files for utility class literals. */
+@source "../../ferro-json-ui/src";
+@source "../../framework/src";
+
+/*
+ * Register ferro's custom design tokens as inline theme variables.
+ *
+ * @theme inline tells Tailwind v4 to generate utility classes (bg-background,
+ * text-text, border-border, etc.) as var() references. The actual values come
+ * from the theme CSS injected at runtime by ThemeMiddleware, so dark mode and
+ * per-tenant themes continue to work without rebuilding the CSS.
+ *
+ * @source inline() cannot generate utilities for unknown color tokens — it only
+ * safelists classes Tailwind already knows about. @theme inline is required.
+ */
+@theme inline {
+  /* Surface tokens */
+  --color-background: var(--color-background);
+  --color-surface: var(--color-surface);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+
+  /* Role tokens */
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: var(--color-secondary-foreground);
+  --color-accent: var(--color-accent);
+  --color-destructive: var(--color-destructive);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+
+  /* Shape tokens */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  /* Shadow tokens */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Motion easing token — bridges to Tailwind's --ease-* utility namespace.
+   * Durations are NOT bridged here: Tailwind does not resolve duration-*
+   * utilities against a --duration-* theme namespace (unlike --ease-*),
+   * so the duration utilities are defined via @utility below instead. */
+  --ease-base: var(--motion-ease, cubic-bezier(0.2, 0, 0.38, 0.9));
+
+  /* Focus ring token — falls back to the primary color so 23-slot v1
+   * themes (which never define --color-ring) keep working focus rings. */
+  --color-ring: var(--color-ring, var(--color-primary));
+
+  /* Display font token — nested fallback to font-sans */
+  --font-display: var(--font-display, var(--font-sans));
+}
+
+/*
+ * Safelist classes emitted via runtime string concatenation
+ * (e.g., `format!("bg-{}", variant)`).
+ */
+@source inline("font-sans font-mono");
+
+/*
+ * Responsive grid-cols variants — generated at runtime via format!() in render_grid,
+ * so the Tailwind scanner cannot detect them as literals.
+ */
+@source inline("grid-cols-1 grid-cols-2 grid-cols-3 grid-cols-4 grid-cols-5 grid-cols-6 grid-cols-7 grid-cols-8 grid-cols-9 grid-cols-10 grid-cols-11 grid-cols-12 md:grid-cols-1 md:grid-cols-2 md:grid-cols-3 md:grid-cols-4 md:grid-cols-5 md:grid-cols-6 md:grid-cols-7 md:grid-cols-8 md:grid-cols-9 md:grid-cols-10 md:grid-cols-11 md:grid-cols-12 lg:grid-cols-1 lg:grid-cols-2 lg:grid-cols-3 lg:grid-cols-4 lg:grid-cols-5 lg:grid-cols-6 lg:grid-cols-7 lg:grid-cols-8 lg:grid-cols-9 lg:grid-cols-10 lg:grid-cols-11 lg:grid-cols-12");
+@source inline("duration-fast duration-base duration-slow ease-base font-display ring-ring");
+
+/*
+ * Base-breakpoint column spans — generated at runtime via format!() in
+ * render_grid (Grid `spans` prop), so the scanner cannot detect them.
+ * md:col-span-2/3 survive as literals in render_form_section.
+ */
+@source inline("col-span-2 col-span-3 col-span-4");
+
+/*
+ * Motion duration utilities. Tailwind v4 does not generate duration-*
+ * utilities from a --duration-* theme namespace, so these are defined
+ * explicitly. Fallbacks keep 23-slot v1 themes working.
+ */
+@utility duration-fast {
+  transition-duration: var(--motion-duration-fast, 120ms);
+}
+@utility duration-base {
+  transition-duration: var(--motion-duration-base, 220ms);
+}
+@utility duration-slow {
+  transition-duration: var(--motion-duration-slow, 320ms);
+}
+@utility pos-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Collapse motion durations for users who prefer reduced motion.
+ * Uses 0.01ms (not 0ms) so transitionend/animationend listeners still fire.
+ * !important is required: theme <style> tags are injected AFTER this
+ * stylesheet and redeclare the tokens on :root at equal specificity, so a
+ * normal declaration here would lose on source order. Important author
+ * declarations beat later normal ones regardless of order. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0.01ms !important;
+    --motion-duration-base: 0.01ms !important;
+    --motion-duration-slow: 0.01ms !important;
+  }
+}
+
+/*
+ * Viewport-fill workspace pages (`Spec.fill_viewport` → body.ferro-fill).
+ * Pins the dashboard/app layout shell to the viewport height and turns the
+ * main-column chain into a height-true flex chain, so a fill-mode Grid root
+ * gives each pane its own internal scrollbar — the document never scrolls.
+ * Selector chain (dashboard/app layouts):
+ *   body > div.flex (main column) > main > div (max-w wrapper) > #ferro-json-ui > root
+ */
+body.ferro-fill {
+  height: 100dvh;
+  overflow: hidden;
+}
+body.ferro-fill > div.flex {
+  height: 100%;
+  min-height: 0;
+}
+body.ferro-fill main {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+body.ferro-fill main > div {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.ferro-fill #ferro-json-ui {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.ferro-fill #ferro-json-ui > * {
+  flex: 1 1 0%;
+  min-height: 0;
+}

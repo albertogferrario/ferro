@@ -1,0 +1,25 @@
+{
+  "id": "evt_test_invoice_paid_001",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1700000008,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": null,
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_test_paid_001",
+      "object": "invoice",
+      "customer": "cus_test_inv_001",
+      "amount_paid": 4000,
+      "amount_due": 4000,
+      "amount_remaining": 0,
+      "currency": "usd",
+      "livemode": false,
+      "paid": true,
+      "status": "paid",
+      "metadata": {}
+    }
+  }
+}

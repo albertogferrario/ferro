@@ -1,0 +1,21 @@
+[package]
+name = "ferro-events"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Event dispatcher and listener system for Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["events", "listeners", "dispatcher", "ferro", "web"]
+categories = ["web-programming", "asynchronous"]
+readme = "README.md"
+
+[dependencies]
+async-trait = "0.1"
+tokio = { version = "1", features = ["sync", "rt"] }
+tracing = "0.1"
+parking_lot = "0.12"
+inventory = "0.3"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }

@@ -1,0 +1,10 @@
+{
+  "turn_id": "ambiguous",
+  "nl_message": "do the thing",
+  "expected_tool": "list_order",
+  "recorded_selection": {
+    "tool_name": "list_order",
+    "arguments": {},
+    "confidence": 0.3
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Relationship name (e.g., \"customer\", \"line_items\")."
+    },
+    "target": {
+      "type": "string",
+      "description": "Target service name (e.g., \"customer\", \"order_line_item\")."
+    },
+    "cardinality": {
+      "$ref": "#/$defs/Cardinality",
+      "description": "Structural cardinality of the relationship."
+    },
+    "navigation": {
+      "$ref": "#/$defs/NavigationHint",
+      "description": "How the renderer should present this relationship."
+    },
+    "foreign_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Foreign key field name on the owning side."
+    },
+    "inverse": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Name of the inverse relationship on the target service."
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Human-readable description of the relationship."
+    }
+  },
+  "required": [
+    "name",
+    "target",
+    "cardinality",
+    "navigation"
+  ],
+  "description": "A service-to-service relationship declaration.\n\nEach service declares its own relationships independently. The `inverse` field\nis a documentation hint, not a hard reference. Relationships carry two dimensions:\nstructural (cardinality) and presentational (navigation hint).\n\n```\nuse ferro_projections::{RelationshipDef, Cardinality, NavigationHint};\n\nlet rel = RelationshipDef::new(\"customer\", \"customer\", Cardinality::ManyToOne)\n    .foreign_key(\"customer_id\")\n    .inverse(\"orders\")\n    .navigation(NavigationHint::Link)\n    .description(\"Customer who placed this order\");\n```",
+  "title": "RelationshipDef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Cardinality": {
+      "type": "string",
+      "enum": [
+        "one_to_one",
+        "one_to_many",
+        "many_to_one",
+        "many_to_many"
+      ],
+      "description": "Structural cardinality of a service-to-service relationship.\n\nStandard ER cardinality covering the four relationship types.\nEach variant maps to a default [`NavigationHint`] via [`Cardinality::default_navigation`]."
+    },
+    "NavigationHint": {
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "inline",
+          "description": "Embed related data in current view (e.g., customer name on order card)."
+        },
+        {
+          "type": "string",
+          "const": "link",
+          "description": "Show as navigable link to related entity."
+        },
+        {
+          "type": "string",
+          "const": "tab",
+          "description": "Show as separate tab in detail view."
+        },
+        {
+          "type": "string",
+          "const": "nested",
+          "description": "Show as nested list/table within current view."
+        },
+        {
+          "type": "string",
+          "const": "hidden",
+          "description": "Relationship exists but not shown in default navigation."
+        }
+      ],
+      "description": "Presentational hint for how a relationship should be rendered in UI.\n\nBridges the gap between structural relationships and UI presentation.\nDefaults are derived from [`Cardinality`] and can be overridden per relationship."
+    }
+  },
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/relationship-def.json"
+}

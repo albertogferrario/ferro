@@ -1,0 +1,100 @@
+[
+  {
+    "id": "browse-mineral-specimens",
+    "target_intent": "Browse",
+    "description": "A collection of mineral specimens held in a geological repository. Each entry has a specimen name, a mineralogical type classification, and a locality region label. Operators can add new specimens, update existing entries, and remove obsolete records. The collection can be filtered by type and region.",
+    "expected_actions": ["add_specimen", "update_specimen", "remove_specimen"],
+    "expected_guards": []
+  },
+  {
+    "id": "browse-aviary-band-records",
+    "target_intent": "Browse",
+    "description": "A registry of aviary banding observations. Each record has a band identifier, a species name, and a habitat zone label. Observers can create new sighting records, edit existing entries, and delete erroneous records. The registry supports listing by species and habitat zone.",
+    "expected_actions": ["record_sighting", "edit_record", "delete_record"],
+    "expected_guards": []
+  },
+  {
+    "id": "focus-glacier-core-sample",
+    "target_intent": "Focus",
+    "description": "A detailed view of a single glacier ice core sample. The record shows the sample's label, a free-text field for stratigraphic notes describing the ice layers, an image attachment URL for the cross-section photograph, and a link to the originating expedition report. The record is primarily read, with annotations editable by glaciologists.",
+    "expected_actions": ["add_annotation"],
+    "expected_guards": []
+  },
+  {
+    "id": "focus-meteorite-custody-entry",
+    "target_intent": "Focus",
+    "description": "A detailed display of a single meteorite acquisition record. It shows the meteorite's designation name, a long-form provenance narrative text field, an image URL for the specimen photograph, a URL pointing to the acquisition certificate, and a parent institution it belongs to. Primarily used for reading with occasional curator notes appended.",
+    "expected_actions": ["append_curator_note"],
+    "expected_guards": []
+  },
+  {
+    "id": "collect-loom-warp-tension-log",
+    "target_intent": "Collect",
+    "description": "A data-entry form for logging loom warp tension measurements taken during a weaving session. Technicians enter the session identifier, the warp material code, the tension reading at the near end, the tension reading at the far end, the ambient humidity percentage, and the loom identifier. All fields are writable and required for a complete tension log entry.",
+    "expected_actions": ["submit_tension_log"],
+    "expected_guards": []
+  },
+  {
+    "id": "collect-kelp-transect-survey-entry",
+    "target_intent": "Collect",
+    "description": "A field data-entry form for recording a kelp-bed transect survey. Ecologists enter the transect identifier, the dive site label, the depth at the start point, the depth at the end point, the canopy density estimate, the substrate type, the elapsed survey duration in minutes, and the lead diver's identifier. All fields are writable inputs required to complete the survey record.",
+    "expected_actions": ["submit_survey"],
+    "expected_guards": []
+  },
+  {
+    "id": "process-telescope-allocation-slots",
+    "target_intent": "Process",
+    "description": "A registry of observatory telescope time allocation slots. Operators move each slot through a lifecycle: a slot begins as 'requested' when an astronomer submits a scheduling request. An allocator must review the request before it can advance to 'scheduled' — scheduling is gated on a reviewer sign-off check. Once the observation window opens the slot becomes 'observed'. After data retrieval the slot is 'archived'. A slot can also be 'declined' at the review stage if the request is incomplete, or 'withdrawn' by the requester before scheduling. The reviewer sign-off gate creates a branching outcome at the review stage.",
+    "expected_actions": ["submit_request", "approve_slot", "decline_slot", "mark_observed", "archive_slot", "withdraw_slot"],
+    "expected_guards": ["reviewer_approved", "requester_is_owner"]
+  },
+  {
+    "id": "process-kiln-firing-batch",
+    "target_intent": "Process",
+    "description": "A management system for ceramic kiln firing batches. Each batch starts in 'prepared' state when pieces are loaded. A quality inspector must sign off before the batch can move to 'firing' — the firing step is gated on the inspector clearance check. After firing the batch enters 'cooling'. Once cooled, a grader examines the pieces: pieces that meet the quality threshold move to 'dispatched', while batches with defects move to 'quarantined' for rework. The branching outcome at the grading stage depends on the quality clearance guard.",
+    "expected_actions": ["load_batch", "inspector_clearance", "start_firing", "complete_cooling", "dispatch_batch", "quarantine_batch"],
+    "expected_guards": ["inspector_cleared", "quality_threshold_met"]
+  },
+  {
+    "id": "summarize-apiary-hive-yield",
+    "target_intent": "Summarize",
+    "description": "A summary view of honey yield metrics for an apiary's hive collection. The display shows the total honey mass harvested in kilograms (read-only aggregate), the average nectar-to-honey conversion efficiency as a percentage (read-only), the active colony count (read-only integer quantity), and the wax yield mass in kilograms (read-only aggregate). All numeric fields are computed aggregates from harvesting records; no direct editing is performed on this summary.",
+    "expected_actions": [],
+    "expected_guards": []
+  },
+  {
+    "id": "summarize-reef-transect-metrics",
+    "target_intent": "Summarize",
+    "description": "A summary of coral reef transect survey metrics for a monitoring zone. It presents the live coral coverage percentage (read-only), the total identified species count (read-only quantity), the estimated standing biomass in grams per square metre (read-only money-equivalent weight value), and the bleaching incidence percentage (read-only). These aggregated figures derive from individual transect observations; the summary page itself is read-only.",
+    "expected_actions": [],
+    "expected_guards": []
+  },
+  {
+    "id": "analyze-aurora-event-log",
+    "target_intent": "Analyze",
+    "description": "A log of aurora detection events captured at a polar observation station. Each event record stores the observation timestamp (date-time of detection) and a single luminance intensity reading measured in kilonits — the primary numeric measure for the event. NOTE: exactly one numeric-aggregate field is intentional; a second numeric field would shift derived intent toward Summarize.",
+    "expected_actions": [],
+    "expected_guards": []
+  },
+  {
+    "id": "analyze-seismograph-burst-log",
+    "target_intent": "Analyze",
+    "description": "A log of seismic burst detections recorded by a network of geophones. Each entry captures the burst onset timestamp (date-time of first detection) and a single peak amplitude measurement in microns per second — the primary numeric measure for that burst. NOTE: exactly one numeric-aggregate field is intentional; adding a second would shift derived intent toward Summarize.",
+    "expected_actions": [],
+    "expected_guards": []
+  },
+  {
+    "id": "track-seed-specimen-custody",
+    "target_intent": "Track",
+    "description": "A custody chain for botanical seed specimens entering a gene bank. Each specimen moves linearly through: 'collected' (field acquisition), then 'quarantined' (isolation holding period), then 'tested' (viability and pathogen screening), then 'cleared' (accepted for long-term storage), and finally 'archived' (placed in the gene bank vault). Each stage advances only forward; there is no branching or sign-off gate — just sequential status progression tracked via a status field.",
+    "expected_actions": ["advance_to_quarantine", "advance_to_testing", "advance_to_cleared", "archive_specimen"],
+    "expected_guards": []
+  },
+  {
+    "id": "track-expedition-parcel-dispatch",
+    "target_intent": "Track",
+    "description": "A dispatch tracker for expedition supply parcels. Each parcel progresses linearly through: 'packed' (assembled at the depot), 'collected' (picked up by the courier), 'in_transit' (en route to the field site), and 'delivered' (received at the destination). The status advances one step at a time with no branching; the current stage is captured in a status field.",
+    "expected_actions": ["mark_collected", "mark_in_transit", "mark_delivered"],
+    "expected_guards": []
+  }
+]

@@ -1,0 +1,7 @@
+---
+source: ferro-text/src/lib.rs
+expression: result
+---
+Shipment
+Currently: pending
+Next possible states: shipped

@@ -1,0 +1,527 @@
+{
+  "task_id": "browse-mineral-specimens",
+  "target_intent": "Browse",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Registers a new mineral specimen in the repository collection.",
+            "display_name": "Add Specimen",
+            "effects": [],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Name of the mineral specimen.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Locality region where the specimen was collected.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": true
+              }
+            ],
+            "name": "add_specimen",
+            "preconditions": [
+              "specimen_name_present"
+            ]
+          },
+          {
+            "description": "Updates the recorded details of an existing specimen entry.",
+            "display_name": "Update Specimen",
+            "effects": [],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to update.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Updated specimen name.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated locality region label.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": false
+              }
+            ],
+            "name": "update_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          },
+          {
+            "description": "Removes an obsolete specimen record from the collection.",
+            "display_name": "Remove Specimen",
+            "effects": [],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to remove.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "remove_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          }
+        ],
+        "description": "A collection of mineral specimens held in a geological repository. Each entry records a specimen name, its mineralogical type classification, and a locality region label. Operators can add, update, and remove specimens, and filter the collection by type and region.",
+        "display_name": "Mineral Specimen",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "specimen_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "mineral_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "locality_region",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": false,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A non-empty specimen name must be supplied.",
+            "display_name": "Specimen Name Present",
+            "name": "specimen_name_present"
+          },
+          {
+            "description": "The referenced specimen record must exist in the collection.",
+            "display_name": "Specimen Exists",
+            "name": "specimen_exists"
+          }
+        ],
+        "name": "mineral_specimen",
+        "relationships": []
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Registers a new mineral specimen into the repository with its name, mineralogical type, and locality region.",
+            "display_name": "Add Specimen",
+            "effects": [
+              "create_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Name of the mineral specimen.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Locality region label where the specimen originates.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": true
+              }
+            ],
+            "name": "add_specimen",
+            "preconditions": [
+              "name_present"
+            ]
+          },
+          {
+            "description": "Updates the details of an existing mineral specimen entry.",
+            "display_name": "Update Specimen",
+            "effects": [
+              "update_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to update.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Updated specimen name.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated locality region label.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": false
+              }
+            ],
+            "name": "update_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          },
+          {
+            "description": "Removes an obsolete mineral specimen record from the repository.",
+            "display_name": "Remove Specimen",
+            "effects": [
+              "delete_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to remove.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "remove_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          }
+        ],
+        "description": "A collection of mineral specimens held in a geological repository, each classified by mineralogical type and labeled with its locality region.",
+        "display_name": "Mineral Specimen",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "specimen_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "mineral_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "locality_region",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "guards": [
+          {
+            "description": "The specimen must have a non-empty name.",
+            "display_name": "Name Present",
+            "name": "name_present"
+          },
+          {
+            "description": "The targeted specimen record must exist in the repository.",
+            "display_name": "Specimen Exists",
+            "name": "specimen_exists"
+          }
+        ],
+        "mcp_exposed": false,
+        "name": "mineral_specimen",
+        "relationships": [],
+        "state_machine": null
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Register a new mineral specimen in the repository.",
+            "display_name": "Add Specimen",
+            "effects": [
+              "create_specimen_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Name of the specimen.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Locality region where the specimen was collected.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": true
+              }
+            ],
+            "name": "add_specimen",
+            "preconditions": [
+              "name_present"
+            ]
+          },
+          {
+            "description": "Update the details of an existing mineral specimen.",
+            "display_name": "Update Specimen",
+            "effects": [
+              "update_specimen_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to update.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Updated specimen name.",
+                "meaning": "entity_name",
+                "name": "specimen_name",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated mineralogical type classification.",
+                "meaning": "category",
+                "name": "mineral_type",
+                "required": false
+              },
+              {
+                "data_type": "string",
+                "description": "Updated locality region.",
+                "meaning": "category",
+                "name": "locality_region",
+                "required": false
+              }
+            ],
+            "name": "update_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          },
+          {
+            "description": "Remove an obsolete specimen record from the repository.",
+            "display_name": "Remove Specimen",
+            "effects": [
+              "delete_specimen_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the specimen to remove.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              }
+            ],
+            "name": "remove_specimen",
+            "preconditions": [
+              "specimen_exists"
+            ]
+          }
+        ],
+        "description": "A collection of mineral specimens held in a geological repository. Each entry records a specimen name, a mineralogical type classification, and a locality region. Operators can add, update, and remove specimens, and filter the collection by type and region.",
+        "display_name": "Mineral Specimen",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "specimen_name",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "mineral_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "locality_region",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "A new specimen must have a non-empty name.",
+            "display_name": "Name Present",
+            "name": "name_present"
+          },
+          {
+            "description": "The targeted specimen record must exist in the repository.",
+            "display_name": "Specimen Exists",
+            "name": "specimen_exists"
+          }
+        ],
+        "name": "mineral_specimen"
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    }
+  ]
+}

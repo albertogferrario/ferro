@@ -1,0 +1,147 @@
+//! The `Billable` trait — domain entities expose their amount, currency, line
+//! description, and per-status side effects to the payment layer without coupling
+//! the payment layer to any concrete table.
+
+use async_trait::async_trait;
+use sea_orm::DatabaseTransaction;
+
+use crate::error::PaymentError;
+use crate::BillableKind;
+
+/// A domain entity that can be paid for via the payment layer.
+///
+/// Object-safe (`Send + Sync`, all methods take `&self`, no associated types) so a
+/// `Box<dyn Billable>` can be returned by [`crate::loader::BillableLoader::load`].
+/// Intentionally NOT `Clone` (D-06) — everything passes `&dyn Billable`.
+#[async_trait]
+pub trait Billable: Send + Sync {
+    /// Open-set kind discriminator (stored in `payment_intents.billable_kind`).
+    fn kind(&self) -> BillableKind;
+    /// The billable entity's primary key.
+    fn id(&self) -> i64;
+    /// Owning tenant (the loader is responsible for tenant scoping — D-08).
+    fn tenant_id(&self) -> i64;
+    /// Charge amount in the smallest currency unit.
+    fn amount_cents(&self) -> i64;
+    /// ISO 4217 currency code, e.g. `"EUR"`.
+    fn currency(&self) -> &str;
+    /// Human-readable Stripe Checkout line-item description.
+    fn checkout_line_description(&self) -> String;
+
+    /// Stripe Connect destination account, when this billable routes funds to a
+    /// connected account. Default `None` keeps non-Connect billables trivial; Connect
+    /// billables override so `start_checkout` can snapshot `application_fee_cents` (D-05).
+    fn connect_account_id(&self) -> Option<String> {
+        None
+    }
+
+    /// Per-instance Stripe Checkout success URL. When `Some`, `start_checkout`
+    /// uses it in preference to the global `return_url_builder` closure (which
+    /// only sees `kind()` + `id()`). Default `None` keeps existing billables on
+    /// the closure. Lets a billable route the customer to a resource-scoped page
+    /// (e.g. a share `/f/{token}?paid=1`) rather than a generic checkout-result
+    /// page — avoiding a wrong-receipt info leak when the closure cannot derive
+    /// the correct destination from `kind()` + `id()` alone.
+    fn success_url(&self) -> Option<String> {
+        None
+    }
+
+    /// Per-instance Stripe Checkout cancel URL. Same precedence rule as
+    /// [`Billable::success_url`]. Default `None` keeps the closure.
+    fn cancel_url(&self) -> Option<String> {
+        None
+    }
+
+    /// Side effect after the payment is confirmed paid. Runs inside the caller's txn.
+    async fn on_paid(&self, txn: &DatabaseTransaction) -> Result<(), PaymentError>;
+    /// Side effect after a reserved intent is released (expired/unpaid).
+    async fn on_released(&self, txn: &DatabaseTransaction) -> Result<(), PaymentError>;
+    /// Side effect after a refund is confirmed, carrying the refunded amount.
+    async fn on_refunded(
+        &self,
+        txn: &DatabaseTransaction,
+        amount_cents: i64,
+    ) -> Result<(), PaymentError>;
+
+    /// Side effect after the payment layer auto-refunds a capture it could not
+    /// honor (the billable was loaded but `on_paid` failed with a non-transient
+    /// state conflict — e.g. the reservation was already released when the late
+    /// `checkout.session.completed` arrived). Carries the triggering Stripe
+    /// `event_id` and the auto-refunded amount so the consumer can write an audit
+    /// record / owner notification. Runs on a dedicated txn after the refund is
+    /// issued; a failure here is logged, never propagated (the money is already
+    /// refunded). Default is a no-op — only billables that surface auto-refunds to
+    /// an operator need override it.
+    async fn on_auto_refunded(
+        &self,
+        _txn: &DatabaseTransaction,
+        _event_id: &str,
+        _amount_cents: i64,
+    ) -> Result<(), PaymentError> {
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Minimal concrete `Billable` impl — proves object-safety and the default
+    /// `connect_account_id` behaviour.
+    struct TestBillable;
+
+    #[async_trait]
+    impl Billable for TestBillable {
+        fn kind(&self) -> BillableKind {
+            BillableKind::new("test")
+        }
+        fn id(&self) -> i64 {
+            1
+        }
+        fn tenant_id(&self) -> i64 {
+            1
+        }
+        fn amount_cents(&self) -> i64 {
+            1000
+        }
+        fn currency(&self) -> &str {
+            "EUR"
+        }
+        fn checkout_line_description(&self) -> String {
+            "Test item".to_string()
+        }
+        async fn on_paid(&self, _txn: &DatabaseTransaction) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_released(&self, _txn: &DatabaseTransaction) -> Result<(), PaymentError> {
+            Ok(())
+        }
+        async fn on_refunded(
+            &self,
+            _txn: &DatabaseTransaction,
+            _amount_cents: i64,
+        ) -> Result<(), PaymentError> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn connect_account_id_defaults_to_none() {
+        let b = TestBillable;
+        assert_eq!(b.connect_account_id(), None);
+    }
+
+    #[test]
+    fn return_urls_default_to_none() {
+        let b = TestBillable;
+        assert_eq!(b.success_url(), None);
+        assert_eq!(b.cancel_url(), None);
+    }
+
+    #[test]
+    fn box_dyn_billable_is_constructible() {
+        let b: Box<dyn Billable> = Box::new(TestBillable);
+        assert_eq!(b.amount_cents(), 1000);
+        assert_eq!(b.connect_account_id(), None);
+    }
+}

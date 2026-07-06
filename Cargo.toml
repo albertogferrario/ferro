@@ -1,0 +1,69 @@
+[workspace]
+resolver = "2"
+# Standalone benchmark apps are their own packages, NOT workspace members.
+# Listed here defensively so a future glob member pattern cannot absorb them.
+exclude = [
+    "benchmark/apps/ferro-conduit",
+    "benchmark/apps/ferro-micro",
+]
+members = [
+    "framework",
+    "app",
+    "ferro-cli",
+    "ferro-macros",
+    "ferro-events",
+    "ferro-queue",
+    "ferro-notifications",
+    "ferro-broadcast",
+    "ferro-storage",
+    "ferro-cache",
+    "ferro-mcp",
+    "ferro-mcp-server",
+    "ferro-mcp-oauth",
+    "ferro-inertia",
+    "ferro-json-ui",
+    "ferro-lang",
+    "ferro-api-mcp",
+    "ferro-projections",
+    "ferro-stripe",
+    "ferro-theme",
+    "ferro-ai",
+    "ferro-a2ui",
+    "ferro-whatsapp",
+    "ferro-wallet",
+    "ferro-orm",
+    "ferro-audit",
+    "ferro-migration",
+    "ferro-reservation",
+    "ferro-payments",
+    "ferro-projection",
+    "ferro-bundle",
+    "ferro-deployments",
+    "ferro-assets",
+    "ferro-text",
+]
+
+[workspace.package]
+version = "0.2.88"
+edition = "2021"
+rust-version = "1.88.0"
+license = "MIT"
+
+# Keep the full `cargo test --all-features` build within the CI runner disk.
+# That build links every test binary across the 26-crate workspace; the
+# accumulated artifacts overflowed the runner ("ld: No space left on device").
+# Three repo-level levers shrink target/ without changing test outcomes:
+#   - debug = false       → no debug-info in the dependency rlibs (the bulk)
+#   - incremental = false → no multi-GB incremental compilation cache
+#   - strip = true        → strip symbols from the final test binaries
+# Panic locations (file!/line!) and #[should_panic(expected=...)] are unaffected;
+# profiles are ignored when these crates are consumed as published dependencies.
+[profile.dev]
+debug = false
+incremental = false
+strip = true
+
+[profile.test]
+debug = false
+incremental = false
+strip = true

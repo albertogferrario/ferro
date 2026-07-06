@@ -1,0 +1,125 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Nuovo prodotto",
+  "layout": "dashboard",
+  "design": { "intent": "collect" },
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1 },
+      "children": ["page_header", "content_row"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": {
+        "title": "Nuovo prodotto",
+        "breadcrumb": [
+          { "label": "Prodotti", "url": "/prodotti" }
+        ]
+      }
+    },
+    "content_row": {
+      "type": "Grid",
+      "props": { "columns": 1, "md_columns": 3, "gap": "lg", "spans": [2, 1] },
+      "children": ["form_card", "info_card"]
+    },
+    "form_card": {
+      "type": "Card",
+      "props": {
+        "title": "Dati prodotto",
+        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo."
+      },
+      "children": ["form"]
+    },
+    "info_card": {
+      "type": "Card",
+      "props": {
+        "title": "Suggerimenti",
+        "description": "Come compilare la scheda prodotto."
+      },
+      "children": ["tip_nome", "tip_prezzo", "tip_quantita"]
+    },
+    "tip_nome": {
+      "type": "Text",
+      "props": {
+        "content": "Il nome appare nel catalogo e nelle ricevute: usa una descrizione breve e riconoscibile.",
+        "element": "p"
+      }
+    },
+    "tip_prezzo": {
+      "type": "Text",
+      "props": {
+        "content": "Il prezzo è IVA inclusa e usa il punto come separatore decimale (es. 12.50).",
+        "element": "p"
+      }
+    },
+    "tip_quantita": {
+      "type": "Text",
+      "props": {
+        "content": "La quantità indica lo stock iniziale: potrai aggiornarla in qualsiasi momento dalla lista prodotti.",
+        "element": "p"
+      }
+    },
+    "form": {
+      "type": "Form",
+      "props": {
+        "action": { "handler": "/prodotti", "method": "POST" },
+        "method": "POST"
+      },
+      "children": ["nome", "categoria", "prezzo", "quantita", "submit"]
+    },
+    "nome": {
+      "type": "Input",
+      "props": {
+        "field": "nome",
+        "label": "Nome",
+        "required": true,
+        "placeholder": "Nome del prodotto"
+      }
+    },
+    "categoria": {
+      "type": "Select",
+      "props": {
+        "field": "categoria",
+        "label": "Categoria",
+        "required": true,
+        "default_value": "abbigliamento",
+        "options": [
+          { "value": "abbigliamento", "label": "Abbigliamento" },
+          { "value": "accessori", "label": "Accessori" },
+          { "value": "calzature", "label": "Calzature" }
+        ]
+      }
+    },
+    "prezzo": {
+      "type": "Input",
+      "props": {
+        "field": "prezzo",
+        "label": "Prezzo (€)",
+        "input_type": "number",
+        "step": "0.01",
+        "required": true,
+        "placeholder": "0,00"
+      }
+    },
+    "quantita": {
+      "type": "Input",
+      "props": {
+        "field": "quantita",
+        "label": "Quantità",
+        "input_type": "number",
+        "required": true,
+        "default_value": "1"
+      }
+    },
+    "submit": {
+      "type": "Button",
+      "props": {
+        "label": "Salva prodotto",
+        "button_type": "submit",
+        "variant": "primary"
+      }
+    }
+  }
+}

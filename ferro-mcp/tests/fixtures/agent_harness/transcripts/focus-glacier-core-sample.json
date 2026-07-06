@@ -1,0 +1,397 @@
+{
+  "task_id": "focus-glacier-core-sample",
+  "target_intent": "Focus",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Updates the stratigraphic notes describing the ice layers. Restricted to glaciologists.",
+            "display_name": "Edit Annotations",
+            "effects": [
+              "record_annotation_revision"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the ice core sample being annotated.",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Revised stratigraphic notes describing the ice layers.",
+                "meaning": "free_text",
+                "name": "stratigraphic_notes",
+                "required": true
+              }
+            ],
+            "name": "annotate_sample",
+            "preconditions": [
+              "is_glaciologist"
+            ]
+          }
+        ],
+        "description": "Detailed view of a single glacier ice core sample. Primarily read-only, with stratigraphic annotations editable by glaciologists.",
+        "display_name": "Ice Core Sample",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "label",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "stratigraphic_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "cross_section_image_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "expedition_report_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "expedition_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "created_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "updated_at",
+            "name": "updated_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "Only users with the glaciologist role may edit stratigraphic annotations.",
+            "display_name": "Is Glaciologist",
+            "name": "is_glaciologist"
+          }
+        ],
+        "name": "ice_core_sample",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Originating expedition report this ice core sample was collected during.",
+            "foreign_key": "expedition_id",
+            "inverse": "ice_core_samples",
+            "name": "expedition",
+            "navigation": "link",
+            "target": "expedition_report"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "ice_core_sample_service"
+          },
+          "result_summary": "{\"error\": \"projection 'ice_core_sample_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Edit the stratigraphic notes describing the ice layers; restricted to glaciologists",
+            "display_name": "Update Annotations",
+            "effects": [
+              "record_annotation_revision"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the ice core sample being annotated",
+                "meaning": "identifier",
+                "name": "id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Updated stratigraphic notes describing the observed ice layers",
+                "meaning": "free_text",
+                "name": "stratigraphic_notes",
+                "required": false
+              }
+            ],
+            "name": "update_annotations",
+            "preconditions": [
+              "is_glaciologist"
+            ]
+          }
+        ],
+        "description": "Detailed view of a single glacier ice core sample. Primarily a read-only record showing the sample label, the cross-section photograph, and a link to the originating expedition report, with stratigraphic notes editable by glaciologists.",
+        "display_name": "Ice Core Sample",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "label",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "stratigraphic_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "cross_section_photo_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "expedition_report_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "expedition_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "name": "collected_at",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "Only users with the glaciologist role may edit the stratigraphic annotations",
+            "display_name": "Is Glaciologist",
+            "name": "is_glaciologist"
+          }
+        ],
+        "name": "ice_core_sample",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Originating expedition whose report documents this sample's collection",
+            "foreign_key": "expedition_id",
+            "inverse": "ice_core_samples",
+            "name": "expedition",
+            "navigation": "link",
+            "target": "expedition"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Updates the stratigraphic notes describing the ice layers. Restricted to glaciologists.",
+            "display_name": "Annotate Sample",
+            "effects": [
+              "record_annotation_revision"
+            ],
+            "inputs": [
+              {
+                "data_type": "integer",
+                "description": "Identifier of the ice core sample to annotate.",
+                "meaning": "identifier",
+                "name": "sample_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Revised stratigraphic notes describing the observed ice layers.",
+                "meaning": "free_text",
+                "name": "stratigraphic_notes",
+                "required": true
+              }
+            ],
+            "name": "annotate_sample",
+            "preconditions": [
+              "is_glaciologist"
+            ]
+          }
+        ],
+        "description": "A detailed view of a single glacier ice core sample, showing its label, stratigraphic notes describing the ice layers, a cross-section photograph, and a link to the originating expedition report. Primarily read-only, with annotations editable by glaciologists.",
+        "display_name": "Ice Core Sample",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "label",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "free_text",
+            "name": "stratigraphic_notes",
+            "readable": true,
+            "required": false,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "image_url",
+            "name": "cross_section_photo_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "url",
+            "name": "expedition_report_url",
+            "readable": true,
+            "required": false,
+            "writable": false
+          },
+          {
+            "data_type": "integer",
+            "meaning": "foreign_key",
+            "name": "expedition_id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          }
+        ],
+        "guards": [
+          {
+            "description": "The current user must hold a glaciologist role to edit sample annotations.",
+            "display_name": "Is Glaciologist",
+            "name": "is_glaciologist"
+          }
+        ],
+        "name": "ice_core_sample",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The expedition during which this ice core sample was collected, linking to its originating report.",
+            "foreign_key": "expedition_id",
+            "inverse": "ice_core_samples",
+            "name": "expedition",
+            "navigation": "link",
+            "target": "expedition"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "ice_core_sample_service"
+          },
+          "result_summary": "{\"error\": \"projection 'ice_core_sample_service' not found. Available: []\"}"
+        }
+      ]
+    }
+  ]
+}

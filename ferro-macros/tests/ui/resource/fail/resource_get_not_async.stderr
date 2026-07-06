@@ -1,0 +1,13 @@
+error: #[resource_get] requires an async fn
+  --> tests/ui/resource/fail/resource_get_not_async.rs:27:5
+   |
+27 | pub fn edit(req: &mut Request, tenant: &TenantContext, model: &Model) -> Response {
+   |     ^^
+
+warning: unused variable: `id`
+  --> tests/ui/resource/fail/resource_get_not_async.rs:19:9
+   |
+19 |         id: i64,
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_id`
+   |
+   = note: `#[warn(unused_variables)]` on by default

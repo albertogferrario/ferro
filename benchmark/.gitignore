@@ -1,0 +1,8 @@
+# build artifacts from the sample apps — never the harness or results
+apps/*/target/
+apps/*/vendor/
+apps/*/node_modules/
+apps/*/.env
+**/__pycache__/
+*.pyc
+# results/ is intentionally committed (auditable raw data)

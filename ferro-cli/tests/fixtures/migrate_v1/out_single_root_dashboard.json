@@ -1,0 +1,11 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Dashboard",
+  "root": "header",
+  "elements": {
+    "header": {
+      "type": "PageHeader",
+      "props": { "title": "Dashboard" }
+    }
+  }
+}

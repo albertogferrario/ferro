@@ -1,0 +1,99 @@
+{
+  "errored_trials": 19,
+  "generated_at": "2026-06-13T01:09:26.523545+00:00",
+  "measured_trials": 23,
+  "model": "claude-opus-4-8",
+  "per_intent": {
+    "Analyze": {
+      "errored": 6,
+      "measured": 0,
+      "status": "unmeasured"
+    },
+    "Browse": {
+      "errored": 0,
+      "measured": 6,
+      "status": "measured",
+      "t1": 1.0,
+      "t2": 0.0,
+      "t3": 0.0,
+      "t4": 0.0,
+      "tier_pass_counts": {
+        "t1": 6,
+        "t2": 0,
+        "t3": 0,
+        "t4": 0
+      }
+    },
+    "Collect": {
+      "errored": 0,
+      "measured": 6,
+      "status": "measured",
+      "t1": 1.0,
+      "t2": 0.0,
+      "t3": 0.0,
+      "t4": 0.0,
+      "tier_pass_counts": {
+        "t1": 6,
+        "t2": 0,
+        "t3": 0,
+        "t4": 0
+      }
+    },
+    "Focus": {
+      "errored": 0,
+      "measured": 6,
+      "status": "measured",
+      "t1": 1.0,
+      "t2": 1.0,
+      "t3": 1.0,
+      "t4": 1.0,
+      "tier_pass_counts": {
+        "t1": 6,
+        "t2": 6,
+        "t3": 6,
+        "t4": 6
+      }
+    },
+    "Process": {
+      "errored": 1,
+      "measured": 5,
+      "status": "measured",
+      "t1": 0.2,
+      "t2": 0.2,
+      "t3": 0.2,
+      "t4": 0.2,
+      "tier_pass_counts": {
+        "t1": 1,
+        "t2": 1,
+        "t3": 1,
+        "t4": 1
+      }
+    },
+    "Summarize": {
+      "errored": 6,
+      "measured": 0,
+      "status": "unmeasured"
+    },
+    "Track": {
+      "errored": 6,
+      "measured": 0,
+      "status": "unmeasured"
+    }
+  },
+  "prompt_version": "v1",
+  "tasks": 14,
+  "tier_pass_counts": {
+    "t1": 19,
+    "t2": 7,
+    "t3": 7,
+    "t4": 7
+  },
+  "tier_rates": {
+    "t1": 0.8260869565217391,
+    "t2": 0.30434782608695654,
+    "t3": 0.30434782608695654,
+    "t4": 0.30434782608695654
+  },
+  "total_attempted": 42,
+  "trials_per_task": 3
+}

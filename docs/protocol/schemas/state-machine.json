@@ -1,0 +1,146 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Machine identifier (e.g., \"order_lifecycle\")."
+    },
+    "display_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Human-readable name."
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Description of what this state machine models."
+    },
+    "initial_state": {
+      "type": "string",
+      "description": "Name of the initial state (must exist in states)."
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/StateDef"
+      },
+      "description": "State definitions."
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Transition"
+      },
+      "description": "Transition definitions."
+    }
+  },
+  "required": [
+    "name",
+    "initial_state",
+    "states",
+    "transitions"
+  ],
+  "description": "A state machine schema describing lifecycle states and transitions.\n\nSchema-only: defines structure but does not execute transitions.\nGuards and side effects are string references resolved externally.\n\n```\nuse ferro_projections::{StateMachine, StateDef, Transition};\n\nlet machine = StateMachine::new(\"order_lifecycle\")\n    .initial(\"draft\")\n    .state(StateDef::new(\"draft\").display_name(\"Draft\"))\n    .state(StateDef::new(\"completed\").display_name(\"Completed\").final_state())\n    .transition(Transition::new(\"draft\", \"complete\", \"completed\"));\n\nlet warnings = machine.validate().unwrap();\nassert!(warnings.is_empty());\n```",
+  "title": "StateMachine",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "StateDef": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "State identifier (e.g., \"draft\", \"pending\", \"completed\")."
+        },
+        "display_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Human-readable name (e.g., \"Pending Review\")."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of what this state means."
+        },
+        "is_final": {
+          "type": "boolean",
+          "description": "Whether this is a terminal state.",
+          "default": false
+        },
+        "on_enter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects triggered on entering this state (string references)."
+        },
+        "on_exit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects triggered on exiting this state (string references)."
+        },
+        "metadata": {
+          "description": "Arbitrary metadata for rendering hints."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "description": "A state within a state machine.\n\nStates can declare entry/exit side effects as string references\nand carry optional metadata for rendering hints."
+    },
+    "Transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source state name."
+        },
+        "event": {
+          "type": "string",
+          "description": "Event name that triggers this transition."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target state name."
+        },
+        "guard": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Guard condition (string reference, resolved at runtime)."
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Side effects executed when transition fires (string references)."
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Description of what this transition represents."
+        }
+      },
+      "required": [
+        "from",
+        "event",
+        "to"
+      ],
+      "description": "A transition between two states, triggered by an event.\n\nGuards gate the transition; actions fire when the transition is taken.\nBoth are string references resolved externally."
+    }
+  },
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/state-machine.json"
+}

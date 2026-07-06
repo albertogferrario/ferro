@@ -1,0 +1,63 @@
+{
+  "task_id": "_fixture_valid",
+  "target_intent": "browse",
+  "model": "fixture",
+  "prompt_version": "fixture-v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "name": "mineral_specimen",
+        "display_name": "Mineral Specimens",
+        "description": "A registry of mineral specimens in a geological collection.",
+        "fields": [
+          {
+            "name": "id",
+            "data_type": "integer",
+            "meaning": "identifier",
+            "required": true,
+            "is_list": false,
+            "readable": true,
+            "writable": false
+          },
+          {
+            "name": "specimen_name",
+            "data_type": "string",
+            "meaning": "entity_name",
+            "required": true,
+            "is_list": false,
+            "readable": true,
+            "writable": true
+          },
+          {
+            "name": "mineral_class",
+            "data_type": "string",
+            "meaning": "category",
+            "required": false,
+            "is_list": false,
+            "readable": true,
+            "writable": true
+          },
+          {
+            "name": "origin_locality",
+            "data_type": "string",
+            "meaning": "entity_name",
+            "required": false,
+            "is_list": false,
+            "readable": true,
+            "writable": true
+          },
+          {
+            "name": "acquired_at",
+            "data_type": "date_time",
+            "meaning": "created_at",
+            "required": true,
+            "is_list": false,
+            "readable": true,
+            "writable": false
+          }
+        ]
+      }
+    }
+  ]
+}

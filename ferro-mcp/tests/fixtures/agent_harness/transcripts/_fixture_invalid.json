@@ -1,0 +1,15 @@
+{
+  "task_id": "_fixture_invalid",
+  "target_intent": "browse",
+  "model": "fixture",
+  "prompt_version": "fixture-v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "name": 42,
+        "_comment": "name must be a string; this integer fails ServiceDef deserialization, proving T1=false without any render panic"
+      }
+    }
+  ]
+}

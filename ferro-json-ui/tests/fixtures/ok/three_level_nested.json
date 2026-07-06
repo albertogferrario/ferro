@@ -1,0 +1,9 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "root": "root",
+  "elements": {
+    "root":  {"type": "Card",  "props": {"title": "Outer"}, "children": ["section"]},
+    "section": {"type": "FormSection", "props": {"title": "Inner"}, "children": ["leaf"]},
+    "leaf": {"type": "Text", "props": {"content": "Bottom"}}
+  }
+}

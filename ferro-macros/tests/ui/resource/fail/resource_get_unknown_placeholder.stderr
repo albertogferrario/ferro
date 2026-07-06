@@ -1,0 +1,15 @@
+error: #[resource_get]: unknown path param `{nope}` in `on_miss` — declared params are: id, model
+  --> tests/ui/resource/fail/resource_get_unknown_placeholder.rs:26:1
+   |
+26 | #[resource_get(Model, on_miss = "/x/{nope}")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the attribute macro `resource_get` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `id`
+  --> tests/ui/resource/fail/resource_get_unknown_placeholder.rs:19:9
+   |
+19 |         id: i64,
+   |         ^^ help: if this is intentional, prefix it with an underscore: `_id`
+   |
+   = note: `#[warn(unused_variables)]` on by default

@@ -1,0 +1,75 @@
+[package]
+name = "ferro-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AI structured classification and confirmation primitives for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["ai", "classification", "confirmation", "anthropic", "ferro"]
+categories = ["web-programming"]
+readme = "README.md"
+
+[dependencies]
+# LLM-only deps — optional behind the `llm` feature (default on).
+# DO NOT add these to the `confirmation` feature; the confirmation module
+# uses only async-trait, tokio, serde, dashmap, chrono, ferro-events.
+reqwest           = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"], optional = true }
+reqwest-eventsource = { version = "0.6", default-features = false, optional = true }
+futures           = { version = "0.3", default-features = false, features = ["std"], optional = true }
+async-stream      = { version = "0.3", optional = true }
+schemars          = { version = "1", features = ["derive"], optional = true }
+
+# Always-on deps (required by confirmation + error modules regardless of feature set).
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["time", "rt"] }
+async-trait = "0.1"
+thiserror = "2"
+tracing = "0.1"
+ferro-events = { path = "../ferro-events", version = "0.2" }
+ferro-projections = { path = "../ferro-projections", version = "0.2" }
+dashmap = "6"
+chrono = { version = "0.4", features = ["serde"] }
+
+# pgvector 0.4 supports sqlx >= 0.8, < 0.10 (docs.rs/pgvector/0.4.2).
+# Workspace Cargo.lock pins sqlx 0.8.6 via sea-orm; "0.8" matches that pin and
+# avoids a second sqlx compilation. Do NOT bump to "0.9".
+pgvector = { version = "0.4", features = ["sqlx"], optional = true }
+sqlx     = { version = "0.8", features = ["postgres", "runtime-tokio"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+jsonschema = { version = "0.46", default-features = false }
+ferro-json-ui = { path = "../ferro-json-ui", version = "0.2", features = ["projections"] }
+
+[features]
+# Full LLM client (classification, completion, embeddings, tools).
+# Enables reqwest, reqwest-eventsource, futures, async-stream, schemars.
+# This is the default; consumers that only need the confirmation store
+# can use `default-features = false, features = ["confirmation"]`.
+default = ["llm"]
+llm = [
+    "classifier-trait",
+    "dep:reqwest",
+    "dep:reqwest-eventsource",
+    "dep:futures",
+    "dep:async-stream",
+    "dep:schemars",
+]
+
+# Classifier trait + ClassifierConfig only — no HTTP client, no LLM deps.
+# Enables ClassificationProvider and ClassifierConfig without reqwest.
+# Used by ferro-mcp-server's `ai` feature for the replay/CI path.
+classifier-trait = []
+
+# Confirmation store only — no HTTP client, no LLM deps.
+# Safe to pull into ferro-mcp-server without reqwest in the graph.
+# dashmap + tokio + ferro-events are always-on; no extra deps needed here.
+confirmation = []
+
+# Vector persistence/search over raw sqlx. SC#4 reconciliation (D-12): the only NEW
+# vector-specific direct dependency is `pgvector 0.4`; `sqlx` is the transport the
+# public PgVectorStore API is defined over (pgvector 0.4 does not re-export PgPool).
+pgvector       = ["dep:pgvector", "dep:sqlx"]
+# Enables the gated integration test in tests/pgvector_integration.rs.
+postgres-tests = ["pgvector"]

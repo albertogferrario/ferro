@@ -1,0 +1,324 @@
+{
+  "task_id": "collect-loom-warp-tension-log",
+  "target_intent": "Collect",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Records a complete warp tension log entry for the current weaving session.",
+            "display_name": "Log Tension Measurement",
+            "effects": [
+              "persist_tension_log"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Identifier of the weaving session this reading belongs to.",
+                "meaning": "identifier",
+                "name": "session_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Code identifying the warp material.",
+                "meaning": "category",
+                "name": "warp_material_code",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Tension reading at the near end of the warp.",
+                "meaning": "quantity",
+                "name": "near_end_tension",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Tension reading at the far end of the warp.",
+                "meaning": "quantity",
+                "name": "far_end_tension",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Ambient humidity percentage at time of reading.",
+                "meaning": "percentage",
+                "name": "ambient_humidity_pct",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Identifier of the loom on which the reading was taken.",
+                "meaning": "identifier",
+                "name": "loom_id",
+                "required": true
+              }
+            ],
+            "name": "log_tension_measurement",
+            "preconditions": [
+              "all_fields_provided"
+            ]
+          }
+        ],
+        "description": "Data-entry form for logging loom warp tension measurements taken during a weaving session.",
+        "display_name": "Warp Tension Log",
+        "fields": [
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "session_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "warp_material_code",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "near_end_tension",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "far_end_tension",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "ambient_humidity_pct",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "loom_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "guards": [
+          {
+            "description": "Every field of the tension log entry must be supplied for the entry to be complete.",
+            "display_name": "All Fields Provided",
+            "name": "all_fields_provided"
+          }
+        ],
+        "name": "warp_tension_log"
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "description": "Data-entry form for logging loom warp tension measurements taken during a weaving session. Technicians record the session identifier, the warp material code, the near-end and far-end tension readings, the ambient humidity percentage, and the loom identifier for each complete tension log entry.",
+        "display_name": "Warp Tension Log",
+        "fields": [
+          {
+            "data_type": "integer",
+            "meaning": "identifier",
+            "name": "id",
+            "readable": true,
+            "required": true,
+            "writable": false
+          },
+          {
+            "data_type": "string",
+            "meaning": "foreign_key",
+            "name": "session_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "warp_material_code",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "tension_near_end",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "tension_far_end",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "ambient_humidity_pct",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "foreign_key",
+            "name": "loom_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "name": "warp_tension_log",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The weaving session during which this warp tension reading was taken.",
+            "foreign_key": "session_id",
+            "inverse": "tension_logs",
+            "name": "session",
+            "navigation": "link",
+            "target": "weaving_session"
+          },
+          {
+            "cardinality": "many_to_one",
+            "description": "The loom on which this warp tension was measured.",
+            "foreign_key": "loom_id",
+            "inverse": "tension_logs",
+            "name": "loom",
+            "navigation": "link",
+            "target": "loom"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "warp_tension_log_service"
+          },
+          "result_summary": "{\"error\": \"projection 'warp_tension_log_service' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "description": "Logs loom warp tension measurements captured during a weaving session, including near-end and far-end tension readings and ambient humidity.",
+        "display_name": "Warp Tension Log",
+        "fields": [
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "session_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "category",
+            "name": "warp_material_code",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "near_end_tension",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "far_end_tension",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "ambient_humidity",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "loom_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "name": "warp_tension_log"
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "warp_tension_log_service"
+          },
+          "result_summary": "{\"error\": \"projection 'warp_tension_log_service' not found. Available: []\"}"
+        }
+      ]
+    }
+  ]
+}

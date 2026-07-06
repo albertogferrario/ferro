@@ -1,0 +1,23 @@
+---
+source: ferro-projections/tests/catalog.rs
+expression: redacted_signals(&scores)
+---
+- intent: Track
+  signals:
+    - status_field
+    - 4_linear_states
+    - has_final_states
+    - unguarded_progression
+- intent: Collect
+  signals:
+    - high_writable_ratio
+- intent: Browse
+  signals:
+    - entity_name
+    - baseline
+- intent: Process
+  signals:
+    - 4_workflow_states
+- intent: Focus
+  signals:
+    - baseline

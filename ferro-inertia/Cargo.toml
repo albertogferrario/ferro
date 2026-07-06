@@ -1,0 +1,19 @@
+[package]
+name = "ferro-inertia"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Server-side Inertia.js adapter for Rust web frameworks"
+repository = "https://github.com/albertogferrario/ferro"
+homepage = "https://github.com/albertogferrario/ferro"
+readme = "README.md"
+keywords = ["inertia", "inertiajs", "spa", "ferro", "axum"]
+categories = ["web-programming", "web-programming::http-server"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

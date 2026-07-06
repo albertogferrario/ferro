@@ -1,0 +1,76 @@
+{
+  "type": "object",
+  "properties": {
+    "intent": {
+      "$ref": "#/$defs/Intent",
+      "description": "The classified intent."
+    },
+    "confidence": {
+      "type": "number",
+      "format": "double",
+      "description": "Confidence score from 0.0 to 1.0."
+    },
+    "matching_signals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Structural signals that contributed to this classification."
+    }
+  },
+  "required": [
+    "intent",
+    "confidence",
+    "matching_signals"
+  ],
+  "description": "A scored intent with confidence and the structural signals that contributed.\n\nProduced by the structural analysis engine (Phase 89). Confidence ranges\nfrom 0.0 (no signal) to 1.0 (strong structural match).",
+  "title": "IntentScore",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Intent": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "browse",
+          "description": "Collection navigation: has_many relationships, EntityName fields."
+        },
+        {
+          "type": "string",
+          "const": "focus",
+          "description": "Single-entity deep view: FreeText/ImageUrl/Url fields."
+        },
+        {
+          "type": "string",
+          "const": "collect",
+          "description": "Data capture: many writable fields, write_only present."
+        },
+        {
+          "type": "string",
+          "const": "process",
+          "description": "Workflow with state progression: guarded transitions."
+        },
+        {
+          "type": "string",
+          "const": "summarize",
+          "description": "Overview dashboard: read-only Money/Percentage/Quantity fields."
+        },
+        {
+          "type": "string",
+          "const": "analyze",
+          "description": "Time-series exploration: DateTime + numeric measures."
+        },
+        {
+          "type": "string",
+          "const": "track",
+          "description": "Timeline/audit trail: Status + temporal ordering."
+        },
+        {
+          "type": "string",
+          "description": "Escape hatch for intents not structurally derivable."
+        }
+      ],
+      "description": "Structural intent classification. Known variants: browse, focus, collect, process, summarize, analyze, track. Any other string is a custom domain-specific intent."
+    }
+  },
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/intent-score.json"
+}

@@ -1,0 +1,38 @@
+[package]
+name = "ferro-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "File storage abstraction for the Ferro framework"
+repository = "https://github.com/albertogferrario/ferro"
+keywords = ["storage", "files", "s3", "ferro", "web"]
+categories = ["web-programming", "filesystem"]
+readme = "README.md"
+
+[dependencies]
+async-trait = "0.1"
+tokio = { version = "1", features = ["fs", "io-util", "time"] }
+tracing = "0.1"
+thiserror = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bytes = "1"
+mime_guess = "2"
+dashmap = "6"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+aws-sdk-s3 = { version = "1", optional = true }
+aws-config = { version = "1", optional = true }
+aws-credential-types = { version = "1", features = ["hardcoded-credentials"], optional = true }
+
+[features]
+default = []
+s3 = ["aws-sdk-s3", "aws-config", "aws-credential-types"]
+s3-tests = ["s3"]
+cdn-bunny = []
+cdn-cloudflare = []
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tempfile = "3"
+wiremock = "0.6.5"
+serial_test = "3"

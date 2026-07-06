@@ -1,0 +1,49 @@
+[package]
+name = "ferro-mcp-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "MCP tool rendering target for Ferro projections"
+repository = "https://github.com/albertogferrario/ferro"
+homepage = "https://ferro-rs.dev"
+readme = "README.md"
+keywords = ["mcp", "ferro", "projections", "server-driven"]
+categories = ["web-programming", "web-programming::http-server"]
+
+[dependencies]
+# The transition-execution kernel (dispatch_write + WriteDispatcher + WriteError)
+# lives in framework::write; this crate is framing that calls into it. No cycle:
+# `ferro-rs` (framework) does not depend on `ferro-mcp-server`.
+ferro-rs = { path = "../framework", version = "0.2", default-features = false, features = ["projections"] }
+ferro-projections = { path = "../ferro-projections", version = "0.2" }
+ferro-mcp-oauth = { path = "../ferro-mcp-oauth", version = "0.2" }
+ferro-audit = { path = "../ferro-audit", version = "0.2" }
+# Optional: pulled in only when the `confirmation` or `ai` feature is enabled.
+# default-features = false prevents the ferro-ai `llm` default from dragging
+# reqwest into ferro-mcp-server's dependency graph (D-06).
+# features = ["confirmation", "classifier-trait"]: confirmation store + ClassificationProvider
+# trait (reqwest-free); the `llm` feature is only added by `ai-live` (adds reqwest).
+ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true, default-features = false, features = ["confirmation", "classifier-trait"] }
+rand = { version = "0.8", optional = true }
+rmcp = { version = "0.12", default-features = false, features = ["server", "macros", "base64"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = { version = "1", features = ["derive"] }
+thiserror = "1.0"
+tracing = "0.1"
+sea-orm = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
+
+[features]
+# Enables confirmation gating for destructive actions.
+# Pulls in ferro-ai (confirmation module only — no reqwest, no LLM deps).
+confirmation = ["dep:ferro-ai", "dep:rand", "ferro-rs/confirmation"]
+# Enables the NL intent loop module (ToolSelection, render_tool_descriptions).
+# Pulls in ferro-ai with classifier-trait only — no reqwest in the graph (D-06).
+ai = ["dep:ferro-ai"]
+# Enables the live classification provider (AnthropicProvider via ferro-ai/llm).
+# Adds reqwest transitively. Use only locally; CI uses `ai` only.
+ai-live = ["ai", "ferro-ai/llm"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "macros", "test-util"] }
+async-trait = "0.1"

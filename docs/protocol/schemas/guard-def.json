@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "description": "A named boolean condition that guards action execution or state transitions.\n\nGuards are declarative checks referenced by name. The actual evaluation logic\nlives outside the projection schema.\n\n```\nuse ferro_projections::GuardDef;\n\nlet guard = GuardDef::new(\"has_items\")\n    .display_name(\"Has Items\")\n    .description(\"Order must contain at least one line item\");\n```",
+  "title": "GuardDef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ferro-rs.dev/protocol/2026-03-01/guard-def.json"
+}

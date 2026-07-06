@@ -1,0 +1,60 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Prodotti",
+  "layout": "dashboard",
+  "design": { "intent": "browse" },
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1 },
+      "children": ["page_header", "products_table"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": { "title": "Prodotti", "actions": ["new_button"] }
+    },
+    "new_button": {
+      "type": "Button",
+      "props": { "label": "Nuovo prodotto", "variant": "primary" },
+      "action": { "handler": "/prodotti/nuovo", "method": "GET" }
+    },
+    "products_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "nome", "label": "Nome" },
+          { "key": "categoria", "label": "Categoria" },
+          { "key": "prezzo", "label": "Prezzo" },
+          { "key": "stato", "label": "Stato" }
+        ],
+        "data_path": "/prodotti",
+        "row_key": "id",
+        "empty_message": "Nessun prodotto. Crea il primo con \"Nuovo prodotto\".",
+        "row_actions": [
+          {
+            "label": "Vedi dettagli",
+            "action": { "handler": "/prodotti/{row_key}", "method": "GET" }
+          },
+          {
+            "label": "Modifica",
+            "action": { "handler": "/prodotti/{row_key}/modifica", "method": "GET" }
+          },
+          {
+            "label": "Elimina",
+            "destructive": true,
+            "action": {
+              "handler": "/prodotti/{row_key}/elimina",
+              "method": "POST",
+              "confirm": {
+                "title": "Eliminare il prodotto?",
+                "message": "L'operazione non può essere annullata.",
+                "tone": "destructive"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

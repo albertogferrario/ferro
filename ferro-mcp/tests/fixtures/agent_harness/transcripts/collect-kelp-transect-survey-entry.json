@@ -1,0 +1,540 @@
+{
+  "task_id": "collect-kelp-transect-survey-entry",
+  "target_intent": "Collect",
+  "model": "claude-opus-4-8",
+  "prompt_version": "v1",
+  "trials": [
+    {
+      "trial": 0,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Validates and persists a completed kelp-bed transect survey record.",
+            "display_name": "Record Survey",
+            "effects": [
+              "persist_survey_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Identifier of the surveyed transect.",
+                "meaning": "identifier",
+                "name": "transect_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Label of the dive site where the survey was conducted.",
+                "meaning": "entity_name",
+                "name": "dive_site_label",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in metres at the transect start point.",
+                "meaning": "quantity",
+                "name": "start_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in metres at the transect end point.",
+                "meaning": "quantity",
+                "name": "end_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Estimated kelp canopy density.",
+                "meaning": "percentage",
+                "name": "canopy_density",
+                "required": true
+              },
+              {
+                "data_type": "enum",
+                "description": "Dominant substrate type along the transect.",
+                "meaning": "category",
+                "name": "substrate_type",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Elapsed survey duration in minutes.",
+                "meaning": "quantity",
+                "name": "duration_minutes",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Identifier of the lead diver.",
+                "meaning": "foreign_key",
+                "name": "lead_diver_id",
+                "required": true
+              }
+            ],
+            "name": "record_survey",
+            "preconditions": [
+              "all_fields_present"
+            ]
+          }
+        ],
+        "description": "Field data-entry form for recording a kelp-bed transect survey. Ecologists capture transect identification, dive site, start/end depths, canopy density, substrate type, elapsed duration, and the lead diver. All fields are required writable inputs to complete the survey record.",
+        "display_name": "Kelp Transect Survey",
+        "fields": [
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "transect_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "dive_site_label",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "start_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "end_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "canopy_density",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "enum",
+            "meaning": "category",
+            "name": "substrate_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "quantity",
+            "name": "duration_minutes",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "foreign_key",
+            "name": "lead_diver_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "guards": [
+          {
+            "description": "Every required survey field must be supplied before the record can be saved.",
+            "display_name": "All Fields Present",
+            "name": "all_fields_present"
+          }
+        ],
+        "name": "kelp_transect_survey",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The lead diver responsible for this transect survey.",
+            "foreign_key": "lead_diver_id",
+            "inverse": "surveys",
+            "name": "lead_diver",
+            "navigation": "link",
+            "target": "diver"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    },
+    {
+      "trial": 1,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Captures and saves a completed kelp-bed transect survey record.",
+            "display_name": "Record Survey",
+            "effects": [
+              "persist_survey_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Unique transect identifier for this survey.",
+                "meaning": "identifier",
+                "name": "transect_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Label of the dive site where the transect was surveyed.",
+                "meaning": "entity_name",
+                "name": "dive_site_label",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in meters at the transect start point.",
+                "meaning": "quantity",
+                "name": "start_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in meters at the transect end point.",
+                "meaning": "quantity",
+                "name": "end_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Estimated kelp canopy density as a percentage.",
+                "meaning": "percentage",
+                "name": "canopy_density_estimate",
+                "required": true
+              },
+              {
+                "data_type": "enum",
+                "description": "Dominant substrate type observed along the transect.",
+                "meaning": "category",
+                "name": "substrate_type",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Elapsed survey duration in minutes.",
+                "meaning": "quantity",
+                "name": "survey_duration_minutes",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Identifier of the lead diver conducting the survey.",
+                "meaning": "foreign_key",
+                "name": "lead_diver_id",
+                "required": true
+              }
+            ],
+            "name": "record_survey",
+            "preconditions": [
+              "all_fields_present"
+            ]
+          }
+        ],
+        "description": "Field data-entry record for a kelp-bed transect survey captured by ecologists during a dive.",
+        "display_name": "Kelp Transect Survey",
+        "fields": [
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "transect_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "dive_site_label",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "start_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "end_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "canopy_density_estimate",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "enum",
+            "meaning": "category",
+            "name": "substrate_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "quantity",
+            "name": "survey_duration_minutes",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "foreign_key",
+            "name": "lead_diver_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "guards": [
+          {
+            "description": "Every required survey field must be filled before the record can be saved.",
+            "display_name": "All Fields Present",
+            "name": "all_fields_present"
+          }
+        ],
+        "name": "kelp_transect_survey",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "The lead diver who conducted this transect survey.",
+            "foreign_key": "lead_diver_id",
+            "inverse": "surveys",
+            "name": "lead_diver",
+            "navigation": "link",
+            "target": "diver"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        },
+        {
+          "name": "checkpoint_projection",
+          "input": {
+            "name": "kelp_transect_survey"
+          },
+          "result_summary": "{\"error\": \"projection 'kelp_transect_survey' not found. Available: []\"}"
+        }
+      ]
+    },
+    {
+      "trial": 2,
+      "service_def": {
+        "actions": [
+          {
+            "description": "Validates and records a completed kelp-bed transect survey from the field-entry form.",
+            "display_name": "Record Survey",
+            "effects": [
+              "persist_survey_record"
+            ],
+            "inputs": [
+              {
+                "data_type": "string",
+                "description": "Transect identifier for this survey.",
+                "meaning": "identifier",
+                "name": "transect_id",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Label of the dive site.",
+                "meaning": "entity_name",
+                "name": "dive_site_label",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in metres at the transect start point.",
+                "meaning": "quantity",
+                "name": "start_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Depth in metres at the transect end point.",
+                "meaning": "quantity",
+                "name": "end_depth_m",
+                "required": true
+              },
+              {
+                "data_type": "float",
+                "description": "Estimated kelp canopy density.",
+                "meaning": "percentage",
+                "name": "canopy_density_estimate",
+                "required": true
+              },
+              {
+                "data_type": "enum",
+                "description": "Dominant substrate type along the transect.",
+                "meaning": "category",
+                "name": "substrate_type",
+                "required": true
+              },
+              {
+                "data_type": "integer",
+                "description": "Elapsed survey duration in minutes.",
+                "meaning": "quantity",
+                "name": "survey_duration_minutes",
+                "required": true
+              },
+              {
+                "data_type": "string",
+                "description": "Identifier of the lead diver.",
+                "meaning": "foreign_key",
+                "name": "lead_diver_id",
+                "required": true
+              }
+            ],
+            "name": "record_survey",
+            "preconditions": [
+              "all_fields_present"
+            ]
+          }
+        ],
+        "description": "Field data-entry record for a kelp-bed transect survey, capturing transect identity, dive site, depth profile, canopy density, substrate type, survey duration, and the lead diver.",
+        "display_name": "Kelp Transect Survey",
+        "fields": [
+          {
+            "data_type": "string",
+            "meaning": "identifier",
+            "name": "transect_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "entity_name",
+            "name": "dive_site_label",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "start_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "quantity",
+            "name": "end_depth_m",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "float",
+            "meaning": "percentage",
+            "name": "canopy_density_estimate",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "enum",
+            "meaning": "category",
+            "name": "substrate_type",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "integer",
+            "meaning": "quantity",
+            "name": "survey_duration_minutes",
+            "readable": true,
+            "required": true,
+            "writable": true
+          },
+          {
+            "data_type": "string",
+            "meaning": "foreign_key",
+            "name": "lead_diver_id",
+            "readable": true,
+            "required": true,
+            "writable": true
+          }
+        ],
+        "guards": [
+          {
+            "description": "Every required field on the survey form must be filled before the record can be saved.",
+            "display_name": "All Fields Present",
+            "name": "all_fields_present"
+          }
+        ],
+        "name": "kelp_transect_survey",
+        "relationships": [
+          {
+            "cardinality": "many_to_one",
+            "description": "Diver who led this transect survey.",
+            "foreign_key": "lead_diver_id",
+            "inverse": "surveys",
+            "name": "lead_diver",
+            "navigation": "link",
+            "target": "diver"
+          }
+        ]
+      },
+      "tool_calls": [
+        {
+          "name": "generation_context",
+          "input": {},
+          "result_summary": "{\n  \"naming_conventions\": {\n    \"models\": \"PascalCase singular (User, BlogPost, Animal)\",\n    \"tables\": \"snake_case plural (users, blog_posts, animals)\",\n    \"handlers\": \"snake_case verb (show, create"
+        },
+        {
+          "name": "json_ui_catalog",
+          "input": {},
+          "result_summary": "{\n  \"components\": [\n    {\n      \"name\": \"ActionCard\",\n      \"description\": \"Clickable row with icon, title, description, chevron, and variant-colored border.\",\n      \"props\": [\n        {\n          \"na"
+        }
+      ]
+    }
+  ]
+}

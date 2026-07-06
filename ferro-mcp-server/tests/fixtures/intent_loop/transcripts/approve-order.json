@@ -1,0 +1,10 @@
+{
+  "turn_id": "approve-order",
+  "nl_message": "approve the order from Alice",
+  "expected_tool": "approve",
+  "recorded_selection": {
+    "tool_name": "approve",
+    "arguments": { "id": 42 },
+    "confidence": 0.92
+  }
+}
