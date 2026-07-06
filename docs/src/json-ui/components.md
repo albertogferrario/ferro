@@ -109,6 +109,7 @@ The commerce tile builtin and its associated prop and data attribute were rename
 | Commerce tile builtin (formerly the product-prefixed type string) | `Tile` | Change `"type"` in every spec to `"Tile"` |
 | Tile primary-id prop (formerly the product-prefixed prop name) | `item_id` | Rename the prop in every Tile element |
 | Tile category data attribute (formerly the product-prefixed data attribute) | `data-filter-tokens` | Update any custom runtime that reads the old attribute |
+| Tile interaction (on-tile +/- stepper) | Tile (tap-to-add) | The on-tile quantity stepper markup was replaced in v16.6 (Phase 256): the tile root is now a tap-to-add button (one tap adds one unit). Per-line quantity editing moved to the SelectionPanel. |
 
 ---
 
