@@ -1704,8 +1704,12 @@ mod tests {
 
     #[test]
     fn register_projection_populated_data_validates() {
-        // D-14: the emitted spec with populated data must pass catalog.validate —
-        // covering the validate_directives path-resolves-to-array branch.
+        // D-14 / SC-4: a register spec carrying populated data must pass both
+        // validation layers end-to-end. Rows nest under a top-level "data" key
+        // (the handler payload convention) so the emitted `/data/shop` paths
+        // actually resolve. `Spec::from_json` runs `validate_directives`,
+        // exercising the path-resolves-to-array branch against real data;
+        // `cat.validate` covers the catalog's $each-template guard.
         let service = register_service();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
@@ -1719,16 +1723,26 @@ mod tests {
         // Inject one product row matching the per-row data contract (D-10):
         // entity fields + fixed keys price_cents (integer) and field (string).
         spec.data = serde_json::json!({
-            "shop": [
-                {
-                    "id": "1",
-                    "name": "Widget",
-                    "price": "€ 1.20",
-                    "price_cents": 120,
-                    "field": "qty_1"
-                }
-            ]
+            "data": {
+                "shop": [
+                    {
+                        "id": "1",
+                        "name": "Widget",
+                        "price": "€ 1.20",
+                        "price_cents": 120,
+                        "field": "qty_1"
+                    }
+                ]
+            }
         });
+
+        // Structural re-validation with data attached — runs validate_directives'
+        // path-resolves-to-array branch on the resolved `/data/shop` array.
+        let json = serde_json::to_string(&spec).expect("spec serializes");
+        let revalidated =
+            Spec::from_json(&json).expect("populated-data register spec must revalidate");
+        assert_eq!(revalidated, spec, "round-trip must preserve the spec");
+
         let cat = clean_catalog();
         assert!(
             cat.validate(&spec).is_ok(),

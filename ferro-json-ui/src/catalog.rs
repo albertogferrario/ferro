@@ -2436,8 +2436,11 @@ mod tests {
         }
     }
 
-    /// Same spec as catalog_each_template_null_data but with populated data,
-    /// covering the validate_directives path-resolves-to-array branch (D-14).
+    /// Same spec as catalog_each_template_null_data but with populated data.
+    /// The fixture nests rows under a top-level `"data"` key so `/data/items`
+    /// actually resolves — `.build()` runs `validate_directives`, exercising
+    /// the path-resolves-to-array branch (D-14); `cat.validate` then covers
+    /// the catalog's $each-template guard with populated data.
     #[test]
     fn catalog_each_template_populated_data() {
         use crate::spec::{Element, Spec};
@@ -2445,9 +2448,11 @@ mod tests {
         let cat = Catalog::build_builtins_only().expect("build");
         let spec = Spec::builder()
             .data(json!({
-                "items": [
-                    {"id": "1", "name": "A", "price": "1,00", "price_cents": 100, "field": "qty_1"}
-                ]
+                "data": {
+                    "items": [
+                        {"id": "1", "name": "A", "price": "1,00", "price_cents": 100, "field": "qty_1"}
+                    ]
+                }
             }))
             .element(
                 "grid",
@@ -2471,5 +2476,23 @@ mod tests {
         if let Err(errs) = cat.validate(&spec) {
             panic!("catalog_each_template_populated_data failed: {errs:?}");
         }
+    }
+
+    /// Negative counterpart of catalog_each_template_populated_data: when the
+    /// `$each` path resolves to a non-array, `.build()` must reject the spec
+    /// with `EachPathNotArray` (the same branch, failure side).
+    #[test]
+    fn catalog_each_template_path_not_array_rejected_at_build() {
+        use crate::spec::{Element, Spec, SpecError};
+        use serde_json::json;
+        let err = Spec::builder()
+            .data(json!({"data": {"items": {"not": "an array"}}}))
+            .element("tile_tmpl", Element::new("Tile").each("/data/items", "p"))
+            .build()
+            .expect_err("non-array $each path must fail spec build");
+        assert!(
+            matches!(err, SpecError::EachPathNotArray { .. }),
+            "expected EachPathNotArray, got: {err:?}"
+        );
     }
 }
