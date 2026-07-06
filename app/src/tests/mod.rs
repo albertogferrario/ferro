@@ -1,3 +1,4 @@
+pub mod cassa_render;
 pub mod computed_total_e2e;
 pub mod crud_e2e;
 pub mod design_lint;
