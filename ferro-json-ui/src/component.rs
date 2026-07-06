@@ -283,6 +283,17 @@ pub struct FormProps {
     /// as plain text rather than a multipart body.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enctype: Option<String>,
+    /// When `true`, the rendered `<form>` joins the fill-viewport height chain:
+    /// it emits `flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0`
+    /// instead of the default `flex flex-wrap` layout, stretching its single
+    /// child to the full height of the parent so an inner fill Grid resolves
+    /// `h-full` against a real (viewport-constrained) height rather than
+    /// content height. Set by the Register layout template
+    /// (`emit_register_root`) so the SelectionPanel footer pins while the
+    /// panes scroll independently (256 D-15). Absent/`false` keeps the default
+    /// content-sized form layout — byte-identical to prior renders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<bool>,
 }
 
 /// HTML button type attribute.

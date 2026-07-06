@@ -91,15 +91,24 @@ pub(crate) fn render_form(el: &Element, spec: &Spec, data: &Value, depth: usize)
         Some(e) => format!(" enctype=\"{}\"", html_escape(e)),
         None => String::new(),
     };
+    // Fill mode (Register layout, 256 D-15): the Form joins the fill-viewport
+    // height chain so the inner panes Grid's `h-full` resolves against a real
+    // height and each pane scrolls independently. Full literals for the
+    // Tailwind @source scanner (render::classes discipline).
+    let form_classes = if props.fill == Some(true) {
+        "flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0"
+    } else {
+        "flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto"
+    };
     let mut html = match &props.guard {
         Some(g) => format!(
-            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} data-form-guard=\"{}\" class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} data-form-guard=\"{}\" class=\"{form_classes}\">",
             html_escape(&action_url),
             form_method,
             html_escape(g)
         ),
         None => format!(
-            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\">",
+            "<form{id_attr} action=\"{}\" method=\"{}\"{enctype_attr} class=\"{form_classes}\">",
             html_escape(&action_url),
             form_method
         ),
@@ -1495,6 +1504,56 @@ mod tests {
         assert!(
             html.contains("<!-- ferro-json-ui: failed to decode Form props"),
             "got: {html}"
+        );
+    }
+
+    /// Fill mode (256 D-15 / 257-04): a Form with `fill:true` joins the
+    /// fill-viewport height chain so the inner panes Grid's `h-full` resolves
+    /// against the viewport-constrained cell instead of content height.
+    /// Expected class string: `flex flex-col h-full min-h-0 [&>*]:flex-1
+    /// [&>*]:min-h-0` — mirrors the SelectionPanel shell pattern.
+    #[test]
+    fn render_form_fill_true_emits_height_chain() {
+        let el = mk_element(
+            "Form",
+            json!({"action": {"handler": "/x", "method": "POST"}, "fill": true}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_form(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0"),
+            "fill:true form must carry the height-chain class string; got: {html}"
+        );
+        assert!(
+            !html.contains("flex flex-wrap"),
+            "fill:true form must NOT emit flex flex-wrap; got: {html}"
+        );
+    }
+
+    /// Non-fill Form emits the byte-identical default class string.
+    /// Proves the fill:absent path is unaffected by the fill feature (every
+    /// existing Form render is unchanged — backward-compatibility guard).
+    #[test]
+    fn render_form_default_class_is_byte_identical() {
+        let el = mk_element(
+            "Form",
+            json!({"action": {"handler": "/x", "method": "POST"}}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_form(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains(
+                "class=\"flex flex-wrap gap-4 [&>*]:w-full [&>button]:w-auto [&>a]:w-auto\""
+            ),
+            "default form must carry the byte-identical default class string; got: {html}"
+        );
+        assert!(
+            !html.contains("h-full"),
+            "default form must NOT contain h-full; got: {html}"
+        );
+        assert!(
+            !html.contains("min-h-0"),
+            "default form must NOT contain min-h-0; got: {html}"
         );
     }
 

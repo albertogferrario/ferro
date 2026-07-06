@@ -177,6 +177,7 @@ fn build_input_spec(service: &ServiceDef) -> Result<Spec, ProjectionError> {
         max_width: None,
         id: None,
         enctype: None,
+        fill: None,
     })
     .expect("FormProps serialization cannot fail");
 
