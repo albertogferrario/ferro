@@ -16,12 +16,12 @@ use crate::component::{
     ActionGroupProps, ActionItem, ButtonGroupProps, CardAppearance, CardProps, CollapsibleProps,
     DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout, FormSectionProps,
     GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, SegmentedControlProps,
-    SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps, Variant,
+    SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps, TileGridProps, Variant,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
-use super::classes::{DISABLED_BASE, INTERACTIVE_BASE, MOTION_FAST};
+use super::classes::{DISABLED_BASE, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_FAST, TOUCH_ACTION};
 use super::data::{render_inline_dropdown, resolve_row_key, template_actions};
 use super::{html_escape, render_element};
 
@@ -882,6 +882,87 @@ pub(crate) fn render_grid(el: &Element, spec: &Spec, data: &Value, depth: usize)
         String::new()
     };
     format!("<div class=\"grid w-full {col_classes} {gap}\"{row_style}>{body}</div>")
+}
+
+// ── TileGrid ─────────────────────────────────────────────────────────────
+
+/// Renders a `TileGrid` container.
+///
+/// Emits `data-filter-scope` on the root div so `setupFilters` binds to it.
+/// When `search: true` a `data-filter-search` input (16px, WCAG iOS zoom-safe)
+/// is prepended. When `categories_path` is set the path is resolved against
+/// `data` and an integrated category-filter strip is rendered via the shared
+/// [`super::atoms::render_filter_tab_strip`] helper (D-17, SC-5). Children
+/// (Tile elements) are rendered through the standard `render_element` pipeline.
+///
+/// Column class selection uses an exhaustive full-literal match (SC-3, T-256-06 —
+/// `format!("grid-cols-{n}")` is never used because it would produce classes
+/// absent from the scanned CSS).
+pub(crate) fn render_tile_grid(el: &Element, spec: &Spec, data: &Value, depth: usize) -> String {
+    let props: TileGridProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode TileGrid props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    // Search input (D-19): `text-base` is mandatory — iOS Safari auto-zooms on
+    // font-size < 16px on focus, which shifts the layout under the user's hand.
+    let search_html = if props.search == Some(true) {
+        format!(
+            "<input data-filter-search type=\"search\" placeholder=\"\" \
+             class=\"{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} \
+             text-base w-full rounded-md border border-border bg-surface px-3 text-text\">"
+        )
+    } else {
+        String::new()
+    };
+
+    // Integrated category strip (D-16, SC-5): resolve categories_path against
+    // bound data at render time. Empty array → All tab only (graceful).
+    // None categories_path → no strip element at all.
+    let strip_html = if props.categories_path.is_some() {
+        let categories: Vec<String> = props
+            .categories_path
+            .as_deref()
+            .and_then(|p| resolve_path(data, p))
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+        super::atoms::render_filter_tab_strip(&categories, "All")
+    } else {
+        String::new()
+    };
+
+    // Column class: exhaustive full-literal match. NEVER `format!("grid-cols-{n}")`.
+    let col_class = match props.columns {
+        Some(1) => "grid-cols-1",
+        Some(2) | None => "grid-cols-2",
+        Some(3) => "grid-cols-3",
+        Some(4) => "grid-cols-4",
+        _ => "grid-cols-2",
+    };
+
+    let body: String = el
+        .children
+        .iter()
+        .map(|cid| render_element(cid, spec, data, depth + 1))
+        .collect();
+
+    format!(
+        "<div data-filter-scope class=\"flex flex-col gap-3 w-full {TOUCH_ACTION}\">\
+         {search_html}\
+         {strip_html}\
+         <div class=\"grid {col_class} gap-3\">{body}</div>\
+         </div>"
+    )
 }
 
 // SVG chevron used to indicate the collapsed/expanded state.
@@ -2938,6 +3019,101 @@ mod tests {
         assert!(
             !html.contains("style="),
             "row_weights ignored in scrollable mode — no style attr; got: {html}"
+        );
+    }
+
+    // ── TileGrid ────────────────────────────────────────────────────────
+
+    #[test]
+    fn tile_grid_emits_filter_scope() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-filter-scope"),
+            "TileGrid root must carry data-filter-scope; got: {html}"
+        );
+    }
+
+    #[test]
+    fn tile_grid_search_input_is_16px() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order")
+                .prop("search", true),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-filter-search"),
+            "search:true must emit data-filter-search input; got: {html}"
+        );
+        assert!(
+            html.contains("text-base"),
+            "search input must carry text-base for iOS 16px zoom safety; got: {html}"
+        );
+    }
+
+    #[test]
+    fn tile_grid_categories_path_populates_strip() {
+        let data = json!({ "cats": ["Drinks", "Food"] });
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order")
+                .prop("categories_path", "/cats"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &data, 1);
+        assert!(
+            html.contains("data-filter-tab=\"Drinks\""),
+            "strip must have Drinks tab; got: {html}"
+        );
+        assert!(
+            html.contains("data-filter-tab=\"Food\""),
+            "strip must have Food tab; got: {html}"
+        );
+        // None → no strip
+        let spec_no_cats = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order"),
+        )]);
+        let el2 = spec_no_cats.elements.get("root").unwrap();
+        let html2 = render_tile_grid(el2, &spec_no_cats, &data, 1);
+        assert!(
+            !html2.contains("data-filter-tab=\"Drinks\""),
+            "no categories_path → no strip tabs; got: {html2}"
+        );
+    }
+
+    #[test]
+    fn tile_grid_columns_are_full_literals() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order")
+                .prop("columns", 3u8),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("grid-cols-3"),
+            "columns:3 must emit grid-cols-3 literal; got: {html}"
+        );
+        assert!(
+            !html.contains("grid-cols-{"),
+            "dynamic class construction must never appear; got: {html}"
         );
     }
 }

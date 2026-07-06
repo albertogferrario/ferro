@@ -93,11 +93,9 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     ("form-default-values", &["Form", "Input", "Select"]),
     ("destructive-confirmation", &["Button"]),
     ("prefer-components", &["RawHtml"]),
-    // POS rules (Phase 254). Mapped to Grid (register root) until Phase 256
-    // registers TileGrid/SelectionPanel/Numpad, which extends these associations
-    // in the same commit that adds them to BUILTIN_TYPES (D-14 handoff).
-    ("register-fill-viewport", &["Grid"]),
-    ("register-grid-fill", &["Grid"]),
+    // POS rules (Phase 254/256). TileGrid added in Phase 256-02 (same commit as BUILTIN_TYPES bump).
+    ("register-fill-viewport", &["Grid", "TileGrid"]),
+    ("register-grid-fill", &["Grid", "TileGrid"]),
     ("register-selection-present", &["Grid"]),
     ("fill-viewport-layout-unknown", &[]),
 ];
@@ -401,8 +399,8 @@ mod tests {
         // pub(crate) in ferro-json-ui, so this side can't assert it relationally).
         assert_eq!(
             catalog.components.len(),
-            47,
-            "Catalog should contain all 47 built-in components (incl. SegmentedControl, SidebarLayout, ActionGroup), got {}",
+            48,
+            "Catalog should contain all 48 built-in components (incl. TileGrid), got {}",
             catalog.components.len()
         );
 
@@ -437,6 +435,7 @@ mod tests {
             "Sidebar",
             "Header",
             "Grid",
+            "TileGrid",
             "Collapsible",
             "EmptyState",
             "FormSection",

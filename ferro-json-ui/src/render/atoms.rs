@@ -1456,6 +1456,43 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
     )
 }
 
+// ── Filter tab strip shared helper ──────────────────────────────────────
+
+/// Renders the shared filter-tab strip markup used by both [`render_filter_tabs`]
+/// (standalone) and `render_tile_grid` (integrated category strip).
+///
+/// Emits a `<div role="tablist">` with an All tab (active-initial, empty token)
+/// followed by one button-tab per `items` entry (inactive-initial,
+/// token = space→hyphen normalization matching `render_tile`'s token emission).
+///
+/// Inactive classes (`border-transparent text-text-muted hover:text-text`) are
+/// exactly what `updateFilterTabClasses` in `runtime/filters.rs` toggles,
+/// creating the D-12 lockstep contract.
+pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> String {
+    let tab_base = format!(
+        "{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} px-4 text-sm font-medium border-b-2"
+    );
+    let all_tab = format!(
+        "<button role=\"tab\" data-filter-tab=\"\" \
+         class=\"{tab_base} border-primary text-primary font-semibold\" \
+         aria-selected=\"true\">{}</button>",
+        html_escape(all_label)
+    );
+    let item_tabs: String = items
+        .iter()
+        .map(|item| {
+            let token = html_escape(&item.replace(' ', "-"));
+            let label = html_escape(item);
+            format!(
+                "<button role=\"tab\" data-filter-tab=\"{token}\" \
+                 class=\"{tab_base} border-transparent text-text-muted hover:text-text\" \
+                 aria-selected=\"false\">{label}</button>"
+            )
+        })
+        .collect();
+    format!("<div class=\"flex overflow-x-auto\" role=\"tablist\">{all_tab}{item_tabs}</div>")
+}
+
 // ── RawHtml — server-injected HTML island ────────────────────────────────
 
 pub(crate) fn render_raw_html(el: &Element, _spec: &Spec, _data: &Value, _depth: usize) -> String {

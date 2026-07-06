@@ -33,8 +33,8 @@ use crate::component::{
     EmptyStateProps, FormProps, FormSectionProps, GridProps, HeaderProps, ImageProps, InputProps,
     KanbanBoardProps, MediaCardGridProps, ModalProps, NotificationDropdownProps, PageHeaderProps,
     PaginationProps, ProgressProps, RawHtmlProps, SegmentedControlProps, SelectProps,
-    SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
-    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, TileProps, ToastProps,
+    SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps,
+    SwitchProps, TableProps, TabsProps, TextProps, TileGridProps, TileProps, ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -308,6 +308,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "Grid",
         "Responsive multi-column grid with configurable breakpoint columns, gap, scroll.",
         || to_value(schema_for!(GridProps)).unwrap(),
+        &[],
+    ),
+    (
+        "TileGrid",
+        "Touch-first responsive tile grid with integrated category filter strip and client-side text search; Tile children iterate via $each.",
+        || to_value(schema_for!(TileGridProps)).unwrap(),
         &[],
     ),
     (
@@ -1215,8 +1221,8 @@ mod tests {
         // BUILTIN_TYPES.len()), so a component addition breaks only this test.
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
-        // → 47 (DropdownMenu replaced by ActionGroup).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 47);
+        // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 48);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────
