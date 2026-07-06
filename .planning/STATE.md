@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v16.6
 milestone_name: POS Component Suite
-status: verifying
-stopped_at: Completed 258-03-PLAN.md
-last_updated: "2026-07-06T17:43:21.769Z"
+status: milestone complete
+stopped_at: Phase 258 verified (UAT 6/6) — v16.6 complete, ready to archive
+last_updated: "2026-07-06T22:19:41.662Z"
 last_activity: 2026-07-06
 progress:
   total_phases: 132
@@ -20,21 +20,21 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 258 — MCP Surface + Docs + Publish
+**Current focus:** v16.6 complete — archive via `/gsd-complete-milestone v16.6`
 
 ## Current Position
 
-Phase: 258
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-06
+Phase: 258 (last of v16.6)
+Plan: 3/3 complete
+Status: Milestone v16.6 complete — Phase 258 verified (VERIFICATION 11/11, SECURITY threats_open 0, VALIDATION 0 gaps, UAT 6/6)
+Last activity: 2026-07-07
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
 
-Latest shipped: v16.5 JSON-UI Design System (Phases 250–253, published 0.2.86 on 2026-07-04). Shipped but **not yet archived** (`/gsd-complete-milestone` backlog): v16.0 (231–232), v16.1 ferro-payments (233–236), v16.2 inertia first-load shell (238), v16.3 MCP CRUD Track A (239–243 + 243.1, 0.2.80), v16.5 (250–253). v16.4 Work Distribution (244–249) queued, independent of v16.6.
+Latest shipped: v16.6 POS Component Suite (Phases 254–258, published 0.2.89 + ferro-payments 0.1.6 on 2026-07-06; tag v0.2.89 + GitHub Release with binaries). Shipped but **not yet archived** (`/gsd-complete-milestone` backlog): v16.0 (231–232), v16.1 ferro-payments (233–236), v16.2 inertia first-load shell (238), v16.3 MCP CRUD Track A (239–243 + 243.1, 0.2.80), v16.5 JSON-UI Design System (250–253, 0.2.86), v16.6 (254–258). v16.4 Work Distribution (244–249) queued.
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Workspace version: 0.2.86 (master; ferro-payments independently versioned at 0.1.3).
+Workspace version: 0.2.89 (master; ferro-payments independently versioned at 0.1.6).
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.
@@ -305,7 +305,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-06T17:25:05.291Z
-Stopped at: Completed 258-03-PLAN.md
+Last session: 2026-07-07
+Stopped at: Phase 258 complete and verified (secure + validate + UAT all green) — milestone v16.6 100% complete
 Resume file: None
-Next action: `/gsd-complete-milestone v16.1` (then v16.2), then `/gsd-new-milestone` for the MCP CRUD capability surface.
+Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
