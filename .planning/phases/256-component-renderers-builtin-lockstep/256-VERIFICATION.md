@@ -1,7 +1,8 @@
 ---
 phase: 256-component-renderers-builtin-lockstep
 verified: 2026-07-06T10:00:00Z
-status: human_needed
+status: passed
+human_resolved: 2026-07-07 — all 3 items verified live on /cassa via chrome-devtools MCP at v16.6 close; evidence in 256-HUMAN-UAT.md (status complete, 3/3 pass)
 score: 8/9
 overrides_applied: 0
 human_verification:
