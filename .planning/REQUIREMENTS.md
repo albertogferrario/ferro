@@ -255,7 +255,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 ### Components
 
-- [ ] **POS-01**: A spec author binds an items data path to a `TileGrid` builtin and
+- [x] **POS-01**: A spec author binds an items data path to a `TileGrid` builtin and
   gets a responsive, touch-first tile grid (Tile children via `$each`) with
   built-in client-side text search filtering. Tiles are **tap-to-add-only**
   surfaces (operator decision 2026-07-05): one tap adds one unit; no on-tile
@@ -292,7 +292,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 ### Layout
 
-- [ ] **POS-09**: `Grid` gains `row_weights` — asymmetric fill-row weighting (product pane
+- [x] **POS-09**: `Grid` gains `row_weights` — asymmetric fill-row weighting (product pane
   taller than cart on phones), additive alongside the Phase 253 `spans` prop.
 
 ### Projection
