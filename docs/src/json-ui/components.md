@@ -1442,6 +1442,135 @@ Place Tile elements inside a `Form` — the quantity value submits with the surr
 
 ---
 
+### TileGrid
+
+Responsive touch-first tile grid. Iterates a data array via the `$each` directive, rendering one `Tile` child per row. Optional integrated category strip and client-side text search filter tiles without a round-trip. One tap on a tile adds one unit to the tile's hidden form input; ALL quantity editing (increase, decrease, remove) happens in the paired SelectionPanel.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `data_path` | `string` | JSON pointer to the items array iterated via `$each`; emitted as the loop context for Tile children |
+| `form_id` | `string` | HTML `id` of the `Form` element owning this grid's hidden inputs; emitted as `data-selection-form` |
+| `categories_path` | `string \| null` | JSON pointer to a string array for the integrated category strip; absent renders no strip |
+| `columns` | `number \| null` | Base viewport column count (default: 2) |
+| `search` | `boolean \| null` | Enable client-side text search input |
+| `search_placeholder` | `string \| null` | Placeholder for the search input (default: `"Search"`); ignored when `search` is absent or false |
+| `all_label` | `string \| null` | "Show all" tab label for the integrated strip (default: `"All"`); ignored when `categories_path` is absent |
+
+```json
+"tiles": {
+  "type": "TileGrid",
+  "props": {
+    "data_path": "/data/products",
+    "form_id": "sale_form",
+    "search": true,
+    "columns": 3
+  },
+  "children": ["tile_tmpl"]
+}
+```
+
+Place inside a `Form` whose HTML `id` equals `form_id` — that `Form` is the common ancestor of both the TileGrid and its paired SelectionPanel. One tap on a tile adds one unit; ALL quantity editing happens in the SelectionPanel. The grid emits `data-selection-form` so the JS runtime can pair them. Requires `fill_viewport: true` at the spec level (see [Layouts → fill\_viewport](layouts.md#fill_viewport)).
+
+---
+
+### SelectionPanel
+
+Live client-side view of the form state. As tiles are tapped, line items appear and update in the panel — each with a per-line `QuantityStepper` and a remove control — and the panel computes a client-side integer-cents running total from `data-unit-price` on each tile. When nothing is selected an empty-state placeholder appears. A confirm action slot (the panel's `children`) holds the single confirm `Button` that submits the parent `Form`.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `form_id` | `string` | Must match the paired TileGrid `form_id`; emitted as `data-selection-form` |
+| `empty_message` | `string \| null` | Placeholder text shown when the panel has no line items |
+| `currency` | `string \| null` | Currency symbol (e.g. `"€"`) prepended to the integer-cents running total; no locale tables |
+| `total_label` | `string \| null` | Running-total row label (default: `"Total"`) |
+
+```json
+"cart": {
+  "type": "SelectionPanel",
+  "props": {
+    "form_id": "sale_form",
+    "currency": "€",
+    "empty_message": "No items selected"
+  },
+  "children": ["confirm_btn"]
+}
+```
+
+`form_id` MUST match the paired TileGrid. The panel is not a second source of truth — the hidden inputs in the `Form` are. Put the confirm `Button` (with `disable_on_submit: true`) in the `children` slot: setting `disable_on_submit: true` emits `data-disable-on-submit`, which disables non-quantity buttons on form submit and prevents double-submission. For idempotent confirm handlers, combine this with the `framework::write` idempotency hook.
+
+---
+
+### FilterTabs
+
+Standalone client-side show/hide filter over sibling tiles by filter token. Each tab is a ≥44 px touch target; tapping a tab hides tiles whose `data-filter-tokens` attribute does not contain the tab's token. A zero-prop instance renders an All-only strip.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `items` | `string[]` | Category labels rendered as filter tabs; may be `$data`-bound (default: `[]`) |
+| `all_label` | `string \| null` | "Show all" tab label (default: `"All"`) |
+
+```json
+"category_tabs": {
+  "type": "FilterTabs",
+  "props": {
+    "items": { "$data": "/data/categories" }
+  }
+}
+```
+
+Filters tiles tagged with matching `data-filter-tokens` within the same `data-filter-scope`. The `TileGrid` can render an integrated strip instead via `categories_path` — a standalone `FilterTabs` is the author-composable alternative for layouts where the filter strip sits outside the grid wrapper.
+
+---
+
+### QuantityStepper
+
+Reusable +/− numeric stepper that drives a named hidden input. Usable in SelectionPanel selection lines and in standalone forms. The stepper emits `data-qty-inc` and `data-qty-dec` attributes; the JS runtime increments or decrements the named input and updates any bound `data-qty-display` elements.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `field` | `string` | Name of the hidden input this stepper drives via `data-qty-inc`/`data-qty-dec` |
+| `min` | `number \| null` | Lower bound (default: 0) |
+| `max` | `number \| null` | Upper bound; unbounded when absent |
+| `step` | `number \| null` | Increment size (default: 1) |
+
+```json
+"qty_stepper": {
+  "type": "QuantityStepper",
+  "props": {
+    "field": "qty_1",
+    "min": 0,
+    "step": 1
+  }
+}
+```
+
+Drives the named hidden input via `data-qty-inc`/`data-qty-dec`; place inside the same `Form` as the input it edits. The SelectionPanel uses this mechanism for per-line quantity editing in register compositions.
+
+---
+
+### Numpad
+
+Custom tap-surface numeric keypad (≥56 px keys) that writes to a target field. Never renders a native `<input>` — the software keyboard is never triggered. The JS runtime handles digit accumulation, backspace, and clear, writing the result to the input named by `target_field` via `data-numpad-target`.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `target_field` | `string` | Name of the input this numpad writes into; emitted as `data-numpad-target` |
+| `mode` | `"quantity" \| "price"` | Entry mode: `"quantity"` = integer entry; `"price"` = two-decimal-place monetary entry (default: `"quantity"`) |
+
+```json
+"keypad": {
+  "type": "Numpad",
+  "props": {
+    "target_field": "amount",
+    "mode": "price"
+  }
+}
+```
+
+Author-composable — NOT part of the v1 register template; add it where numeric entry (amount or quantity) is needed outside the standard TileGrid tap model. Writes to the input named by `target_field` via `data-numpad-target`.
+
+---
+
 ## Kanban Components
 
 ### KanbanBoard
