@@ -3911,7 +3911,7 @@ phase pins.
 - [x] **Phase 255: POS Runtime Modules + Double-Submit Protection** — vocabulary-neutralization refactor of the 254 contracts (operator decision 2026-07-05: `ProductTile`→`Tile`, `ProductGridProps`→`TileGridProps`, `CartPanelProps`→`SelectionPanelProps` minus consumer-specific props, `CategoryNavProps`→`FilterTabsProps`, `pos-*`→`register-*` lint ids, `POS_*` constant prefix dropped, `data-product-*`→`data-filter-*`); `setupNumpad()` (tap-surface keypad writing to a target field) and `setupFilters()` (token/text tile-visibility filtering via `data-filter-tokens` + `data-filter-text` match) runtime modules, `runtime/mod.rs` wiring, `data-disable-on-submit` double-submit guard + documented idempotency-key pattern (POS-08). NO cart-state JS — form-state accumulation stays on the existing tiles hidden-input contract (`data-qty-*`, unchanged). (completed 2026-07-05)
 - [x] **Phase 256: Component Renderers + BUILTIN Lockstep** — `render_tile_grid` (integrated filter strip + search; tiles tap-to-add-only, no on-tile steppers), `render_filter_tabs`, `render_selection_panel` (live client-side view of form state), `render_quantity_stepper`, `render_numpad`; the un-deferred CartRuntime slice (selection-sync runtime: line appear/update on tap, per-line qty edit + remove, integer-cents running total); Grid `row_weights` render path (POS-09); `BUILTIN_TYPES` + dispatch arms + `BUILTIN_SPECS` + imports per component; drift-guard count bumps both sites; `gen-ferro-base-css.sh` regen. Delivers POS-01, 03, 04, 05, 06, 09. (completed 2026-07-06)
 - [x] **Phase 257: Projection Builder — Register Layout Template** — `layout: "Register"` arm in `builder.rs::build_display_spec()`; `emit_register_root()` emitting fill-viewport Grid with selection_pane + tiles_pane; `Spec::builder().fill_viewport(bool)`; `ElementBuilder.each(path, as_)`; `IntentSlotTemplate` Collect→Register; `/cassa` sample app flipped to projection-derived spec. Delivers POS-10. (completed 2026-07-06)
-- [ ] **Phase 258: MCP Surface + Docs + Publish** — `json_ui_catalog` count + component names updated; `generation_context` register composition guidance; `docs/src` updates; single crates.io publish. Delivers POS-12, POS-13.
+- [x] **Phase 258: MCP Surface + Docs + Publish** — `json_ui_catalog` count + component names updated; `generation_context` register composition guidance; `docs/src` updates; single crates.io publish. Delivers POS-12, POS-13. (completed 2026-07-06)
 
 ### Phase Details
 
@@ -4034,12 +4034,12 @@ Plans:
 3. `docs/src/json-ui/components.md` covers all five new components with props tables and at minimum one usage example per component; the mdBook docs build exits 0.
 4. The full CI-exact gate (`cargo fmt --all -- --check && cargo clippy --all --all-targets -- -D warnings && cargo test --all-features`) is green; `cargo publish -p ferro-rs` exits 0; the published version on crates.io exceeds 0.2.86; gestiscilo's register phase can pin the new version.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 258-01-PLAN.md — ferro-mcp surface: BUILDER_API + RULE_COMPONENTS additive fixes; generation_context register_composition guidance (six D-03 items, drift-guarded) [POS-12]
 - [x] 258-02-PLAN.md — docs/src: five component sections + register projection surface (fill_viewport, Register template, builder additions); mdBook build gate [POS-12]
-- [ ] 258-03-PLAN.md — verify /cassa flip stands; full CI-exact gate; operator-gated single publish 0.2.89 (+ ferro-payments 0.1.6 rider); gestiscilo handoff brief [POS-13]
+- [x] 258-03-PLAN.md — verify /cassa flip stands; full CI-exact gate; operator-gated single publish 0.2.89 (+ ferro-payments 0.1.6 rider); gestiscilo handoff brief [POS-13]
 **UI hint**: yes
 
 ### Requirement → Phase Mapping (v16.6)
