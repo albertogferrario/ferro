@@ -121,11 +121,11 @@ None - plan executed exactly as written. The stash of `.planning/config.json` wa
 - `SpecBuilder::fill_viewport(bool)` — fill the viewport for kiosk/tablet layouts (required for register layouts)
 - `ElementBuilder::each(path, as_)` — iterate collections in JSON spec
 
-**Four design-lint rules for the register pattern**
-- `register-fill-viewport` — enforce `fill_viewport` on register specs
-- `register-tile-grid-required` — ensure a TileGrid is present
-- `register-selection-panel-required` — ensure a SelectionPanel is present
-- `register-form-root-required` — enforce a Form as the common ancestor
+**Four design-lint rules for the register pattern** (rule ids corrected 2026-07-07 at milestone audit — the original brief listed three invented ids)
+- `register-fill-viewport` — a TileGrid/SelectionPanel/Numpad outside a `fill_viewport` spec causes silent whole-page scroll
+- `register-grid-fill` — the register-root Grid must set `fill: true` under `fill_viewport` or panes lose internal scroll
+- `register-selection-present` — a TileGrid with no SelectionPanel anywhere is an incomplete register
+- `fill-viewport-layout-unknown` — `fill_viewport` only supports the `app`/`dashboard` layouts
 - Run via: `ferro design:lint` or the `design_lint` MCP tool
 
 **MCP generation_context register guidance**

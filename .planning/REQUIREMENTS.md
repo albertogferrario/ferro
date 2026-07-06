@@ -352,16 +352,16 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| POS-01 | Phase 256 | Not started |
-| POS-02 | Phase 254 | Not started |
-| POS-03 | Phase 256 | Not started |
-| POS-04 | Phase 256 | Not started |
-| POS-05 | Phase 256 | Not started |
-| POS-06 | Phase 256 | Not started |
-| POS-07 | Phase 254 | Not started |
-| POS-08 | Phase 255 | Not started |
-| POS-09 | Phase 256 | Not started |
-| POS-10 | Phase 257 | Not started |
-| POS-11 | Phase 254 | Not started |
-| POS-12 | Phase 258 | Not started |
-| POS-13 | Phase 258 | Not started |
+| POS-01 | Phase 256 | Complete |
+| POS-02 | Phase 254 | Complete |
+| POS-03 | Phase 256 | Complete |
+| POS-04 | Phase 256 | Complete |
+| POS-05 | Phase 256 | Complete |
+| POS-06 | Phase 256 | Complete |
+| POS-07 | Phase 254 | Complete |
+| POS-08 | Phase 255 | Complete |
+| POS-09 | Phase 256 | Complete |
+| POS-10 | Phase 257 | Complete |
+| POS-11 | Phase 254 | Complete |
+| POS-12 | Phase 258 | Complete |
+| POS-13 | Phase 258 | Complete |
