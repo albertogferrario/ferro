@@ -94,13 +94,20 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     ("destructive-confirmation", &["Button"]),
     ("prefer-components", &["RawHtml"]),
     // POS rules (Phase 254/256). TileGrid added in Phase 256-02 (same commit as BUILTIN_TYPES bump).
-    ("register-fill-viewport", &["Grid", "TileGrid"]),
+    // SelectionPanel and Numpad added to register-fill-viewport in Phase 258 (both are in
+    // REGISTER_TRIGGER_TYPES and trigger this rule, so they must receive its guidance).
+    (
+        "register-fill-viewport",
+        &["Grid", "TileGrid", "SelectionPanel", "Numpad"],
+    ),
     ("register-grid-fill", &["Grid", "TileGrid"]),
     (
         "register-selection-present",
         &["Grid", "TileGrid", "Numpad", "SelectionPanel"],
     ),
-    ("fill-viewport-layout-unknown", &[]),
+    // Grid is the required root element in register/fill_viewport compositions; surfaces the
+    // app|dashboard-only layout constraint to authors (D-02).
+    ("fill-viewport-layout-unknown", &["Grid"]),
 ];
 
 /// A single component in the catalog.
@@ -351,12 +358,14 @@ Spec::builder() -> SpecBuilder
   .data(serde_json::Value) -> Self
   .element(id, Element) -> Self
   .build() -> Result<Spec, SpecError>
+  .fill_viewport(bool) -> Self  (sets fill_viewport on the built Spec; required for register layouts)
 
 Element::new(type_name: impl Into<String>) -> ElementBuilder
   .prop(key, value) -> Self (accumulates into props: serde_json::Value)
   .child(id: impl Into<String>) -> Self (child element id reference)
   .action(Action) -> Self (click/submit handler)
   .visible(Visibility) -> Self (show/hide based on data path)
+  .each(path: impl Into<String>, as_: impl Into<String>) -> Self  (public setter for the $each directive; emits one element per row in the data array)
 
 Spec { $schema, root, elements: HashMap<String, Element>, title?, layout?, data? }
   - $schema: \"ferro-json-ui/v2\"
@@ -579,6 +588,19 @@ mod tests {
         assert!(
             catalog.builder_api.contains("Element::new"),
             "Builder API should document Element::new"
+        );
+    }
+
+    #[test]
+    fn builder_api_mentions_fill_viewport_and_each() {
+        let catalog = execute(None);
+        assert!(
+            catalog.builder_api.contains("fill_viewport"),
+            "BUILDER_API must document fill_viewport(bool) (Phase 257 addition)"
+        );
+        assert!(
+            catalog.builder_api.contains(".each("),
+            "BUILDER_API must document .each(path, as_) (Phase 257 addition)"
         );
     }
 
