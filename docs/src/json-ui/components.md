@@ -1016,6 +1016,8 @@ Interactive button. Attach the click action on the element's `"action"` field.
 | `icon` | `string \| null` | Icon name |
 | `icon_position` | `icon_position \| null` | `"left"` (default) or `"right"` |
 | `button_type` | `string \| null` | HTML button type: `"button"` (default), `"submit"` |
+| `form` | `string \| null` | HTML5 `form` attribute — lets a button rendered outside its target `<form>` submit it by matching the form's `id` |
+| `disable_on_submit` | `boolean \| null` | Emits `data-disable-on-submit`; the runtime disables the button after the first form submission (double-submit guard). Set on the confirm button in register compositions |
 
 ```json
 "save_btn": {
