@@ -648,17 +648,17 @@ let lint_rules: Vec<RegisterRuleRef> = design_rules()
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `fill-viewport-layout-unknown` map to `["Grid"]` in RULE_COMPONENTS?**
    - What we know: Currently `&[]` — no component gets this rule guidance
    - What's unclear: Whether this is intentional (spec-level rule) or an oversight
-   - Recommendation: Add `["Grid"]` as Grid is the required root element in register compositions; the rule fires when fill_viewport + non-supported layout is combined on any spec
+   - RESOLVED: Add `["Grid"]` — planned in 258-01 T1 Step C (Grid is the required root element in register compositions; the rule fires when fill_viewport + non-supported layout is combined on any spec)
 
 2. **Does `cassa.rs` reference `register_template()` by the exact function path, making it a reliable cross-link target for docs?**
    - What we know: The function exists at `intent_layout.rs:50` with rustdoc; the cassa controller calls it
    - What's unclear: Whether the controller's exact call site style is the right docs example or whether a cleaner snippet should be written
-   - Recommendation: Lift the controller code as the docs example; it's already lint-clean and UAT-passed
+   - RESOLVED: Lift the controller code as the docs example — planned in 258-02 T2 (it's already lint-clean and UAT-passed)
 
 ---
 
