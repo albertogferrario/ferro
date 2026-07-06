@@ -15,10 +15,9 @@ deferred:
   - truth: "New public API surface (register_template, ElementBuilder.each, SpecBuilder.fill_viewport) documented in docs/src/"
     addressed_in: "Phase 258"
     evidence: "Phase 258 goal: 'docs/src/json-ui/components.md covers all five new components'; D-19 locked decision; ROADMAP Phase 258 requirements POS-12/POS-13"
-human_verification:
-  - test: "Re-open /cassa in Chrome DevTools MCP at a tablet viewport (1024x768). Verify: (a) SelectionPanel Total row and 'Conferma ordine' button are fully visible without scrolling (y < 746px); (b) tiles pane and cart lines each scroll independently inside their panes; (c) document body does not scroll. Compare against pre-fix screenshot at app/tmp/257-cassa-uat-tablet.png (footer was at y=1032-1125 before the 257-04 fix)."
-    expected: "SelectionPanel footer in-viewport. Tiles pane and selection pane scroll within themselves independently. The 256 D-15 pinned-footer contract is restored by the fill height-chain: Form emits flex flex-col h-full min-h-0 [&>*]:flex-1 [&>*]:min-h-0, constraining the inner panes Grid h-full to the viewport-bounded cell height instead of content height."
-    why_human: "The 257-04 fix emits the correct CSS height-chain class literals and ferro-base.css utilities are present. The app test asserts the class string as a proxy. Whether these classes actually constrain form height in the browser's CSS cascade at a real viewport (rendering geometry) cannot be confirmed by HTML-string tests."
+human_verification_resolved:
+  - test: "Live geometry re-verify — SelectionPanel footer in-viewport after 257-04 fix (Chrome DevTools MCP, 1024×746, running app)"
+    result: "pass — footer at y=652–722 with 10 cart lines, two independent scrollers, documentElement not scrollable; screenshot app/tmp/257-cassa-uat-tablet-postfix.png; recorded as 257-HUMAN-UAT.md test 2"
 ---
 
 # Phase 257: Projection Builder Register Layout Template — Verification Report (Re-verification)
