@@ -266,16 +266,16 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
   *(Delivered 254 under the old name; component renamed `Tile` in Phase 255.)*
 - [x] **POS-03**: A `FilterTabs` standalone builtin filters visible tiles by
   filter token client-side (show/hide), touch targets ≥44px.
-- [ ] **POS-04**: A `SelectionPanel` builtin renders the running selection as a **live
+- [x] **POS-04**: A `SelectionPanel` builtin renders the running selection as a **live
   client-side view of the form state** (operator decision 2026-07-05, un-deferring the
   CartRuntime slice): lines appear as tiles are tapped, each line has a per-line
   QuantityStepper + remove, the running total is client-computed in integer cents,
   EmptyState shows when nothing is selected, and a confirm-action slot hosts the
   single confirm POST. The panel pins and internally scrolls within a `fill_viewport`
   layout.
-- [ ] **POS-05**: A `QuantityStepper` standalone builtin provides a reusable +/− numeric
+- [x] **POS-05**: A `QuantityStepper` standalone builtin provides a reusable +/− numeric
   stepper on the Tile hidden-input contract, usable in selection lines and forms.
-- [ ] **POS-06**: A `Numpad` builtin provides a custom tap-surface numeric keypad
+- [x] **POS-06**: A `Numpad` builtin provides a custom tap-surface numeric keypad
   (≥56px keys) writing to a target field — never a native input, so the software keyboard
   is never triggered.
 
