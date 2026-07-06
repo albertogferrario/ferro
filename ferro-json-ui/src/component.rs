@@ -1424,6 +1424,12 @@ pub struct TileGridProps {
     /// Enables the client-side text-search input (Phase 255 `setupFilters`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search: Option<bool>,
+    /// Label for the integrated category strip's "show all" tab. Render
+    /// default is "All" (neutral English — this crate is project-agnostic).
+    /// Pass `all_label: "Tutte"` or any locale string from the consumer.
+    /// Ignored when `categories_path` is absent (no strip is rendered).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub all_label: Option<String>,
 }
 
 /// Props for the SelectionPanel builtin — a server-rendered selection summary that
@@ -1441,6 +1447,11 @@ pub struct SelectionPanelProps {
     /// prepends this symbol only when present. No locale tables; display only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
+    /// Label for the running-total row. Render default is "Total" (neutral
+    /// English — this crate is project-agnostic). Pass `total_label:
+    /// "Totale"` or any locale string from the consumer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_label: Option<String>,
 }
 
 /// Props for the FilterTabs builtin (standalone builtin, operator-locked).

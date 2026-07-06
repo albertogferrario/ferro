@@ -943,7 +943,9 @@ pub(crate) fn render_tile_grid(el: &Element, spec: &Spec, data: &Value, depth: u
                     .collect()
             })
             .unwrap_or_default();
-        super::atoms::render_filter_tab_strip(&categories, "All")
+        // D-28: neutral English default, overridable via `all_label`.
+        let all_label = props.all_label.as_deref().unwrap_or("All");
+        super::atoms::render_filter_tab_strip(&categories, all_label)
     } else {
         String::new()
     };
@@ -1561,6 +1563,8 @@ pub(crate) fn render_selection_panel(
         .as_deref()
         .map(|c| format!(" data-selection-currency=\"{}\"", html_escape(c)))
         .unwrap_or_default();
+    // D-28: neutral English default, overridable via `total_label`.
+    let total_label = html_escape(props.total_label.as_deref().unwrap_or("Total"));
 
     // Visual class composition for line steppers — identical literal to
     // render_quantity_stepper (D-22 shared-visual requirement).
@@ -1606,7 +1610,7 @@ pub(crate) fn render_selection_panel(
          </div></div>\
          <div class=\"flex-shrink-0 flex items-center justify-between \
          py-3 border-t border-border\">\
-         <span class=\"text-sm font-semibold text-text\">Total</span>\
+         <span class=\"text-sm font-semibold text-text\">{total_label}</span>\
          <span data-selection-total{currency_attr} \
          class=\"text-base font-semibold text-text\">0.00</span>\
          </div>\
@@ -3222,6 +3226,44 @@ mod tests {
     }
 
     #[test]
+    fn tile_grid_all_label_overridable() {
+        let data = json!({ "cats": ["Drinks"] });
+        // Default: neutral English "All" (D-28).
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order")
+                .prop("categories_path", "/cats"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile_grid(el, &spec, &data, 1);
+        assert!(
+            html.contains(">All</button>"),
+            "default all-tab label must be \"All\"; got: {html}"
+        );
+        // Override: consumer-supplied locale string.
+        let spec_it = build_spec(vec![(
+            "root",
+            Element::new("TileGrid")
+                .prop("data_path", "/products")
+                .prop("form_id", "order")
+                .prop("categories_path", "/cats")
+                .prop("all_label", "Tutte"),
+        )]);
+        let el2 = spec_it.elements.get("root").unwrap();
+        let html2 = render_tile_grid(el2, &spec_it, &data, 1);
+        assert!(
+            html2.contains(">Tutte</button>"),
+            "all_label override must be respected; got: {html2}"
+        );
+        assert!(
+            !html2.contains(">All</button>"),
+            "default label must not appear when overridden; got: {html2}"
+        );
+    }
+
+    #[test]
     fn tile_grid_columns_are_full_literals() {
         let spec = build_spec(vec![(
             "root",
@@ -3344,6 +3386,38 @@ mod tests {
         assert!(
             html.contains("overflow-y-auto"),
             "scroll region present; got: {html}"
+        );
+    }
+
+    #[test]
+    fn selection_panel_total_label_overridable() {
+        // Default: neutral English "Total" (D-28).
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains(">Total</span>"),
+            "default total label must be \"Total\"; got: {html}"
+        );
+        // Override: consumer-supplied locale string.
+        let spec_it = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel")
+                .prop("form_id", "order_form")
+                .prop("total_label", "Totale"),
+        )]);
+        let el2 = spec_it.elements.get("root").unwrap();
+        let html2 = render_selection_panel(el2, &spec_it, &json!({}), 1);
+        assert!(
+            html2.contains(">Totale</span>"),
+            "total_label override must be respected; got: {html2}"
+        );
+        assert!(
+            !html2.contains(">Total</span>"),
+            "default label must not appear when overridden; got: {html2}"
         );
     }
 
