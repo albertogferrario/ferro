@@ -98,7 +98,7 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     ("register-grid-fill", &["Grid", "TileGrid"]),
     (
         "register-selection-present",
-        &["Grid", "Numpad", "SelectionPanel"],
+        &["Grid", "TileGrid", "Numpad", "SelectionPanel"],
     ),
     ("fill-viewport-layout-unknown", &[]),
 ];
