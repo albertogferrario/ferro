@@ -750,6 +750,17 @@ impl Catalog {
                 if el.props.is_null() {
                     continue;
                 }
+                // Template elements ($each) carry data-bound props of arbitrary
+                // type; the concrete type is only known after $each expansion at
+                // render time. strip_expr_objects turns `{"$data":..}` into `""`,
+                // which fails non-String schemas (e.g. TileProps.price_cents:
+                // Option<u64>). Skip per-element Props validation for template
+                // elements — validate_directives (spec.rs) enforces the $each
+                // structural rules, and resolve_expressions enforces types at
+                // render time against real row data.
+                if el.each.is_some() {
+                    continue;
+                }
                 // On-demand compile (CONTEXT D-12). Schemas are small (~50–200 LOC
                 // JSON); compile cost < 1 ms per component. Cache as
                 // HashMap<String, Validator> if profiling demands it.
@@ -814,13 +825,37 @@ impl Catalog {
         }
 
         // === Stage 3: full-spec envelope validation (cached validator, SCHEMA-03) ===
-        let spec_value = match serde_json::to_value(spec) {
+        let mut spec_value = match serde_json::to_value(spec) {
             Ok(v) => v,
             Err(e) => {
                 errors.push(CatalogError::SchemaSerialization(e));
                 return Err(errors);
             }
         };
+        // Template elements ($each) carry data-bound props that cannot be schema
+        // -validated before expansion. Remove their props key in the envelope copy
+        // so the whole-spec oneOf does not attempt to validate props against the
+        // component's required-field schema (see Stage 2 rationale).
+        // The envelope schema treats `props` as optional on the element shape;
+        // removing the key avoids the component-props oneOf arm while keeping the
+        // element present for the `elements` map structure check.
+        if let Some(elements) = spec_value
+            .get_mut("elements")
+            .and_then(|e| e.as_object_mut())
+        {
+            for (id, el_val) in elements.iter_mut() {
+                let is_template = spec
+                    .elements
+                    .get(id)
+                    .map(|e| e.each.is_some())
+                    .unwrap_or(false);
+                if is_template {
+                    if let Some(obj) = el_val.as_object_mut() {
+                        obj.remove("props");
+                    }
+                }
+            }
+        }
         // Strip expression objects in the serialized spec for the same reason as Stage 2.
         let stripped_spec_value = strip_expr_objects(&spec_value);
         let mut envelope_errs: Vec<String> = Vec::new();
@@ -2365,5 +2400,76 @@ mod tests {
             "StreamText props_schema must be a JSON object"
         );
         assert!(!spec.is_plugin);
+    }
+
+    /// A Tile template element with a $data-bound price_cents (Option<u64>) must
+    /// pass catalog validation when spec.data is null (the builder default).
+    /// Regression: strip_expr_objects turned {"$data":..} into "" which failed
+    /// the anyOf[integer,null] JSON Schema for price_cents (D-14 Critical Finding).
+    #[test]
+    fn catalog_each_template_null_data() {
+        use crate::spec::{Element, Spec};
+        use serde_json::json;
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = Spec::builder()
+            .element(
+                "grid",
+                Element::new("TileGrid")
+                    .prop("data_path", "/data/items")
+                    .prop("form_id", "f")
+                    .child("tile_tmpl"),
+            )
+            .element(
+                "tile_tmpl",
+                Element::new("Tile")
+                    .each("/data/items", "p")
+                    .prop("item_id", json!({"$data": "/p/id"}))
+                    .prop("name", json!({"$data": "/p/name"}))
+                    .prop("price", json!({"$data": "/p/price"}))
+                    .prop("field", json!({"$data": "/p/field"}))
+                    .prop("price_cents", json!({"$data": "/p/price_cents"})),
+            )
+            .build()
+            .expect("spec builds");
+        if let Err(errs) = cat.validate(&spec) {
+            panic!("catalog_each_template_null_data failed: {errs:?}");
+        }
+    }
+
+    /// Same spec as catalog_each_template_null_data but with populated data,
+    /// covering the validate_directives path-resolves-to-array branch (D-14).
+    #[test]
+    fn catalog_each_template_populated_data() {
+        use crate::spec::{Element, Spec};
+        use serde_json::json;
+        let cat = Catalog::build_builtins_only().expect("build");
+        let spec = Spec::builder()
+            .data(json!({
+                "items": [
+                    {"id": "1", "name": "A", "price": "1,00", "price_cents": 100, "field": "qty_1"}
+                ]
+            }))
+            .element(
+                "grid",
+                Element::new("TileGrid")
+                    .prop("data_path", "/data/items")
+                    .prop("form_id", "f")
+                    .child("tile_tmpl"),
+            )
+            .element(
+                "tile_tmpl",
+                Element::new("Tile")
+                    .each("/data/items", "p")
+                    .prop("item_id", json!({"$data": "/p/id"}))
+                    .prop("name", json!({"$data": "/p/name"}))
+                    .prop("price", json!({"$data": "/p/price"}))
+                    .prop("field", json!({"$data": "/p/field"}))
+                    .prop("price_cents", json!({"$data": "/p/price_cents"})),
+            )
+            .build()
+            .expect("spec builds");
+        if let Err(errs) = cat.validate(&spec) {
+            panic!("catalog_each_template_populated_data failed: {errs:?}");
+        }
     }
 }
