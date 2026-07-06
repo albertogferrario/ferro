@@ -264,7 +264,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 - [x] **POS-02**: `ProductTile` gains additive props — `category`, `image_url`, `color`,
   `stock_badge` — with existing specs rendering unchanged (serde-backward-compatible).
   *(Delivered 254 under the old name; component renamed `Tile` in Phase 255.)*
-- [ ] **POS-03**: A `FilterTabs` standalone builtin filters visible tiles by
+- [x] **POS-03**: A `FilterTabs` standalone builtin filters visible tiles by
   filter token client-side (show/hide), touch targets ≥44px.
 - [ ] **POS-04**: A `SelectionPanel` builtin renders the running selection as a **live
   client-side view of the form state** (operator decision 2026-07-05, un-deferring the
