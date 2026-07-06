@@ -80,7 +80,9 @@ pub async fn index() -> Response {
     let spec = JsonUiRenderer
         .render(&service, &intents, &ctx)
         .map_err(|e| ferro::error_response!(500, format!("cassa projection failed: {e}")))?;
-    let data = serde_json::json!({ "cassa": cassa_products() });
+    // Projection convention: `$each`/`data_path` point at `/data/{service}`,
+    // so the handler payload nests rows under a top-level `data` key.
+    let data = serde_json::json!({ "data": { "cassa": cassa_products() } });
     JsonUi::render(&spec, &data)
 }
 

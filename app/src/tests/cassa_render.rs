@@ -42,7 +42,7 @@ mod tests {
             "register spec must be lint-clean: {hits:#?}"
         );
 
-        let data = json!({ "cassa": cassa_products() });
+        let data = json!({ "data": { "cassa": cassa_products() } });
         let resp = JsonUi::render(&spec, &data).expect("render ok");
         assert_eq!(resp.status_code(), 200);
         let html = resp.body();
@@ -63,6 +63,12 @@ mod tests {
         assert!(
             html.contains("Conferma ordine"),
             "confirm button label must render"
+        );
+        // Guard against empty-grid regressions: a real product row must render
+        // from the $each expansion over /data/cassa.
+        assert!(
+            html.contains("Caffè"),
+            "product tiles must render from $each expansion"
         );
     }
 }
