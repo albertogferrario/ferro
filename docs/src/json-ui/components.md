@@ -1421,7 +1421,7 @@ Touch-first tap-to-add tile. The whole tile is a single tap surface — a `<butt
 | `price` | `string` | Formatted display price (e.g., `"€29.00"`) |
 | `field` | `string` | Form field name the selected quantity is written to |
 | `default_quantity` | `number \| null` | Initial quantity (default: 0) |
-| `categories` | `string[]` | Category memberships, emitted as a space-separated `data-filter-tokens` attribute (spaces in a name normalize to hyphens) for filter-tab matching |
+| `categories` | `string[]` | Category memberships, emitted as a space-separated `data-filter-tokens` attribute (spaces in a name normalize to hyphens) for filter-tab matching. Default: `[]` — an untagged tile is visible under the All tab and hidden under any specific category tab |
 | `image_url` | `string \| null` | Item image, lazy-loaded at the top of the tile; absent renders a text-only tile |
 | `color` | `tone \| null` | Accent tone for the tile border (shared `tone` enum); absent or `"neutral"` renders the default border |
 | `stock_badge` | `string \| null` | Badge-styled chip text (e.g. `"Low"`, `"Out"`) |

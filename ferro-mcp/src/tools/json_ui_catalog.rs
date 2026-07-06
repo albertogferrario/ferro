@@ -101,9 +101,12 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
         &["Grid", "TileGrid", "SelectionPanel", "Numpad"],
     ),
     ("register-grid-fill", &["Grid", "TileGrid"]),
+    // Numpad intentionally absent from register-selection-present: the check
+    // (check_pos_cart_present) fires only on TileGrid-present-without-SelectionPanel,
+    // so Numpad's presence can never trigger it.
     (
         "register-selection-present",
-        &["Grid", "TileGrid", "Numpad", "SelectionPanel"],
+        &["Grid", "TileGrid", "SelectionPanel"],
     ),
     // Grid is the required root element in register/fill_viewport compositions; surfaces the
     // app|dashboard-only layout constraint to authors (D-02).
@@ -357,8 +360,8 @@ Spec::builder() -> SpecBuilder
   .layout(impl Into<String>) -> Self
   .data(serde_json::Value) -> Self
   .element(id, Element) -> Self
-  .build() -> Result<Spec, SpecError>
   .fill_viewport(bool) -> Self  (sets fill_viewport on the built Spec; required for register layouts)
+  .build() -> Result<Spec, SpecError>
 
 Element::new(type_name: impl Into<String>) -> ElementBuilder
   .prop(key, value) -> Self (accumulates into props: serde_json::Value)
@@ -367,16 +370,18 @@ Element::new(type_name: impl Into<String>) -> ElementBuilder
   .visible(Visibility) -> Self (show/hide based on data path)
   .each(path: impl Into<String>, as_: impl Into<String>) -> Self  (public setter for the $each directive; emits one element per row in the data array)
 
-Spec { $schema, root, elements: HashMap<String, Element>, title?, layout?, data? }
+Spec { $schema, root, elements: HashMap<String, Element>, title?, layout?, data?, fill_viewport? }
   - $schema: \"ferro-json-ui/v2\"
   - root: id of the root element
   - elements: flat map of element id -> Element
-Element { type: String, props: Value, children: Vec<String>, action?, visible? }
+  - fill_viewport: optional bool (default false) — must be true for register compositions
+Element { type: String, props: Value, children: Vec<String>, action?, visible?, $each? }
   - type: component type name (e.g. \"Card\", \"DataTable\", \"Map\")
   - props: component-specific properties as a JSON value
   - children: element id references (no nested structures — flat lookup)
   - action: optional Action binding
-  - visible: optional Visibility rule";
+  - visible: optional Visibility rule
+  - $each: optional loop directive { path, as } — emits one element per row of the data array";
 
 const ACTION_API: &str = "\
 Action::new(handler) -> Action (POST)

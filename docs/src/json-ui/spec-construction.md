@@ -167,6 +167,8 @@ let spec: Spec = Spec::builder()
     .build()?;
 ```
 
+This snippet illustrates the builder API only — it is not a complete register composition. It has no `Form` ancestor and no `SelectionPanel`, so running `design_lint` on it reports `register-selection-present`, and the `form_id` it references does not resolve. For the full register shape, use [`register_template()`](layouts.md#register-layout-template).
+
 ## Namespace: element-level vs prop-level directives
 
 Directives split into two namespaces, distinguished by where they appear in the JSON.
