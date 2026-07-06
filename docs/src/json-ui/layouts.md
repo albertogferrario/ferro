@@ -212,3 +212,79 @@ Custom layout implementations receive a `LayoutContext` with all data needed to 
 | `scripts` | `&str` | JS assets and init scripts for plugins, placed before `</body>` |
 
 Always include `ctx.scripts` in custom layouts — it carries plugin JS assets injected automatically by the render pipeline.
+
+---
+
+## fill_viewport
+
+The `fill_viewport: true` spec-level flag switches from whole-page scroll to internal per-pane scrolling. Each child pane of the root `Grid` gets its own independent scroll container via the `ferro-fill` CSS chain, so content that overflows one pane does not cause the page to scroll.
+
+Set `fill_viewport` at the spec level and `fill: true` on the root `Grid` element:
+
+```json
+{
+  "$schema": "ferro-json-ui/v2",
+  "fill_viewport": true,
+  "layout": "dashboard",
+  "root": "root_grid",
+  "elements": {
+    "root_grid": {
+      "type": "Grid",
+      "props": { "fill": true },
+      "children": ["left_pane", "right_pane"]
+    }
+  }
+}
+```
+
+**Requirements and lint rules:**
+
+| Condition | Lint rule | Fired when |
+|-----------|-----------|------------|
+| `fill_viewport: true` required | `register-fill-viewport` | Spec contains `TileGrid`, `SelectionPanel`, or `Numpad` but `fill_viewport` is not set |
+| Root `Grid` must have `fill: true` | `register-grid-fill` | `fill_viewport: true` but the root `Grid` element lacks `fill: true` |
+| Supported layouts only | `fill-viewport-layout-unknown` | `fill_viewport: true` with a layout other than `"app"` or `"dashboard"` |
+
+Only the `"app"` and `"dashboard"` shell layouts support `fill_viewport`. Using any other layout with `fill_viewport: true` causes silent whole-page scroll — the `ferro-fill` CSS chain is only wired into these two built-in shells. Validate with `design_lint` to catch this before serving.
+
+---
+
+## Register Layout Template
+
+The `register_template()` helper overrides the Collect intent's display layout to `"Register"`, emitting a fill-viewport two-pane composition from the projection layer. The seven-intent vocabulary (`Browse`, `Collect`, `Focus`, `Process`, `Summarize`, `Analyze`, `Track`) is unchanged — `"Register"` is a layout template name, not a new intent.
+
+Pass it via `VisualContext`:
+
+```rust
+use ferro::{
+    derive_intents, register_template, JsonUi, JsonUiRenderer, Renderer, Response,
+    ServiceDef, VisualContext,
+};
+
+#[handler]
+pub async fn index() -> Response {
+    let service = my_service_def();
+    let intents = derive_intents(&service);
+    let ctx = VisualContext {
+        templates: Some(register_template()),
+        ..Default::default()
+    };
+    let spec = JsonUiRenderer
+        .render(&service, &intents, &ctx)
+        .map_err(|e| ferro::error_response!(500, format!("projection failed: {e}")))?;
+    // Nest rows under the "data" key — the derived data_path points at /data/{service}
+    let data = serde_json::json!({ "data": { "products": load_products() } });
+    JsonUi::render(&spec, &data)
+}
+```
+
+The projection emits:
+- `fill_viewport: true` on the `Spec`
+- A root `Grid` with `fill: true` and `"dashboard"` layout
+- A `Form` element as the common ancestor of both panes
+- A **TileGrid pane** iterating items via the `$each` directive, with `Tile` children bound to the item rows
+- A **SelectionPanel pane** with a confirm `Button` in its `children` slot
+
+Existing `Collect` projections without `register_template()` in their `VisualContext` are unaffected — the built-in Collect default (Form layout) stays unchanged.
+
+The projection-derived `/cassa` sample (`app/src/controllers/cassa.rs`) is the reference composition. Cross-reference: [TileGrid](components.md#tilegrid), [SelectionPanel](components.md#selectionpanel).
