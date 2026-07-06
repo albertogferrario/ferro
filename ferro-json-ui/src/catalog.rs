@@ -33,9 +33,10 @@ use crate::component::{
     EmptyStateProps, FilterTabsProps, FormProps, FormSectionProps, GridProps, HeaderProps,
     ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps, ModalProps,
     NotificationDropdownProps, NumpadProps, PageHeaderProps, PaginationProps, ProgressProps,
-    QuantityStepperProps, RawHtmlProps, SegmentedControlProps, SelectProps, SeparatorProps,
-    SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps, StreamTextProps, SwitchProps,
-    TableProps, TabsProps, TextProps, TileGridProps, TileProps, ToastProps,
+    QuantityStepperProps, RawHtmlProps, SegmentedControlProps, SelectProps, SelectionPanelProps,
+    SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
+    StreamTextProps, SwitchProps, TableProps, TabsProps, TextProps, TileGridProps, TileProps,
+    ToastProps,
 };
 
 // ── Public types ───────────────────────────────────────────────────────────────
@@ -369,6 +370,12 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "ActionGroup",
         "Ordered action list: inline buttons up to max_inline, trailing overflow kebab for the rest; destructive items forced into the kebab last.",
         || to_value(schema_for!(ActionGroupProps)).unwrap(),
+        &[],
+    ),
+    (
+        "SelectionPanel",
+        "Live client-side view of the register form state: lines appear as tiles are tapped, each with a per-line stepper + remove, a running total, an EmptyState, and a confirm slot; pins and scrolls under fill_viewport.",
+        || to_value(schema_for!(SelectionPanelProps)).unwrap(),
         &[],
     ),
     // === Form controls (form.rs) ===
@@ -1241,8 +1248,8 @@ mod tests {
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
         // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs)
-        // → 50 (QuantityStepper) → 51 (Numpad).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 51);
+        // → 50 (QuantityStepper) → 51 (Numpad) → 52 (SelectionPanel).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 52);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────
@@ -2167,9 +2174,11 @@ mod tests {
         // Budget bumped from 10 KB to 11 KB in Phase 169 Plan 02 (StreamText added, 45 components).
         // Budget bumped from 11 KB to 12 KB in Phase 251 Plan 03 ($ref'd enum
         // values inlined in prop docs — canonical Variant/Tone/Size surfaced).
+        // Budget bumped from 12 KB to 13 KB in Phase 256 Plan 03 (QuantityStepper + Numpad +
+        // SelectionPanel added — 52 components total).
         assert!(
-            bytes <= 12 * 1024,
-            "prompt() is {bytes} bytes, exceeds 12 KB budget (CONTEXT D-17)"
+            bytes <= 13 * 1024,
+            "prompt() is {bytes} bytes, exceeds 13 KB budget (CONTEXT D-17)"
         );
     }
 

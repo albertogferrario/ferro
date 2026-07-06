@@ -3140,7 +3140,7 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_quantity_stepper(el, &spec, &json!({}), 1);
         // Both dec and inc buttons must carry HIT_TARGET_MIN
-        let count = html.matches("min-h-[44px] min-w-[44px]").count();
+        let count = html.matches(crate::render::classes::HIT_TARGET_MIN).count();
         assert!(
             count >= 2,
             "both buttons must be >=44px (HIT_TARGET_MIN x2); count={count}; got: {html}"
@@ -3264,7 +3264,9 @@ mod tests {
         let spec = spec_with_root(Element::new("Numpad").prop("target_field", "total_cents"));
         let el = spec.elements.get("root").unwrap();
         let html = render_numpad(el, &spec, &json!({}), 1);
-        let count = html.matches("min-h-[56px] min-w-[56px]").count();
+        let count = html
+            .matches(crate::render::classes::HIT_TARGET_NUMPAD)
+            .count();
         assert_eq!(
             count, 12,
             "all 12 keys must carry HIT_TARGET_NUMPAD (>=56px); count={count}; got: {html}"

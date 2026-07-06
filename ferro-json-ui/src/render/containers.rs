@@ -16,12 +16,16 @@ use crate::component::{
     ActionGroupProps, ActionItem, ButtonGroupProps, CardAppearance, CardProps, CollapsibleProps,
     DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout, FormSectionProps,
     GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, SegmentedControlProps,
-    SegmentedItem, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps, TileGridProps, Variant,
+    SegmentedItem, SelectionPanelProps, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps,
+    TileGridProps, Variant,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
-use super::classes::{DISABLED_BASE, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_FAST, TOUCH_ACTION};
+use super::classes::{
+    DISABLED_BASE, HIT_TARGET_MIN, INTERACTIVE_BASE, MOTION_FAST, OVERSCROLL_CONTAIN, PRESS_ACTIVE,
+    TOUCH_ACTION,
+};
 use super::data::{render_inline_dropdown, resolve_row_key, template_actions};
 use super::{html_escape, render_element};
 
@@ -1503,6 +1507,103 @@ pub(crate) fn render_sidebar_layout(
           <aside class=\"md:sticky md:top-4 md:self-start min-w-0\">{nav}</aside>\
           <main class=\"min-w-0 flex flex-col gap-4\">{main_content}</main>\
         </div>",
+    )
+}
+
+// ── SelectionPanel ───────────────────────────────────────────────────────────
+
+/// Renders a `SelectionPanel` — the live client-side view of the register form
+/// state (D-06..D-15).
+///
+/// Emits:
+/// - Root `data-selection-panel` + `data-selection-form` scope attribute.
+/// - `<template data-selection-line-template>` whose inner markup the JS runtime
+///   clones per line; markup is the single source for line layout + classes.
+/// - Scrollable lines container `data-selection-lines` (the scroll region).
+/// - Server-rendered `data-selection-empty` EmptyState toggled by the runtime.
+/// - Running-total `data-selection-total`; `data-selection-currency` when
+///   `currency` is set. **T-256-10: the total is display-only — the server
+///   must re-validate qty × price from the hidden inputs on POST.**
+/// - Confirm slot rendering `el.children` (author supplies the confirm Button).
+pub(crate) fn render_selection_panel(
+    el: &Element,
+    spec: &Spec,
+    data: &Value,
+    depth: usize,
+) -> String {
+    let props: SelectionPanelProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode SelectionPanel props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let form_id = html_escape(&props.form_id);
+    let empty_message = html_escape(
+        props
+            .empty_message
+            .as_deref()
+            .unwrap_or("No items selected"),
+    );
+    let currency_attr = props
+        .currency
+        .as_deref()
+        .map(|c| format!(" data-selection-currency=\"{}\"", html_escape(c)))
+        .unwrap_or_default();
+
+    // Visual class composition for line steppers — identical literal to
+    // render_quantity_stepper (D-22 shared-visual requirement).
+    let stepper_btn_classes = format!(
+        "{HIT_TARGET_MIN} {TOUCH_ACTION} {PRESS_ACTIVE} flex items-center justify-center \
+         rounded-md border border-border bg-surface text-text text-lg font-semibold \
+         hover:bg-border {INTERACTIVE_BASE}"
+    );
+
+    // Author-supplied confirm Button children render into the pinned confirm slot (D-14).
+    let confirm_children: String = el
+        .children
+        .iter()
+        .map(|cid| render_element(cid, spec, data, depth + 1))
+        .collect();
+
+    format!(
+        "<div data-selection-panel data-selection-form=\"{form_id}\" \
+         class=\"flex flex-col h-full min-h-0 {OVERSCROLL_CONTAIN}\">\
+         <template data-selection-line-template>\
+         <div data-selection-line \
+         class=\"flex items-center gap-2 py-2 border-b border-border\">\
+         <span data-selection-line-name class=\"flex-1 text-sm text-text\"></span>\
+         <button type=\"button\" data-selection-dec \
+         class=\"{stepper_btn_classes}\" aria-label=\"Decrease\">\u{2212}</button>\
+         <span data-selection-line-qty \
+         class=\"min-w-[2ch] text-center text-sm font-semibold text-text\"></span>\
+         <button type=\"button\" data-selection-inc \
+         class=\"{stepper_btn_classes}\" aria-label=\"Increase\">+</button>\
+         <button type=\"button\" data-selection-remove \
+         class=\"{HIT_TARGET_MIN} flex items-center justify-center rounded-md \
+         text-text-muted hover:text-destructive {INTERACTIVE_BASE}\" \
+         aria-label=\"Remove\">\u{00D7}</button>\
+         <span data-selection-line-total \
+         class=\"text-sm font-semibold text-text\"></span>\
+         </div>\
+         </template>\
+         <div data-selection-lines class=\"flex-1 overflow-y-auto min-h-0\"></div>\
+         <div data-selection-empty \
+         class=\"flex-1 flex items-center justify-center py-8 px-4\">\
+         <div class=\"text-center\">\
+         <p class=\"text-sm text-text-muted\">{empty_message}</p>\
+         </div></div>\
+         <div class=\"flex-shrink-0 flex items-center justify-between \
+         py-3 border-t border-border\">\
+         <span class=\"text-sm font-semibold text-text\">Total</span>\
+         <span data-selection-total{currency_attr} \
+         class=\"text-base font-semibold text-text\">0.00</span>\
+         </div>\
+         <div class=\"flex-shrink-0 pt-2\">{confirm_children}</div>\
+         </div>"
     )
 }
 
@@ -3114,6 +3215,138 @@ mod tests {
         assert!(
             !html.contains("grid-cols-{"),
             "dynamic class construction must never appear; got: {html}"
+        );
+    }
+
+    // ── SelectionPanel ───────────────────────────────────────────────────────
+
+    #[test]
+    fn selection_panel_emits_contract() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-selection-panel"),
+            "panel root attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-selection-form=\"order_form\""),
+            "form scope attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-selection-line-template"),
+            "template attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-selection-lines"),
+            "lines container; got: {html}"
+        );
+        assert!(
+            html.contains("data-selection-empty"),
+            "empty state attr; got: {html}"
+        );
+        assert!(
+            html.contains("data-selection-total"),
+            "total element; got: {html}"
+        );
+    }
+
+    #[test]
+    fn selection_panel_currency() {
+        let spec_curr = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel")
+                .prop("form_id", "order_form")
+                .prop("currency", "€"),
+        )]);
+        let el = spec_curr.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec_curr, &json!({}), 1);
+        assert!(
+            html.contains("data-selection-currency=\"\u{20AC}\""),
+            "currency attr; got: {html}"
+        );
+        // currency: None → attribute absent
+        let spec_no_curr = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el2 = spec_no_curr.elements.get("root").unwrap();
+        let html2 = render_selection_panel(el2, &spec_no_curr, &json!({}), 1);
+        assert!(
+            !html2.contains("data-selection-currency"),
+            "no currency attr when absent; got: {html2}"
+        );
+    }
+
+    #[test]
+    fn selection_panel_confirm_slot() {
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("SelectionPanel")
+                    .prop("form_id", "order_form")
+                    .child("btn"),
+            ),
+            (
+                "btn",
+                Element::new("Button")
+                    .prop("label", "Confirm")
+                    .prop("variant", "primary"),
+            ),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("Confirm"),
+            "confirm button rendered in slot; got: {html}"
+        );
+    }
+
+    #[test]
+    fn selection_panel_pins_and_scrolls() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("overscroll-contain"),
+            "OVERSCROLL_CONTAIN on root; got: {html}"
+        );
+        assert!(
+            html.contains("overflow-y-auto"),
+            "scroll region present; got: {html}"
+        );
+    }
+
+    #[test]
+    fn selection_panel_empty_message_neutral() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("No items selected"),
+            "neutral English default; got: {html}"
+        );
+        // Custom message respected
+        let spec_custom = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel")
+                .prop("form_id", "order_form")
+                .prop("empty_message", "Cart is empty"),
+        )]);
+        let el2 = spec_custom.elements.get("root").unwrap();
+        let html2 = render_selection_panel(el2, &spec_custom, &json!({}), 1);
+        assert!(
+            html2.contains("Cart is empty"),
+            "custom message respected; got: {html2}"
         );
     }
 }

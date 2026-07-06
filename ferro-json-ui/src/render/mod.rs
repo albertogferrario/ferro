@@ -85,6 +85,7 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "SegmentedControl",
     "SidebarLayout",
     "ActionGroup",
+    "SelectionPanel",
     // Form controls (form.rs)
     "Form",
     "Input",
@@ -222,6 +223,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "SegmentedControl" => containers::render_segmented_control(el, spec, data, depth),
         "SidebarLayout" => containers::render_sidebar_layout(el, spec, data, depth),
         "ActionGroup" => containers::render_action_group(el, spec, data, depth),
+        "SelectionPanel" => containers::render_selection_panel(el, spec, data, depth),
         // Form controls
         "Form" => form::render_form(el, spec, data, depth),
         "Input" => form::render_input(el, spec, data, depth),

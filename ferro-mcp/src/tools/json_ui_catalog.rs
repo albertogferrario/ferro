@@ -96,7 +96,10 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     // POS rules (Phase 254/256). TileGrid added in Phase 256-02 (same commit as BUILTIN_TYPES bump).
     ("register-fill-viewport", &["Grid", "TileGrid"]),
     ("register-grid-fill", &["Grid", "TileGrid"]),
-    ("register-selection-present", &["Grid", "Numpad"]),
+    (
+        "register-selection-present",
+        &["Grid", "Numpad", "SelectionPanel"],
+    ),
     ("fill-viewport-layout-unknown", &[]),
 ];
 
@@ -399,8 +402,8 @@ mod tests {
         // pub(crate) in ferro-json-ui, so this side can't assert it relationally).
         assert_eq!(
             catalog.components.len(),
-            51,
-            "Catalog should contain all 51 built-in components (incl. TileGrid, FilterTabs, QuantityStepper, Numpad), got {}",
+            52,
+            "Catalog should contain all 52 built-in components (incl. TileGrid, FilterTabs, QuantityStepper, Numpad, SelectionPanel), got {}",
             catalog.components.len()
         );
 
@@ -457,6 +460,7 @@ mod tests {
             "SidebarLayout",
             "QuantityStepper",
             "Numpad",
+            "SelectionPanel",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");
