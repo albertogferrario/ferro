@@ -22,12 +22,13 @@ use ferro_projections::{
 };
 use ferro_theme::IntentSlotTemplate;
 
-use crate::action::Action;
+use crate::action::{Action, HttpMethod};
 use crate::catalog::{global_catalog, Catalog};
 use crate::component::{
-    ActionGroupProps, ActionItem, CardAppearance, CardProps, Column, DataTableProps,
-    DescriptionItem, DescriptionListProps, DropdownMenuAction, FormProps, KanbanBoardProps,
-    KanbanColumnProps, StatCardProps, Tab, TableProps, TabsProps,
+    ActionGroupProps, ActionItem, ButtonProps, ButtonType, CardAppearance, CardProps, Column,
+    DataTableProps, DescriptionItem, DescriptionListProps, DropdownMenuAction, FormProps, GapSize,
+    GridProps, KanbanBoardProps, KanbanColumnProps, SelectionPanelProps, Size, StatCardProps, Tab,
+    TableProps, TabsProps, TileGridProps, TileProps, Variant,
 };
 use crate::spec::{Element, ElementBuilder, Spec};
 
@@ -258,6 +259,7 @@ fn build_display_spec(
         }
         "KanbanBoard" => emit_kanban_root(service, ctx),
         "StatCard" => emit_statcard_root(service, &template.slots, &mut aux_elements),
+        "Register" => emit_register_root(service, &mut aux_elements)?,
         other => {
             return Err(ProjectionError::UnknownComponent {
                 type_name: other.to_string(),
@@ -269,9 +271,14 @@ fn build_display_spec(
     // to document the dispatch path for future per-intent tweaks.
     let _ = intent;
 
-    let mut builder = Spec::builder()
-        .title(resolve_title(service))
-        .element("root", root);
+    let mut builder = Spec::builder().title(resolve_title(service));
+    // Register layout needs fill_viewport + an app-shell layout so the four
+    // register lint rules are satisfied (D-05). "Register" is the template
+    // dispatch key only — spec.layout is always an app-shell name.
+    if layout == "Register" {
+        builder = builder.fill_viewport(true).layout("dashboard");
+    }
+    builder = builder.element("root", root);
     for (id, el) in aux_elements {
         builder = builder.element(id, el);
     }
@@ -557,6 +564,226 @@ fn emit_statcard_root(
     })
     .expect("StatCardProps serialization cannot fail");
     element_with_props("StatCard", props)
+}
+
+/// Register layout root — the tile sale screen composition for touch-first POS.
+///
+/// Emits a two-grid element tree that passes all four published register lint
+/// rules (`register-fill-viewport`, `register-grid-fill`,
+/// `register-selection-present`, `fill-viewport-layout-unknown`). The caller
+/// sets `fill_viewport=true` and `layout="dashboard"` on the `Spec` after this
+/// returns.
+///
+/// ## Per-row data contract (D-10)
+///
+/// Every row in the `/data/{service.name}` array supplied by the handler MUST
+/// carry:
+/// - The entity's own fields (looked up by meaning — Identifier, EntityName,
+///   Money) under their declared field names.
+/// - `price_cents` (integer) — the unit price in integer cents, matching the
+///   Money display string. Used by the SelectionPanel running-total runtime.
+///   Never float; always integer cents (e.g. 120 for €1.20).
+/// - `field` (string) — the hidden-input name for this line item (e.g.
+///   `"qty_1"`). The TileGrid runtime writes quantity to this input so the
+///   surrounding Form captures it on submit.
+///
+/// Both `price_cents` and `field` are fixed contract keys independent of the
+/// ServiceDef field names; the handler must emit them alongside the entity
+/// fields.
+fn emit_register_root(
+    service: &ServiceDef,
+    aux: &mut Vec<(String, ElementBuilder)>,
+) -> Result<ElementBuilder, ProjectionError> {
+    // Step 1 — Confirm action (D-08): derive the form submit target from the
+    // first declared action. Error if none — a register with no confirm path
+    // is broken by construction.
+    let confirm =
+        service
+            .actions
+            .first()
+            .ok_or_else(|| ProjectionError::RegisterMissingAction {
+                service: service.name.clone(),
+            })?;
+    let confirm_label = confirm
+        .display_name
+        .as_deref()
+        .unwrap_or(&confirm.name)
+        .to_string();
+    let form_action = Action::new(format!("/{}/{}", service.name, confirm.name));
+
+    // Step 2 — Meaning-driven field names (mirrors emit_kanban_root).
+    // Sensitive/ForeignKey/system meanings are structurally excluded because
+    // field_name_by only matches Identifier / EntityName / Money (T-257-03).
+    let field_name_by = |pred: fn(&FieldMeaning) -> bool| -> Option<String> {
+        service
+            .fields
+            .iter()
+            .find(|f| f.readable && pred(&f.meaning))
+            .map(|f| f.name.clone())
+    };
+    let fallback = service
+        .fields
+        .first()
+        .map(|f| f.name.clone())
+        .unwrap_or_else(|| "id".to_string());
+    let id_field = field_name_by(|m| matches!(m, FieldMeaning::Identifier))
+        .unwrap_or_else(|| fallback.clone());
+    let name_field = field_name_by(|m| matches!(m, FieldMeaning::EntityName))
+        .unwrap_or_else(|| id_field.clone());
+    let money_field =
+        field_name_by(|m| matches!(m, FieldMeaning::Money)).unwrap_or_else(|| fallback.clone());
+
+    let data_path = format!("/data/{}", service.name);
+
+    // Step 3 — Build aux elements bottom-up so each parent can reference its
+    // children by id.
+
+    // confirm_btn: Submit button placed inside the SelectionPanel slot (D-14).
+    let confirm_btn = element_with_props(
+        "Button",
+        serde_json::to_value(ButtonProps {
+            label: confirm_label,
+            variant: Variant::Primary,
+            size: Size::Md,
+            disabled: None,
+            icon: None,
+            icon_position: None,
+            button_type: Some(ButtonType::Submit),
+            form: Some("sale_form".into()),
+            disable_on_submit: Some(true),
+        })
+        .expect("ButtonProps serialization cannot fail"),
+    );
+    aux.push(("confirm_btn".into(), confirm_btn));
+
+    // selection_pane: cart summary pinned right; neutral English defaults (D-project-agnostic).
+    let selection_pane = element_with_props(
+        "SelectionPanel",
+        serde_json::to_value(SelectionPanelProps {
+            form_id: "sale_form".into(),
+            empty_message: None,
+            currency: None,
+            total_label: None,
+        })
+        .expect("SelectionPanelProps serialization cannot fail"),
+    )
+    .child("confirm_btn");
+    aux.push(("selection_pane".into(), selection_pane));
+
+    // tile_tmpl: the $each template element. Props are initialized as empty
+    // strings (satisfies the type-level required-field contract) and then
+    // overridden with $data pointer objects. The catalog skips per-element
+    // Props validation for $each template elements (D-14 guard, Plan 01).
+    let tile_tmpl = element_with_props(
+        "Tile",
+        serde_json::to_value(TileProps {
+            item_id: String::new(),
+            name: String::new(),
+            price: String::new(),
+            field: String::new(),
+            default_quantity: None,
+            categories: vec![],
+            image_url: None,
+            color: None,
+            stock_badge: None,
+            price_cents: None,
+        })
+        .expect("TileProps serialization cannot fail"),
+    )
+    // Override each prop with its $data binding (T-257-04: only pointer
+    // objects, never raw field-value interpolation into markup).
+    .prop(
+        "item_id",
+        serde_json::json!({"$data": format!("/p/{id_field}")}),
+    )
+    .prop(
+        "name",
+        serde_json::json!({"$data": format!("/p/{name_field}")}),
+    )
+    .prop(
+        "price",
+        serde_json::json!({"$data": format!("/p/{money_field}")}),
+    )
+    .prop(
+        "price_cents",
+        serde_json::json!({"$data": "/p/price_cents"}),
+    )
+    .prop("field", serde_json::json!({"$data": "/p/field"}))
+    .each(data_path.clone(), "p");
+    aux.push(("tile_tmpl".into(), tile_tmpl));
+
+    // tiles_pane: product tile grid (search on by default, D-07).
+    let tiles_pane = element_with_props(
+        "TileGrid",
+        serde_json::to_value(TileGridProps {
+            data_path: data_path.clone(),
+            form_id: "sale_form".into(),
+            categories_path: None,
+            columns: None,
+            search: Some(true),
+            all_label: None,
+        })
+        .expect("TileGridProps serialization cannot fail"),
+    )
+    .child("tile_tmpl");
+    aux.push(("tiles_pane".into(), tiles_pane));
+
+    // panes_grid: two-column split at md+. tiles 2/3, selection 1/3
+    // (Shopify POS anchor: wide product grid + pinned side cart, D-04).
+    let panes_grid = element_with_props(
+        "Grid",
+        serde_json::to_value(GridProps {
+            columns: 1,
+            md_columns: Some(3),
+            lg_columns: None,
+            gap: GapSize::Md,
+            scrollable: None,
+            spans: vec![2, 1],
+            row_weights: vec![],
+            fill: Some(true),
+        })
+        .expect("GridProps serialization cannot fail"),
+    )
+    .child("tiles_pane")
+    .child("selection_pane");
+    aux.push(("panes_grid".into(), panes_grid));
+
+    // sale_form: the Form that owns all hidden quantity inputs and the submit
+    // action. id="sale_form" is the scope isolator that pairs TileGrid and
+    // SelectionPanel (D-11 Form-ancestor scoping).
+    let sale_form = element_with_props(
+        "Form",
+        serde_json::to_value(FormProps {
+            action: form_action,
+            method: Some(HttpMethod::Post),
+            guard: None,
+            max_width: None,
+            id: Some("sale_form".into()),
+            enctype: None,
+        })
+        .expect("FormProps serialization cannot fail"),
+    )
+    .child("panes_grid");
+    aux.push(("sale_form".into(), sale_form));
+
+    // register_root: the outer fill Grid. Returned as the spec root.
+    let register_root = element_with_props(
+        "Grid",
+        serde_json::to_value(GridProps {
+            columns: 1,
+            md_columns: None,
+            lg_columns: None,
+            gap: GapSize::Md,
+            scrollable: None,
+            spans: vec![],
+            row_weights: vec![],
+            fill: Some(true),
+        })
+        .expect("GridProps serialization cannot fail"),
+    )
+    .child("sale_form");
+
+    Ok(register_root)
 }
 
 // ---------------------------------------------------------------------------

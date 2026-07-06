@@ -33,6 +33,12 @@ pub enum ProjectionError {
     #[error("catalog validation failed: {}", format_catalog_errors(.0))]
     CatalogValidation(Vec<CatalogError>),
 
+    /// The Register layout was selected for a service with no actions, so no
+    /// confirm target could be derived. A register must have at least one
+    /// action for its confirm button.
+    #[error("register layout requires at least one action on service '{service}' for the confirm button, but none were defined")]
+    RegisterMissingAction { service: String },
+
     /// `Spec::builder().build()` rejected the assembled spec (cycle, depth,
     /// dangling reference, or ID-format violation).
     #[error("spec build failed: {0}")]
