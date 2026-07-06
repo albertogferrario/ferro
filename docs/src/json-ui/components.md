@@ -31,7 +31,7 @@ The sections below document every built-in component: its props table (with JSON
 | **Navigation** | Sidebar, Header, PageHeader, NotificationDropdown |
 | **Action** | ActionCard |
 | **Onboarding** | Checklist |
-| **Commerce** | Tile |
+| **Commerce / Register** | Tile, TileGrid, SelectionPanel, FilterTabs, QuantityStepper, Numpad |
 | **Kanban** | KanbanBoard, KanbanColumn |
 | **Extensible** | RawHtml, Plugin (see [Plugins](plugins.md)) |
 
