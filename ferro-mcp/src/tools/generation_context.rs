@@ -12,6 +12,9 @@ pub struct GenerationContext {
     pub imports: ImportTemplates,
     /// Design system summary for JSON-UI spec authoring (D-06).
     pub design_system: DesignSystemSummary,
+    /// Register composition guidance for POS-style sale screens (D-03). Everything derivable is
+    /// derived; prose is drift-guarded by `register_composition_drift_guard`.
+    pub register_composition: RegisterCompositionGuidance,
 }
 
 /// Naming conventions for different framework artifacts
@@ -91,6 +94,38 @@ pub struct CanonicalVariants {
     pub variant: Vec<String>,
     pub tone: Vec<String>,
     pub size: Vec<String>,
+}
+
+/// Register composition guidance for POS-style sale screens (D-03). Everything derivable is derived;
+/// prose is drift-guarded by `register_composition_drift_guard`.
+#[derive(Debug, Serialize)]
+pub struct RegisterCompositionGuidance {
+    /// (a) When to use Register layout template vs. a form-only Collect spec. Also states that Numpad
+    /// and a standalone FilterTabs are author-composable additions, not part of the v1 register
+    /// template (D-06 / 257 D-07).
+    pub when_to_use: &'static str,
+    /// (b) Form-state selection contract: hidden-input qty accumulation (`data-qty-input`), ONE confirm
+    /// POST, single Form common ancestor, TileGrid.form_id == SelectionPanel.form_id, SelectionPanel is
+    /// a live client-side view of form state — never a second source of truth.
+    pub form_state_contract: &'static str,
+    /// (c) Runtime data attributes for filter + numpad + qty wiring (format: `"attr — role"`).
+    pub data_attributes: &'static [&'static str],
+    /// (d) fill_viewport requirement: required when a spec has TileGrid/SelectionPanel/Numpad; root Grid
+    /// needs `fill: true`; supported shell layouts are "app" and "dashboard" ONLY.
+    pub fill_viewport_requirement: &'static str,
+    /// (e) The four register-* lint rule ids to check via design_lint, derived from design::rules().
+    pub lint_rules: Vec<RegisterRuleRef>,
+    /// (f) Pointer to register_template() (ferro-json-ui/src/projection/intent_layout.rs) — the
+    /// one-call Collect->Register override; the projection-derived /cassa sample is the reference.
+    pub template_helper: &'static str,
+}
+
+/// Register lint-rule reference derived from the rule registry.
+#[derive(Debug, Serialize)]
+pub struct RegisterRuleRef {
+    pub id: &'static str,
+    pub title: &'static str,
+    pub rationale: &'static str,
 }
 
 /// Semantic token descriptions — maintained in parallel with `ferro_theme::token::ALL_TOKENS`.
@@ -220,6 +255,24 @@ static DESIGN_TOKEN_DESCRIPTIONS: &[TokenInfo] = &[
     },
 ];
 
+/// Runtime data attributes for the register composition (filter, tile-qty, numpad, form-guard).
+/// Drift-guarded by `register_composition_drift_guard` — each attribute must appear in FERRO_RUNTIME_JS.
+static REGISTER_DATA_ATTRIBUTES: &[&str] = &[
+    "data-filter-scope — scoping container for a filter group (TileGrid root)",
+    "data-filter-tab=\"<token>\" — filter tab button; empty value = 'All' (FilterTabs)",
+    "data-filter-search — optional text search input inside TileGrid",
+    "data-filter-text=\"<name>\" — search source on Tile root (emitted from Tile.name)",
+    "data-filter-tokens=\"t1 t2 ...\" — space-separated category tokens on Tile root",
+    "data-qty-inc=\"{field}\" — Tile tap button; increments the named hidden input",
+    "data-qty-dec=\"{field}\" — QuantityStepper − button; decrements the named hidden input",
+    "data-qty-input=\"{field}\" — hidden input the runtime writes qty into",
+    "data-qty-display=\"{field}\" — display element updated on qty change",
+    "data-unit-price — integer cents on Tile root for SelectionPanel running total",
+    "data-numpad-target=\"<field>\" — names the hidden input the numpad updates",
+    "data-numpad-mode=\"price|quantity\" — entry mode (default: quantity)",
+    "data-disable-on-submit — disables non-qty buttons on form submit (double-submit guard)",
+];
+
 /// Execute the generation context tool - returns comprehensive framework conventions
 pub fn execute() -> GenerationContext {
     // ── Design system summary (D-06) ─────────────────────────────────────────
@@ -277,6 +330,53 @@ pub fn execute() -> GenerationContext {
         },
         docs: "See docs/src/design-system/ for the full design system \
                (principles, tokens, variants, patterns, linting).",
+    };
+
+    // ── Register composition guidance (D-03) ─────────────────────────────────
+    let register_rule_ids = [
+        "register-fill-viewport",
+        "register-grid-fill",
+        "register-selection-present",
+        "fill-viewport-layout-unknown",
+    ];
+    let lint_rules: Vec<RegisterRuleRef> = design_rules()
+        .iter()
+        .filter(|r| register_rule_ids.contains(&r.id))
+        .map(|r| RegisterRuleRef {
+            id: r.id,
+            title: r.title,
+            rationale: r.rationale,
+        })
+        .collect();
+
+    let register_composition = RegisterCompositionGuidance {
+        when_to_use: "Use the Register layout template when the screen has BOTH a browseable \
+            items pane (TileGrid) and a running-selection pane (SelectionPanel) that pins and \
+            scrolls internally; use a plain Collect (Form) spec for a standard create/edit form \
+            without an adjacent selection pane. Numpad and a standalone FilterTabs (outside the \
+            TileGrid integrated strip) are author-composable additions, NOT part of the v1 \
+            register template.",
+        form_state_contract: "A single Form element (HTML id, e.g. 'sale_form') is the common \
+            ancestor of both the TileGrid pane and the SelectionPanel pane. \
+            TileGrid.form_id and SelectionPanel.form_id must both equal the Form's id. \
+            Hidden inputs (data-qty-input=\"{field}\") accumulate per-tile quantity; \
+            SelectionPanel is a live client-side view of that form state — it is NOT a second \
+            source of truth. ONE confirm POST button submits the entire Form; \
+            disable_on_submit: true on the confirm Button prevents double-submission. \
+            Data contract: handler-supplied rows include price_cents (integer cents, never float) \
+            and the fields the Tile $each template binds.",
+        data_attributes: REGISTER_DATA_ATTRIBUTES,
+        fill_viewport_requirement: "fill_viewport: true at the Spec level is required when a \
+            spec contains TileGrid, SelectionPanel, or Numpad (lint rule register-fill-viewport \
+            fires otherwise). The root Grid must have fill: true (lint rule register-grid-fill). \
+            Supported shell layouts for fill_viewport are 'app' and 'dashboard' ONLY — using any \
+            other causes silent whole-page scroll (lint rule fill-viewport-layout-unknown). \
+            register_template() emits layout 'dashboard' and fill_viewport: true automatically.",
+        lint_rules,
+        template_helper: "register_template() at ferro-json-ui/src/projection/intent_layout.rs \
+            — pass via VisualContext { templates: Some(register_template()), .. } to override \
+            Collect -> Register; see docs/src/json-ui/layouts.md#register-layout-template and \
+            the projection-derived /cassa sample.",
     };
 
     GenerationContext {
@@ -393,6 +493,7 @@ use serde::{Deserialize, Serialize};"#.to_string(),
             json_ui_view: r#"use ferro::{JsonUi, Response};"#.to_string(),
         },
         design_system,
+        register_composition,
     }
 }
 
@@ -440,6 +541,69 @@ mod tests {
         assert!(!context.design_system.intent_patterns.is_empty());
         assert!(!context.design_system.canonical_variants.variant.is_empty());
         assert!(!context.design_system.docs.is_empty());
+
+        // Verify register composition guidance populated (D-03)
+        assert!(
+            !context.register_composition.when_to_use.is_empty(),
+            "register_composition.when_to_use must be non-empty"
+        );
+        assert_eq!(
+            context.register_composition.lint_rules.len(),
+            4,
+            "must derive all four register-* rules from design::rules()"
+        );
+    }
+
+    #[test]
+    fn register_composition_drift_guard() {
+        use std::collections::HashSet;
+        let ctx = execute();
+
+        // 1. Component names mentioned in the guidance exist as builtins.
+        let builtins: HashSet<String> = ferro_json_ui::global_catalog()
+            .components_sorted()
+            .map(|c| c.name.clone())
+            .collect();
+        for name in [
+            "TileGrid",
+            "SelectionPanel",
+            "FilterTabs",
+            "QuantityStepper",
+            "Numpad",
+            "Tile",
+        ] {
+            assert!(
+                builtins.contains(name as &str),
+                "register guidance names non-builtin `{name}`"
+            );
+        }
+
+        // 2. Every derived lint rule id exists in the rule registry.
+        let rule_ids: HashSet<&str> = ferro_json_ui::design::rules()
+            .iter()
+            .map(|r| r.id)
+            .collect();
+        for r in &ctx.register_composition.lint_rules {
+            assert!(
+                rule_ids.contains(r.id),
+                "register guidance references unknown rule `{}`",
+                r.id
+            );
+        }
+
+        // 3. Key attributes mentioned appear in the assembled runtime bundle.
+        for attr in [
+            "data-qty-input",
+            "data-filter-tokens",
+            "data-filter-text",
+            "data-numpad-target",
+            "data-disable-on-submit",
+        ] {
+            assert!(
+                ferro_json_ui::FERRO_RUNTIME_JS.contains(attr),
+                "runtime bundle missing `{attr}` — register guidance is stale"
+            );
+        }
     }
 
     #[test]
