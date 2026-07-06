@@ -612,8 +612,9 @@ fn emit_register_root(
     let form_action = Action::new(format!("/{}/{}", service.name, confirm.name));
 
     // Step 2 — Meaning-driven field names (mirrors emit_kanban_root).
-    // Sensitive/ForeignKey/system meanings are structurally excluded because
-    // field_name_by only matches Identifier / EntityName / Money (T-257-03).
+    // Sensitive/ForeignKey/system meanings are excluded on both paths
+    // (T-257-03): field_name_by only matches Identifier / EntityName / Money,
+    // and the fallback only considers readable, display-eligible fields.
     let field_name_by = |pred: fn(&FieldMeaning) -> bool| -> Option<String> {
         service
             .fields
@@ -623,7 +624,8 @@ fn emit_register_root(
     };
     let fallback = service
         .fields
-        .first()
+        .iter()
+        .find(|f| f.readable && lookup_meaning(&f.meaning).display.is_some())
         .map(|f| f.name.clone())
         .unwrap_or_else(|| "id".to_string());
     let id_field = field_name_by(|m| matches!(m, FieldMeaning::Identifier))
@@ -1699,6 +1701,41 @@ mod tests {
         assert!(
             matches!(err, ProjectionError::RegisterMissingAction { .. }),
             "error must be RegisterMissingAction, got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn register_projection_fallback_excludes_sensitive_fields() {
+        // T-257-03: when no Identifier/EntityName/Money field exists, the
+        // fallback must skip display-ineligible meanings (Sensitive/ForeignKey)
+        // instead of binding the first declared field into tile props.
+        use ferro_projections::{Intent, IntentHint};
+        let service = ServiceDef::new("shop")
+            .display_name("Shop")
+            .field("secret", DataType::String, FieldMeaning::Sensitive)
+            .field("note", DataType::String, FieldMeaning::FreeText)
+            .action(ActionDef::new("confirm").display_name("Confirm"))
+            .intent_hint(IntentHint::Primary(Intent::Collect));
+        let intents = derive_intents(&service);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &clean_catalog())
+            .expect("register spec must build");
+        let tile = spec
+            .elements
+            .values()
+            .find(|el| el.each.is_some())
+            .expect("tile template exists");
+        let props = serde_json::to_string(&tile.props).expect("props serialize");
+        assert!(
+            !props.contains("/p/secret"),
+            "Sensitive field must not be bound into tile props: {props}"
+        );
+        assert!(
+            props.contains("/p/note"),
+            "fallback must bind the first readable display-eligible field: {props}"
         );
     }
 
