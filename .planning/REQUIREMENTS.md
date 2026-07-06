@@ -315,7 +315,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
 
 ### Release
 
-- [ ] **POS-13**: The `/cassa` sample app flips to the new components (projection-derived
+- [x] **POS-13**: The `/cassa` sample app flips to the new components (projection-derived
   Register), the full CI-exact gate is green, and a single crates.io publish closes the
   milestone (gestiscilo's register phase gates on it).
 
