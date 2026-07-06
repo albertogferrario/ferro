@@ -724,6 +724,7 @@ fn emit_register_root(
             categories_path: None,
             columns: None,
             search: Some(true),
+            search_placeholder: None,
             all_label: None,
         })
         .expect("TileGridProps serialization cannot fail"),

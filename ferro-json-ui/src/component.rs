@@ -1435,6 +1435,12 @@ pub struct TileGridProps {
     /// Enables the client-side text-search input (Phase 255 `setupFilters`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub search: Option<bool>,
+    /// Placeholder text for the search input. Render default is "Search"
+    /// (neutral English — this crate is project-agnostic). Pass
+    /// `search_placeholder: "Cerca"` or any locale string from the consumer.
+    /// Ignored when `search` is absent/false (no input is rendered).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_placeholder: Option<String>,
     /// Label for the integrated category strip's "show all" tab. Render
     /// default is "All" (neutral English — this crate is project-agnostic).
     /// Pass `all_label: "Tutte"` or any locale string from the consumer.

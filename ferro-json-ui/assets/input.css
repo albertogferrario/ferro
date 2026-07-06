@@ -104,6 +104,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/*
+ * Scrollbar-free scroll region. Scrolling stays functional (touch, wheel,
+ * trackpad); only the scrollbar chrome is hidden — register panes and other
+ * app-like scroll surfaces must not show desktop scrollbars.
+ * `scrollbar-width` covers Firefox; `::-webkit-scrollbar` covers
+ * Chrome/Safari/Edge.
+ */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
 /* Collapse motion durations for users who prefer reduced motion.
  * Uses 0.01ms (not 0ms) so transitionend/animationend listeners still fire.
  * !important is required: theme <style> tags are injected AFTER this
