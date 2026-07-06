@@ -591,17 +591,17 @@ mod tests {
             );
         }
 
-        // 3. Key attributes mentioned appear in the assembled runtime bundle.
-        for attr in [
-            "data-qty-input",
-            "data-filter-tokens",
-            "data-filter-text",
-            "data-numpad-target",
-            "data-disable-on-submit",
-        ] {
+        // 3. EVERY published attribute appears in the assembled runtime bundle.
+        // Each entry is `"attr — role"` or `"attr=\"...\" — role"`; the attribute
+        // name is the token before the first `=` or space.
+        for entry in ctx.register_composition.data_attributes {
+            let name = entry
+                .split([' ', '='])
+                .next()
+                .expect("attribute entry is non-empty");
             assert!(
-                ferro_json_ui::FERRO_RUNTIME_JS.contains(attr),
-                "runtime bundle missing `{attr}` — register guidance is stale"
+                ferro_json_ui::FERRO_RUNTIME_JS.contains(name),
+                "runtime bundle missing `{name}` — register guidance is stale"
             );
         }
     }
