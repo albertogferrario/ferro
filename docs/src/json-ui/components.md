@@ -1410,15 +1410,20 @@ Each item object:
 
 ### Tile
 
-Touch-friendly tile with quantity controls. Renders the item name, price, and +/− buttons that drive a hidden form input via the JS runtime — used for touch-first item selection inside an order form.
+Touch-first tap-to-add tile. The whole tile is a single tap surface — a `<button>` carrying `data-qty-inc` — and one tap adds one unit to the tile's hidden form input via the JS runtime. There are no on-tile +/− steppers and no on-tile quantity display: per-line quantity editing lives in the SelectionPanel. Optional image area, tone-accent border, and stock badge compose the visual.
 
 | Prop | Type | Description |
 |------|------|-------------|
 | `item_id` | `string` | Item identifier |
-| `name` | `string` | Item name |
-| `price` | `string` | Formatted price string (e.g., `"€29.00"`) |
+| `name` | `string` | Item name — also emitted as `data-filter-text` on the tile root for client-side search and as the SelectionPanel line name |
+| `price` | `string` | Formatted display price (e.g., `"€29.00"`) |
 | `field` | `string` | Form field name the selected quantity is written to |
 | `default_quantity` | `number \| null` | Initial quantity (default: 0) |
+| `categories` | `string[]` | Category memberships, emitted as a space-separated `data-filter-tokens` attribute (spaces in a name normalize to hyphens) for filter-tab matching |
+| `image_url` | `string \| null` | Item image, lazy-loaded at the top of the tile; absent renders a text-only tile |
+| `color` | `tone \| null` | Accent tone for the tile border (shared `tone` enum); absent or `"neutral"` renders the default border |
+| `stock_badge` | `string \| null` | Badge-styled chip text (e.g. `"Low"`, `"Out"`) |
+| `price_cents` | `number \| null` | Machine-readable unit price in integer cents, emitted as `data-unit-price` on the tile root. The SelectionPanel running total reads this attribute (missing is treated as 0 cents); expected to agree with `price` |
 
 ```json
 "tile": {
@@ -1427,12 +1432,13 @@ Touch-friendly tile with quantity controls. Renders the item name, price, and +/
     "item_id": { "$data": "/product/id" },
     "name": { "$data": "/product/name" },
     "price": { "$data": "/product/price_formatted" },
+    "price_cents": { "$data": "/product/price_cents" },
     "field": "quantities[1]"
   }
 }
 ```
 
-Place Tile elements inside a `Form` — the quantity value submits with the surrounding form.
+Place Tile elements inside a `Form` — the quantity value submits with the surrounding form, and the paired SelectionPanel resolves the tile's hidden input through that form's `id`.
 
 ---
 
