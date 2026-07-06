@@ -1,7 +1,8 @@
 ---
 phase: 255-pos-runtime-modules-double-submit-protection
 verified: 2026-07-05T14:30:00Z
-status: human_needed
+status: passed
+human_resolved: 2026-07-07 — live /cassa double-submit smoke recorded passed in 255-HUMAN-UAT.md; status flip was stale
 score: 5/5
 overrides_applied: 0
 re_verification: false
