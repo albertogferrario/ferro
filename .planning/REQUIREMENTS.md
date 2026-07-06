@@ -309,7 +309,7 @@ consumer-specific props in any `ferro-*` crate. The `Register` layout template n
   data-bound fixtures; `RULE_COMPONENTS` mapping updated.
   *(Delivered 254 under the old ids; renamed `register-fill-viewport`,
   `register-grid-fill`, `register-selection-present` in Phase 255.)*
-- [ ] **POS-12**: The MCP + docs surface is extended — `json_ui_catalog` entries/count for
+- [x] **POS-12**: The MCP + docs surface is extended — `json_ui_catalog` entries/count for
   the new components, `generation_context` register composition guidance, `docs/src`
   updates.
 
