@@ -70,5 +70,13 @@ mod tests {
             html.contains("Caffè"),
             "product tiles must render from $each expansion"
         );
+        // 257-04: the sale_form carries the fill height-chain marker so the
+        // SelectionPanel footer pins in-viewport (256 D-15 contract). Geometry
+        // itself cannot be asserted in Rust; the class-chain presence is the
+        // proxy — live geometry re-verify happens in UAT.
+        assert!(
+            html.contains("[&>*]:flex-1 [&>*]:min-h-0"),
+            "sale_form must carry the fill height-chain marker [&>*]:flex-1 [&>*]:min-h-0"
+        );
     }
 }

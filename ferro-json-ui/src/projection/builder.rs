@@ -754,6 +754,10 @@ fn emit_register_root(
     // sale_form: the Form that owns all hidden quantity inputs and the submit
     // action. id="sale_form" is the scope isolator that pairs TileGrid and
     // SelectionPanel (D-11 Form-ancestor scoping).
+    // fill:true puts the Form in the fill-height chain (256 D-15) so the inner
+    // panes Grid's h-full resolves against the viewport-constrained cell height
+    // (673px in UAT) instead of the Form's content height. Each pane then
+    // scrolls independently while the SelectionPanel footer stays in-viewport.
     let sale_form = element_with_props(
         "Form",
         serde_json::to_value(FormProps {
@@ -763,6 +767,7 @@ fn emit_register_root(
             max_width: None,
             id: Some("sale_form".into()),
             enctype: None,
+            fill: Some(true),
         })
         .expect("FormProps serialization cannot fail"),
     )
@@ -1673,6 +1678,32 @@ mod tests {
         assert!(
             hits.is_empty(),
             "register spec must be lint-clean for the four register rules, got: {hits:#?}"
+        );
+    }
+
+    #[test]
+    fn register_projection_sale_form_carries_fill() {
+        // 257-04: emit_register_root must set fill:true on the sale_form so the
+        // inner panes Grid's h-full resolves against the viewport-constrained
+        // cell height instead of content height (256 D-15 pinned-footer contract).
+        let service = register_service();
+        let intents = derive_intents(&service);
+        let ctx = VisualContext {
+            templates: Some(crate::register_template()),
+            ..Default::default()
+        };
+        let spec = Spec::from_service_def_with_catalog(&service, &intents, &ctx, &clean_catalog())
+            .expect("register spec must be catalog-valid");
+
+        let form_el = spec
+            .elements
+            .values()
+            .find(|el| el.type_name == "Form")
+            .expect("spec must contain a Form element");
+        assert_eq!(
+            form_el.props.get("fill").and_then(|v| v.as_bool()),
+            Some(true),
+            "the sale_form Form must have fill:true so the height chain propagates to the inner panes Grid"
         );
     }
 
