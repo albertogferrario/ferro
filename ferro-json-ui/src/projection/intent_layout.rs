@@ -37,6 +37,30 @@ pub fn pick_intent_template<'a>(
     }
 }
 
+/// Ready-made [`ThemeTemplates`] overriding the **Collect** intent to render
+/// with the Register layout. Supply via `VisualContext.templates` to project a
+/// `ServiceDef` into a register composition (fill-viewport Grid + Form +
+/// TileGrid + SelectionPanel).
+///
+/// The `slots` list is informational: `emit_register_root` derives the full
+/// element tree from the `ServiceDef` directly and ignores slot granularity
+/// (same convention as `emit_datatable_root`). The built-in
+/// `default_template(Collect)` (Form layout) is unaffected — existing Collect
+/// projections keep rendering as forms.
+pub fn register_template() -> ThemeTemplates {
+    // Stub for TDD RED phase — returns incorrect value so the test can fail.
+    // Replaced with correct implementation in the GREEN commit.
+    ThemeTemplates {
+        collect: None,
+        browse: None,
+        focus: None,
+        process: None,
+        summarize: None,
+        analyze: None,
+        track: None,
+    }
+}
+
 /// Built-in `IntentModeTemplates` per structural intent.
 ///
 /// The Display-mode slot baselines match D-05:
@@ -195,6 +219,30 @@ mod tests {
 
         let not_picked = pick_intent_template(&templates, &Intent::Focus);
         assert!(not_picked.is_none());
+    }
+
+    #[test]
+    fn register_template_overrides_collect() {
+        let t = register_template();
+        let collect = t.collect.expect("register_template must set collect to Some");
+        assert_eq!(
+            collect.display.layout.as_deref(),
+            Some("Register"),
+            "register_template must set Collect display layout to Register"
+        );
+        // Every non-Collect intent must be None.
+        assert!(t.browse.is_none(), "browse must be None");
+        assert!(t.focus.is_none(), "focus must be None");
+        assert!(t.process.is_none(), "process must be None");
+        assert!(t.summarize.is_none(), "summarize must be None");
+        assert!(t.analyze.is_none(), "analyze must be None");
+        assert!(t.track.is_none(), "track must be None");
+        // Regression: the built-in Collect default must remain Form.
+        assert_eq!(
+            default_template(&Intent::Collect).display.layout.as_deref(),
+            Some("Form"),
+            "default_template(Collect) must remain Form after register_template exists"
+        );
     }
 
     #[test]
