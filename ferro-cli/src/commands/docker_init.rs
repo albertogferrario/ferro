@@ -78,6 +78,7 @@ pub fn execute(force: bool, ferro_version_flag: Option<&str>, dry_run: bool) -> 
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt.clone(),
         ferro_version,
+        fast_build: metadata.fast_build,
     };
 
     // Render everything to memory first. Any render error is a hard error in
@@ -201,6 +202,7 @@ mod tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: resolve_ferro_version(tmp.path()),
+            fast_build: false,
         };
         let out = render_dockerfile(&ctx);
         assert!(
@@ -223,6 +225,7 @@ mod tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: resolve_ferro_version(tmp.path()),
+            fast_build: false,
         };
         let out = render_dockerfile(&ctx);
         let expected = format!("--version {}", env!("CARGO_PKG_VERSION"));

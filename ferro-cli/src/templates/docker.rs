@@ -59,6 +59,14 @@ pub struct DockerContext {
     /// Phase 156 (D-16/D-21): closes the convention contradiction by ensuring
     /// `frontend/src/types/` is regenerated inside the Docker build context.
     pub ferro_version: String,
+    /// Opt-in "fast build" mode. When `true`, the renderer emits a
+    /// BuildKit-cache-mount + mold-linker optimized Dockerfile: cache mounts on
+    /// `/usr/local/cargo/{registry,git}` and `/app/target`, `mold` + `clang` in
+    /// the chef stage, cargo linker env pointing at mold, and a per-bin copy of
+    /// release artifacts into `/out`. When `false` (default), output is
+    /// byte-identical to the plain scaffolder baseline. Sourced from
+    /// `[package.metadata.ferro.deploy].fast_build`.
+    pub fast_build: bool,
 }
 
 /// Render a Dockerfile from the supplied context. Pure string substitution.
@@ -72,7 +80,13 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
     let bin_copies = ctx
         .bins
         .iter()
-        .map(|b| format!("COPY --from=backend-builder /app/target/release/{b} /usr/local/bin/{b}"))
+        .map(|b| {
+            if ctx.fast_build {
+                format!("COPY --from=backend-builder /out/{b} /usr/local/bin/{b}")
+            } else {
+                format!("COPY --from=backend-builder /app/target/release/{b} /usr/local/bin/{b}")
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -108,9 +122,47 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
         ctx.web_bin
     );
 
+    // Fast-build fragments. Each is the empty string / plain baseline when
+    // `fast_build == false`, keeping the rendered output byte-identical to the
+    // pre-fast-build template.
+    let fast_header = if ctx.fast_build { FAST_HEADER } else { "" };
+    let chef_apt_install = if ctx.fast_build {
+        FAST_CHEF_APT_INSTALL
+    } else {
+        PLAIN_CHEF_APT_INSTALL
+    };
+    let chef_env = if ctx.fast_build { FAST_CHEF_ENV } else { "" };
+
+    let cook_step = if ctx.fast_build {
+        format!(
+            "{FAST_COOK_COMMENT}{FAST_CACHE_MOUNT_RUN}cargo chef cook --release --recipe-path recipe.json"
+        )
+    } else {
+        "RUN cargo chef cook --release --recipe-path recipe.json".to_string()
+    };
+
+    let build_step = if ctx.fast_build {
+        let bin_out_copies = ctx
+            .bins
+            .iter()
+            .map(|b| format!("    && cp target/release/{b} /out/{b}"))
+            .collect::<Vec<_>>()
+            .join(" \\\n");
+        format!(
+            "{FAST_CACHE_MOUNT_RUN}cargo build --release \\\n    && mkdir -p /out \\\n{bin_out_copies}"
+        )
+    } else {
+        "RUN cargo build --release".to_string()
+    };
+
     let rendered = DOCKERFILE_TPL
         .replace("{{FRONTEND_STAGE}}", &frontend_stage)
+        .replace("{{FAST_HEADER}}", fast_header)
         .replace("{{RUST_IMAGE_TAG}}", &rust_image_tag)
+        .replace("{{CHEF_APT_INSTALL}}", chef_apt_install)
+        .replace("{{CHEF_ENV}}", chef_env)
+        .replace("{{COOK_STEP}}", &cook_step)
+        .replace("{{BUILD_STEP}}", &build_step)
         .replace("{{FERRO_VERSION}}", &ctx.ferro_version)
         .replace("{{ENTRYPOINT}}", &entrypoint_block)
         .replace("{{BIN_COPIES}}", &bin_copies)
@@ -123,6 +175,42 @@ pub fn render_dockerfile(ctx: &DockerContext) -> String {
     );
     rendered
 }
+
+// ============================================================================
+// Fast-build fragments (opt-in via `[package.metadata.ferro.deploy].fast_build`)
+// ============================================================================
+//
+// When `DockerContext.fast_build == true` the renderer substitutes these
+// fragments in place of the plain baseline. They add: a header rationale block,
+// `mold` + `clang` in the chef stage, cargo linker env pointing at mold,
+// BuildKit cache mounts on the cargo registry/git indexes and the target dir,
+// and a per-bin copy of release artifacts into `/out`.
+
+/// Header rationale comment lines, inserted after the `--force.` line. No
+/// trailing newline — the template supplies the newline before the blank line
+/// that precedes `FROM ... AS chef`.
+const FAST_HEADER: &str = "\n#\n# Build speed: BuildKit cache mounts on /usr/local/cargo/{registry,git} and\n# /app/target persist between deploys. cargo-chef + cache mounts means a build\n# with an unchanged Cargo.lock recompiles only the workspace crates, not the\n# 600+ third-party deps. mold linker cuts final link time ~30% over ld.";
+
+/// Plain chef apt-install line: a single continuation line.
+const PLAIN_CHEF_APT_INSTALL: &str =
+    "    && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \\";
+
+/// Fast chef apt-install: splits to two lines and adds `mold clang`.
+const FAST_CHEF_APT_INSTALL: &str = "    && apt-get install -y --no-install-recommends \\\n       pkg-config libssl-dev ca-certificates mold clang \\";
+
+/// Fast chef ENV block: tell cargo to drive the linker through mold. Leading
+/// newline splices it directly after `cargo install cargo-chef --locked`.
+const FAST_CHEF_ENV: &str = "\n# Tell cargo to invoke clang as the linker driver and pass it through to mold.\nENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang\nENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS=\"-C link-arg=-fuse-ld=mold\"";
+
+/// Fast cook-step comment preceding the cache-mounted `cargo chef cook`. Ends
+/// with a newline so the RUN starts on its own line.
+const FAST_COOK_COMMENT: &str = "# Cook dependencies. Cache mounts persist between deploys so the registry,\n# git index, and pre-built target/ artifacts don't have to be re-downloaded\n# or re-compiled when Cargo.lock hasn't changed.\n";
+
+/// The three BuildKit cache-mount lines, reused by the cook and build steps.
+/// Renders as `RUN --mount=... \` followed by two indented `--mount=... \`
+/// continuation lines, then a `\n    ` so the command appends on the next
+/// indented line.
+const FAST_CACHE_MOUNT_RUN: &str = "RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharing=locked \\\n    --mount=type=cache,target=/usr/local/cargo/git,id=cargo-git,sharing=locked \\\n    --mount=type=cache,target=/app/target,id=app-target,sharing=locked \\\n    ";
 
 /// Phase 156 §6 (D-15): the new `types-gen` Rust stage. Emitted unconditionally
 /// when `has_frontend == true`. Uses the same `rust:{{RUST_IMAGE_TAG}}` base as
@@ -252,7 +340,102 @@ mod tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: "0.0.0-test".to_string(),
+            fast_build: false,
         }
+    }
+
+    /// Byte-for-byte golden test for the opt-in fast_build Dockerfile, using
+    /// the real gestiscilo deploy metadata as the parameterization. Any drift in
+    /// the fast-build fragments (whitespace, line continuations, ordering) fails
+    /// here.
+    #[test]
+    fn fast_build_renders_expected_dockerfile_verbatim() {
+        let ctx = DockerContext {
+            rust_channel: "stable".to_string(),
+            has_frontend: false,
+            bins: vec![
+                "gestiscilo".to_string(),
+                "screenshot-worker".to_string(),
+                "pdf-worker".to_string(),
+            ],
+            web_bin: "gestiscilo".to_string(),
+            copy_dirs_present: vec!["themes".to_string(), "src/views".to_string()],
+            runtime_apt: vec![
+                "chromium".to_string(),
+                "fonts-liberation".to_string(),
+                "ca-certificates".to_string(),
+            ],
+            ferro_version: "0.0.0-test".to_string(),
+            fast_build: true,
+        };
+
+        let expected = r#"# syntax=docker/dockerfile:1.6
+# Generated by `ferro docker:init` (Phase 122.2 §2). Edit freely; ferro will
+# only overwrite this file when invoked with --force.
+#
+# Build speed: BuildKit cache mounts on /usr/local/cargo/{registry,git} and
+# /app/target persist between deploys. cargo-chef + cache mounts means a build
+# with an unchanged Cargo.lock recompiles only the workspace crates, not the
+# 600+ third-party deps. mold linker cuts final link time ~30% over ld.
+
+FROM rust:slim-bookworm AS chef
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       pkg-config libssl-dev ca-certificates mold clang \
+    && rm -rf /var/lib/apt/lists/* \
+    && cargo install cargo-chef --locked
+# Tell cargo to invoke clang as the linker driver and pass it through to mold.
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS backend-builder
+COPY --from=planner /app/recipe.json recipe.json
+# Cook dependencies. Cache mounts persist between deploys so the registry,
+# git index, and pre-built target/ artifacts don't have to be re-downloaded
+# or re-compiled when Cargo.lock hasn't changed.
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,id=cargo-git,sharing=locked \
+    --mount=type=cache,target=/app/target,id=app-target,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,id=cargo-git,sharing=locked \
+    --mount=type=cache,target=/app/target,id=app-target,sharing=locked \
+    cargo build --release \
+    && mkdir -p /out \
+    && cp target/release/gestiscilo /out/gestiscilo \
+    && cp target/release/screenshot-worker /out/screenshot-worker \
+    && cp target/release/pdf-worker /out/pdf-worker
+
+FROM debian:bookworm-slim AS runtime
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+# ferro:runtime-apt
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium fonts-liberation ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=backend-builder /out/gestiscilo /usr/local/bin/gestiscilo
+COPY --from=backend-builder /out/screenshot-worker /usr/local/bin/screenshot-worker
+COPY --from=backend-builder /out/pdf-worker /usr/local/bin/pdf-worker
+COPY themes themes
+COPY src/views src/views
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/gestiscilo"]
+CMD ["serve"]
+"#;
+
+        let rendered = render_dockerfile(&ctx);
+        assert_eq!(
+            rendered, expected,
+            "fast_build Dockerfile drifted from golden output"
+        );
     }
 
     #[test]
@@ -511,6 +694,7 @@ mod entrypoint_tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: "0.0.0-test".to_string(),
+            fast_build: false,
         }
     }
 
@@ -523,6 +707,7 @@ mod entrypoint_tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: "0.0.0-test".to_string(),
+            fast_build: false,
         }
     }
 

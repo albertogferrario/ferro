@@ -71,6 +71,7 @@ pub(crate) fn check_impl(root: &Path) -> CheckResult {
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
         ferro_version: resolve_ferro_version(root),
+        fast_build: metadata.fast_build,
     };
 
     let rendered = render_dockerfile(&ctx);
@@ -139,6 +140,7 @@ mod tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: "0.0.0-test".to_string(),
+            fast_build: false,
         };
         let rendered = render_dockerfile(&ctx);
         write(&td.path().join("Dockerfile"), &rendered);
@@ -172,6 +174,7 @@ mod tests {
             copy_dirs_present: vec![],
             runtime_apt: vec![],
             ferro_version: "0.0.0-test".to_string(),
+            fast_build: false,
         };
         let mut rendered = render_dockerfile(&ctx);
         rendered.push_str("# spurious comment added by hand\n");

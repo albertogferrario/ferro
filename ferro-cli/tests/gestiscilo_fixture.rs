@@ -47,6 +47,7 @@ fn build_docker_context() -> DockerContext {
         copy_dirs_present,
         runtime_apt: metadata.runtime_apt,
         ferro_version: resolve_ferro_version(&root),
+        fast_build: metadata.fast_build,
     }
 }
 

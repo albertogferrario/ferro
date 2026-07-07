@@ -32,6 +32,11 @@ pub struct FerroDeployMetadata {
     // .planning/phases/129-publish-workflow-refinement/.
     pub ferro_versions: Option<BTreeMap<String, String>>,
     pub web_bin: Option<String>,
+    /// Opt-in "fast build" Dockerfile mode. When `true`, `render_dockerfile`
+    /// emits a BuildKit-cache-mount + mold-linker optimized Dockerfile. When
+    /// `false` (default), the scaffolder output is unchanged. Parsed from
+    /// `[package.metadata.ferro.deploy].fast_build`; absent → false.
+    pub fast_build: bool,
 }
 
 impl Default for FerroDeployMetadata {
@@ -47,6 +52,7 @@ impl Default for FerroDeployMetadata {
             ferro_version: None,
             ferro_versions: None,
             web_bin: None,
+            fast_build: false,
         }
     }
 }
@@ -132,6 +138,13 @@ pub fn read_deploy_metadata(project_root: &Path) -> anyhow::Result<FerroDeployMe
             anyhow::anyhow!("[package.metadata.ferro.deploy].web_bin must be a string")
         })?;
         meta.web_bin = Some(s.to_string());
+    }
+
+    if let Some(v) = table.get("fast_build") {
+        let b = v.as_bool().ok_or_else(|| {
+            anyhow::anyhow!("[package.metadata.ferro.deploy].fast_build must be a boolean")
+        })?;
+        meta.fast_build = b;
     }
 
     Ok(meta)
@@ -587,6 +600,53 @@ ferro-json-ui = 1
         assert!(
             err2.contains("ferro_versions.ferro-json-ui must be a string"),
             "unexpected error: {err2}"
+        );
+    }
+
+    #[test]
+    fn read_deploy_metadata_parses_fast_build_true() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+fast_build = true
+"#,
+        );
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert!(m.fast_build);
+    }
+
+    #[test]
+    fn read_deploy_metadata_fast_build_defaults_false() {
+        let tmp = TempDir::new().unwrap();
+        write(tmp.path(), "Cargo.toml", "[package]\nname = \"x\"\n");
+        let m = read_deploy_metadata(tmp.path()).unwrap();
+        assert!(!m.fast_build);
+    }
+
+    #[test]
+    fn read_deploy_metadata_fast_build_wrong_type_errors() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "Cargo.toml",
+            r#"
+[package]
+name = "x"
+
+[package.metadata.ferro.deploy]
+fast_build = "yes"
+"#,
+        );
+        let err = read_deploy_metadata(tmp.path()).unwrap_err().to_string();
+        assert!(
+            err.contains("fast_build must be a boolean"),
+            "unexpected error: {err}"
         );
     }
 
