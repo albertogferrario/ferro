@@ -121,7 +121,9 @@ impl MailLayout {
     /// Append a two-column `(label, value)` detail table (both columns escaped).
     pub fn detail_rows(mut self, rows: Vec<(impl Into<String>, impl Into<String>)>) -> Self {
         self.blocks.push(ContentBlock::DetailRows(
-            rows.into_iter().map(|(k, v)| (k.into(), v.into())).collect(),
+            rows.into_iter()
+                .map(|(k, v)| (k.into(), v.into()))
+                .collect(),
         ));
         self
     }
@@ -145,11 +147,7 @@ impl MailLayout {
     }
 
     /// Append a tinted callout box with a bold title.
-    pub fn callout_with_title(
-        mut self,
-        title: impl Into<String>,
-        body: impl Into<String>,
-    ) -> Self {
+    pub fn callout_with_title(mut self, title: impl Into<String>, body: impl Into<String>) -> Self {
         self.blocks.push(ContentBlock::Callout {
             title: Some(title.into()),
             body: body.into(),
@@ -341,14 +339,24 @@ mod tests {
 
     #[test]
     fn render_html_contains_heading_text() {
-        let (html, _) = MailLayout::new(default_brand()).heading("Benvenuto").render();
-        assert!(html.contains("Benvenuto"), "heading text must appear in HTML");
+        let (html, _) = MailLayout::new(default_brand())
+            .heading("Benvenuto")
+            .render();
+        assert!(
+            html.contains("Benvenuto"),
+            "heading text must appear in HTML"
+        );
     }
 
     #[test]
     fn render_text_mirrors_heading() {
-        let (_, text) = MailLayout::new(default_brand()).heading("Benvenuto").render();
-        assert!(text.contains("Benvenuto"), "heading must appear in plain text");
+        let (_, text) = MailLayout::new(default_brand())
+            .heading("Benvenuto")
+            .render();
+        assert!(
+            text.contains("Benvenuto"),
+            "heading must appear in plain text"
+        );
     }
 
     #[test]
@@ -367,7 +375,10 @@ mod tests {
     #[test]
     fn logo_url_none_renders_brand_name_as_text() {
         let (html, _) = MailLayout::new(default_brand()).render();
-        assert!(html.contains("Acme"), "brand name must appear in header when no logo");
+        assert!(
+            html.contains("Acme"),
+            "brand name must appear in header when no logo"
+        );
         assert!(!html.contains("<img"), "no img tag when logo_url is None");
     }
 
@@ -380,13 +391,19 @@ mod tests {
         };
         let (html, _) = MailLayout::new(brand).render();
         assert!(html.contains("<img"), "logo renders as img");
-        assert!(html.contains("cdn.example.com/logo.png"), "logo URL present");
+        assert!(
+            html.contains("cdn.example.com/logo.png"),
+            "logo URL present"
+        );
     }
 
     #[test]
     fn preheader_none_produces_no_hidden_div() {
         let (html, _) = MailLayout::new(default_brand()).render();
-        assert!(!html.contains("display:none"), "no hidden div without preheader");
+        assert!(
+            !html.contains("display:none"),
+            "no hidden div without preheader"
+        );
     }
 
     #[test]
@@ -397,7 +414,10 @@ mod tests {
             ..Default::default()
         };
         let (html, _) = MailLayout::new(brand).render();
-        assert!(html.contains("display:none"), "preheader hidden div present");
+        assert!(
+            html.contains("display:none"),
+            "preheader hidden div present"
+        );
         assert!(html.contains("Your booking is confirmed"));
     }
 
@@ -449,8 +469,14 @@ mod tests {
             ..Default::default()
         };
         let (html, _) = MailLayout::new(brand).render();
-        assert!(html.contains("A&amp;B &lt;Inc&gt;"), "brand name must be escaped");
-        assert!(!html.contains("A&B <Inc>"), "raw unescaped brand name must not appear");
+        assert!(
+            html.contains("A&amp;B &lt;Inc&gt;"),
+            "brand name must be escaped"
+        );
+        assert!(
+            !html.contains("A&B <Inc>"),
+            "raw unescaped brand name must not appear"
+        );
     }
 
     #[test]
@@ -458,7 +484,10 @@ mod tests {
         let (html, _) = MailLayout::new(default_brand())
             .paragraph("5 < 10 & rising")
             .render();
-        assert!(html.contains("5 &lt; 10 &amp; rising"), "paragraph text must be escaped");
+        assert!(
+            html.contains("5 &lt; 10 &amp; rising"),
+            "paragraph text must be escaped"
+        );
     }
 
     #[test]
@@ -473,7 +502,10 @@ mod tests {
             html.contains(r#"<a href="https://x/y">Disdici</a>"#),
             "raw anchor markup must appear verbatim in HTML"
         );
-        assert!(text.contains("Disdici: https://x/y"), "text fallback must appear in plain text");
+        assert!(
+            text.contains("Disdici: https://x/y"),
+            "text fallback must appear in plain text"
+        );
     }
 
     #[test]
@@ -489,7 +521,10 @@ mod tests {
     fn footer_none_renders_no_footer_copy_line() {
         let (html, _) = MailLayout::new(default_brand()).render();
         // The brand-name footer line is always present; the optional copy line is not.
-        assert!(!html.contains("color:#666;font-size:12px"), "no footer copy line without footer");
+        assert!(
+            !html.contains("color:#666;font-size:12px"),
+            "no footer copy line without footer"
+        );
     }
 
     #[test]
@@ -500,7 +535,10 @@ mod tests {
             ..Default::default()
         };
         let (html, _) = MailLayout::new(brand).render();
-        assert!(html.contains("Via Roma 1, Milano"), "footer copy line must appear");
+        assert!(
+            html.contains("Via Roma 1, Milano"),
+            "footer copy line must appear"
+        );
     }
 
     #[test]
@@ -508,6 +546,9 @@ mod tests {
         let (html, _) = MailLayout::new(default_brand())
             .cta_button("Go", "https://x/y?a=1&b=2")
             .render();
-        assert!(html.contains("a=1&amp;b=2"), "url ampersand must be attribute-escaped");
+        assert!(
+            html.contains("a=1&amp;b=2"),
+            "url ampersand must be attribute-escaped"
+        );
     }
 }
