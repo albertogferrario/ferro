@@ -56,6 +56,7 @@ mod channel;
 mod channels;
 mod dispatcher;
 mod error;
+mod layout;
 mod notifiable;
 mod notification;
 
@@ -69,6 +70,7 @@ pub use dispatcher::{
     SmtpConfig,
 };
 pub use error::Error;
+pub use layout::{BrandParams, ContentBlock, MailLayout};
 pub use notifiable::{ChannelResult, DatabaseNotificationStore, Notifiable, StoredNotification};
 pub use notification::Notification;
 
