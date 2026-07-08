@@ -55,6 +55,12 @@ ignore = [
     # unconfirmed UB, no patched version. Transitive via async-stripe 0.41 ->
     # ferro-stripe. Tracked debt: revisit when async-stripe drops http-types.
     "RUSTSEC-2026-0174",
+
+    # crossbeam-epoch 0.9.18 — invalid pointer dereference in the fmt::Pointer impl for
+    # Atomic/Shared (RUSTSEC-2026-0204). Only manifests when Display-formatting a pointer
+    # created via Atomic::null/Shared::null — a path ferro never exercises. Transitive via
+    # swc -> ferro-json-ui. Patched in >=0.9.20; remove this ignore when swc bumps the dep.
+    "RUSTSEC-2026-0204",
 ]
 
 [licenses]
