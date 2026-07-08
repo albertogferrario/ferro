@@ -243,21 +243,20 @@ fn render_block(block: &ContentBlock, accent: &str) -> (String, String) {
                 r#"<h2 style="margin:0 0 16px;font-size:20px;color:#333">{}</h2>"#,
                 html_escape(s)
             ),
-            format!("{}\n\n", s),
+            format!("{s}\n\n"),
         ),
         ContentBlock::Paragraph(s) => (
             format!(
                 r#"<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.5">{}</p>"#,
                 html_escape(s)
             ),
-            format!("{}\n\n", s),
+            format!("{s}\n\n"),
         ),
         ContentBlock::ParagraphHtml { html, text } => (
             format!(
-                r#"<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.5">{}</p>"#,
-                html
+                r#"<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.5">{html}</p>"#
             ),
-            format!("{}\n\n", text),
+            format!("{text}\n\n"),
         ),
         ContentBlock::DetailRows(rows) => {
             let mut html = String::from(
@@ -270,7 +269,7 @@ fn render_block(block: &ContentBlock, accent: &str) -> (String, String) {
                     html_escape(label),
                     html_escape(value)
                 ));
-                text.push_str(&format!("{}: {}\n", label, value));
+                text.push_str(&format!("{label}: {value}\n"));
             }
             html.push_str("</table>");
             text.push('\n');
@@ -283,7 +282,7 @@ fn render_block(block: &ContentBlock, accent: &str) -> (String, String) {
                 accent,
                 html_escape(label)
             ),
-            format!("{}: {}\n\n", label, url),
+            format!("{label}: {url}\n\n"),
         ),
         ContentBlock::Callout { title, body } => {
             let title_html = match title {
@@ -299,8 +298,8 @@ fn render_block(block: &ContentBlock, accent: &str) -> (String, String) {
                 html_escape(body)
             );
             let text = match title {
-                Some(t) => format!("[{}]\n{}\n\n", t, body),
-                None => format!("{}\n\n", body),
+                Some(t) => format!("[{t}]\n{body}\n\n"),
+                None => format!("{body}\n\n"),
             };
             (html, text)
         }
