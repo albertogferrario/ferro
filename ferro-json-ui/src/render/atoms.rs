@@ -1472,8 +1472,12 @@ pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> Stri
     let tab_base = format!(
         "{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} px-4 text-sm font-medium border-b-2"
     );
+    // `type="button"` is required: a filter-tab strip often lives inside a
+    // <form> (e.g. a POS TileGrid). Without it the button defaults to `submit`,
+    // so a category click submits the enclosing form → page reload → the
+    // client-side filter resets.
     let all_tab = format!(
-        "<button role=\"tab\" data-filter-tab=\"\" \
+        "<button type=\"button\" role=\"tab\" data-filter-tab=\"\" \
          class=\"{tab_base} border-primary text-primary font-semibold\" \
          aria-selected=\"true\">{}</button>",
         html_escape(all_label)
@@ -1484,7 +1488,7 @@ pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> Stri
             let token = html_escape(&item.replace(' ', "-"));
             let label = html_escape(item);
             format!(
-                "<button role=\"tab\" data-filter-tab=\"{token}\" \
+                "<button type=\"button\" role=\"tab\" data-filter-tab=\"{token}\" \
                  class=\"{tab_base} border-transparent text-text-muted hover:text-text\" \
                  aria-selected=\"false\">{label}</button>"
             )
@@ -3042,6 +3046,30 @@ mod tests {
         assert!(
             html.contains("data-filter-tab=\"Food\""),
             "must have Food tab; got: {html}"
+        );
+    }
+
+    #[test]
+    fn filter_tabs_buttons_are_type_button() {
+        // Regression: a filter-tab strip often lives inside a <form> (e.g. a POS
+        // TileGrid register). A <button> with no explicit `type` defaults to
+        // `submit`, so a category click submits the enclosing form → full page
+        // reload → the client-side filter resets. Every tab button must be an
+        // explicit non-submit button.
+        let spec = spec_with_root(
+            Element::new("FilterTabs")
+                .prop("items", vec!["Drinks"])
+                .prop("all_label", "All"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_filter_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("<button role="),
+            "filter-tab buttons must not omit type (would default to submit); got: {html}"
+        );
+        assert!(
+            html.contains("<button type=\"button\" role=\"tab\""),
+            "filter-tab buttons must be explicit type=\"button\"; got: {html}"
         );
     }
 
