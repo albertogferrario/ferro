@@ -231,11 +231,6 @@ impl MailLayout {
 </td></tr>
 </table></td></tr></table>
 </body></html>"#,
-            preheader_html = preheader_html,
-            accent = accent,
-            header_content = header_content,
-            html_blocks = html_blocks,
-            footer_html = footer_html,
         );
 
         (html, text_blocks)
