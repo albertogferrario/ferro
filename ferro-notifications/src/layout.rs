@@ -199,18 +199,26 @@ impl MailLayout {
             text_blocks.push_str(&t);
         }
 
+        // Footer: the caller-provided footer line when set, otherwise the brand
+        // name as the signature — never both, which would repeat the business
+        // name (a `footer` of "Acme · example.com" plus the brand line printed
+        // "Acme" twice).
         let footer_html = match &self.brand.footer {
             Some(f) => format!(
-                r#"<p style="margin:0 0 4px;color:#666;font-size:12px">{}</p>"#,
+                r#"<p style="margin:0;color:#666;font-size:12px">{}</p>"#,
                 html_escape(f)
             ),
-            None => String::new(),
+            None => format!(
+                r#"<p style="margin:0;color:#999;font-size:11px">{}</p>"#,
+                html_escape(&self.brand.brand_name)
+            ),
         };
 
         let html = format!(
             r#"<!DOCTYPE html>
 <html lang="it">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">
 {preheader_html}</head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f5"><tr>
@@ -219,7 +227,7 @@ impl MailLayout {
 <tr><td style="padding:24px 32px;border-bottom:2px solid {accent}">{header_content}</td></tr>
 <tr><td style="padding:32px">{html_blocks}</td></tr>
 <tr><td style="padding:16px 32px;border-top:1px solid #eee;background:#fafafa">
-{footer_html}<p style="margin:0;color:#999;font-size:11px">{brand_name}</p>
+{footer_html}
 </td></tr>
 </table></td></tr></table>
 </body></html>"#,
@@ -228,7 +236,6 @@ impl MailLayout {
             header_content = header_content,
             html_blocks = html_blocks,
             footer_html = footer_html,
-            brand_name = html_escape(&self.brand.brand_name),
         );
 
         (html, text_blocks)
@@ -537,6 +544,33 @@ mod tests {
         assert!(
             html.contains("Via Roma 1, Milano"),
             "footer copy line must appear"
+        );
+    }
+
+    #[test]
+    fn footer_some_does_not_duplicate_brand_name() {
+        let brand = BrandParams {
+            brand_name: "Acme".into(),
+            footer: Some("Acme · example.com".into()),
+            ..Default::default()
+        };
+        let (html, _) = MailLayout::new(brand).render();
+        assert!(html.contains("Acme · example.com"), "footer copy present");
+        // The separate brand-name signature line must NOT also render (it would
+        // repeat "Acme"); it is the #999/11px line used only when footer is None.
+        assert!(
+            !html.contains("color:#999;font-size:11px"),
+            "brand-name footer line must not render alongside a set footer"
+        );
+    }
+
+    #[test]
+    fn color_scheme_meta_declared() {
+        let (html, _) = MailLayout::new(default_brand()).render();
+        assert!(
+            html.contains(r#"name="color-scheme" content="light dark""#),
+            "declaring color-scheme lets clients render the light design instead \
+             of applying muddy automatic dark-mode inversion"
         );
     }
 
