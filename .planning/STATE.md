@@ -1,13 +1,13 @@
 ---
 gsd_state_version: 1.0
-milestone: v16.6
-milestone_name: POS Component Suite
-status: milestone complete
-stopped_at: Phase 258 verified (UAT 6/6) — v16.6 complete, ready to archive
-last_updated: "2026-07-06T22:19:41.662Z"
-last_activity: 2026-07-06
+milestone: v17.0
+milestone_name: Live Projection Surface
+status: verifying
+stopped_at: Phase 259 context gathered (v17.0 started)
+last_updated: "2026-07-20T23:42:41.117Z"
+last_activity: 2026-07-07
 progress:
-  total_phases: 132
+  total_phases: 135
   completed_phases: 115
   total_plans: 472
   completed_plans: 471
@@ -306,7 +306,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-07
-Stopped at: Phase 258 complete and verified (secure + validate + UAT all green) — milestone v16.6 100% complete
-Resume file: None
+Last session: 2026-07-20T23:42:41.099Z
+Stopped at: Phase 259 context gathered (v17.0 started)
+Resume file: .planning/phases/259-request-scoped-memoization/259-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
