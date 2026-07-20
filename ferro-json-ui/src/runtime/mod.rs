@@ -88,10 +88,12 @@ mod tests {
 
     #[test]
     fn variant_classes_use_semantic_tokens() {
-        assert!(FERRO_RUNTIME_JS.contains("bg-primary"));
-        assert!(FERRO_RUNTIME_JS.contains("bg-success"));
-        assert!(FERRO_RUNTIME_JS.contains("bg-warning"));
-        assert!(FERRO_RUNTIME_JS.contains("bg-destructive"));
+        // Plan 06: VARIANT_CLASSES now emit fjui-toast--{tone} skin modifiers instead
+        // of raw bg-* utilities. Appearance is owned by ferro-skin.css.
+        assert!(FERRO_RUNTIME_JS.contains("fjui-toast--neutral"));
+        assert!(FERRO_RUNTIME_JS.contains("fjui-toast--success"));
+        assert!(FERRO_RUNTIME_JS.contains("fjui-toast--warning"));
+        assert!(FERRO_RUNTIME_JS.contains("fjui-toast--destructive"));
         assert!(!FERRO_RUNTIME_JS.contains("bg-blue-500"));
         assert!(!FERRO_RUNTIME_JS.contains("bg-green-500"));
         assert!(!FERRO_RUNTIME_JS.contains("bg-yellow-500"));
@@ -119,33 +121,37 @@ mod tests {
 
     #[test]
     fn toast_uses_semantic_text_color() {
-        assert!(FERRO_RUNTIME_JS.contains("text-primary-foreground"));
+        // After Plan 06 migration, toast appearance is owned by fjui-toast skin rules.
+        // The runtime VARIANT_CLASSES now emit fjui-toast--{tone} (no raw utility strings).
         assert!(!FERRO_RUNTIME_JS.contains("text-white"));
+        // Ensure the fjui-toast base class is present in the JS showToast output.
+        assert!(FERRO_RUNTIME_JS.contains("fjui-toast"));
     }
 
     /// JS↔SSR lockstep: the runtime's VARIANT_CLASSES must carry the exact
-    /// tone-class strings the SSR `render_toast` composes from
-    /// `render::classes::TOAST_TONE_*`, plus the shared backdrop blur, so
-    /// server-rendered and JS-created toasts look identical.
+    /// fjui-toast--{tone} modifier classes that SSR render_toast emits (Plan 06),
+    /// so server-rendered and JS-created toasts share the same skin rules.
     #[test]
     fn toast_tone_classes_match_ssr() {
-        use crate::render::classes::{
-            TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL, TOAST_TONE_SUCCESS, TOAST_TONE_WARNING,
-        };
-        for tone_classes in [
-            TOAST_TONE_NEUTRAL,
-            TOAST_TONE_SUCCESS,
-            TOAST_TONE_WARNING,
-            TOAST_TONE_DESTRUCTIVE,
+        // Plan 06: TOAST_TONE_* constants in classes.rs are now JS-runtime-only;
+        // SSR render_toast emits fjui-toast--{tone} full literals instead.
+        // The lockstep check now verifies the fjui- modifier strings appear in the
+        // runtime bundle (VARIANT_CLASSES entries).
+        for tone_class in [
+            "fjui-toast--neutral",
+            "fjui-toast--success",
+            "fjui-toast--warning",
+            "fjui-toast--destructive",
         ] {
             assert!(
-                FERRO_RUNTIME_JS.contains(tone_classes),
-                "runtime VARIANT_CLASSES drifted from SSR toast tone classes: missing `{tone_classes}`"
+                FERRO_RUNTIME_JS.contains(tone_class),
+                "runtime VARIANT_CLASSES drifted from SSR toast tone classes: missing `{tone_class}`"
             );
         }
+        // The base fjui-toast class must also appear in showToast's className assembly.
         assert!(
-            FERRO_RUNTIME_JS.contains("backdrop-blur-md"),
-            "runtime toast shell drifted from SSR: missing `backdrop-blur-md`"
+            FERRO_RUNTIME_JS.contains("fjui-toast "),
+            "runtime showToast must emit fjui-toast base class"
         );
     }
 

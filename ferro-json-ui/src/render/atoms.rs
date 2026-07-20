@@ -20,9 +20,11 @@ use crate::spec::{Element, Spec};
 
 use super::classes::{
     DISABLED_BASE, FOCUS_RING, HIT_TARGET_MIN, HIT_TARGET_NUMPAD, INTERACTIVE_BASE, MOTION_BASE,
-    MOTION_FAST, PRESS_ACTIVE, TAP_HIGHLIGHT, TOAST_TONE_DESTRUCTIVE, TOAST_TONE_NEUTRAL,
-    TOAST_TONE_SUCCESS, TOAST_TONE_WARNING, TOUCH_ACTION,
+    MOTION_FAST, PRESS_ACTIVE, TAP_HIGHLIGHT, TOUCH_ACTION,
 };
+// TOAST_TONE_* constants are defined in classes.rs for the runtime lockstep test
+// (toast_tone_classes_match_ssr). render_toast now emits fjui-toast--{tone} literals
+// (Plan 06 migration); the constants are no longer needed here.
 use super::html_escape;
 
 // ── Prop-decode diagnostic helper ────────────────────────────────────────

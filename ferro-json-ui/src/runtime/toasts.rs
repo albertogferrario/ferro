@@ -1,14 +1,15 @@
 pub(super) const SOURCE: &str = r#"
     // ── Toast display/stacking/auto-dismiss ───────────────────────────────
 
-    // Tone classes are shared verbatim with the SSR render_toast — see the
-    // TOAST_TONE_* consts in render/classes.rs. Lockstep is asserted in
+    // Tone modifier classes mirror the SSR render_toast fjui-toast--{tone} emission
+    // (Plan 06 migration). The base fjui-toast class carries shadow-lg + radius-md
+    // via ferro-skin.css (overlay elevation LANG-04 rule). Lockstep asserted in
     // runtime::tests::toast_tone_classes_match_ssr.
     var VARIANT_CLASSES = {
-        neutral: 'bg-primary/70 text-primary-foreground',
-        success: 'bg-success/70 text-primary-foreground',
-        warning: 'bg-warning/70 text-primary-foreground',
-        destructive: 'bg-destructive/70 text-primary-foreground'
+        neutral: 'fjui-toast--neutral',
+        success: 'fjui-toast--success',
+        warning: 'fjui-toast--warning',
+        destructive: 'fjui-toast--destructive'
     };
 
     function showToast(toast) {
@@ -18,14 +19,15 @@ pub(super) const SOURCE: &str = r#"
         var message = toast.message || '';
         var tone = toast.tone || 'neutral';
         var timeout = (toast.timeout !== undefined ? toast.timeout : 5) * 1000;
-        var colorClass = VARIANT_CLASSES[tone] || VARIANT_CLASSES.neutral;
+        var toneClass = VARIANT_CLASSES[tone] || VARIANT_CLASSES.neutral;
 
         var el = document.createElement('div');
-        el.className = 'flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-sm backdrop-blur-md ' +
-            colorClass + ' opacity-0 transition-opacity duration-base ease-base';
+        el.className = 'fjui-toast ' + toneClass +
+            ' fixed top-4 right-4 z-50 flex items-start gap-3 max-w-sm' +
+            ' opacity-0 transition-opacity duration-base ease-base';
         el.innerHTML =
-            '<span class="flex-1 text-sm">' + escapeHtml(message) + '</span>' +
-            '<button class="text-current opacity-70 hover:opacity-100 text-lg leading-none" ' +
+            '<span class="fjui-toast__message flex-1">' + escapeHtml(message) + '</span>' +
+            '<button class="fjui-toast__close text-current opacity-70 hover:opacity-100 text-lg leading-none" ' +
             'data-toast-close>&times;</button>';
 
         var closeBtn = el.querySelector('[data-toast-close]');

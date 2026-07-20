@@ -378,4 +378,618 @@ input, select, textarea {
     margin-bottom: var(--spacing-6);
   }
 
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+
+  /* Text is NOT interactive. Five semantic roles per §Typography. */
+
+  .fjui-text--display {
+    font-size: var(--text-display-size);
+    font-weight: var(--text-display-weight);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+  }
+
+  .fjui-text--section {
+    font-size: var(--text-section-size);
+    font-weight: var(--text-section-weight);
+    line-height: 1.3;
+    color: var(--color-text);
+  }
+
+  .fjui-text--body {
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    line-height: 1.5;
+    color: var(--color-text);
+  }
+
+  .fjui-text--meta {
+    font-size: var(--text-meta-size);
+    font-weight: var(--text-meta-weight);
+    line-height: 1.4;
+    color: var(--color-text-muted);
+  }
+
+  .fjui-text--micro {
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    line-height: 1.3;
+    color: var(--color-text-muted);
+  }
+
+  /* ── Separator ─────────────────────────────────────────────────────────── */
+
+  /* Separator is NOT interactive. */
+
+  .fjui-separator--horizontal {
+    border: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .fjui-separator--vertical {
+    border: none;
+    border-left: 1px solid var(--color-border);
+  }
+
+  /* ── Progress ──────────────────────────────────────────────────────────── */
+
+  /* Progress is NOT interactive — display-only. */
+
+  .fjui-progress {
+    background-color: var(--color-border);
+    border-radius: var(--radius-full);
+    height: 0.5rem;
+    overflow: hidden;
+  }
+
+  .fjui-progress__track {
+    /* Wrapper — structural only; appearance set on __fill. */
+  }
+
+  .fjui-progress__fill {
+    background-color: var(--color-primary);
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width var(--motion-duration-base) var(--motion-ease);
+  }
+
+  .fjui-progress__label {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+    margin-top: var(--spacing-1);
+  }
+
+  /* ── Avatar ────────────────────────────────────────────────────────────── */
+
+  /* Avatar is NOT interactive. */
+
+  .fjui-avatar {
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: var(--text-meta-size);
+    font-weight: 500;
+    overflow: hidden;
+  }
+
+  .fjui-avatar--sm { width: 1.5rem;  height: 1.5rem; }
+  .fjui-avatar--md { width: 2rem;    height: 2rem;   }
+  .fjui-avatar--lg { width: 2.5rem;  height: 2.5rem; }
+
+  /* ── Image ─────────────────────────────────────────────────────────────── */
+
+  /* Image is NOT interactive. */
+
+  .fjui-image {
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+  }
+
+  .fjui-image__placeholder {
+    background-color: var(--color-surface);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fjui-image__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ── Skeleton ──────────────────────────────────────────────────────────── */
+
+  /* Skeleton is NOT interactive — animation is behavioral (SHIMMER_CSS in Rust). */
+
+  .fjui-skeleton {
+    background-color: var(--color-border);
+  }
+
+  .fjui-skeleton--rounded { border-radius: var(--radius-full); }
+  .fjui-skeleton--rect    { border-radius: var(--radius-sm); }
+
+  /* ── Breadcrumb ────────────────────────────────────────────────────────── */
+
+  /* Breadcrumb is NOT interactive as a block; individual links carry browser focus. */
+
+  .fjui-breadcrumb {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+  }
+
+  .fjui-breadcrumb__item {
+    color: var(--color-text-muted);
+    text-decoration: none;
+
+    &:hover { color: var(--color-text); }
+  }
+
+  .fjui-breadcrumb__item--current {
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  /* ── Pagination ────────────────────────────────────────────────────────── */
+
+  /* Pagination buttons ARE interactive. */
+
+  .fjui-pagination {
+    font-size: var(--text-body-size);
+  }
+
+  .fjui-pagination__btn {
+    padding: var(--spacing-1) var(--spacing-2);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    background-color: transparent;
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover        { background-color: var(--color-surface); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
+  }
+
+  .fjui-pagination__btn--active {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-color: var(--color-primary);
+  }
+
+  .fjui-pagination__ellipsis {
+    padding: var(--spacing-1) var(--spacing-2);
+    color: var(--color-text-muted);
+  }
+
+  /* ── DescriptionList ───────────────────────────────────────────────────── */
+
+  /* DescriptionList is NOT interactive. */
+
+  .fjui-description-list {
+    font-size: var(--text-body-size);
+  }
+
+  .fjui-description-list__term {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+    font-weight: var(--text-meta-weight);
+  }
+
+  .fjui-description-list__detail {
+    color: var(--color-text);
+    font-weight: var(--text-body-weight);
+  }
+
+  /* ── Checklist ─────────────────────────────────────────────────────────── */
+
+  /* Checklist is NOT interactive as a block. */
+
+  .fjui-checklist {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .fjui-checklist__title {
+    font-size: var(--text-section-size);
+    font-weight: var(--text-section-weight);
+    color: var(--color-text);
+    margin-bottom: var(--spacing-3);
+  }
+
+  /* ── Toast ─────────────────────────────────────────────────────────────── */
+
+  /* Toast is an overlay — shadow-lg, NO border (LANG-04 elevation rule). */
+  /* Toast is NOT interactive as a block; the close button carries its own focus. */
+
+  .fjui-toast {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    /* NO border — overlay elevation rule (LANG-04) */
+    padding: var(--spacing-4);
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+  }
+
+  .fjui-toast--neutral {
+    /* No accent — card background only */
+  }
+
+  .fjui-toast--success {
+    border-left: 3px solid var(--color-success);
+  }
+
+  .fjui-toast--warning {
+    border-left: 3px solid var(--color-warning);
+  }
+
+  .fjui-toast--destructive {
+    border-left: 3px solid var(--color-destructive);
+  }
+
+  .fjui-toast__message {
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+  }
+
+  .fjui-toast__close {
+    color: var(--color-text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+
+    &:hover        { color: var(--color-text); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.4; pointer-events: none; }
+  }
+
+  /* ── NotificationDropdown ──────────────────────────────────────────────── */
+
+  /* Container is an overlay — shadow-md, NO border (LANG-04). */
+
+  .fjui-notification-dropdown__trigger {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    position: relative;
+
+    &:hover        { color: var(--color-text); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.4; pointer-events: none; }
+  }
+
+  .fjui-notification-dropdown__badge {
+    background-color: var(--color-destructive);
+    color: oklch(100% 0 0);
+    border-radius: var(--radius-full);
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+  }
+
+  .fjui-notification-dropdown__panel {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    /* NO border — overlay elevation rule (LANG-04) */
+    overflow: hidden;
+  }
+
+  .fjui-notification-dropdown__empty {
+    color: var(--color-text-muted);
+    font-size: var(--text-body-size);
+    text-align: center;
+    padding: var(--spacing-4);
+  }
+
+  .fjui-notification-dropdown__item {
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-3) var(--spacing-4);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease);
+
+    &:hover { background-color: var(--color-surface); }
+    &:last-child { border-bottom: none; }
+  }
+
+  .fjui-notification-dropdown__item-link {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
+  }
+
+  .fjui-notification-dropdown__item-text {
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+  }
+
+  .fjui-notification-dropdown__timestamp {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+    margin-top: var(--spacing-1);
+  }
+
+  .fjui-notification-dropdown__unread-dot {
+    background-color: var(--color-primary);
+    border-radius: var(--radius-full);
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  /* ── CalendarCell ──────────────────────────────────────────────────────── */
+
+  /* CalendarCell is NOT interactive as a block. */
+
+  .fjui-calendar-cell {
+    min-height: 5rem;
+    padding: var(--spacing-1);
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-background);
+  }
+
+  .fjui-calendar-cell--other-month {
+    background-color: var(--color-surface);
+    opacity: 0.6;
+  }
+
+  .fjui-calendar-cell--closed {
+    background-color: color-mix(in oklab, var(--color-destructive) 5%, var(--color-background));
+  }
+
+  .fjui-calendar-cell__day {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+    font-weight: var(--text-meta-weight);
+    margin-bottom: var(--spacing-1);
+  }
+
+  .fjui-calendar-cell__day--today {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .fjui-calendar-cell__dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-full);
+    display: inline-block;
+  }
+
+  .fjui-calendar-cell__overflow {
+    font-size: var(--text-micro-size);
+    color: var(--color-text-muted);
+  }
+
+  .fjui-calendar-cell__closed-overlay {
+    font-size: var(--text-micro-size);
+    color: var(--color-destructive);
+    font-weight: 500;
+  }
+
+  /* ── ActionCard ────────────────────────────────────────────────────────── */
+
+  /* ActionCard IS interactive (renders as <a> or clickable div). */
+
+  .fjui-action-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    text-decoration: none;
+    cursor: pointer;
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover        { background-color: var(--color-surface); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+  }
+
+  .fjui-action-card--neutral {
+    /* Border-only, no accent */
+  }
+
+  .fjui-action-card--success {
+    border-left: 3px solid var(--color-success);
+  }
+
+  .fjui-action-card--warning {
+    border-left: 3px solid var(--color-warning);
+  }
+
+  .fjui-action-card--destructive {
+    border-left: 3px solid var(--color-destructive);
+  }
+
+  .fjui-action-card__icon {
+    color: var(--color-text-muted);
+  }
+
+  .fjui-action-card__title {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .fjui-action-card__description {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+  }
+
+  .fjui-action-card__chevron {
+    color: var(--color-text-muted);
+    margin-left: auto;
+  }
+
+  /* ── Tile ──────────────────────────────────────────────────────────────── */
+
+  /* Tile IS interactive (register product tile, tappable). */
+
+  .fjui-tile {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover        { background-color: var(--color-surface); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+  }
+
+  .fjui-tile--neutral    { /* Border-only, no accent */ }
+  .fjui-tile--success    { border-top: 2px solid var(--color-success); }
+  .fjui-tile--warning    { border-top: 2px solid var(--color-warning); }
+  .fjui-tile--destructive { border-top: 2px solid var(--color-destructive); }
+
+  .fjui-tile__name {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .fjui-tile__price {
+    font-size: var(--text-section-size);
+    font-weight: var(--text-section-weight);
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Sidebar shell ─────────────────────────────────────────────────────── */
+
+  /* Sidebar is a flat surface — border-right only, NO shadow (LANG-04). */
+
+  .fjui-sidebar {
+    width: 15rem;
+    background-color: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    height: 100vh;
+    position: fixed;
+    /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  .fjui-sidebar__group-label {
+    /* 11px/500 uppercase — allowlisted sub-role literal per UI-SPEC §Justified Deviations */
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    padding: var(--spacing-4) var(--spacing-4) var(--spacing-2);
+  }
+
+  /* SidebarNavItem IS interactive — all four states required (SKIN-05). */
+
+  .fjui-sidebar__nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-body-size);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover        { background-color: var(--color-card); color: var(--color-text); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.4; pointer-events: none; }
+  }
+
+  .fjui-sidebar__nav-item--active {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border-left-color: var(--color-primary);
+    font-weight: 500;
+  }
+
+  /* ── Header shell ──────────────────────────────────────────────────────── */
+
+  /* Header is a flat surface — border-bottom only, NO shadow (LANG-04).
+   * Height: 48px (3rem). Allowlisted structural geometry per UI-SPEC §Spacing. */
+
+  .fjui-header {
+    height: 3rem;
+    background-color: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    padding-inline: var(--spacing-6);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* ── DropdownMenu container + items ────────────────────────────────────── */
+
+  /* .fjui-menu container is an overlay — shadow-md, NO border (LANG-04). */
+
+  .fjui-menu {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    /* NO border — overlay elevation rule (LANG-04) */
+    overflow: hidden;
+    padding: 0;
+    min-width: 10rem;
+  }
+
+  /* DropdownMenu items ARE interactive — all four states required (SKIN-05). */
+
+  .fjui-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    text-decoration: none;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover        { background-color: var(--color-surface); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
+    &:active       { opacity: 0.85; }
+    &:disabled     { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
+  }
+
+  .fjui-menu-item--destructive {
+    color: var(--color-destructive);
+
+    &:hover { background-color: color-mix(in oklab, var(--color-destructive) 8%, var(--color-background)); }
+  }
+
 }

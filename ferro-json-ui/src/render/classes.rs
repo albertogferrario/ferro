@@ -19,18 +19,6 @@ pub(crate) const MOTION_BASE: &str = "transition-opacity duration-base ease-base
 /// Uniform disabled treatment for native controls (D-16).
 pub(crate) const DISABLED_BASE: &str = "disabled:opacity-50 disabled:pointer-events-none";
 
-/// Toast tone treatments: translucent tone tint (70% alpha) paired with a
-/// `backdrop-blur-md` on the toast shell. Single source of truth shared by
-/// the SSR `render_toast` and the JS runtime's `VARIANT_CLASSES` — lockstep
-/// is asserted in `runtime::tests::toast_tone_classes_match_ssr`.
-pub(crate) const TOAST_TONE_NEUTRAL: &str = "bg-primary/70 text-primary-foreground";
-/// Success toast tone — see [`TOAST_TONE_NEUTRAL`].
-pub(crate) const TOAST_TONE_SUCCESS: &str = "bg-success/70 text-primary-foreground";
-/// Warning toast tone — see [`TOAST_TONE_NEUTRAL`].
-pub(crate) const TOAST_TONE_WARNING: &str = "bg-warning/70 text-primary-foreground";
-/// Destructive toast tone — see [`TOAST_TONE_NEUTRAL`].
-pub(crate) const TOAST_TONE_DESTRUCTIVE: &str = "bg-destructive/70 text-primary-foreground";
-
 /// Fast-tier interactive base = fast motion + focus ring, for buttons/links/nav.
 pub(crate) const INTERACTIVE_BASE: &str = concat!(
     "transition-colors duration-fast ease-base ",
@@ -104,6 +92,54 @@ mod tests {
                     "{filename}: raw POS literal {lit:?} — import from render::classes instead"
                 );
             }
+        }
+    }
+
+    /// D-07 extension (Plan 06): render functions migrated to fjui-* classes must not
+    /// re-introduce the specific appearance utility strings that moved to the skin layer.
+    ///
+    /// Scope: render functions migrated in Plans 05 and 06 (Button, Badge, Alert,
+    /// StatCard, EmptyState, Card, Tabs, Text, Separator, Progress, Avatar, Image,
+    /// Skeleton, Breadcrumb, Pagination, DescriptionList, Toast, Sidebar, Header,
+    /// CalendarCell, ActionCard, Tile).
+    ///
+    /// Deferred (NOT banned here — migrate in a later plan):
+    /// - QuantityStepper / Numpad button classes (plan-scope boundary)
+    /// - Checklist checkbox native-control classes (form-control migration deferred)
+    /// - StatCard icon tint classes (icon system migration deferred)
+    /// - Header sub-element avatar/notification badge micro-classes (CHR-01 deferred to Phase 247)
+    /// - render_sidebar border-t border-border on fixed_bottom nav separator (structural inline)
+    #[test]
+    fn atoms_render_fns_contain_no_migrated_appearance_utilities() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let atoms_path = std::path::Path::new(&manifest_dir).join("src/render/atoms.rs");
+        let source = std::fs::read_to_string(&atoms_path).expect("atoms.rs readable");
+
+        // Scan only the production source (before #[cfg(test)]).
+        let test_start = source.find("#[cfg(test)]").unwrap_or(source.len());
+        let production_source = &source[..test_start];
+
+        // These are top-level container appearance utilities on the migrated component
+        // elements themselves (not on inner sub-elements still pending migration).
+        // Each is a string that must NOT appear in a class= attribute emitted by
+        // the migrated render functions listed in the doc comment above.
+        let banned: &[(&str, &str)] = &[
+            // Toast: moved to fjui-toast / fjui-toast--{tone}
+            ("bg-primary/70", "toast tone bg — use fjui-toast--neutral skin rule"),
+            ("bg-success/70", "toast tone bg — use fjui-toast--success skin rule"),
+            ("bg-warning/70", "toast tone bg — use fjui-toast--warning skin rule"),
+            ("bg-destructive/70", "toast tone bg — use fjui-toast--destructive skin rule"),
+            // Action card: moved to fjui-action-card / fjui-action-card--{tone}
+            ("fjui-action-card\" class=\"", "action card must not carry appearance utilities after fjui-action-card"),
+            // Pagination: moved to fjui-pagination__btn / fjui-pagination__btn--active
+            ("bg-primary text-primary-foreground\">", "pagination active page — use fjui-pagination__btn--active"),
+        ];
+
+        for (lit, reason) in banned {
+            assert!(
+                !production_source.contains(lit),
+                "atoms.rs: appearance utility {lit:?} found — {reason}"
+            );
         }
     }
 
