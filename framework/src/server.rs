@@ -242,6 +242,18 @@ async fn handle_request(
                     HttpResponse::text("404 Not Found").status(404).into_hyper()
                 }
             }
+            #[cfg(feature = "json-ui")]
+            "/_ferro/fonts/Geist-Variable.woff2" => {
+                serve_font(ferro_json_ui::GEIST_SANS_WOFF2, "font/woff2")
+            }
+            #[cfg(feature = "json-ui")]
+            "/_ferro/fonts/GeistMono-Variable.woff2" => {
+                serve_font(ferro_json_ui::GEIST_MONO_WOFF2, "font/woff2")
+            }
+            #[cfg(feature = "json-ui")]
+            "/_ferro/fonts/OFL.txt" => {
+                serve_font(ferro_json_ui::GEIST_OFL_TXT, "text/plain; charset=utf-8")
+            }
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
     }
@@ -381,20 +393,44 @@ async fn health_response(query: &str) -> hyper::Response<FerroBody> {
 
 /// Serve the pre-built ferro-json-ui base CSS.
 ///
-/// The bytes are embedded at compile time via ferro_json_ui::FERRO_BASE_CSS.
-/// Response: 200, text/css, 24h cache. No user input reaches this handler —
-/// the match arm is an exact string, and the body is static framework content.
+/// In release builds: returns the compile-time embedded constant.
+/// In `dev-css` builds: reads `ferro-base.css` from disk at each call so that
+/// a running Tailwind `--watch` process can update the skin without a Rust
+/// recompile. The `dev-css` feature is forwarded from `ferro-json-ui/dev-css`
+/// via `framework/Cargo.toml [features] dev-css`.
+///
+/// No user input reaches this handler — the match arm is an exact string, and
+/// the body is static framework content.
 #[cfg(feature = "json-ui")]
 fn serve_ferro_base_css() -> hyper::Response<FerroBody> {
-    let css = ferro_json_ui::FERRO_BASE_CSS;
+    let css = ferro_json_ui::ferro_base_css();
+    let css_bytes = css.as_bytes().to_vec();
+    let len = css_bytes.len();
     hyper::Response::builder()
         .status(200)
         .header("Content-Type", "text/css; charset=utf-8")
-        .header("Content-Length", css.len().to_string())
+        .header("Content-Length", len.to_string())
         .header("Cache-Control", "public, max-age=31536000, immutable")
-        .body(FerroBody::Full(Full::new(Bytes::from_static(
-            css.as_bytes(),
-        ))))
+        .body(FerroBody::Full(Full::new(Bytes::from(css_bytes))))
+        .unwrap()
+}
+
+/// Serve an embedded binary asset (font or license file) with a long-lived
+/// immutable cache header.
+///
+/// `bytes` must be a `'static` slice (embedded via `include_bytes!` — no heap
+/// allocation). `content_type` is set verbatim from the caller.
+///
+/// Security: routes calling this helper use exact-string match arms — no path
+/// parameter, no filesystem access, no traversal surface.
+#[cfg(feature = "json-ui")]
+fn serve_font(bytes: &'static [u8], content_type: &str) -> hyper::Response<FerroBody> {
+    hyper::Response::builder()
+        .status(200)
+        .header("Content-Type", content_type)
+        .header("Cache-Control", "public, max-age=31536000, immutable")
+        .header("Content-Length", bytes.len().to_string())
+        .body(FerroBody::Full(Full::new(Bytes::from_static(bytes))))
         .unwrap()
 }
 
@@ -489,7 +525,7 @@ mod ferro_base_css_route_tests {
             .unwrap()
             .parse::<usize>()
             .expect("Content-Length must be an integer");
-        assert_eq!(cl, ferro_json_ui::FERRO_BASE_CSS.len());
+        assert_eq!(cl, ferro_json_ui::ferro_base_css().len());
     }
 
     #[tokio::test]
@@ -503,7 +539,7 @@ mod ferro_base_css_route_tests {
             .to_bytes();
         assert_eq!(
             body_bytes.as_ref(),
-            ferro_json_ui::FERRO_BASE_CSS.as_bytes()
+            ferro_json_ui::ferro_base_css().as_bytes()
         );
         assert!(!body_bytes.is_empty());
     }
@@ -540,5 +576,77 @@ mod ferro_base_css_route_tests {
         // Unknown asset → 404, never a filesystem read.
         let missing = serve_leaflet_asset("/_ferro/leaflet/../secrets");
         assert_eq!(missing.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn serve_font_geist_sans_returns_200_font_woff2_immutable() {
+        let response = serve_font(ferro_json_ui::GEIST_SANS_WOFF2, "font/woff2");
+
+        assert_eq!(response.status(), 200, "expected 200 OK");
+
+        let ct = response
+            .headers()
+            .get("Content-Type")
+            .expect("Content-Type header missing")
+            .to_str()
+            .unwrap();
+        assert_eq!(ct, "font/woff2");
+
+        let cc = response
+            .headers()
+            .get("Cache-Control")
+            .expect("Cache-Control header missing")
+            .to_str()
+            .unwrap();
+        assert!(
+            cc.contains("immutable"),
+            "Cache-Control must contain immutable; got: {cc}"
+        );
+
+        let cl = response
+            .headers()
+            .get("Content-Length")
+            .expect("Content-Length header missing")
+            .to_str()
+            .unwrap()
+            .parse::<usize>()
+            .expect("Content-Length must be an integer");
+        assert_eq!(cl, ferro_json_ui::GEIST_SANS_WOFF2.len());
+        assert!(cl > 0, "font body must not be empty");
+    }
+
+    #[tokio::test]
+    async fn serve_font_geist_mono_returns_200_font_woff2_immutable() {
+        let response = serve_font(ferro_json_ui::GEIST_MONO_WOFF2, "font/woff2");
+
+        assert_eq!(response.status(), 200);
+
+        let ct = response
+            .headers()
+            .get("Content-Type")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert_eq!(ct, "font/woff2");
+
+        let cc = response
+            .headers()
+            .get("Cache-Control")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(cc.contains("immutable"));
+    }
+
+    #[tokio::test]
+    async fn serve_font_body_equals_embedded_bytes() {
+        let response = serve_font(ferro_json_ui::GEIST_SANS_WOFF2, "font/woff2");
+        let body_bytes = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body collect")
+            .to_bytes();
+        assert_eq!(body_bytes.as_ref(), ferro_json_ui::GEIST_SANS_WOFF2);
     }
 }

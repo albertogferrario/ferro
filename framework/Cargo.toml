@@ -15,6 +15,7 @@ default = ["inertia"]
 ai = ["dep:ferro-ai"]
 inertia = ["dep:ferro-inertia"]
 json-ui = ["dep:ferro-json-ui"]
+dev-css = ["json-ui", "ferro-json-ui/dev-css"]
 projections = ["dep:ferro-projections", "dep:ferro-json-ui", "ferro-json-ui/projections", "dep:ferro-text", "dep:ferro-audit"]
 # Enables the confirmation seam in the framework::write kernel (mirrors the
 # MCP channel's confirmation feature). Pure feature flag: the kernel's
