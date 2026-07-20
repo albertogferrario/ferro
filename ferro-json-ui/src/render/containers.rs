@@ -1296,12 +1296,11 @@ pub(crate) fn render_action_group(
                 destructive: item.destructive,
                 visible_if: item.visible_if.clone(),
             };
+            // D-01: fjui-menu-item full literals. Appearance moved to skin layer.
             html.push_str(&super::atoms::render_menu_item(
                 &dma,
-                &format!("block px-4 py-2 text-sm text-text hover:bg-surface {INTERACTIVE_BASE}"),
-                &format!(
-                    "block px-4 py-2 text-sm text-destructive hover:bg-destructive/10 {INTERACTIVE_BASE}"
-                ),
+                "fjui-menu-item",
+                "fjui-menu-item fjui-menu-item--destructive",
                 "",
             ));
         }

@@ -1003,8 +1003,11 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Sidebar", e),
     };
+    // D-01: fjui-sidebar full literal. Layout utilities (flex, flex-col, h-full,
+    // flex-1, overflow-y-auto, space-y-1, p-4) stay inline (D-02).
+    // Appearance (bg, border) owned by skin.
     let mut html =
-        String::from("<aside class=\"flex flex-col h-full bg-background border-r border-border\">");
+        String::from("<aside class=\"fjui-sidebar flex flex-col h-full\">");
     if !props.fixed_top.is_empty() {
         html.push_str("<nav class=\"p-4 space-y-1\">");
         for item in &props.fixed_top {
@@ -1020,8 +1023,10 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
                 html.push_str(" data-collapsed");
             }
             html.push('>');
+            // D-01: fjui-sidebar__group-label full literal.
+            // Appearance (font-size 11px/500, uppercase, muted color) owned by skin.
             html.push_str(&format!(
-                "<p class=\"px-2 py-1 text-xs font-semibold text-text-muted uppercase tracking-wider\">{}</p>",
+                "<p class=\"fjui-sidebar__group-label px-2 py-1\">{}</p>",
                 html_escape(&group.label)
             ));
             html.push_str("<nav class=\"space-y-1\">");
@@ -1048,28 +1053,27 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
 /// input.
 fn render_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let disabled = item.disabled.unwrap_or(false);
+    // D-01: fjui-sidebar__nav-item + fjui-sidebar__nav-item--active full literals.
+    // Layout utilities (flex, items-center, gap-*, inline-flex, w-5, h-5, shrink-0)
+    // stay inline (D-02). Appearance (bg, color, border-left, radius, font) in skin.
     let (tag, classes) = if disabled {
         (
             "span",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 pointer-events-none select-none".to_string(),
+            "fjui-sidebar__nav-item flex items-center gap-2 opacity-50 pointer-events-none select-none".to_string(),
         )
     } else if item.active {
         (
             "a",
-            format!(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary {INTERACTIVE_BASE}"
-            ),
+            format!("fjui-sidebar__nav-item fjui-sidebar__nav-item--active flex items-center gap-2 {INTERACTIVE_BASE}"),
         )
     } else {
         (
             "a",
-            format!(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}"
-            ),
+            format!("fjui-sidebar__nav-item flex items-center gap-2 {INTERACTIVE_BASE}"),
         )
     };
     let mut html = if disabled {
-        format!("<{tag} aria-disabled=\"true\" class=\"{classes}\">",)
+        format!("<{tag} aria-disabled=\"true\" class=\"{classes}\">")
     } else {
         format!(
             "<{tag} href=\"{}\" class=\"{classes}\">",
@@ -1092,8 +1096,11 @@ pub(crate) fn render_header(el: &Element, _spec: &Spec, _data: &Value, _depth: u
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Header", e),
     };
+    // D-01: fjui-header full literal. Layout utilities (flex, justify-between,
+    // px-6, relative) are layout-boundary keepers (D-02). Appearance
+    // (bg-*, border-*, py-*) moved to skin layer.
     let mut html = String::from(
-        "<header class=\"relative flex items-center justify-between px-6 py-4 bg-background border-b border-border\">",
+        "<header class=\"fjui-header flex items-center justify-between px-6 relative\">",
     );
     html.push_str("<div></div>");
     html.push_str(&format!(
@@ -3504,6 +3511,130 @@ mod tests {
             assert!(!html.contains("bg-warning/10"), "old warning tint in alert output; got: {html}");
             assert!(!html.contains("bg-destructive/10"), "old destructive tint in alert output; got: {html}");
         }
+    }
+
+    // ── Plan 06 migration tests (Task 2: interactive atoms — RED) ──────────────
+
+    /// render_sidebar_nav_item with active=true emits fjui-sidebar__nav-item--active.
+    #[test]
+    fn sidebar_nav_item_active_emits_fjui_active_class() {
+        let spec = spec_with_root(
+            Element::new("Sidebar").prop(
+                "fixed_top",
+                json!([{"label": "Dashboard", "href": "/dashboard", "active": true}]),
+            ),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_sidebar(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-sidebar__nav-item--active"),
+            "active nav item must emit fjui-sidebar__nav-item--active; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-sidebar__nav-item"),
+            "must emit fjui-sidebar__nav-item base; got: {html}"
+        );
+    }
+
+    /// render_sidebar_nav_item with active=false emits only fjui-sidebar__nav-item (no --active).
+    #[test]
+    fn sidebar_nav_item_inactive_emits_only_base_class() {
+        let spec = spec_with_root(
+            Element::new("Sidebar").prop(
+                "fixed_top",
+                json!([{"label": "Settings", "href": "/settings", "active": false}]),
+            ),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_sidebar(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-sidebar__nav-item"),
+            "inactive nav item must emit fjui-sidebar__nav-item; got: {html}"
+        );
+        assert!(
+            !html.contains("fjui-sidebar__nav-item--active"),
+            "inactive nav item must NOT emit --active; got: {html}"
+        );
+    }
+
+    /// render_sidebar emits fjui-sidebar on the aside and fjui-sidebar__group-label on group headers.
+    #[test]
+    fn sidebar_emits_fjui_sidebar_and_group_label() {
+        let spec = spec_with_root(
+            Element::new("Sidebar").prop(
+                "groups",
+                json!([{"label": "Gestione", "collapsed": false, "items": [{"label": "Prodotti", "href": "/prodotti", "active": false}]}]),
+            ),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_sidebar(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-sidebar"),
+            "sidebar aside must carry fjui-sidebar; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-sidebar__group-label"),
+            "group header must carry fjui-sidebar__group-label; got: {html}"
+        );
+    }
+
+    /// render_header emits fjui-header on the header element.
+    #[test]
+    fn header_emits_fjui_header_class() {
+        let spec = spec_with_root(Element::new("Header").prop("business_name", "ACME"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_header(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-header"),
+            "header must emit fjui-header; got: {html}"
+        );
+        assert!(
+            !html.contains("bg-background border-b border-border"),
+            "old appearance utilities must be gone from header; got: {html}"
+        );
+    }
+
+    /// render_menu_item with destructive=false emits fjui-menu-item.
+    /// render_menu_item with destructive=true emits fjui-menu-item--destructive.
+    #[test]
+    fn menu_item_emits_fjui_classes() {
+        use crate::action::{Action, HttpMethod};
+        use crate::component::DropdownMenuAction;
+
+        let normal = DropdownMenuAction {
+            label: "Edit".into(),
+            action: Action {
+                handler: "edit".into(),
+                url: Some("/edit".into()),
+                method: HttpMethod::Get,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            },
+            destructive: false,
+            visible_if: None,
+        };
+        let html = render_menu_item(&normal, "fjui-menu-item", "fjui-menu-item fjui-menu-item--destructive", "");
+        assert!(html.contains("fjui-menu-item"), "normal item must carry fjui-menu-item; got: {html}");
+        assert!(!html.contains("fjui-menu-item--destructive"), "normal must NOT carry --destructive; got: {html}");
+
+        let destructive = DropdownMenuAction {
+            label: "Delete".into(),
+            action: Action {
+                handler: "delete".into(),
+                url: Some("/delete".into()),
+                method: HttpMethod::Post,
+                confirm: None,
+                on_success: None,
+                on_error: None,
+                target: None,
+            },
+            destructive: true,
+            visible_if: None,
+        };
+        let html = render_menu_item(&destructive, "fjui-menu-item", "fjui-menu-item fjui-menu-item--destructive", "");
+        assert!(html.contains("fjui-menu-item--destructive"), "destructive item must carry --destructive; got: {html}");
     }
 
     // ── Plan 06 migration tests (Task 1: non-interactive atoms — RED) ─────────

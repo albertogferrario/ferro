@@ -596,12 +596,11 @@ pub(crate) fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]
         "<div popover id=\"{id}\" data-popover-menu class=\"min-w-[10rem] rounded-md border border-border bg-card shadow-md text-left p-0\" role=\"menu\">"
     ));
     for item in items {
+        // D-01: fjui-menu-item full literals. Appearance moved to skin layer.
         html.push_str(&render_menu_item(
             item,
-            &format!("block px-3 py-2 text-sm hover:bg-surface {INTERACTIVE_BASE}"),
-            &format!(
-                "block px-3 py-2 text-sm hover:bg-surface text-destructive {INTERACTIVE_BASE}"
-            ),
+            "fjui-menu-item",
+            "fjui-menu-item fjui-menu-item--destructive",
             " role=\"menuitem\"",
         ));
     }
