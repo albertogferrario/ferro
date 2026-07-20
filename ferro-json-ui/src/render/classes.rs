@@ -143,6 +143,59 @@ mod tests {
         }
     }
 
+    /// D-07 extension (Plan 07): container render functions migrated to fjui-* classes
+    /// must not re-introduce the specific appearance utility strings that moved to the
+    /// skin layer.
+    ///
+    /// Scope: render functions migrated in Plan 07 (Card, PageHeader, Modal, Tabs,
+    /// KanbanBoard, KanbanCard, DataTable shell).
+    ///
+    /// Deferred (NOT banned here):
+    /// - DataTable row/cell classes (Plan 08 scope)
+    /// - render_action_group non-kebab button appearance (partial migration only)
+    #[test]
+    fn containers_render_fns_contain_no_migrated_appearance_utilities() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let containers_path =
+            std::path::Path::new(&manifest_dir).join("src/render/containers.rs");
+        let source = std::fs::read_to_string(&containers_path).expect("containers.rs readable");
+
+        // Scan only the production source (before #[cfg(test)]).
+        let test_start = source.find("#[cfg(test)]").unwrap_or(source.len());
+        let production_source = &source[..test_start];
+
+        // Appearance utilities that moved to the skin layer in Plan 07.
+        // Each string must NOT appear in any class= attribute emitted by the
+        // migrated render functions listed above.
+        let banned: &[(&str, &str)] = &[
+            // Card: moved to fjui-card
+            ("rounded-lg border border-border bg-card", "card outer — use fjui-card skin rule"),
+            ("shadow-sm rounded-lg", "card bordered shadow — use fjui-card skin rule"),
+            ("shadow-md rounded-lg", "card elevated shadow — use fjui-card skin rule"),
+            // Tabs: moved to fjui-tabs / fjui-tab / fjui-tab--active
+            // Note: bare "border-b border-border" is NOT banned — it appears on structural
+            // row separators (e.g. render_selection_panel line dividers) which are out of
+            // scope. Only the tabs-specific wrapper div pattern is banned.
+            ("<div class=\"border-b border-border\">", "tabs wrapper div — use fjui-tabs nav (no wrapper div needed)"),
+            ("border-b-2 border-primary", "active tab underline — use fjui-tab--active skin rule"),
+            ("text-text-muted hover:text-text", "tab inactive text — use fjui-tab skin rule"),
+            // Modal: moved to fjui-modal
+            ("bg-card rounded-lg shadow-lg", "modal dialog — use fjui-modal skin rule"),
+            // Kanban: moved to fjui-kanban__* skin rules
+            ("bg-secondary/10 rounded-lg", "kanban column bg — use fjui-kanban__column skin rule"),
+            ("bg-primary text-primary-foreground", "kanban active count badge — use fjui-badge--neutral skin rule"),
+            // PageHeader: moved to fjui-page-header
+            ("border-b border-border bg-background", "page header bar — use fjui-page-header skin rule"),
+        ];
+
+        for (lit, reason) in banned {
+            assert!(
+                !production_source.contains(lit),
+                "containers.rs: appearance utility {lit:?} found — {reason}"
+            );
+        }
+    }
+
     #[test]
     fn touch_constants_are_full_literals_and_token_compliant() {
         assert_eq!(TOUCH_ACTION, "touch-manipulation");
