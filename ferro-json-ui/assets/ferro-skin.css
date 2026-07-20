@@ -145,7 +145,7 @@ input, select, textarea {
 
   .fjui-btn--destructive {
     background-color: var(--color-destructive);
-    color: oklch(100% 0 0);
+    color: var(--color-primary-foreground);
     border: none;
 
     &:hover {
@@ -674,7 +674,7 @@ input, select, textarea {
 
   .fjui-notification-dropdown__badge {
     background-color: var(--color-destructive);
-    color: oklch(100% 0 0);
+    color: var(--color-primary-foreground);
     border-radius: var(--radius-full);
     font-size: var(--text-micro-size);
     font-weight: var(--text-micro-weight);
