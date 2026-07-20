@@ -6,6 +6,7 @@
  * makes regeneration non-deterministic across checkouts.
  */
 @import "tailwindcss" source(none);
+@import "./ferro-skin.css";
 
 /* Scan ferro-json-ui and framework Rust source files for utility class literals. */
 @source "../../ferro-json-ui/src";
