@@ -115,12 +115,8 @@ impl JsonUi {
         let title: &str = &title_owned;
 
         let mut head = String::new();
-        // Inter Variable via Bunny Fonts — loaded unconditionally so font renders
-        // regardless of whether the Tailwind CDN is active.
-        head.push_str(
-            "<link rel=\"preconnect\" href=\"https://fonts.bunny.net\">\
-             <link href=\"https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap\" rel=\"stylesheet\">",
-        );
+        // No external font links emitted. Geist Sans and Geist Mono are self-hosted
+        // at /_ferro/fonts/ and declared via @font-face in ferro-base.css.
         // Emit one <link> per configured stylesheet URL, in order.
         // Defaults to the framework-served pre-built base CSS at /_ferro/ferro-base.css.
         // URL values are HTML-escaped before emission into the href attribute — even
@@ -574,19 +570,24 @@ mod tests {
     }
 
     #[test]
-    fn bunny_fonts_link_in_head() {
+    fn no_external_font_links_in_head() {
+        // Phase 246: Geist is self-hosted at /_ferro/fonts/; no CDN font links emitted.
         let spec = sample_spec();
         let data = serde_json::json!({});
         let result = JsonUi::render(&spec, &data);
 
         let body = response_body(ok_response(result));
         assert!(
-            body.contains("fonts.bunny.net"),
-            "head should contain Bunny Fonts link"
+            !body.contains("fonts.bunny.net"),
+            "head must not contain Bunny Fonts CDN link — fonts are self-hosted"
         );
         assert!(
-            body.contains("family=inter"),
-            "head should request Inter font family"
+            !body.contains("fonts.googleapis.com"),
+            "head must not contain Google Fonts CDN link"
+        );
+        assert!(
+            !body.contains("family=inter"),
+            "head must not request Inter from an external CDN"
         );
     }
 
