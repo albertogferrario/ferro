@@ -1473,7 +1473,8 @@ mod tests {
             json!({"items": [{"name": "HF", "status": "Non visibile", "tone": "destructive"}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("Non visibile"), "got: {html}");
-        assert!(html.contains("text-destructive"), "got: {html}");
+        // Plan 05 migration: Badge now emits fjui-badge--destructive (skin owns appearance).
+        assert!(html.contains("fjui-badge--destructive"), "got: {html}");
     }
 
     #[test]
@@ -1493,8 +1494,9 @@ mod tests {
         let data = json!({"items": [{"name": "HF", "status": "Attivo", "tone": "not-a-tone"}]});
         let html = render_media_card_grid(&el, &spec, &data, 1);
         assert!(html.contains("Attivo"), "got: {html}");
+        // Plan 05 migration: Badge now emits fjui-badge--neutral (skin owns appearance).
         assert!(
-            html.contains("border border-border text-text"),
+            html.contains("fjui-badge--neutral"),
             "expected neutral badge treatment; got: {html}"
         );
         assert!(!html.contains("not-a-tone"), "got: {html}");
@@ -1532,13 +1534,14 @@ mod tests {
         let data = json!({"rows": [{"status": {"tone": "destructive", "label": "Mancante"}}]});
         let html = render_data_table(&el, &spec, &data, 1);
         assert!(html.contains("Mancante"), "label missing; got: {html}");
+        // Plan 05 migration: Badge now emits fjui-badge--destructive (skin owns appearance).
         assert!(
-            html.contains("bg-destructive/10"),
-            "missing destructive class; got: {html}"
+            html.contains("fjui-badge--destructive"),
+            "missing fjui destructive class; got: {html}"
         );
         assert!(
-            html.contains("rounded-full"),
-            "missing badge base class; got: {html}"
+            html.contains("fjui-badge"),
+            "missing fjui-badge base class; got: {html}"
         );
         assert!(
             !html.contains("{&quot;tone&quot;"),

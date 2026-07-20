@@ -136,28 +136,30 @@ pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
 /// `ButtonProps` (variant, size, icon, label, disabled) and produces the
 /// styled button without any wrapping anchor — the anchor wrap is applied by
 /// [`render_button`] when the element carries a GET action.
+///
+/// Appearance (color, radius, padding, font-size) is owned by the skin layer
+/// via fjui-btn / fjui-btn--{variant} / fjui-btn--{size} classes (Plan 05).
+/// Layout utilities (inline-flex, items-center, gap-2) remain inline per D-02.
 fn render_button_inner(props: &ButtonProps) -> String {
-    let base = format!(
-        "inline-flex items-center justify-center rounded-md font-medium {INTERACTIVE_BASE} {DISABLED_BASE}"
-    );
-
-    let variant_classes = match props.variant {
-        Variant::Primary => "bg-primary text-primary-foreground hover:bg-primary/90",
-        Variant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        Variant::Outline => "border border-border bg-background text-text hover:bg-surface",
-        Variant::Ghost => "text-text hover:bg-surface",
-        Variant::Destructive => "bg-destructive text-primary-foreground hover:bg-destructive/90",
+    // Appearance classes are in ferro-skin.css @layer components. Rust emits
+    // only semantic identifiers (D-01 full literals) + D-02 layout utilities.
+    let variant_class = match props.variant {
+        Variant::Primary     => "fjui-btn--primary",
+        Variant::Secondary   => "fjui-btn--secondary",
+        Variant::Outline     => "fjui-btn--outline",
+        Variant::Ghost       => "fjui-btn--ghost",
+        Variant::Destructive => "fjui-btn--destructive",
     };
 
-    let size_classes = match props.size {
-        Size::Sm => "px-3 py-1.5 text-sm",
-        Size::Md => "px-4 py-2 text-sm",
-        Size::Lg => "px-6 py-3 text-base",
+    let size_class = match props.size {
+        Size::Sm => "fjui-btn--sm",
+        Size::Md => "fjui-btn--md",
+        Size::Lg => "fjui-btn--lg",
     };
 
-    // Disabled contract (D-16): the native `disabled` attr drives DISABLED_BASE;
-    // the aria-disabled + literal pointer-events-none/opacity-50 pair keeps the
-    // treatment intact where the markup is not treated as a native control.
+    // Disabled contract (D-16): the native `disabled` attr drives the skin's
+    // :disabled state; the aria-disabled + literal pointer-events-none/opacity-50
+    // pair keeps the treatment intact where markup is not a native control.
     let disabled_classes = if props.disabled == Some(true) {
         " pointer-events-none opacity-50"
     } else {
@@ -207,8 +209,11 @@ fn render_button_inner(props: &ButtonProps) -> String {
         ""
     };
 
+    // D-02 layout utilities (inline-flex, items-center, gap-2) stay inline.
+    // INTERACTIVE_BASE + DISABLED_BASE stay inline for motion/focus/disabled
+    // behavior utilities — they coexist with the skin's :focus-visible/:disabled rules.
     format!(
-        "<button{type_attr}{form_attr}{disable_on_submit_attr} class=\"{base} {variant_classes} {size_classes}{disabled_classes}\"{disabled_attr}>{content}</button>"
+        "<button{type_attr}{form_attr}{disable_on_submit_attr} class=\"fjui-btn {variant_class} {size_class} inline-flex items-center gap-2 {INTERACTIVE_BASE} {DISABLED_BASE}{disabled_classes}\"{disabled_attr}>{content}</button>"
     )
 }
 
@@ -275,26 +280,21 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
 
 /// Render a Badge `<span>` from `(tone, label)`. Shared by `render_badge`, the
 /// DataTable `ColumnFormat::Badge` cell renderer, and the MediaCardGrid footer
-/// badge so all surfaces stay in lockstep — the base+tone CSS string is the
-/// single source of truth. `neutral` renders one consistent outlined treatment.
+/// badge so all surfaces stay in lockstep.
+///
+/// Appearance (radius, padding, font-size, color) is owned by the skin layer
+/// via fjui-badge / fjui-badge--{tone} (Plan 05). The skin rule sets
+/// `width: max-content` which replaces the former inline justify-self workaround.
 pub(crate) fn badge_inline_html(tone: Tone, label: &str) -> String {
-    let base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
-    let tone_classes = match tone {
-        Tone::Neutral => "border border-border text-text",
-        Tone::Success => "bg-success/10 text-success",
-        Tone::Warning => "bg-warning/10 text-warning",
-        Tone::Destructive => "bg-destructive/10 text-destructive",
+    // D-01: full string literals — never format!("fjui-badge--{}", tone)
+    let tone_class = match tone {
+        Tone::Neutral     => "fjui-badge--neutral",
+        Tone::Success     => "fjui-badge--success",
+        Tone::Warning     => "fjui-badge--warning",
+        Tone::Destructive => "fjui-badge--destructive",
     };
-    // Inline `justify-self: start` keeps the pill at its natural width when
-    // it lands inside a Grid cell — default `place-self: stretch` otherwise
-    // stretches it to the column width. Inline because consumer Tailwind
-    // builds don't always emit the `justify-self-start` utility.
-    format!(
-        "<span class=\"{} {}\" style=\"justify-self: start;\">{}</span>",
-        base,
-        tone_classes,
-        html_escape(label)
-    )
+    // No inline style — skin rule `.fjui-badge { width: max-content }` handles chip-hug.
+    format!("<span class=\"fjui-badge {tone_class}\">{}</span>", html_escape(label))
 }
 
 // ── 4. Alert ─────────────────────────────────────────────────────────────
@@ -304,13 +304,13 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Alert", e),
     };
-    // Neutral is a muted surface tint (was Info's primary tint — documented
-    // migration delta). Success/Warning unchanged; Destructive was Error.
-    let tone_classes = match props.tone {
-        Tone::Neutral => "bg-surface border-border text-text",
-        Tone::Success => "bg-success/10 border-success text-success",
-        Tone::Warning => "bg-warning/10 border-warning text-warning",
-        Tone::Destructive => "bg-destructive/10 border-destructive text-destructive",
+    // D-01: full string literals — appearance owned by skin layer (Plan 05).
+    // Neutral is a muted surface tint. Success/Warning/Destructive match Badge vocabulary.
+    let tone_class = match props.tone {
+        Tone::Neutral     => "fjui-alert--neutral",
+        Tone::Success     => "fjui-alert--success",
+        Tone::Warning     => "fjui-alert--warning",
+        Tone::Destructive => "fjui-alert--destructive",
     };
     let icon = match props.tone {
         Tone::Neutral => ICON_INFO,
@@ -318,8 +318,9 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Tone::Warning => ICON_WARNING,
         Tone::Destructive => ICON_ERROR,
     };
+    // Layout utilities (flex, items-start, gap-3) stay inline per D-02.
     let mut html = format!(
-        "<div role=\"alert\" class=\"rounded-md border p-4 flex items-start gap-3 {tone_classes}\">"
+        "<div role=\"alert\" class=\"fjui-alert {tone_class} flex items-start gap-3\">"
     );
     html.push_str(icon);
     html.push_str("<div>");
@@ -3299,5 +3300,165 @@ mod tests {
             count, 12,
             "all 12 keys must carry HIT_TARGET_NUMPAD (>=56px); count={count}; got: {html}"
         );
+    }
+
+    // ── Plan 05 migration tests (Task 1: Button / Badge / Alert) ────────────
+
+    /// D-01: render_button_inner emits full literal "fjui-btn--primary" for Primary variant.
+    #[test]
+    fn button_primary_emits_fjui_class() {
+        let spec = spec_with_root(Element::new("Button").prop("label", "Go").prop("variant", "primary"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-btn--primary"), "primary variant must emit fjui-btn--primary; got: {html}");
+        assert!(html.contains("fjui-btn "), "base fjui-btn class must be present; got: {html}");
+    }
+
+    /// D-01: all 5 variants emit full literal fjui-btn-- classes.
+    #[test]
+    fn button_all_variants_emit_fjui_classes() {
+        for (variant, expected) in [
+            ("primary", "fjui-btn--primary"),
+            ("secondary", "fjui-btn--secondary"),
+            ("outline", "fjui-btn--outline"),
+            ("ghost", "fjui-btn--ghost"),
+            ("destructive", "fjui-btn--destructive"),
+        ] {
+            let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("variant", variant));
+            let el = spec.elements.get("root").unwrap();
+            let html = render_button(el, &spec, &json!({}), 1);
+            assert!(html.contains(expected), "variant {variant} must emit {expected}; got: {html}");
+        }
+    }
+
+    /// D-01: all 3 sizes emit full literal fjui-btn-- size classes.
+    #[test]
+    fn button_all_sizes_emit_fjui_classes() {
+        for (size, expected) in [
+            ("sm", "fjui-btn--sm"),
+            ("md", "fjui-btn--md"),
+            ("lg", "fjui-btn--lg"),
+        ] {
+            let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("size", size));
+            let el = spec.elements.get("root").unwrap();
+            let html = render_button(el, &spec, &json!({}), 1);
+            assert!(html.contains(expected), "size {size} must emit {expected}; got: {html}");
+        }
+    }
+
+    /// D-01: no format!-assembled class names — no appearance Tailwind utilities from old btn code.
+    #[test]
+    fn button_emits_no_old_appearance_utilities() {
+        let spec = spec_with_root(Element::new("Button").prop("label", "Go").prop("variant", "primary"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_button(el, &spec, &json!({}), 1);
+        assert!(!html.contains("bg-primary text-primary"), "old bg-primary appearance class must be gone; got: {html}");
+        assert!(!html.contains("rounded-md font-medium"), "old rounded-md font-medium must be gone; got: {html}");
+        assert!(!html.contains("px-3 py-"), "old padding utilities must be gone; got: {html}");
+    }
+
+    /// Badge emits fjui-badge base class + tone modifier.
+    #[test]
+    fn badge_emits_fjui_class_and_no_inline_style() {
+        let html = badge_inline_html(Tone::Success, "OK");
+        assert!(html.contains("fjui-badge"), "badge must emit fjui-badge; got: {html}");
+        assert!(html.contains("fjui-badge--success"), "success tone must emit fjui-badge--success; got: {html}");
+        assert!(!html.contains("justify-self: start"), "inline justify-self must be gone; got: {html}");
+        assert!(!html.contains("style="), "no inline style attr on badge; got: {html}");
+    }
+
+    /// All 4 badge tones emit correct fjui modifier literals.
+    #[test]
+    fn badge_all_tones_emit_fjui_classes() {
+        for (tone, expected) in [
+            (Tone::Neutral, "fjui-badge--neutral"),
+            (Tone::Success, "fjui-badge--success"),
+            (Tone::Warning, "fjui-badge--warning"),
+            (Tone::Destructive, "fjui-badge--destructive"),
+        ] {
+            let html = badge_inline_html(tone, "label");
+            assert!(html.contains(expected), "tone must emit {expected}; got: {html}");
+        }
+    }
+
+    /// Badge still html-escapes the label (T-246-11 XSS guard).
+    #[test]
+    fn badge_escapes_label_xss() {
+        let html = badge_inline_html(Tone::Neutral, "<script>bad</script>");
+        assert!(html.contains("&lt;script&gt;"), "badge must escape label; got: {html}");
+        assert!(!html.contains("<script>"), "raw script must not appear in badge; got: {html}");
+    }
+
+    /// Alert emits fjui-alert base + tone modifier for all 4 tones.
+    #[test]
+    fn alert_all_tones_emit_fjui_classes() {
+        for (tone, expected) in [
+            ("neutral", "fjui-alert--neutral"),
+            ("success", "fjui-alert--success"),
+            ("warning", "fjui-alert--warning"),
+            ("destructive", "fjui-alert--destructive"),
+        ] {
+            let spec = spec_with_root(
+                Element::new("Alert")
+                    .prop("tone", tone)
+                    .prop("message", "msg"),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_alert(el, &spec, &json!({}), 1);
+            assert!(html.contains("fjui-alert"), "alert must emit fjui-alert base; got: {html}");
+            assert!(html.contains(expected), "tone {tone} must emit {expected}; got: {html}");
+        }
+    }
+
+    /// Alert still html-escapes message and title (T-246-11 XSS guard).
+    #[test]
+    fn alert_escapes_message_and_title_xss() {
+        let spec = spec_with_root(
+            Element::new("Alert")
+                .prop("tone", "neutral")
+                .prop("title", "<script>xss</script>")
+                .prop("message", "<b>bad</b>"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_alert(el, &spec, &json!({}), 1);
+        assert!(html.contains("&lt;script&gt;"), "title must be escaped; got: {html}");
+        assert!(html.contains("&lt;b&gt;"), "message must be escaped; got: {html}");
+    }
+
+    /// D-07 guard: no old appearance utilities remain in the migrated Button/Badge/Alert
+    /// render function bodies. Checks HTML output rather than source to avoid false
+    /// positives from other components (pagination, calendar) that share some token names.
+    #[test]
+    fn migrated_atoms_no_raw_appearance_utilities_in_output() {
+        // Button: old variant utilities must not appear in button output
+        for variant in ["primary", "secondary", "outline", "ghost", "destructive"] {
+            let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("variant", variant));
+            let el = spec.elements.get("root").unwrap();
+            let html = render_button(el, &spec, &json!({}), 1);
+            assert!(!html.contains("bg-primary text-primary-foreground hover:"), "old btn-primary utility in output; got: {html}");
+            assert!(!html.contains("bg-secondary text-secondary-foreground"), "old btn-secondary utility in output; got: {html}");
+            assert!(!html.contains("rounded-md font-medium"), "old rounded-md font-medium in btn output; got: {html}");
+            assert!(!html.contains("px-3 py-1.5"), "old sm padding in btn output; got: {html}");
+            assert!(!html.contains("px-4 py-2 text-sm"), "old md padding in btn output; got: {html}");
+            assert!(!html.contains("px-6 py-3"), "old lg padding in btn output; got: {html}");
+        }
+        // Badge: old base + tone utilities must not appear
+        for tone in [Tone::Neutral, Tone::Success, Tone::Warning, Tone::Destructive] {
+            let html = badge_inline_html(tone, "x");
+            assert!(!html.contains("rounded-full px-2.5 py-0.5 text-xs font-medium"), "old badge base in output; got: {html}");
+            assert!(!html.contains("bg-success/10"), "old success tint in badge output; got: {html}");
+            assert!(!html.contains("bg-warning/10"), "old warning tint in badge output; got: {html}");
+            assert!(!html.contains("bg-destructive/10"), "old destructive tint in badge output; got: {html}");
+        }
+        // Alert: old tone utilities must not appear
+        for tone in ["neutral", "success", "warning", "destructive"] {
+            let spec = spec_with_root(Element::new("Alert").prop("tone", tone).prop("message", "m"));
+            let el = spec.elements.get("root").unwrap();
+            let html = render_alert(el, &spec, &json!({}), 1);
+            assert!(!html.contains("bg-surface border-border text-text\">"), "old neutral alert utility in output; got: {html}");
+            assert!(!html.contains("bg-success/10"), "old success tint in alert output; got: {html}");
+            assert!(!html.contains("bg-warning/10"), "old warning tint in alert output; got: {html}");
+            assert!(!html.contains("bg-destructive/10"), "old destructive tint in alert output; got: {html}");
+        }
     }
 }
