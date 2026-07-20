@@ -119,14 +119,18 @@ pub(crate) fn render_text(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
         Err(e) => return decode_diagnostic("Text", e),
     };
     let content = html_escape(&props.content);
+    // D-01: full string literals for fjui-text--* size roles.
+    // Appearance (font-size, font-weight, color) owned by skin layer via fjui-text--* rules.
+    // h1/display use the display scale (28px/600); h2/h3 use section (15px/600);
+    // p/div/section/span use body (14px/400).
     match props.element {
-        TextElement::P => format!("<p class=\"text-base leading-relaxed text-text\">{content}</p>"),
-        TextElement::H1 => format!("<h1 class=\"text-3xl font-bold leading-tight tracking-tight text-text\">{content}</h1>"),
-        TextElement::H2 => format!("<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text\">{content}</h2>"),
-        TextElement::H3 => format!("<h3 class=\"text-xl font-semibold leading-snug text-text\">{content}</h3>"),
-        TextElement::Span => format!("<span class=\"text-base text-text\">{content}</span>"),
-        TextElement::Div => format!("<div class=\"text-base leading-relaxed text-text\">{content}</div>"),
-        TextElement::Section => format!("<section class=\"text-base leading-relaxed text-text\">{content}</section>"),
+        TextElement::P => format!("<p class=\"fjui-text--body\">{content}</p>"),
+        TextElement::H1 => format!("<h1 class=\"fjui-text--display\">{content}</h1>"),
+        TextElement::H2 => format!("<h2 class=\"fjui-text--section\">{content}</h2>"),
+        TextElement::H3 => format!("<h3 class=\"fjui-text--section\">{content}</h3>"),
+        TextElement::Span => format!("<span class=\"fjui-text--body\">{content}</span>"),
+        TextElement::Div => format!("<div class=\"fjui-text--body\">{content}</div>"),
+        TextElement::Section => format!("<section class=\"fjui-text--body\">{content}</section>"),
     }
 }
 
@@ -344,9 +348,11 @@ pub(crate) fn render_separator(el: &Element, _spec: &Spec, _data: &Value, _depth
         Err(e) => return decode_diagnostic("Separator", e),
     };
     let orientation = props.orientation.as_ref().cloned().unwrap_or_default();
+    // D-01: fjui-separator--* full literals; layout utilities (my-4, mx-4, h-full) stay inline (D-02).
+    // Appearance (border-color, background-color) owned by skin layer.
     match orientation {
-        Orientation::Horizontal => "<hr class=\"my-4 border-border\">".to_string(),
-        Orientation::Vertical => "<div class=\"mx-4 h-full w-px bg-border\"></div>".to_string(),
+        Orientation::Horizontal => "<hr class=\"fjui-separator--horizontal my-4\">".to_string(),
+        Orientation::Vertical => "<div class=\"fjui-separator--vertical mx-4 h-full w-px\"></div>".to_string(),
     }
 }
 
@@ -364,15 +370,17 @@ pub(crate) fn render_progress(el: &Element, _spec: &Spec, _data: &Value, _depth:
         0
     };
 
-    let mut html = String::from("<div class=\"w-full\" role=\"progressbar\">");
+    // D-01: fjui-progress* full literals; layout utility (w-full) stays inline (D-02).
+    // Appearance (bg-color, border-radius) owned by skin layer.
+    let mut html = String::from("<div class=\"fjui-progress w-full\" role=\"progressbar\">");
     if let Some(ref label) = props.label {
         html.push_str(&format!(
-            "<div class=\"mb-1 text-sm text-text-muted\">{}</div>",
+            "<div class=\"fjui-progress__label mb-1\">{}</div>",
             html_escape(label)
         ));
     }
     html.push_str(&format!(
-        "<div class=\"w-full rounded-full bg-border h-2.5\"><div class=\"rounded-full bg-primary h-2.5\" style=\"width: {pct}%\"></div></div>"
+        "<div class=\"fjui-progress__track w-full\"><div class=\"fjui-progress__fill\" style=\"width: {pct}%\"></div></div>"
     ));
     html.push_str("</div>");
     html
@@ -386,25 +394,25 @@ pub(crate) fn render_avatar(el: &Element, _spec: &Spec, _data: &Value, _depth: u
         Err(e) => return decode_diagnostic("Avatar", e),
     };
     let size = props.size.unwrap_or_default();
-    let size_classes = match size {
-        Size::Sm => "h-8 w-8 text-sm",
-        Size::Md => "h-10 w-10 text-sm",
-        Size::Lg => "h-12 w-12 text-base",
+    // D-01: full literal fjui-avatar size classes. Layout (inline-flex, items-center,
+    // justify-center) stays inline (D-02). Appearance (bg, color, radius) in skin.
+    let size_class = match size {
+        Size::Sm => "fjui-avatar--sm",
+        Size::Md => "fjui-avatar--md",
+        Size::Lg => "fjui-avatar--lg",
     };
 
     if let Some(ref src) = props.src {
         format!(
-            "<img src=\"{}\" alt=\"{}\" class=\"rounded-full object-cover {}\">",
+            "<img src=\"{}\" alt=\"{}\" class=\"fjui-avatar {size_class} object-cover\">",
             html_escape(src),
             html_escape(&props.alt),
-            size_classes
         )
     } else {
         let fallback_text = props.fallback.as_deref().unwrap_or(&props.alt);
         let initials: String = fallback_text.chars().take(2).collect();
         format!(
-            "<span class=\"inline-flex items-center justify-center rounded-full bg-card text-text-muted {}\">{}</span>",
-            size_classes,
+            "<span class=\"fjui-avatar {size_class} inline-flex items-center justify-center\">{}</span>",
             html_escape(&initials)
         )
     }
@@ -441,20 +449,22 @@ pub(crate) fn render_image(el: &Element, _spec: &Spec, data: &Value, _depth: usi
         None => String::new(),
     };
 
+    // D-01: fjui-image* full literals; layout utilities (absolute, inset-0, flex,
+    // items-center, justify-center, relative, w-full, h-full) stay inline (D-02).
+    // Appearance (bg-color, border-radius, text-size, text-color) owned by skin.
     let placeholder = match &props.placeholder_label {
         Some(label) => format!(
-            "<div class=\"absolute inset-0 flex items-center justify-center \
-             rounded-md bg-surface text-xs text-text-muted\">{}</div>",
+            "<div class=\"fjui-image__placeholder absolute inset-0 flex items-center justify-center\">{}</div>",
             html_escape(label)
         ),
-        None => String::from("<div class=\"absolute inset-0 rounded-md bg-surface\"></div>"),
+        None => String::from("<div class=\"fjui-image__placeholder absolute inset-0\"></div>"),
     };
 
     format!(
-        "<div class=\"relative w-full\"{container_style}>\
+        "<div class=\"fjui-image relative w-full\"{container_style}>\
             {placeholder}\
             <img src=\"{src}\" alt=\"{alt}\" \
-                 class=\"relative w-full h-full rounded-md object-cover object-top\" \
+                 class=\"fjui-image__img relative w-full h-full object-cover object-top\" \
                  loading=\"lazy\" onerror=\"this.style.display='none'\">\
          </div>",
         src = html_escape(&resolved_src),
@@ -471,16 +481,19 @@ pub(crate) fn render_skeleton(el: &Element, _spec: &Spec, _data: &Value, _depth:
     };
     let width = props.width.as_deref().unwrap_or("100%");
     let height = props.height.as_deref().unwrap_or("1rem");
-    let rounded = if props.rounded == Some(true) {
-        "rounded-full"
+    // D-01: fjui-skeleton full literal for the structural class.
+    // SHIMMER_CSS keeps its own <style> block (pre-skin behavior animation — not appearance-token).
+    // fjui-skeleton--rounded modifier selects pill vs rect radius via skin rule.
+    let modifier = if props.rounded == Some(true) {
+        "fjui-skeleton--rounded"
     } else {
-        "rounded-md"
+        "fjui-skeleton--rect"
     };
     // Width and height are passed through `html_escape` before interpolation
     // into the `style` attribute to preserve the XSS discipline that every
     // interpolated string is escaped.
     format!(
-        "{SHIMMER_CSS}<div class=\"ferro-shimmer {rounded}\" style=\"width: {}; height: {}\"></div>",
+        "{SHIMMER_CSS}<div class=\"fjui-skeleton {modifier} ferro-shimmer\" style=\"width: {}; height: {}\"></div>",
         html_escape(width),
         html_escape(height)
     )
@@ -498,24 +511,29 @@ pub(crate) fn render_breadcrumb(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Breadcrumb", e),
     };
+    // D-01: fjui-breadcrumb* full literals; layout utilities (flex, items-center,
+    // space-x-2) stay inline (D-02). Appearance (text-size, color) owned by skin.
     let mut html =
-        String::from("<nav class=\"flex items-center space-x-2 text-sm text-text-muted\">");
+        String::from("<nav class=\"fjui-breadcrumb flex items-center space-x-2\">");
     let len = props.items.len();
     for (i, item) in props.items.iter().enumerate() {
         let is_last = i == len - 1;
         if is_last {
             html.push_str(&format!(
-                "<span class=\"text-text font-medium\">{}</span>",
+                "<span class=\"fjui-breadcrumb__item fjui-breadcrumb__item--current\">{}</span>",
                 html_escape(&item.label)
             ));
         } else if let Some(ref url) = item.url {
             html.push_str(&format!(
-                "<a href=\"{}\" class=\"hover:text-text {INTERACTIVE_BASE}\">{}</a>",
+                "<a href=\"{}\" class=\"fjui-breadcrumb__item {INTERACTIVE_BASE}\">{}</a>",
                 html_escape(url),
                 html_escape(&item.label)
             ));
         } else {
-            html.push_str(&format!("<span>{}</span>", html_escape(&item.label)));
+            html.push_str(&format!(
+                "<span class=\"fjui-breadcrumb__item\">{}</span>",
+                html_escape(&item.label)
+            ));
         }
         if !is_last {
             html.push_str(BREADCRUMB_SEP);
@@ -553,13 +571,15 @@ pub(crate) fn render_pagination(
 
     let base_url_escaped = html_escape(base_url);
 
-    let mut html = String::from("<nav class=\"flex items-center space-x-1\">");
+    // D-01: fjui-pagination* full literals; layout utility (flex, items-center,
+    // space-x-1) stays inline (D-02). Appearance (bg, color, radius) owned by skin.
+    let mut html = String::from("<nav class=\"fjui-pagination flex items-center space-x-1\">");
 
     // Previous button.
     if current > 1 {
         let prev = current - 1;
         html.push_str(&format!(
-            "<a href=\"{base_url_escaped}page={prev}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">&laquo;</a>"
+            "<a href=\"{base_url_escaped}page={prev}\" class=\"fjui-pagination__btn {INTERACTIVE_BASE}\">&laquo;</a>"
         ));
     }
 
@@ -568,15 +588,15 @@ pub(crate) fn render_pagination(
     let mut prev_page = 0u32;
     for page in pages {
         if prev_page > 0 && page > prev_page + 1 {
-            html.push_str("<span class=\"px-2 text-text-muted\">&hellip;</span>");
+            html.push_str("<span class=\"fjui-pagination__ellipsis px-2\">&hellip;</span>");
         }
         if page == current {
             html.push_str(&format!(
-                "<span class=\"px-3 py-1 rounded-md bg-primary text-primary-foreground\">{page}</span>"
+                "<span class=\"fjui-pagination__btn fjui-pagination__btn--active\">{page}</span>"
             ));
         } else {
             html.push_str(&format!(
-                "<a href=\"{base_url_escaped}page={page}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">{page}</a>"
+                "<a href=\"{base_url_escaped}page={page}\" class=\"fjui-pagination__btn {INTERACTIVE_BASE}\">{page}</a>"
             ));
         }
         prev_page = page;
@@ -586,7 +606,7 @@ pub(crate) fn render_pagination(
     if current < total_pages {
         let next = current + 1;
         html.push_str(&format!(
-            "<a href=\"{base_url_escaped}page={next}\" class=\"px-3 py-1 rounded-md bg-background text-text hover:bg-surface {INTERACTIVE_BASE}\">&raquo;</a>"
+            "<a href=\"{base_url_escaped}page={next}\" class=\"fjui-pagination__btn {INTERACTIVE_BASE}\">&raquo;</a>"
         ));
     }
 
@@ -645,10 +665,12 @@ pub(crate) fn render_description_list(
         .unwrap_or_else(|| props.items.clone());
 
     let columns = props.columns.unwrap_or(1);
-    let mut html = format!("<dl class=\"grid grid-cols-{columns} gap-4\">");
+    // D-01: fjui-description-list* full literals; layout utilities (grid, grid-cols-N,
+    // gap-4, mt-1) stay inline (D-02). Appearance (text-size, color) owned by skin.
+    let mut html = format!("<dl class=\"fjui-description-list grid grid-cols-{columns} gap-4\">");
     for item in &items {
         html.push_str(&format!(
-            "<div><dt class=\"text-sm font-medium text-text-muted\">{}</dt><dd class=\"mt-1 text-sm text-text\">{}</dd></div>",
+            "<div><dt class=\"fjui-description-list__term\">{}</dt><dd class=\"fjui-description-list__detail mt-1\">{}</dd></div>",
             html_escape(&item.label),
             html_escape(&item.value)
         ));
@@ -781,11 +803,13 @@ pub(crate) fn render_checklist(el: &Element, _spec: &Spec, _data: &Value, _depth
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Checklist", e),
     };
-    let mut html =
-        String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
+    // D-01: fjui-checklist full literal; layout utilities (flex, items-center,
+    // justify-between, mb-3, p-4, space-y-2) stay inline (D-02).
+    // Appearance (bg, border, radius, shadow, text-size, color) owned by skin.
+    let mut html = String::from("<div class=\"fjui-checklist p-4\">");
     html.push_str("<div class=\"flex items-center justify-between mb-3\">");
     html.push_str(&format!(
-        "<h3 class=\"text-sm font-semibold leading-snug text-text\">{}</h3>",
+        "<h3 class=\"fjui-checklist__title\">{}</h3>",
         html_escape(&props.title)
     ));
     if props.dismissible {
@@ -852,16 +876,16 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Ok(p) => p,
         Err(e) => return decode_diagnostic("Toast", e),
     };
-    // Translucent tone tint over a backdrop blur — content underneath shows
-    // through but the toast stays clearly readable. 70% alpha gives visible
-    // translucency even on plain backgrounds. The tone classes are shared
-    // verbatim with the JS runtime's VARIANT_CLASSES (see render/classes.rs)
-    // so server-rendered and JS-created toasts look identical.
-    let tone_classes = match props.tone {
-        Tone::Neutral => TOAST_TONE_NEUTRAL,
-        Tone::Success => TOAST_TONE_SUCCESS,
-        Tone::Warning => TOAST_TONE_WARNING,
-        Tone::Destructive => TOAST_TONE_DESTRUCTIVE,
+    // D-01: fjui-toast + fjui-toast--{tone} full literals. Overlay elevation:
+    // shadow only (no border) per LANG-04. Appearance (bg, color, shadow, radius)
+    // owned by skin. Layout utilities (fixed, top-4, right-4, z-50, flex,
+    // items-start, gap-3, max-w-sm) stay inline (D-02).
+    // The tone class is the semantic identifier; skin owns the actual color.
+    let tone_class = match props.tone {
+        Tone::Neutral     => "fjui-toast--neutral",
+        Tone::Success     => "fjui-toast--success",
+        Tone::Warning     => "fjui-toast--warning",
+        Tone::Destructive => "fjui-toast--destructive",
     };
     // strum guarantees the wire string (see component.rs strum_tests).
     let tone_str = props.tone.as_ref();
@@ -877,15 +901,15 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         timeout.max(1)
     };
     let close_button = if props.dismissible {
-        "<button class=\"text-current opacity-70 hover:opacity-100 text-lg leading-none\" \
+        "<button class=\"fjui-toast__close text-current opacity-70 hover:opacity-100 text-lg leading-none\" \
          data-toast-close>&times;</button>"
     } else {
         ""
     };
     format!(
-        "<div class=\"fixed top-4 right-4 z-50 flex items-start gap-3 rounded-lg px-4 py-3 shadow-lg max-w-sm {MOTION_BASE} backdrop-blur-md {tone_classes}\" \
+        "<div class=\"fjui-toast {tone_class} fixed top-4 right-4 z-50 flex items-start gap-3 max-w-sm {MOTION_BASE}\" \
          data-toast-tone=\"{tone_str}\" data-toast-timeout=\"{timeout}\">\
-         <span class=\"flex-1 text-sm\">{}</span>\
+         <span class=\"fjui-toast__message flex-1\">{}</span>\
          {close_button}\
          </div>",
         html_escape(&props.message)
@@ -904,31 +928,35 @@ pub(crate) fn render_notification_dropdown(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("NotificationDropdown", e),
     };
+    // D-01: fjui-notification-dropdown* full literals; layout utilities (relative,
+    // absolute, right-0, mt-2, w-80, z-50, flex, items-start, gap-3, p-2, p-3, p-4,
+    // min-w-0, flex-1, hidden, divide-y) stay inline (D-02).
+    // Appearance (bg, border, shadow, radius, text-size, color) owned by skin.
     let unread_count = props.notifications.iter().filter(|n| !n.read).count();
     let mut html = String::from("<div class=\"relative\" data-notification-dropdown>");
     html.push_str(&format!(
-        "<button type=\"button\" class=\"relative p-2 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\" data-notification-count=\"{unread_count}\">"
+        "<button type=\"button\" class=\"fjui-notification-dropdown__trigger relative p-2 {INTERACTIVE_BASE}\" data-notification-count=\"{unread_count}\">"
     ));
     html.push_str(BELL_SVG);
     if unread_count > 0 {
         html.push_str(&format!(
-            "<span class=\"absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold text-primary-foreground bg-destructive rounded-full\">{unread_count}</span>"
+            "<span class=\"fjui-notification-dropdown__badge absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4\">{unread_count}</span>"
         ));
     }
     html.push_str("</button>");
     html.push_str(
-        "<div class=\"hidden absolute right-0 mt-2 w-80 bg-card rounded-lg shadow-lg border border-border z-50\" data-notification-panel>",
+        "<div class=\"fjui-notification-dropdown__panel hidden absolute right-0 mt-2 w-80 z-50\" data-notification-panel>",
     );
     if props.notifications.is_empty() {
         let empty = props.empty_text.as_deref().unwrap_or("No notifications");
         html.push_str(&format!(
-            "<p class=\"p-4 text-sm text-text-muted\">{}</p>",
+            "<p class=\"fjui-notification-dropdown__empty p-4\">{}</p>",
             html_escape(empty)
         ));
     } else {
         html.push_str("<ul class=\"divide-y divide-border\">");
         for item in &props.notifications {
-            html.push_str("<li class=\"flex items-start gap-3 p-3\">");
+            html.push_str("<li class=\"fjui-notification-dropdown__item flex items-start gap-3 p-3\">");
             if let Some(ref icon) = item.icon {
                 html.push_str(&format!(
                     "<span class=\"text-lg shrink-0\">{}</span>",
@@ -938,26 +966,26 @@ pub(crate) fn render_notification_dropdown(
             html.push_str("<div class=\"flex-1 min-w-0\">");
             if let Some(ref url) = item.action_url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text hover:underline {INTERACTIVE_BASE}\">{}</a>",
+                    "<a href=\"{}\" class=\"fjui-notification-dropdown__item-link {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.text)
                 ));
             } else {
                 html.push_str(&format!(
-                    "<p class=\"text-sm text-text\">{}</p>",
+                    "<p class=\"fjui-notification-dropdown__item-text\">{}</p>",
                     html_escape(&item.text)
                 ));
             }
             if let Some(ref ts) = item.timestamp {
                 html.push_str(&format!(
-                    "<p class=\"text-xs text-text-muted mt-0.5\">{}</p>",
+                    "<p class=\"fjui-notification-dropdown__timestamp mt-0.5\">{}</p>",
                     html_escape(ts)
                 ));
             }
             html.push_str("</div>");
             if !item.read {
                 html.push_str(
-                    "<span class=\"h-2 w-2 mt-1 shrink-0 rounded-full bg-primary\"></span>",
+                    "<span class=\"fjui-notification-dropdown__unread-dot h-2 w-2 mt-1 shrink-0\"></span>",
                 );
             }
             html.push_str("</li>");
@@ -1221,32 +1249,30 @@ pub(crate) fn render_calendar_cell(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("CalendarCell", e),
     };
-    let opacity = if props.is_current_month {
-        ""
-    } else {
-        " opacity-40"
-    };
-    let hover = if props.is_current_month {
-        format!(" hover:bg-surface/60 {MOTION_FAST} cursor-pointer")
+    // D-01: fjui-calendar-cell* full literals; layout utilities (flex, flex-col,
+    // min-h-[5rem], p-2, -mt-px, -ml-px, w-7, h-7, items-center, justify-center,
+    // relative, absolute, inset-0, flex, gap-1, mt-auto, pt-1) stay inline (D-02).
+    // Appearance (border, bg, text-size, color, radius) owned by skin.
+    let out_of_month = if props.is_current_month { "" } else { " fjui-calendar-cell--other-month" };
+    let closed_mod = if props.closed { " fjui-calendar-cell--closed relative" } else { "" };
+    let hover_class = if props.is_current_month {
+        format!(" {MOTION_FAST} cursor-pointer")
     } else {
         " cursor-pointer".to_string()
     };
-    // A closed (unavailable) day is marked with a thin neutral diagonal line;
-    // `relative` anchors the absolutely-positioned overlay <svg>.
-    let closed_pos = if props.closed { " relative" } else { "" };
 
     let mut html = format!(
-        "<div class=\"flex flex-col min-h-[5rem] p-2 border border-border -mt-px -ml-px{opacity}{hover}{closed_pos}\">",
+        "<div class=\"fjui-calendar-cell flex flex-col min-h-[5rem] p-2 -mt-px -ml-px{out_of_month}{closed_mod}{hover_class}\">",
     );
 
     if props.is_today {
         html.push_str(&format!(
-            "<span class=\"w-7 h-7 flex items-center justify-center text-sm font-semibold bg-primary text-primary-foreground rounded-full\">{}</span>",
+            "<span class=\"fjui-calendar-cell__day fjui-calendar-cell__day--today w-7 h-7 flex items-center justify-center\">{}</span>",
             props.day
         ));
     } else {
         html.push_str(&format!(
-            "<span class=\"text-sm text-text\">{}</span>",
+            "<span class=\"fjui-calendar-cell__day\">{}</span>",
             props.day
         ));
     }
@@ -1260,12 +1286,14 @@ pub(crate) fn render_calendar_cell(
         html.push_str("<div class=\"flex gap-1 mt-auto pt-1\">");
         if props.dot_colors.is_empty() {
             for _ in 0..total {
-                html.push_str("<span class=\"w-1.5 h-1.5 rounded-full bg-primary\"></span>");
+                html.push_str("<span class=\"fjui-calendar-cell__dot w-1.5 h-1.5\"></span>");
             }
         } else {
             for color in props.dot_colors.iter().take(3) {
+                // dot_colors are Tailwind bg-* utilities supplied by the caller — kept as-is
+                // since they are caller-controlled appearance tokens (not skin-migrated).
                 html.push_str(&format!(
-                    "<span class=\"w-1.5 h-1.5 rounded-full {}\"></span>",
+                    "<span class=\"fjui-calendar-cell__dot w-1.5 h-1.5 rounded-full {}\"></span>",
                     html_escape(color)
                 ));
             }
@@ -1273,7 +1301,7 @@ pub(crate) fn render_calendar_cell(
         html.push_str("</div>");
     } else if total > 3 {
         html.push_str(&format!(
-            "<span class=\"mt-auto pt-1 text-xs font-medium text-primary\">{total} prenot.</span>"
+            "<span class=\"fjui-calendar-cell__overflow mt-auto pt-1\">{total} prenot.</span>"
         ));
     }
 
@@ -1282,7 +1310,7 @@ pub(crate) fn render_calendar_cell(
     // it theme-aware (muted tone); `relative` on the cell anchors the overlay.
     if props.closed {
         html.push_str(
-            "<div class=\"pointer-events-none absolute inset-0 text-text-muted\" \
+            "<div class=\"fjui-calendar-cell__closed-overlay pointer-events-none absolute inset-0\" \
              style=\"opacity:0.14;background-image:repeating-linear-gradient(45deg,transparent 0,transparent 5px,currentColor 5px,currentColor 6px)\" \
              aria-hidden=\"true\"></div>",
         );
@@ -1326,29 +1354,29 @@ pub(crate) fn render_action_card(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("ActionCard", e),
     };
-    // Neutral is a plain border accent (was Default's `border-l-primary` —
-    // documented migration delta). Success is a new arm in the canonical set.
-    let border_class = match props.tone {
-        Tone::Neutral => "border-l-border",
-        Tone::Success => "border-l-success",
-        Tone::Warning => "border-l-warning",
-        Tone::Destructive => "border-l-destructive",
+    // D-01: fjui-action-card + fjui-action-card--{tone} full literals.
+    // Layout utilities (flex, items-center, gap-4, p-4, no-underline) stay inline (D-02).
+    // Appearance (border, bg, shadow, radius, hover) owned by skin.
+    let tone_class = match props.tone {
+        Tone::Neutral     => "fjui-action-card--neutral",
+        Tone::Success     => "fjui-action-card--success",
+        Tone::Warning     => "fjui-action-card--warning",
+        Tone::Destructive => "fjui-action-card--destructive",
     };
 
     let (open_tag, close_tag) = if let Some(ref href) = props.href {
         (
             format!(
-                "<a href=\"{}\" aria-label=\"{}\" class=\"rounded-lg border-l-4 {} border border-border bg-card shadow-sm p-4 flex items-center gap-4 hover:bg-surface {INTERACTIVE_BASE} no-underline\">",
+                "<a href=\"{}\" aria-label=\"{}\" class=\"fjui-action-card {tone_class} flex items-center gap-4 {INTERACTIVE_BASE} no-underline\">",
                 html_escape(href),
                 html_escape(&props.title),
-                border_class,
             ),
             "</a>".to_string(),
         )
     } else {
         (
             format!(
-                "<div class=\"rounded-lg border-l-4 {border_class} border border-border bg-card shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:bg-surface {INTERACTIVE_BASE}\">"
+                "<div class=\"fjui-action-card {tone_class} flex items-center gap-4 cursor-pointer {INTERACTIVE_BASE}\">"
             ),
             "</div>".to_string(),
         )
@@ -1358,17 +1386,17 @@ pub(crate) fn render_action_card(
 
     if let Some(ref icon) = props.icon {
         html.push_str(&format!(
-            "<div class=\"w-10 h-10 flex-shrink-0 rounded-md bg-surface flex items-center justify-center text-text-muted\">{icon}</div>",
+            "<div class=\"fjui-action-card__icon w-10 h-10 flex-shrink-0 flex items-center justify-center\">{icon}</div>",
         ));
     }
 
     html.push_str(&format!(
-        "<div class=\"flex-1 min-w-0\"><p class=\"text-sm font-semibold text-text\">{}</p><p class=\"text-sm text-text-muted mt-0.5\">{}</p></div>",
+        "<div class=\"flex-1 min-w-0\"><p class=\"fjui-action-card__title\">{}</p><p class=\"fjui-action-card__description mt-0.5\">{}</p></div>",
         html_escape(&props.title),
         html_escape(&props.description)
     ));
 
-    html.push_str("<span class=\"text-text-muted flex-shrink-0 text-lg\">&rsaquo;</span>");
+    html.push_str("<span class=\"fjui-action-card__chevron flex-shrink-0\">&rsaquo;</span>");
 
     html.push_str(&close_tag);
     html
@@ -1414,13 +1442,14 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
         None => String::new(),
     };
 
-    // Exhaustive match on Tone → full-literal border class (D-03, SC-3).
-    // NEVER format!("border-{color}") — enum enforcement makes unknown values impossible.
-    let border_class = match props.color {
-        None | Some(Tone::Neutral) => "border border-border",
-        Some(Tone::Success) => "border border-success",
-        Some(Tone::Warning) => "border border-warning",
-        Some(Tone::Destructive) => "border border-destructive",
+    // D-01: fjui-tile + fjui-tile--{tone} full literals for tone modifier.
+    // Appearance (border-color, bg, radius) owned by skin. Layout (touch-action,
+    // w-full, flex, flex-col, gap-2, p-3) stays inline (D-02).
+    let tone_class = match props.color {
+        None | Some(Tone::Neutral)     => "fjui-tile--neutral",
+        Some(Tone::Success)            => "fjui-tile--success",
+        Some(Tone::Warning)            => "fjui-tile--warning",
+        Some(Tone::Destructive)        => "fjui-tile--destructive",
     };
 
     // Optional image area (D-03): lazy-loaded when image_url is set.
@@ -1435,34 +1464,30 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
         None => String::new(),
     };
 
-    // Optional stock badge chip (D-03).
+    // Optional stock badge chip (D-03) — uses fjui-badge skin class (already migrated in Plan 05).
     let badge_html = match &props.stock_badge {
         Some(badge) => {
             let escaped_badge = html_escape(badge);
-            format!(
-                "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 \
-                 text-xs font-medium bg-secondary/10 text-secondary-foreground\">\
-                 {escaped_badge}</span>"
-            )
+            format!("<span class=\"fjui-badge fjui-badge--neutral\">{escaped_badge}</span>")
         }
         None => String::new(),
     };
 
     // Tile structure (D-01/D-02):
-    // - Outer <div> wrapper carries filter/unit-price data attrs + tone border.
+    // - Outer <div> wrapper carries filter/unit-price data attrs + fjui-tile tone class.
     // - Inner <button> is the entire tap surface (data-qty-inc).
     // - Hidden input is a SIBLING of the button (inputs inside <button> are
     //   invalid HTML — D-01 note).
     format!(
-        "<div class=\"{border_class} bg-card rounded-lg {TOUCH_ACTION}\" \
+        "<div class=\"fjui-tile {tone_class} {TOUCH_ACTION}\" \
          data-filter-text=\"{name}\"{categories_attr}{unit_price_attr}>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
          class=\"{HIT_TARGET_MIN} {TOUCH_ACTION} {PRESS_ACTIVE} {TAP_HIGHLIGHT} {INTERACTIVE_BASE} \
-         w-full flex flex-col gap-2 p-3 rounded-lg text-left\" \
+         w-full flex flex-col gap-2 p-3 text-left\" \
          aria-label=\"Add {name}\">\
          {image_html}\
-         <span class=\"text-sm font-semibold text-text\">{name}</span>\
-         <span class=\"text-sm text-text-muted\">{price}</span>\
+         <span class=\"fjui-tile__name\">{name}</span>\
+         <span class=\"fjui-tile__price\">{price}</span>\
          {badge_html}\
          </button>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
@@ -2236,9 +2261,9 @@ mod tests {
             !html.contains(">99<"),
             "page 99 must be clamped away; got: {html}"
         );
-        // Active page marker: a <span> (not <a>) containing the page number.
+        // Active page marker: a <span> (not <a>) with fjui-pagination__btn--active containing the page number.
         assert!(
-            html.contains("bg-primary text-primary-foreground\">5<"),
+            html.contains("fjui-pagination__btn--active\">5<"),
             "active page 5 missing; got: {html}"
         );
     }
@@ -3479,6 +3504,114 @@ mod tests {
             assert!(!html.contains("bg-warning/10"), "old warning tint in alert output; got: {html}");
             assert!(!html.contains("bg-destructive/10"), "old destructive tint in alert output; got: {html}");
         }
+    }
+
+    // ── Plan 06 migration tests (Task 1: non-interactive atoms — RED) ─────────
+
+    /// render_text with each element emits a fjui-text--* class (no appearance utilities).
+    #[test]
+    fn text_emits_fjui_text_class() {
+        for (element, expected) in [
+            ("p", "fjui-text--body"),
+            ("h1", "fjui-text--display"),
+            ("h2", "fjui-text--section"),
+            ("h3", "fjui-text--section"),
+            ("span", "fjui-text--body"),
+        ] {
+            let spec = spec_with_root(
+                Element::new("Text")
+                    .prop("content", "Hello")
+                    .prop("element", element),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_text(el, &spec, &json!({}), 1);
+            assert!(
+                html.contains(expected),
+                "element={element} must emit {expected}; got: {html}"
+            );
+        }
+    }
+
+    /// render_text emits no appearance utility classes (no text-base, no text-3xl, etc).
+    #[test]
+    fn text_emits_no_appearance_utilities() {
+        for element in ["p", "h1", "h2", "h3", "span"] {
+            let spec = spec_with_root(
+                Element::new("Text")
+                    .prop("content", "Hello")
+                    .prop("element", element),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_text(el, &spec, &json!({}), 1);
+            assert!(!html.contains("text-base leading-relaxed"), "element={element}: old text-base leading-relaxed in output; got: {html}");
+            assert!(!html.contains("text-3xl font-bold"), "element={element}: old text-3xl in output; got: {html}");
+            assert!(!html.contains("text-2xl font-semibold"), "element={element}: old text-2xl in output; got: {html}");
+        }
+    }
+
+    /// render_toast emits fjui-toast base + fjui-toast--{tone} modifier.
+    #[test]
+    fn toast_emits_fjui_toast_classes() {
+        for (tone, expected) in [
+            ("neutral", "fjui-toast--neutral"),
+            ("success", "fjui-toast--success"),
+            ("warning", "fjui-toast--warning"),
+            ("destructive", "fjui-toast--destructive"),
+        ] {
+            let spec = spec_with_root(
+                Element::new("Toast")
+                    .prop("message", "msg")
+                    .prop("tone", tone),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_toast(el, &spec, &json!({}), 1);
+            assert!(html.contains("fjui-toast "), "toast must emit fjui-toast base; got: {html}");
+            assert!(html.contains(expected), "tone={tone} must emit {expected}; got: {html}");
+        }
+    }
+
+    /// render_toast emits no old TOAST_TONE_ appearance utilities (bg-primary/70, etc).
+    #[test]
+    fn toast_emits_no_old_tone_utilities() {
+        for tone in ["neutral", "success", "warning", "destructive"] {
+            let spec = spec_with_root(
+                Element::new("Toast")
+                    .prop("message", "msg")
+                    .prop("tone", tone),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_toast(el, &spec, &json!({}), 1);
+            assert!(!html.contains("bg-primary/70"), "old neutral tone class must be gone; got: {html}");
+            assert!(!html.contains("bg-success/70"), "old success tone class must be gone; got: {html}");
+            assert!(!html.contains("bg-warning/70"), "old warning tone class must be gone; got: {html}");
+            assert!(!html.contains("bg-destructive/70"), "old destructive tone class must be gone; got: {html}");
+        }
+    }
+
+    /// render_skeleton emits fjui-skeleton (while retaining the SHIMMER animation).
+    #[test]
+    fn skeleton_emits_fjui_skeleton_class() {
+        let spec = spec_with_root(Element::new("Skeleton"));
+        let el = spec.elements.get("root").unwrap();
+        let html = render_skeleton(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-skeleton"), "skeleton must emit fjui-skeleton; got: {html}");
+        // SHIMMER animation is retained (behavioral, not appearance)
+        assert!(html.contains("ferro-shimmer"), "shimmer animation must be retained; got: {html}");
+    }
+
+    /// render_checklist emits fjui-checklist (no old shadow-sm / rounded-lg).
+    #[test]
+    fn checklist_emits_fjui_class() {
+        let spec = spec_with_root(
+            Element::new("Checklist")
+                .prop("title", "Todo")
+                .prop("items", json!([{"label": "Task", "checked": false}])),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_checklist(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-checklist"), "checklist must emit fjui-checklist; got: {html}");
+        assert!(!html.contains("shadow-sm"), "old shadow-sm must be gone; got: {html}");
+        assert!(!html.contains("rounded-lg shadow"), "old rounded-lg shadow combo must be gone; got: {html}");
     }
 
     // ── Plan 05 migration tests (Task 2: StatCard / EmptyState) ─────────────
