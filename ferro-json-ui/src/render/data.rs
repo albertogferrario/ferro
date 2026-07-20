@@ -202,8 +202,9 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
         }
         html.push_str("</tr></thead>");
 
-        // Body rows — appearance utilities remain for now; Plan 08 migrates them.
-        html.push_str("<tbody>");
+        // Body rows — Plan 08: fjui-table__body + fjui-table__row + fjui-table__cell (D-08).
+        // Zebra striping removed (RSK-01); hairline separator + hover surface in skin layer.
+        html.push_str("<tbody class=\"fjui-table__body\">");
         for (index, row) in items.iter().enumerate() {
             let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
             let row_href = props
@@ -225,19 +226,31 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             } else {
                 ("", String::new())
             };
+            // fjui-table__row: skin owns hover surface + hairline separator + transition.
+            // Layout-only utilities (cursor-pointer) remain inline per D-02 allowlist.
             html.push_str(&format!(
-                "<tr class=\"even:bg-surface hover:bg-surface/80 {MOTION_FAST} border-t border-border{extra_class}\"{click_attrs}>"
+                "<tr class=\"fjui-table__row{extra_class}\"{click_attrs}>"
             ));
             for col in &props.columns {
+                // Numeric columns (currency, date, datetime) get the --numeric modifier for
+                // font-variant-numeric: tabular-nums + right-align (LANG-03).
+                // Boolean columns get the --boolean modifier and render a status dot.
+                let cell_class = match col.format {
+                    Some(ColumnFormat::Currency | ColumnFormat::Date | ColumnFormat::DateTime) => {
+                        "fjui-table__cell fjui-table__cell--numeric"
+                    }
+                    Some(ColumnFormat::Boolean) => "fjui-table__cell fjui-table__cell--boolean",
+                    _ => "fjui-table__cell",
+                };
                 html.push_str(&format!(
-                    "<td class=\"px-4 py-2 text-sm text-text {}\">{}</td>",
-                    col_align_class(col.align),
+                    "<td class=\"{}\">{}</td>",
+                    cell_class,
                     render_cell(col, row.get(&col.key))
                 ));
             }
             if let Some(ref actions) = props.row_actions {
                 let templated = template_actions(actions, row, &row_key_value);
-                html.push_str("<td class=\"px-4 py-2 text-right\">");
+                html.push_str("<td class=\"fjui-table__cell text-right\">");
                 html.push_str(&render_inline_dropdown(
                     &format!("dt-{row_key_value}"),
                     &templated,
