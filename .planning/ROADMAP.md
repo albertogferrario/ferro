@@ -72,6 +72,7 @@
 - ✅ **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 + 243.1 (completed 2026-06-24, shipped in 0.2.80; not yet archived). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
 - ✅ **v16.5 JSON-UI Design System** — Phases 250-253 (shipped 2026-07-04, 0.2.86; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). Single publish at Phase 253. Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
 - 🚧 **v16.6 POS Component Suite** — Phases 254-258 (started 2026-07-04; consumer-paired with gestiscilo's register/counter mode). Touch-first sale-screen components in the ferro-json-ui builtin catalog — ProductGrid, CartPanel, CategoryNav, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` through the Collect/Register projection layer, agent-authorable through the v16.5 MCP + design-lint boundary. Single publish at Phase 258. Independent of v16.4 (reserved 244–249).
+- 📋 **v17.0 Live Projection Surface** — Phases 259-262 (planned 2026-07-21). A declarative `LiveFragment` element binds a rendered fragment to a `ferro-projection` per-key snapshot and re-renders in place on delta — server-authoritative, no WASM — making the singular projection runtime a first-class, agent-composable, MCP-introspectable JSON-UI rendering target. Supporting ergonomics: request-scoped `#[memoize]` (render-path fetch dedup) and a one-line `asset!()` over the existing bundle/pipeline crates. Single publish at Phase 262. Anchor spec: `docs/superpowers/specs/2026-07-21-live-projection-surface-design.md`.
 
 ---
 
@@ -4061,3 +4062,146 @@ Plans:
 | POS-13 (/cassa flip + CI-exact gate + publish) | Phase 258 |
 
 ✓ 13/13 requirements mapped, no orphans, no duplicates.
+
+## v17.0 Live Projection Surface (Phases 259–262)
+
+**Status:** Planned (created 2026-07-21 via brainstorm; anchor spec committed). Phase
+numbering continues at 259. v16.6 is complete and pending archive; v16.4 Work Distribution
+(244–249) remains queued and independent.
+
+**Goal:** Join the two halves of a live-rendering story ferro already carries —
+`ferro-projection`'s per-key snapshot + delta broadcast and `ferro-json-ui`'s server-side
+rendering — into a declarative `LiveFragment` element that binds a rendered fragment to a
+projection key and re-renders in place on delta, server-authoritatively, with no WASM. Two
+supporting ergonomics land alongside: request-scoped fan-out-deduplicated memoization wired
+into the projection render pass, and a one-line `asset!()` declaration over the existing
+bundle/pipeline crates. The live fragment makes the singular projection runtime a
+first-class, agent-composable, MCP-introspectable JSON-UI rendering target.
+
+**Anchor spec:** `docs/superpowers/specs/2026-07-21-live-projection-surface-design.md`
+(design, alternatives rejected — client-re-request transport / general cross-request cache /
+plugin-not-builtin —, non-goals, honest limitations, deferred list-diffing direction).
+
+**Builds on shipped work:**
+- `ferro-projection` — per-key snapshot fold + `projection.{name}.{key}` delta broadcast (the
+  reactive substrate; not rebuilt).
+- `ferro-broadcast` — the WebSocket transport the client runtime subscribes to.
+- `ferro-json-ui` — the builtin catalog + renderer the `LiveFragment` element joins, through
+  the full drift-guard lockstep checklist.
+- `ferro-bundle` / `ferro-assets` — content-hashed immutable URLs + transform pipeline the
+  `asset!()` macro declares onto (no new infra).
+- `Request` extensions type-map (`framework/src/http/request.rs`) — the request-scoped store
+  home for memoization; complements the existing `eager_loading`/`BatchLoad` N+1 path.
+
+**Architectural constraints (encoded in every phase goal):**
+- No new crates — memoization lands in `framework` + `ferro-macros`, the live fragment in
+  `ferro-json-ui` + `ferro-projection`, the asset macro in `ferro-macros` over
+  `ferro-assets`/`ferro-bundle`.
+- Rendering stays server-authoritative — the client runtime only opens a socket and swaps
+  HTML; no WASM, no client-side state, no signal system.
+- The live fragment binds ONE per-key snapshot to ONE fragment; list/collection
+  reconciliation is deferred (spec non-goal).
+- `#[memoize]` is request-scoped only; cross-request caching remains `ferro-cache`. It
+  complements `eager_loading`/`BatchLoad`, it does not replace it.
+- The Iconify/Fontsource fetch runs on the Rust toolchain alone (no node, no nasm) and is
+  opt-in — no default feature pulls a network fetch into a normal build.
+- Single crates.io publish at Phase 262; no mid-milestone publishes.
+
+### Phases
+
+- [ ] **Phase 259: Request-scoped memoization** — `MemoStore` in request extensions +
+  `#[memoize]` attribute (fan-out dedup + concurrent-call coalescing via a shared future) +
+  wiring into the `ServiceDef → IntentGraph` render pass so N intents over one key issue one
+  fetch.
+- [ ] **Phase 260: Live reactive fragment** — `LiveFragment` builtin element (projection +
+  key + child template); `ferro-projection` render hook that re-renders the fragment on
+  delta; server-push-HTML transport on the existing channel; a small no-WASM client runtime
+  that swaps inner HTML. One binding pattern (per-key snapshot).
+- [ ] **Phase 261: `asset!()` ergonomics** — `asset!("path")` macro (embed + content-type
+  inference + `ferro-bundle` registration returning the hashed URL); opt-in
+  `ferro assets fetch` subcommand for Iconify sets + Fontsource families through the existing
+  pipeline.
+- [ ] **Phase 262: MCP + catalog + docs + publish** — `LiveFragment` through the full
+  lockstep checklist (BUILTIN_TYPES + dispatch + catalog spec + both count assertions +
+  `ferro-mcp` mirror); `generation_context` guidance for the live fragment, `#[memoize]`, and
+  `asset!()`; `docs/src` sections; `ferro-base.css` regen if the client runtime adds classes;
+  single operator-gated publish.
+
+### Phase Details
+
+#### Phase 259: Request-scoped memoization
+**Goal:** Give the render path a request-scoped memo store so an async function or
+`#[service]` method marked `#[memoize]` runs at most once per `(callsite, arguments)` per
+request, coalescing concurrent callers onto one shared computation — the fan-out dedup a
+multi-intent projection render needs.
+**Depends on:** `Request` extensions type-map (`framework/src/http/request.rs`); the
+`#[service]`/attribute-macro machinery (`ferro-macros`).
+**Requirements:** LIVE-01.
+**Success Criteria** (what must be TRUE):
+  1. A `#[memoize]` async fn / service method runs its body at most once per
+     `(callsite, args)` within a request; distinct args recompute (hit/miss table test).
+  2. Two concurrent callers of the same memoized `(callsite, args)` within one request share
+     a single computation (coalescing test), and the store is dropped with the request.
+  3. A projection render deriving multiple intents over one key issues a single underlying
+     fetch through the memo store (render-path integration test).
+
+#### Phase 260: Live reactive fragment
+**Goal:** Add a `LiveFragment` JSON-UI element that binds a child template to a projection
+key, renders the current snapshot on first paint, and re-renders in place on each delta —
+server-authoritatively, with a client runtime that only opens the `ferro-broadcast` socket
+and swaps HTML.
+**Depends on:** `ferro-projection` per-key snapshot + delta broadcast; `ferro-broadcast`
+transport; the `ferro-json-ui` renderer.
+**Requirements:** LIVE-02.
+**Success Criteria** (what must be TRUE):
+  1. A `LiveFragment` with `projection`/`key`/child renders the current snapshot to HTML on
+     first paint (render test).
+  2. An `event → ProjectionListener → delta` cycle broadcasts the re-rendered fragment HTML
+     on `projection.{name}.{key}` (integration test).
+  3. The introduced client runtime adds no WASM and no client-side state — it subscribes and
+     swaps inner HTML only.
+  4. Exactly one binding pattern ships (per-key snapshot); list reconciliation is absent by
+     design and documented as a non-goal.
+
+#### Phase 261: `asset!()` ergonomics
+**Goal:** Collapse the boot-time bundle builder to a one-line `asset!("path")` at the use
+site, and give an opt-in author-time fetch for Iconify sets and Fontsource families, all
+flowing through the existing content-hashed pipeline with no new infrastructure.
+**Depends on:** `ferro-bundle` (content-hashed registration); `ferro-assets` (transform
+pipeline); `ferro-cli` (fetch subcommand).
+**Requirements:** LIVE-03.
+**Success Criteria** (what must be TRUE):
+  1. `asset!("path")` returns a content-hashed URL and registers a servable bundle; the URL
+     is stable across builds for unchanged bytes.
+  2. Content-type is inferred from the extension; unrecognized extensions pass through
+     byte-identical (pipeline passthrough guarantee preserved).
+  3. `ferro assets fetch` downloads an Iconify set / Fontsource family into the asset dir on
+     the Rust toolchain alone; it is opt-in and absent from a normal `cargo build`.
+
+#### Phase 262: MCP + catalog + docs + publish
+**Goal:** Close the single-source loop — surface `LiveFragment` through the same catalog and
+`generation_context` an agent reads, document all three capabilities, and ship them in one
+operator-gated publish.
+**Depends on:** Phases 259–261.
+**Requirements:** LIVE-04.
+**Success Criteria** (what must be TRUE):
+  1. `json_ui_catalog` returns `LiveFragment`; both count assertions (canonical + `ferro-mcp`
+     mirror) agree at the bumped count.
+  2. `generation_context` documents when to use `LiveFragment` (live projection binding), the
+     `#[memoize]` render-dedup pattern, and `asset!()`.
+  3. `docs/src` covers all three capabilities with at least one usage example each; the
+     mdBook build exits 0.
+  4. The full CI-exact gate is green (`cargo fmt --all -- --check`,
+     `cargo clippy --all --all-targets -- -D warnings`, `cargo test --all-features`);
+     `cargo publish -p ferro-rs` exits 0; the published version exceeds 0.2.89.
+
+### Requirement → Phase Mapping (v17.0)
+
+| Requirement | Phase |
+|-------------|-------|
+| LIVE-01 (request-scoped `#[memoize]` + render-path fetch dedup) | Phase 259 |
+| LIVE-02 (`LiveFragment` element + projection render hook + client runtime) | Phase 260 |
+| LIVE-03 (`asset!()` macro + Iconify/Fontsource fetch) | Phase 261 |
+| LIVE-04 (`ferro-mcp` catalog + generation_context + docs + publish) | Phase 262 |
+
+✓ 4/4 requirements mapped, no orphans, no duplicates.
