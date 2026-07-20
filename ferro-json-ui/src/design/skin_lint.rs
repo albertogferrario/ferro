@@ -23,6 +23,11 @@ const INTERACTIVE_PREFIXES: &[&str] = &[
     "fjui-menu-item",
     "fjui-tab",
     "fjui-table__row",
+    "fjui-kanban__card",
+    "fjui-action-card",
+    "fjui-tile",
+    "fjui-notification-dropdown__trigger",
+    "fjui-toast__close",
 ];
 
 /// Non-interactive `fjui-` prefixes that are exempt from interaction-state checks.
