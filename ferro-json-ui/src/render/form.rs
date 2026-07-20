@@ -1980,4 +1980,85 @@ mod tests {
             "expected 2 checkboxes for 2 options; got: {html}"
         );
     }
+
+    // ── Plan 08: fjui- classes for Input/Select/Textarea/FormSection/FormGroup ──
+
+    /// D-08 migration: render_input emits fjui-input class.
+    #[test]
+    fn input_emits_fjui_input_class() {
+        let el = mk_element(
+            "Input",
+            json!({"field": "email", "label": "Email"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-input"),
+            "render_input must emit fjui-input class; got: {html}"
+        );
+    }
+
+    /// D-08 migration: render_input with error emits fjui-input--error modifier.
+    #[test]
+    fn input_with_error_emits_fjui_input_error_modifier() {
+        let el = mk_element(
+            "Input",
+            json!({"field": "email", "label": "Email", "error": "required"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-input--error"),
+            "input with error must emit fjui-input--error; got: {html}"
+        );
+    }
+
+    /// D-08 migration: render_select emits fjui-select class.
+    #[test]
+    fn select_emits_fjui_select_class() {
+        let el = mk_element(
+            "Select",
+            json!({
+                "field": "role",
+                "label": "Role",
+                "options": [{"value": "a", "label": "A"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_select(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-select"),
+            "render_select must emit fjui-select class; got: {html}"
+        );
+    }
+
+    /// D-08 migration: render_input (textarea) emits fjui-textarea class.
+    #[test]
+    fn textarea_emits_fjui_textarea_class() {
+        let el = mk_element(
+            "Input",
+            json!({"field": "notes", "label": "Notes", "input_type": "textarea"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-textarea"),
+            "textarea input must emit fjui-textarea class; got: {html}"
+        );
+    }
+
+    /// D-08 migration: error message paragraph emits fjui-form-message--error.
+    #[test]
+    fn input_error_paragraph_emits_fjui_form_message_error() {
+        let el = mk_element(
+            "Input",
+            json!({"field": "email", "label": "Email", "error": "is required"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-form-message--error"),
+            "error paragraph must emit fjui-form-message--error class; got: {html}"
+        );
+    }
 }
