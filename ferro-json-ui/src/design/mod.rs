@@ -19,9 +19,12 @@
 //! assert!(findings.is_empty());
 //! ```
 
+mod contrast_lint;
 mod infer;
 mod rules;
 pub mod types;
+
+pub use contrast_lint::check_token_contrast;
 
 pub use crate::spec::DesignMeta;
 pub use types::{DesignRule, Finding, Severity};
