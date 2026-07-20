@@ -1,0 +1,77 @@
+/*
+ * ferro-skin.css — skin layer for ferro-json-ui.
+ *
+ * Three sections in order:
+ *   1. Font declarations (Geist, Geist Mono) — before @layer components
+ *   2. BASE rules (body typography + iOS input zoom prevention)
+ *   3. Component scaffold — populated by Plans 05-09
+ *
+ * Rules inside @layer components:
+ *   - reference only var(--...) tokens, never raw color/size literals
+ *   - no utility composition helpers (Tailwind v4 JIT purges unscanned utilities)
+ *   - interactive fjui-* rules define all four states: hover, focus-visible,
+ *     active, disabled
+ */
+
+/* -------------------------------------------------------------------------
+ * 1. FONT FACE — self-hosted Geist fonts (LANG-01)
+ * Served at /_ferro/fonts/ with immutable cache headers (see Plan 02).
+ * ascent-override / descent-override are starting fallback metrics; tuned in
+ * Plan 10 against the CLS <= 0.02 gate.
+ * ------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/_ferro/fonts/Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  ascent-override: 95%;
+  descent-override: 20%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/_ferro/fonts/GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -------------------------------------------------------------------------
+ * 2. BASE — typography + iOS zoom prevention
+ * These rules are outside @layer components so they apply unconditionally
+ * without layer specificity considerations.
+ * ------------------------------------------------------------------------- */
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);      /* 14px density */
+  font-weight: var(--text-body-weight);  /* 400 */
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+h1, h2, h3, h4 { text-wrap: balance; }
+
+/* iOS Safari focus-zoom prevention — MUST ship with the 14px body rule (Pitfall E-01).
+ * max(1rem, 16px): on 16px root (browser default) the floor is exactly 16px, which
+ * overrides the 14px body density for form controls and prevents iOS Safari from
+ * zooming the viewport when an input receives focus. */
+input, select, textarea {
+  font-size: max(1rem, 16px);
+}
+
+/* -------------------------------------------------------------------------
+ * 3. LAYER COMPONENTS — skin scaffold
+ * fjui-* component skin rules are added here family-by-family (Plans 05-09).
+ * Rules read only var(--...) tokens; never raw literals; interactive rules
+ * define all four states. Verified by design:lint --skin.
+ * ------------------------------------------------------------------------- */
+
+@layer components {
+  /* fjui-* component skin rules are added here family-by-family (Plans 05-09).
+   * Rules read only var(--...) tokens; never raw literals; interactive rules
+   * define all four states. Verified by design:lint --skin. */
+}
