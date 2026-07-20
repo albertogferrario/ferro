@@ -4,7 +4,7 @@
  * Three sections in order:
  *   1. Font declarations (Geist, Geist Mono) — before @layer components
  *   2. BASE rules (body typography + iOS input zoom prevention)
- *   3. Component scaffold — populated by Plans 05-09
+ *   3. Component rules — populated by Plans 05-09
  *
  * Rules inside @layer components:
  *   - reference only var(--...) tokens, never raw color/size literals
@@ -64,14 +64,318 @@ input, select, textarea {
 }
 
 /* -------------------------------------------------------------------------
- * 3. LAYER COMPONENTS — skin scaffold
- * fjui-* component skin rules are added here family-by-family (Plans 05-09).
- * Rules read only var(--...) tokens; never raw literals; interactive rules
- * define all four states. Verified by design:lint --skin.
+ * 3. LAYER COMPONENTS — Plan 05 atom skin rules
+ * Button, Badge, Alert, Card, StatCard, Tabs, EmptyState.
+ * Token values are copied verbatim from 246-UI-SPEC.md Per-Component Visual
+ * Contracts tables. Allowlisted structural geometry: 2px ring, 1px/2px/3px
+ * borders, 48px icon container (not controlled by tokens).
  * ------------------------------------------------------------------------- */
 
 @layer components {
-  /* fjui-* component skin rules are added here family-by-family (Plans 05-09).
-   * Rules read only var(--...) tokens; never raw literals; interactive rules
-   * define all four states. Verified by design:lint --skin. */
+
+  /* ── Button ────────────────────────────────────────────────────────────── */
+
+  .fjui-btn {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition-property: background-color, color, box-shadow;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    /* All four interaction states required by skin-interaction-states lint rule */
+    &:hover {
+      /* variant-specific hover defined in modifier rules below */
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active {
+      opacity: 0.85;
+    }
+    &:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  }
+
+  /* Variant modifiers */
+
+  .fjui-btn--primary {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: none;
+
+    &:hover {
+      background-color: color-mix(in oklab, var(--color-primary) 88%, transparent);
+    }
+  }
+
+  .fjui-btn--secondary {
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    border: none;
+
+    &:hover {
+      background-color: color-mix(in oklab, var(--color-secondary) 88%, black);
+    }
+  }
+
+  .fjui-btn--outline {
+    background-color: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+
+    &:hover {
+      background-color: var(--color-surface);
+    }
+  }
+
+  .fjui-btn--ghost {
+    background-color: transparent;
+    color: var(--color-text);
+    border: none;
+
+    &:hover {
+      background-color: var(--color-surface);
+    }
+  }
+
+  .fjui-btn--destructive {
+    background-color: var(--color-destructive);
+    color: oklch(100% 0 0);
+    border: none;
+
+    &:hover {
+      background-color: color-mix(in oklab, var(--color-destructive) 88%, transparent);
+    }
+  }
+
+  /* Size modifiers — allowlisted structural geometry: block paddings are
+   * derived remainders after fixed height minus font-size (see UI-SPEC
+   * §Justified Deviations for the spacing-grid rationale). */
+
+  .fjui-btn--sm {
+    padding-inline: var(--spacing-3);
+    padding-block: var(--spacing-1-5);
+    font-size: var(--text-meta-size);
+  }
+
+  .fjui-btn--md {
+    padding-inline: var(--spacing-4);
+    padding-block: var(--spacing-2);
+    font-size: var(--text-body-size);
+  }
+
+  .fjui-btn--lg {
+    padding-inline: var(--spacing-5);
+    padding-block: var(--spacing-2-5);
+    font-size: var(--text-section-size);
+  }
+
+  /* ── Badge ─────────────────────────────────────────────────────────────── */
+
+  /* Badge is NOT interactive — no hover/focus/active/disabled states required. */
+
+  .fjui-badge {
+    border-radius: var(--radius-full);
+    padding-inline: var(--spacing-2-5);
+    padding-block: var(--spacing-0-5);
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    white-space: nowrap;
+    width: max-content;
+    display: inline-block;
+  }
+
+  .fjui-badge--neutral {
+    background-color: color-mix(in oklab, var(--color-border) 50%, var(--color-surface));
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+
+  .fjui-badge--success {
+    background-color: color-mix(in oklab, var(--color-success) 12%, var(--color-background));
+    color: var(--color-success);
+  }
+
+  .fjui-badge--warning {
+    background-color: color-mix(in oklab, var(--color-warning) 12%, var(--color-background));
+    color: color-mix(in oklab, var(--color-warning) 80%, black);
+  }
+
+  .fjui-badge--destructive {
+    background-color: color-mix(in oklab, var(--color-destructive) 12%, var(--color-background));
+    color: var(--color-destructive);
+  }
+
+  /* ── Card ──────────────────────────────────────────────────────────────── */
+
+  /* Card is NOT interactive and is a flat surface — border only, NO box-shadow
+   * (elevation rule LANG-04). Interactive cards use fjui-action-card (Plan 07). */
+
+  .fjui-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    /* NO box-shadow — flat surface elevation rule (LANG-04) */
+  }
+
+  /* ── Alert ─────────────────────────────────────────────────────────────── */
+
+  /* Alert is NOT interactive. */
+
+  .fjui-alert {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    border-left-width: 3px;
+    padding: var(--spacing-4);
+    font-size: var(--text-body-size);
+  }
+
+  .fjui-alert--neutral {
+    background-color: var(--color-surface);
+    border-left-color: var(--color-border);
+    color: var(--color-text);
+  }
+
+  .fjui-alert--success {
+    background-color: color-mix(in oklab, var(--color-success) 8%, var(--color-background));
+    border-left-color: var(--color-success);
+    color: var(--color-text);
+  }
+
+  .fjui-alert--warning {
+    background-color: color-mix(in oklab, var(--color-warning) 8%, var(--color-background));
+    border-left-color: var(--color-warning);
+    color: var(--color-text);
+  }
+
+  .fjui-alert--destructive {
+    background-color: color-mix(in oklab, var(--color-destructive) 8%, var(--color-background));
+    border-left-color: var(--color-destructive);
+    color: var(--color-text);
+  }
+
+  /* ── StatCard ──────────────────────────────────────────────────────────── */
+
+  /* StatCard is NOT interactive — flat surface, border only (LANG-04). */
+
+  .fjui-stat-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* Tone modifiers add a top accent stripe */
+  .fjui-stat-card--default {
+    /* border-only, no colour accent */
+  }
+
+  .fjui-stat-card--success {
+    border-top: 2px solid var(--color-success);
+  }
+
+  .fjui-stat-card--warning {
+    border-top: 2px solid var(--color-warning);
+  }
+
+  .fjui-stat-card--destructive {
+    border-top: 2px solid var(--color-destructive);
+  }
+
+  /* Stat value element — 24px/600 tabular numerals (component-local size per
+   * UI-SPEC §Typography component-local sizes table). */
+  .fjui-stat-card__value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text);
+  }
+
+  /* ── Tabs ──────────────────────────────────────────────────────────────── */
+
+  /* Tabs is interactive — all four states required. */
+
+  .fjui-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+    gap: 0;
+  }
+
+  .fjui-tab {
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    padding: var(--spacing-3) var(--spacing-4);
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    border-bottom: 2px solid transparent;
+    transition-property: color, border-color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      color: var(--color-text);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: -2px;
+    }
+    &:active {
+      opacity: 0.85;
+    }
+    &:disabled {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  }
+
+  .fjui-tab--active {
+    color: var(--color-text);
+    border-bottom-color: var(--color-primary);
+  }
+
+  .fjui-tab--inactive {
+    color: var(--color-text-muted);
+    border-bottom-color: transparent;
+  }
+
+  /* ── EmptyState ────────────────────────────────────────────────────────── */
+
+  /* EmptyState is NOT interactive — one pattern only (RSK-04). */
+
+  .fjui-empty-state {
+    text-align: center;
+    padding-block: var(--spacing-12);
+  }
+
+  .fjui-empty-state__icon {
+    width: 3rem;          /* 48px icon container — allowlisted structural geometry */
+    height: 3rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-4);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fjui-empty-state__title {
+    font-size: var(--text-section-size);
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--spacing-2);
+  }
+
+  .fjui-empty-state__body {
+    font-size: var(--text-body-size);
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-6);
+  }
+
 }
