@@ -47,7 +47,9 @@ pub mod runtime;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, HttpMethod};
 pub use assets::leaflet::{leaflet_image, LEAFLET_CSS, LEAFLET_JS};
+#[cfg(not(feature = "dev-css"))]
 pub use assets::FERRO_BASE_CSS;
+pub use assets::{ferro_base_css, GEIST_MONO_WOFF2, GEIST_OFL_TXT, GEIST_SANS_WOFF2};
 pub use component::{
     ActionCardProps, ActionGroupProps, ActionItem, AlertProps, AvatarProps, BadgeProps,
     BreadcrumbItem, BreadcrumbProps, ButtonGroupProps, ButtonProps, ButtonType, CardAppearance,

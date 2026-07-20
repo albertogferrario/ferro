@@ -11,6 +11,7 @@ keywords = ["json-ui", "sdui", "server-driven-ui", "ferro"]
 categories = ["web-programming", "web-programming::http-server"]
 
 [features]
+dev-css = []
 projections = ["dep:ferro-projections", "dep:ferro-theme"]
 
 [dependencies]
