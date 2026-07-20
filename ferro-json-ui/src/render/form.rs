@@ -184,11 +184,6 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     }
 
     let has_error = props.error.is_some();
-    let border_class = if has_error {
-        "border-destructive"
-    } else {
-        "border-border"
-    };
     // The error ring is semantic (destructive) and intentionally NOT the
     // `--color-ring` token; only the non-error branch uses the shared ring.
     let focus_ring_class = if has_error {
@@ -207,12 +202,14 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
     match props.input_type {
         InputType::Hidden => unreachable!("handled by early return above"),
         InputType::Textarea => {
+            // fjui-textarea: skin owns border/bg/padding/min-height/font-family/line-height.
+            // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
             let val = resolved_value.as_deref().unwrap_or("");
+            let error_class = if has_error { " fjui-textarea--error" } else { "" };
             html.push_str(&format!(
-                "<textarea id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
+                "<textarea id=\"{}\" name=\"{}\" class=\"fjui-textarea{error_class} w-full {MOTION_FAST} {DISABLED_BASE} {}\"",
                 html_escape(&props.field),
                 html_escape(&props.field),
-                border_class,
                 focus_ring_class
             ));
             if let Some(ref placeholder) = props.placeholder {
@@ -274,12 +271,15 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 InputType::Search => "search",
                 InputType::Textarea | InputType::Hidden | InputType::File => unreachable!(),
             };
+            // fjui-input: skin owns border/bg/padding/border-radius/font-size (incl 16px iOS floor).
+            // fjui-input--error: skin owns destructive border color when in error state.
+            // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
+            let error_class = if has_error { " fjui-input--error" } else { "" };
             html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"block w-full rounded-md border {} px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
+                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"fjui-input{error_class} w-full {MOTION_FAST} {DISABLED_BASE} {}\"",
                 input_type,
                 html_escape(&props.field),
                 html_escape(&props.field),
-                border_class,
                 focus_ring_class
             ));
             if let Some(ref placeholder) = props.placeholder {
@@ -334,7 +334,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
 
     if let Some(ref error) = props.error {
         html.push_str(&format!(
-            "<p id=\"err-{}\" class=\"text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"fjui-form-message--error\">{}</p>",
             html_escape(&props.field),
             html_escape(error)
         ));
@@ -367,11 +367,6 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     };
 
     let has_error = props.error.is_some();
-    let border_class = if has_error {
-        "border-destructive"
-    } else {
-        "border-border"
-    };
     // The error ring is semantic (destructive) and intentionally NOT the
     // `--color-ring` token; only the non-error branch uses the shared ring.
     let focus_ring_class = if has_error {
@@ -388,11 +383,14 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     ));
 
     html.push_str("<div class=\"relative\">");
+    // fjui-select: skin owns border/bg/padding/border-radius/font-size/appearance.
+    // fjui-select--error: skin owns destructive border when in error state.
+    // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
+    let select_error_class = if has_error { " fjui-select--error" } else { "" };
     html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"block w-full appearance-none bg-background rounded-md border {} pr-10 px-3 py-2 text-base shadow-sm {MOTION_FAST} {DISABLED_BASE} {}\"",
+        "<select id=\"{}\" name=\"{}\" class=\"fjui-select{select_error_class} w-full pr-10 {MOTION_FAST} {DISABLED_BASE} {}\"",
         html_escape(&props.field),
         html_escape(&props.field),
-        border_class,
         focus_ring_class
     ));
     if props.required == Some(true) {
@@ -445,7 +443,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
     if let Some(ref error) = props.error {
         html.push_str(&format!(
-            "<p id=\"err-{}\" class=\"text-sm text-destructive\">{}</p>",
+            "<p id=\"err-{}\" class=\"fjui-form-message--error\">{}</p>",
             html_escape(&props.field),
             html_escape(error)
         ));
@@ -929,7 +927,7 @@ mod tests {
             "got: {html}"
         );
         assert!(
-            html.contains("<p id=\"err-email\" class=\"text-sm text-destructive\">required</p>"),
+            html.contains("<p id=\"err-email\" class=\"fjui-form-message--error\">required</p>"),
             "got: {html}"
         );
     }
@@ -1196,12 +1194,12 @@ mod tests {
             "aria-describedby must be on the <input type=\"file\">; tag: {input_tag}"
         );
 
-        // Shared error <p> already has id (form.rs:309-315) — confirm it survives.
+        // Shared error <p> already has id — confirm it survives with the migrated class.
         assert!(
             html.contains(
-                "<p id=\"err-avatar\" class=\"text-sm text-destructive\">must be PNG</p>"
+                "<p id=\"err-avatar\" class=\"fjui-form-message--error\">must be PNG</p>"
             ),
-            "shared error <p> must carry id and locked class chain; got: {html}"
+            "shared error <p> must carry id and fjui-form-message--error class; got: {html}"
         );
 
         assert!(
