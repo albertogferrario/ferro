@@ -53,6 +53,18 @@
 
   /* Display font token */
   --font-display: var(--font-sans);
+
+  /* Type-scale tokens — v2 semantic size/weight scale */
+  --text-display-size: 1.75rem;
+  --text-display-weight: 600;
+  --text-section-size: 0.9375rem;
+  --text-section-weight: 600;
+  --text-body-size: 0.875rem;
+  --text-body-weight: 400;
+  --text-meta-size: 0.8125rem;
+  --text-meta-weight: 400;
+  --text-micro-size: 0.75rem;
+  --text-micro-weight: 500;
 }
 
 @media (prefers-color-scheme: dark) {

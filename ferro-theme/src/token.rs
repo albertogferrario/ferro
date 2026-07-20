@@ -82,7 +82,29 @@ pub const TOKEN_COLOR_RING: &str = "--color-ring";
 /// Display/heading font family; defaults to var(--font-sans).
 pub const TOKEN_FONT_DISPLAY: &str = "--font-display";
 
-/// All token names in the ferro-theme/v2 vocabulary (30 slots).
+// Type-scale tokens — v2 semantic size and weight scale
+/// Display text size (headings, page titles). Default: 1.75rem (28px).
+pub const TOKEN_TEXT_DISPLAY_SIZE: &str = "--text-display-size";
+/// Display text weight. Default: 600.
+pub const TOKEN_TEXT_DISPLAY_WEIGHT: &str = "--text-display-weight";
+/// Section label text size (group headers, card titles). Default: 0.9375rem (15px).
+pub const TOKEN_TEXT_SECTION_SIZE: &str = "--text-section-size";
+/// Section label text weight. Default: 600.
+pub const TOKEN_TEXT_SECTION_WEIGHT: &str = "--text-section-weight";
+/// Body text size (default content). Default: 0.875rem (14px).
+pub const TOKEN_TEXT_BODY_SIZE: &str = "--text-body-size";
+/// Body text weight. Default: 400.
+pub const TOKEN_TEXT_BODY_WEIGHT: &str = "--text-body-weight";
+/// Meta text size (secondary labels, timestamps). Default: 0.8125rem (13px).
+pub const TOKEN_TEXT_META_SIZE: &str = "--text-meta-size";
+/// Meta text weight. Default: 400.
+pub const TOKEN_TEXT_META_WEIGHT: &str = "--text-meta-weight";
+/// Micro text size (badges, chips, footnotes). Default: 0.75rem (12px).
+pub const TOKEN_TEXT_MICRO_SIZE: &str = "--text-micro-size";
+/// Micro text weight. Default: 500.
+pub const TOKEN_TEXT_MICRO_WEIGHT: &str = "--text-micro-weight";
+
+/// All token names in the ferro-theme/v2 vocabulary (40 slots).
 pub const ALL_TOKENS: &[&str] = &[
     TOKEN_BACKGROUND,
     TOKEN_SURFACE,
@@ -114,6 +136,17 @@ pub const ALL_TOKENS: &[&str] = &[
     TOKEN_MOTION_EASE,
     TOKEN_COLOR_RING,
     TOKEN_FONT_DISPLAY,
+    // Type-scale tokens (v2)
+    TOKEN_TEXT_DISPLAY_SIZE,
+    TOKEN_TEXT_DISPLAY_WEIGHT,
+    TOKEN_TEXT_SECTION_SIZE,
+    TOKEN_TEXT_SECTION_WEIGHT,
+    TOKEN_TEXT_BODY_SIZE,
+    TOKEN_TEXT_BODY_WEIGHT,
+    TOKEN_TEXT_META_SIZE,
+    TOKEN_TEXT_META_WEIGHT,
+    TOKEN_TEXT_MICRO_SIZE,
+    TOKEN_TEXT_MICRO_WEIGHT,
 ];
 
 #[cfg(test)]
