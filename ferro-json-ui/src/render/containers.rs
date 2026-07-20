@@ -3564,4 +3564,117 @@ mod tests {
             "no decode/parse error comment; got: {html}"
         );
     }
+
+    // ── Plan 07: fjui-* migration RED tests (TDD) ──────────────────────────
+    // These tests drive the migration of flat containers (Card, PageHeader,
+    // KanbanBoard) and overlay containers (Modal, Tabs) to fjui-* classes.
+
+    /// Task 1 (RED): Card outer wrapper emits fjui-card (no shadow-sm/md utility).
+    #[test]
+    fn card_emits_fjui_card_class() {
+        let spec = build_spec(vec![("root", Element::new("Card").prop("title", "T"))]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_card(el, &spec, &json!({}), 0);
+        assert!(
+            html.contains("fjui-card"),
+            "Card must emit fjui-card class; got: {html}"
+        );
+        // LANG-04: flat surface must not carry shadow utility in the Rust output
+        assert!(
+            !html.contains("shadow-sm") && !html.contains("shadow-md"),
+            "fjui-card must not carry shadow utilities — elevation is flat (border only); got: {html}"
+        );
+    }
+
+    /// Task 1 (RED): PageHeader emits fjui-page-header; title gets display text class.
+    #[test]
+    fn page_header_emits_fjui_page_header_class() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("PageHeader").prop("title", "Dashboard"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_page_header(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-page-header"),
+            "PageHeader must emit fjui-page-header class; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-text--display"),
+            "PageHeader title element must carry fjui-text--display class; got: {html}"
+        );
+    }
+
+    /// Task 1 (RED): KanbanBoard column card emits fjui-kanban-card.
+    #[test]
+    fn kanban_card_emits_fjui_class() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("KanbanBoard").prop(
+                "columns",
+                json!([{"id": "todo", "title": "Todo", "count": 1, "children": []}]),
+            ),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_kanban_board(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-kanban__column"),
+            "KanbanBoard must emit fjui-kanban__column for each lane; got: {html}"
+        );
+    }
+
+    /// Task 2 (RED): Modal emits fjui-modal on the <dialog> element.
+    #[test]
+    fn modal_emits_fjui_modal_class() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("Modal")
+                .prop("id", "m1")
+                .prop("title", "Confirm"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_modal(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-modal"),
+            "Modal dialog must emit fjui-modal class; got: {html}"
+        );
+        // LANG-04: overlay must not carry border utility in Rust output
+        assert!(
+            !html.contains("border-border"),
+            "fjui-modal must not carry border-border — overlay elevation is shadow only; got: {html}"
+        );
+    }
+
+    /// Task 2 (RED): Tabs container emits fjui-tabs; active tab emits fjui-tab--active.
+    #[test]
+    fn tabs_emits_fjui_tabs_classes() {
+        let spec = build_spec(vec![
+            (
+                "root",
+                Element::new("Tabs").prop("default_tab", "a").prop(
+                    "tabs",
+                    json!([
+                        {"value": "a", "label": "A", "children": ["t1"]},
+                        {"value": "b", "label": "B", "children": ["t2"]},
+                    ]),
+                ),
+            ),
+            ("t1", Element::new("Text").prop("content", "PANEL_A")),
+            ("t2", Element::new("Text").prop("content", "PANEL_B")),
+        ]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tabs(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("fjui-tabs"),
+            "Tabs must emit fjui-tabs container class; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-tab"),
+            "Tabs must emit fjui-tab on each tab button; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-tab--active"),
+            "Active tab must emit fjui-tab--active modifier; got: {html}"
+        );
+    }
 }
