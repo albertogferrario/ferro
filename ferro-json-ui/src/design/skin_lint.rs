@@ -137,7 +137,6 @@ fn extract_fjui_rules(layer_content: &str) -> Vec<RuleBlock> {
         let selector = sel_rest[..sel_end].to_string();
 
         // Find the opening brace of this rule
-        let from = dot_fjui + sel_end + 1;
         let after_sel = &layer_content[dot_fjui..];
         let brace_rel = match after_sel.find('{') {
             Some(b) => b,
@@ -168,7 +167,6 @@ fn extract_fjui_rules(layer_content: &str) -> Vec<RuleBlock> {
 
         // Advance past the closing brace
         pos = body_start + body_end + 1;
-        let _ = from; // suppress unused warning
     }
 
     rules
