@@ -175,30 +175,34 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     }
 
     // Desktop table (hidden on mobile).
+    // D-08 migration Plan 07: TABLE SHELL uses fjui-table, fjui-table__header,
+    // fjui-table__header-cell. Row/cell classes are Plan 08 scope (data.rs body).
+    // The outer wrapper is a flat container (fjui-card border-only, LANG-04).
     html.push_str(
-        "<div class=\"hidden md:block rounded-lg border border-border overflow-hidden\">",
+        "<div class=\"hidden md:block fjui-card overflow-hidden\">",
     );
 
     {
-        html.push_str("<table class=\"w-full\">");
+        html.push_str("<table class=\"fjui-table\">");
 
-        // Header.
-        html.push_str("<thead><tr class=\"bg-surface\">");
+        // Header shell — Plan 07 scope.
+        html.push_str("<thead class=\"fjui-table__header\"><tr>");
         for col in &props.columns {
             html.push_str(&format!(
-                "<th class=\"px-4 py-2 {} text-xs font-semibold uppercase tracking-wider text-text-muted\">{}</th>",
+                "<th class=\"fjui-table__header-cell {}\">{}",
                 col_align_class(col.align),
                 html_escape(&col.label)
             ));
+            html.push_str("</th>");
         }
         if has_actions {
             html.push_str(
-                "<th class=\"px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-text-muted\">Azioni</th>"
+                "<th class=\"fjui-table__header-cell text-right\">Azioni</th>"
             );
         }
         html.push_str("</tr></thead>");
 
-        // Body.
+        // Body rows — appearance utilities remain for now; Plan 08 migrates them.
         html.push_str("<tbody>");
         for (index, row) in items.iter().enumerate() {
             let row_key_value = resolve_row_key(row, props.row_key.as_deref(), index);
@@ -248,6 +252,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
 
     // Mobile cards (visible on mobile). Empty is handled by the early
     // short-circuit above; reaching here implies at least one row.
+    // Mobile card rows use fjui-card (flat surface, border-only, LANG-04).
     html.push_str("<div class=\"block md:hidden space-y-3\">");
     {
         for (index, row) in items.iter().enumerate() {
@@ -266,7 +271,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 // legally contains the button.
                 (
                     format!(
-                        "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\">",
+                        "<div class=\"fjui-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\">",
                         html_escape(href)
                     ),
                     "</div>".to_string(),
@@ -274,15 +279,14 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             } else if props.row_actions.is_some() {
                 (
                     format!(
-                        "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2 cursor-pointer\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('dt-m-{}').showPopover()\">",
+                        "<div class=\"fjui-card p-4 space-y-2 cursor-pointer\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('dt-m-{}').showPopover()\">",
                         html_escape(&row_key_value)
                     ),
                     "</div>".to_string(),
                 )
             } else {
                 (
-                    "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2\">"
-                        .to_string(),
+                    "<div class=\"fjui-card p-4 space-y-2\">".to_string(),
                     "</div>".to_string(),
                 )
             };
@@ -296,7 +300,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             html.push_str("<div class=\"flex items-start justify-between gap-3\">");
             if let Some(first) = props.columns.first() {
                 html.push_str(&format!(
-                    "<div class=\"min-w-0 flex-1 text-sm font-semibold text-text truncate\">{}</div>",
+                    "<div class=\"min-w-0 flex-1 fjui-text--body font-semibold truncate\">{}</div>",
                     render_cell(first, row.get(&first.key))
                 ));
             }
@@ -314,7 +318,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 html.push_str("<div class=\"mt-2 space-y-1\">");
                 for col in props.columns.iter().skip(1) {
                     html.push_str(&format!(
-                        "<div class=\"flex justify-between gap-3 text-xs\"><span class=\"text-text-muted\">{}</span><span class=\"text-text text-right\">{}</span></div>",
+                        "<div class=\"flex justify-between gap-3 fjui-text--micro\"><span class=\"fjui-text--meta\">{}</span><span class=\"text-right\">{}</span></div>",
                         html_escape(&col.label),
                         render_cell(col, row.get(&col.key))
                     ));

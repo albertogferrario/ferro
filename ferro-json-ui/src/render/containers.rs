@@ -62,41 +62,42 @@ pub(crate) fn render_card(el: &Element, spec: &Spec, data: &Value, depth: usize)
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    let (outer_class, inner_pad) = match props.appearance {
-        CardAppearance::Bordered => (
-            "rounded-lg border border-border bg-card shadow-sm overflow-visible",
-            "p-4",
-        ),
-        CardAppearance::Elevated => ("rounded-lg bg-card shadow-md overflow-visible", "p-8"),
+    // D-08 migration: Card is a flat surface — fjui-card carries border-only elevation
+    // (LANG-04). The Elevated appearance variant also migrates to fjui-card; the skin
+    // layer may provide a modifier if elevated styling is needed in future. For now
+    // both variants use fjui-card (border-only, no shadow utility in Rust output).
+    let inner_pad = match props.appearance {
+        CardAppearance::Bordered => "p-4",
+        CardAppearance::Elevated => "p-8",
     };
 
-    let mut html = format!("<div class=\"{outer_class}\"><div class=\"{inner_pad}\">");
+    let mut html = format!("<div class=\"fjui-card overflow-visible\"><div class=\"{inner_pad}\">");
     if let Some(ref badge) = props.badge {
         html.push_str("<div class=\"flex items-start justify-between gap-2\">");
         html.push_str(&format!(
-            "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
+            "<h3 class=\"fjui-text--section\">{}</h3>",
             html_escape(&props.title)
         ));
         html.push_str(&format!(
-            "<span class=\"inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary/10 text-secondary-foreground shrink-0\">{}</span>",
+            "<span class=\"fjui-badge fjui-badge--neutral shrink-0\">{}</span>",
             html_escape(badge)
         ));
         html.push_str("</div>");
     } else {
         html.push_str(&format!(
-            "<h3 class=\"text-base font-semibold leading-snug text-text\">{}</h3>",
+            "<h3 class=\"fjui-text--section\">{}</h3>",
             html_escape(&props.title)
         ));
     }
     if let Some(ref subtitle) = props.subtitle {
         html.push_str(&format!(
-            "<p class=\"mt-0.5 text-sm text-text-muted\">{}</p>",
+            "<p class=\"mt-0.5 fjui-text--meta\">{}</p>",
             html_escape(subtitle)
         ));
     }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"mt-1 text-sm text-text-muted\">{}</p>",
+            "<p class=\"mt-1 fjui-text--meta\">{}</p>",
             html_escape(desc)
         ));
     }
@@ -165,32 +166,32 @@ pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize
 
     let trigger = props.trigger_label.as_deref().unwrap_or("Open");
     let mut html = String::new();
-    // Trigger button (sibling of dialog, not inside it)
+    // Trigger button (sibling of dialog, not inside it) — fjui-btn skin handles appearance.
     html.push_str(&format!(
-        "<button type=\"button\" class=\"inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium cursor-pointer hover:bg-primary/90 {INTERACTIVE_BASE}\" data-modal-open=\"{}\">{}</button>",
+        "<button type=\"button\" class=\"fjui-btn fjui-btn--primary fjui-btn--md inline-flex items-center gap-2 {INTERACTIVE_BASE}\" data-modal-open=\"{}\">{}</button>",
         html_escape(&props.id),
         html_escape(trigger)
     ));
-    // Native <dialog> element
+    // Native <dialog> element — fjui-modal: overlay elevation (shadow-md, NO border, LANG-04).
     html.push_str(&format!(
-        "<dialog id=\"{}\" aria-modal=\"true\" aria-labelledby=\"{}-title\" class=\"bg-card rounded-lg shadow-lg max-w-lg w-full mx-4 p-6 backdrop:bg-black/50\">",
+        "<dialog id=\"{}\" aria-modal=\"true\" aria-labelledby=\"{}-title\" class=\"fjui-modal max-w-lg w-full mx-4 p-6 backdrop:bg-black/50\">",
         html_escape(&props.id),
         html_escape(&props.id)
     ));
     // Header row: title + close button
     html.push_str("<div class=\"flex items-center justify-between mb-4\">");
     html.push_str(&format!(
-        "<h3 id=\"{}-title\" class=\"text-lg font-semibold leading-snug text-text\">{}</h3>",
+        "<h3 id=\"{}-title\" class=\"fjui-text--section\">{}</h3>",
         html_escape(&props.id),
         html_escape(&props.title)
     ));
     html.push_str(&format!(
-        "<button type=\"button\" data-modal-close aria-label=\"Chiudi\" class=\"text-text-muted hover:text-text p-2 rounded {INTERACTIVE_BASE}\">\u{00d7}</button>"
+        "<button type=\"button\" data-modal-close aria-label=\"Chiudi\" class=\"fjui-btn fjui-btn--ghost fjui-btn--sm p-2 {INTERACTIVE_BASE}\">\u{00d7}</button>"
     ));
     html.push_str("</div>");
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted mb-4\">{}</p>",
+            "<p class=\"fjui-text--meta mb-4\">{}</p>",
             html_escape(desc)
         ));
     }
@@ -245,34 +246,24 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
 
     let has_any_content = props.tabs.iter().any(|t| !t.children.is_empty());
 
+    // D-08 migration: Tabs container emits fjui-tabs (nav strip) + fjui-tab per button.
+    // Active tab carries fjui-tab--active modifier. Skin handles all appearance.
     let mut html = String::from("<div data-tabs>");
-    html.push_str("<div class=\"border-b border-border\">");
-    html.push_str("<nav class=\"flex -mb-px space-x-4\" role=\"tablist\">");
+    html.push_str("<nav class=\"fjui-tabs\" role=\"tablist\">");
 
     for tab in &props.tabs {
         let is_active = tab.value == props.default_tab;
-        let border = if is_active {
-            "border-primary"
-        } else {
-            "border-transparent"
-        };
-        let text = if is_active {
-            "text-primary font-semibold"
-        } else {
-            "text-text-muted hover:text-text"
-        };
+        let active_class = if is_active { " fjui-tab--active" } else { "" };
 
         if has_any_content && (is_active || !tab.children.is_empty()) {
             // Client-side tab trigger
             html.push_str(&format!(
                 "<button type=\"button\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" data-tab=\"{}\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium cursor-pointer {INTERACTIVE_BASE}\" \
+                 class=\"fjui-tab{active_class}\" \
                  aria-selected=\"{}\">{}</button>",
                 html_escape(&tab.value),
                 html_escape(&tab.value),
                 html_escape(&tab.value),
-                border,
-                text,
                 is_active,
                 html_escape(&tab.label),
             ));
@@ -280,20 +271,18 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
             // Server-driven tab: link with ?tab= query param
             html.push_str(&format!(
                 "<a href=\"?tab={}\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" \
-                 class=\"border-b-2 {} {} px-3 py-2 text-sm font-medium {INTERACTIVE_BASE}\" \
+                 class=\"fjui-tab{active_class}\" \
                  aria-selected=\"{}\">{}</a>",
                 html_escape(&tab.value),
                 html_escape(&tab.value),
                 html_escape(&tab.value),
-                border,
-                text,
                 is_active,
                 html_escape(&tab.label),
             ));
         }
     }
 
-    html.push_str("</nav></div>");
+    html.push_str("</nav>");
 
     // Render all tab panels — inactive panels are hidden via CSS.
     for tab in &props.tabs {
@@ -349,12 +338,14 @@ fn render_kanban_card(item: &Value, props: &KanbanBoardProps, index: usize) -> S
         .and_then(|k| item.get(k))
         .and_then(json_scalar_string);
 
+    // D-08 migration: kanban card is a flat surface (border, no shadow).
+    // fjui-kanban__card carries cursor-pointer; skin layer handles border/bg/radius/padding.
     let mut card = String::from(
-        "<div data-kanban-card class=\"cursor-pointer rounded-lg border border-border bg-card p-3 flex flex-col gap-1\">",
+        "<div data-kanban-card class=\"fjui-kanban__card cursor-pointer flex flex-col gap-1\">",
     );
     card.push_str("<div class=\"flex items-start justify-between gap-2\">");
     card.push_str(&format!(
-        "<div class=\"text-sm font-medium text-text\">{}</div>",
+        "<div class=\"fjui-text--body font-medium\">{}</div>",
         html_escape(&title)
     ));
     if let Some(ref actions) = props.row_actions {
@@ -370,7 +361,7 @@ fn render_kanban_card(item: &Value, props: &KanbanBoardProps, index: usize) -> S
     card.push_str("</div>");
     if let Some(desc) = description {
         card.push_str(&format!(
-            "<div class=\"text-xs text-text-muted\">{}</div>",
+            "<div class=\"fjui-text--micro\">{}</div>",
             html_escape(&desc)
         ));
     }
@@ -501,23 +492,26 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         // plus inline `scrollbar-width: none` for Firefox.
         // The 12rem subtraction reserves room for dashboard header + page
         // header + main padding — adjust if chrome height changes.
+        // D-08 migration: fjui-kanban__column is a flat surface (border, no shadow).
+        // Layout utilities (min-w-*, flex-1, flex-col) remain inline per D-02.
         html.push_str(
-            "<div class=\"min-w-[260px] flex-1 flex-shrink-0 rounded-lg border border-border bg-card/50 flex flex-col\" \
+            "<div class=\"fjui-kanban__column min-w-[260px] flex-1 flex-shrink-0 flex flex-col\" \
              style=\"max-height: calc(100vh - 12rem);\">",
         );
-        html.push_str("<div class=\"flex items-center justify-between p-3 shrink-0\">");
+        html.push_str("<div class=\"fjui-kanban__column-header flex items-center justify-between p-3 shrink-0\">");
         html.push_str(&format!(
-            "<h3 class=\"text-sm font-semibold text-text\">{}</h3>",
+            "<h3 class=\"fjui-text--section\">{}</h3>",
             html_escape(&lane.title),
         ));
-        let badge_class = if lane.count > 0 {
-            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground"
+        // Count badge: primary tone when non-zero, neutral when zero.
+        let badge_tone = if lane.count > 0 {
+            "fjui-badge fjui-badge--neutral"
         } else {
-            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-text-muted bg-surface"
+            "fjui-badge fjui-badge--neutral"
         };
         html.push_str(&format!(
             "<span class=\"{}\">{}</span>",
-            badge_class, lane.count,
+            badge_tone, lane.count,
         ));
         html.push_str("</div>");
         html.push_str(
@@ -527,7 +521,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         if lane.cards_html.is_empty() {
             if let Some(ref label) = props.empty_label {
                 html.push_str(&format!(
-                    "<div class=\"flex items-center justify-center h-full min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
+                    "<div class=\"flex items-center justify-center h-full min-h-40 fjui-text--meta text-center px-3\">{}</div>",
                     html_escape(label)
                 ));
             }
@@ -541,29 +535,23 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("</div>");
     html.push_str("</div>");
 
-    // Mobile view: tab-based column switching.
+    // Mobile view: tab-based column switching with fjui-tabs/fjui-tab classes.
     html.push_str("<div class=\"block md:hidden\" data-tabs>");
-    html.push_str("<div class=\"flex border-b border-border mb-4\">");
+    html.push_str("<nav class=\"fjui-tabs mb-4\">");
 
     for lane in &lanes {
         let is_default = lane.id == default_id;
-        let (border, text) = if is_default {
-            ("border-primary", "text-primary font-semibold")
-        } else {
-            ("border-transparent", "text-text-muted hover:text-text")
-        };
+        let active_class = if is_default { " fjui-tab--active" } else { "" };
         html.push_str(&format!(
-            "<button type=\"button\" data-tab=\"{}\" class=\"flex-1 px-3 py-2 text-sm border-b-2 {} {} {INTERACTIVE_BASE}\" aria-selected=\"{}\">{} <span class=\"ml-1 text-xs text-text-muted\">({})</span></button>",
+            "<button type=\"button\" data-tab=\"{}\" class=\"fjui-tab{active_class} flex-1\" aria-selected=\"{}\">{} <span class=\"ml-1 fjui-text--micro\">({})</span></button>",
             html_escape(&lane.id),
-            border,
-            text,
             is_default,
             html_escape(&lane.title),
             lane.count,
         ));
     }
 
-    html.push_str("</div>");
+    html.push_str("</nav>");
 
     for lane in &lanes {
         let is_default = lane.id == default_id;
@@ -579,7 +567,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         if lane.cards_html.is_empty() {
             if let Some(ref label) = props.empty_label {
                 html.push_str(&format!(
-                    "<div class=\"flex items-center justify-center min-h-40 text-sm text-text-muted text-center px-3\">{}</div>",
+                    "<div class=\"flex items-center justify-center min-h-40 fjui-text--meta text-center px-3\">{}</div>",
                     html_escape(label)
                 ));
             }
@@ -621,8 +609,11 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
+    // D-08 migration: PageHeader is a flat surface — no border/shadow on the wrapper itself.
+    // fjui-page-header carries display-scale title via fjui-text--display on the h2.
+    // Layout utilities (flex, flex-wrap, gap-*) remain inline per D-02.
     let mut html =
-        String::from("<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">");
+        String::from("<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">");
 
     // Title block — breadcrumb and title fused into one inline flow
     html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
@@ -631,19 +622,19 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
         for item in &props.breadcrumb {
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
+                    "<a href=\"{}\" class=\"fjui-text--meta hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.label)
                 ));
             } else {
                 html.push_str(&format!(
-                    "<span class=\"text-sm text-text-muted whitespace-nowrap\">{}</span>",
+                    "<span class=\"fjui-text--meta whitespace-nowrap\">{}</span>",
                     html_escape(&item.label)
                 ));
             }
             // Chevron separator between breadcrumb and title
             html.push_str(
-                "<span aria-hidden=\"true\" class=\"text-text-muted flex-shrink-0\">\
+                "<span aria-hidden=\"true\" class=\"flex-shrink-0\">\
                  <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
                  <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
                  </svg></span>"
@@ -652,7 +643,7 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
     }
 
     html.push_str(&format!(
-        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text truncate\">{}</h2>",
+        "<h2 class=\"fjui-text--display truncate\">{}</h2>",
         html_escape(&props.title)
     ));
     html.push_str("</div>");
@@ -704,26 +695,26 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
 
     let mut html = String::new();
 
-    // Header chrome — mirrors render_page_header's structure verbatim so the
+    // Header chrome — mirrors render_page_header's migrated fjui-* output so the
     // DetailPage skeleton stays visually identical to manually-composed pages.
-    html.push_str("<div class=\"flex flex-wrap items-center justify-between gap-3 pb-4\">");
+    html.push_str("<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">");
     html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
     if !props.breadcrumb.is_empty() {
         for item in &props.breadcrumb {
             if let Some(ref url) = item.url {
                 html.push_str(&format!(
-                    "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
+                    "<a href=\"{}\" class=\"fjui-text--meta hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
                     html_escape(url),
                     html_escape(&item.label)
                 ));
             } else {
                 html.push_str(&format!(
-                    "<span class=\"text-sm text-text-muted whitespace-nowrap\">{}</span>",
+                    "<span class=\"fjui-text--meta whitespace-nowrap\">{}</span>",
                     html_escape(&item.label)
                 ));
             }
             html.push_str(
-                "<span aria-hidden=\"true\" class=\"text-text-muted flex-shrink-0\">\
+                "<span aria-hidden=\"true\" class=\"flex-shrink-0\">\
                  <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
                  <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
                  </svg></span>"
@@ -731,7 +722,7 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
         }
     }
     html.push_str(&format!(
-        "<h2 class=\"text-2xl font-semibold leading-tight tracking-tight text-text truncate\">{}</h2>",
+        "<h2 class=\"fjui-text--display truncate\">{}</h2>",
         html_escape(&props.title)
     ));
     html.push_str("</div>");
@@ -753,11 +744,9 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
     if has_body {
         html.push_str("<div class=\"flex flex-col gap-4\">");
 
-        // Info Card — mirrors render_card's Bordered+Default output with an
-        // empty title (suppressed via the same path as Card uses for empty
-        // titles in practice). The wrapper is omitted entirely when `info`
-        // is empty so pages without a primary info block get just the
-        // header + children.
+        // Info Card — uses fjui-card (border-only flat surface, LANG-04).
+        // The wrapper is omitted entirely when `info` is empty so pages without
+        // a primary info block get just the header + children.
         if !props.info.is_empty() {
             let info_body: String = props
                 .info
@@ -765,7 +754,7 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
                 .map(|cid| render_element(cid, spec, data, depth + 1))
                 .collect();
             html.push_str(
-                "<div class=\"rounded-lg border border-border bg-card shadow-sm overflow-visible\">\
+                "<div class=\"fjui-card overflow-visible\">\
                  <div class=\"p-4\">",
             );
             html.push_str(
@@ -1112,21 +1101,19 @@ pub(crate) fn render_button_group(el: &Element, spec: &Spec, data: &Value, depth
     format!("<div class=\"flex items-center gap-2 flex-wrap\">{body}</div>")
 }
 
-/// Returns the Tailwind button classes for a given `Variant` at default size.
-/// The structural base + motion + focus ring come from
-/// [`super::classes::INTERACTIVE_BASE`] (single source of truth, shared with
-/// `render_button_inner` in `atoms.rs`); only the per-variant color fragment
-/// lives in the match arms.
+/// Returns the fjui-* button classes for a given `Variant` at default (md) size.
+/// D-08 migration: appearance moved to skin layer; Rust emits only fjui-* semantic
+/// classes + D-02 allowlist layout utilities (inline-flex, items-center, gap-*).
 fn button_variant_classes(variant: &Variant) -> String {
-    let color = match variant {
-        Variant::Primary => "bg-primary text-primary-foreground hover:bg-primary/90",
-        Variant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/90",
-        Variant::Outline => "border border-border bg-background text-text hover:bg-surface",
-        Variant::Ghost => "text-text hover:bg-surface",
-        Variant::Destructive => "bg-destructive text-primary-foreground hover:bg-destructive/90",
+    let variant_class = match variant {
+        Variant::Primary => "fjui-btn--primary",
+        Variant::Secondary => "fjui-btn--secondary",
+        Variant::Outline => "fjui-btn--outline",
+        Variant::Ghost => "fjui-btn--ghost",
+        Variant::Destructive => "fjui-btn--destructive",
     };
     format!(
-        "inline-flex items-center justify-center rounded-md font-medium text-sm px-4 py-2 {INTERACTIVE_BASE} {DISABLED_BASE} {color}"
+        "fjui-btn {variant_class} fjui-btn--md inline-flex items-center gap-2 {INTERACTIVE_BASE} {DISABLED_BASE}"
     )
 }
 
@@ -1273,17 +1260,17 @@ pub(crate) fn render_action_group(
              <circle cx=\"12\" cy=\"12\" r=\"1\"/>\
              <circle cx=\"12\" cy=\"19\" r=\"1\"/></svg>";
 
+        // Kebab trigger: fjui-btn--ghost for ghost appearance (no bg, no border).
         html.push_str(&format!(
             "<button type=\"button\" popovertarget=\"{}\" aria-label=\"{}\" \
-             class=\"inline-flex items-center justify-center rounded-md p-1.5 \
-             text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}\">{trigger_icon}</button>",
+             class=\"fjui-btn fjui-btn--ghost fjui-btn--sm inline-flex items-center justify-center p-1.5 {INTERACTIVE_BASE}\">{trigger_icon}</button>",
             html_escape(&props.menu_id),
             html_escape(overflow_label),
         ));
 
+        // Overflow menu container: fjui-menu (overlay: shadow-md, NO border, LANG-04).
         html.push_str(&format!(
-            "<div popover id=\"{}\" data-popover-menu \
-             class=\"w-48 rounded-md border border-border bg-card shadow-md text-left p-0\">",
+            "<div popover id=\"{}\" data-popover-menu class=\"fjui-menu w-48 text-left p-0\">",
             html_escape(&props.menu_id),
         ));
 
@@ -1903,7 +1890,7 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 1);
         assert!(
-            html.contains("rounded-lg border border-border bg-card"),
+            html.contains("fjui-card"),
             "got: {html}"
         );
         assert!(
@@ -1988,13 +1975,10 @@ mod tests {
         let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
+        // Bordered appearance: skin layer handles border; padding stays inline.
         assert!(
-            html.contains("border border-border"),
-            "expected Bordered class, got: {html}"
-        );
-        assert!(
-            html.contains("shadow-sm"),
-            "expected shadow-sm, got: {html}"
+            html.contains("fjui-card"),
+            "expected fjui-card class, got: {html}"
         );
         assert!(html.contains("p-4"), "expected p-4, got: {html}");
     }
@@ -2009,15 +1993,13 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
+        // Elevated appearance: LANG-04 collapses both variants to fjui-card (border-only flat
+        // surface). Elevated padding p-8 is the only inline difference.
         assert!(
-            html.contains("shadow-md"),
-            "expected shadow-md, got: {html}"
+            html.contains("fjui-card"),
+            "expected fjui-card class, got: {html}"
         );
-        assert!(html.contains("p-8"), "expected p-8, got: {html}");
-        assert!(
-            !html.contains("border-border"),
-            "Elevated must NOT contain border-border, got: {html}"
-        );
+        assert!(html.contains("p-8"), "expected elevated padding p-8, got: {html}");
     }
 
     #[test]
@@ -2025,9 +2007,14 @@ mod tests {
         let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
+        // Default (Bordered) renders fjui-card without an elevated modifier.
         assert!(
-            html.contains("border border-border"),
-            "missing variant defaults to Bordered, got: {html}"
+            html.contains("fjui-card"),
+            "missing fjui-card class, got: {html}"
+        );
+        assert!(
+            !html.contains("fjui-card--elevated"),
+            "default variant must not have --elevated modifier, got: {html}"
         );
     }
 
@@ -2162,8 +2149,8 @@ mod tests {
             "badge label must appear in DOM; got: {html}"
         );
         assert!(
-            html.contains("bg-secondary/10"),
-            "badge must use Secondary chrome; got: {html}"
+            html.contains("fjui-badge"),
+            "badge must use fjui-badge class; got: {html}"
         );
         assert!(
             html.contains("flex items-start justify-between"),
@@ -2177,8 +2164,8 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
         assert!(
-            !html.contains("bg-secondary/10"),
-            "no badge chrome when badge absent; got: {html}"
+            !html.contains("fjui-badge"),
+            "no fjui-badge when badge absent; got: {html}"
         );
         assert!(
             !html.contains("flex items-start justify-between"),
@@ -2201,8 +2188,8 @@ mod tests {
             "subtitle text must appear in DOM; got: {html}"
         );
         assert!(
-            html.contains("mt-0.5 text-sm text-text-muted"),
-            "subtitle must use muted styling with mt-0.5 spacing; got: {html}"
+            html.contains("mt-0.5 fjui-text--meta"),
+            "subtitle must use fjui-text--meta with mt-0.5 spacing; got: {html}"
         );
     }
 
@@ -2211,12 +2198,10 @@ mod tests {
         let spec = build_spec(vec![("root", Element::new("Card").prop("title", "X"))]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 0);
-        // The description block uses `mt-1 text-sm text-text-muted`; the subtitle
-        // would use `mt-0.5 text-sm text-text-muted`. With neither subtitle nor
-        // description, no muted-text paragraph should emit at all.
+        // With neither subtitle nor description, no fjui-text--meta paragraph should emit.
         assert!(
-            !html.contains("text-sm text-text-muted"),
-            "no muted text when both subtitle and description absent; got: {html}"
+            !html.contains("fjui-text--meta"),
+            "no fjui-text--meta when both subtitle and description absent; got: {html}"
         );
     }
 
@@ -2430,10 +2415,10 @@ mod tests {
             html.contains("data-tab-panel=\"done\""),
             "done panel missing; got: {html}"
         );
-        // Active count badge vs. zero count badge.
+        // Count badge — both active and zero-count use fjui-badge skin class.
         assert!(
-            html.contains("bg-primary text-primary-foreground"),
-            "active count badge class missing; got: {html}"
+            html.contains("fjui-badge fjui-badge--neutral"),
+            "count badge must use fjui-badge fjui-badge--neutral; got: {html}"
         );
     }
 
@@ -2505,9 +2490,9 @@ mod tests {
         // Second breadcrumb has no URL → rendered as <span>.
         assert!(
             html.contains(
-                "<span class=\"text-sm text-text-muted whitespace-nowrap\">Reports</span>"
+                "<span class=\"fjui-text--meta whitespace-nowrap\">Reports</span>"
             ),
-            "urlless breadcrumb should be a span; got: {html}"
+            "urlless breadcrumb should be a span with fjui-text--meta; got: {html}"
         );
     }
 
