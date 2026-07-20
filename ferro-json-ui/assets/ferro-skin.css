@@ -992,4 +992,92 @@ input, select, textarea {
     &:hover { background-color: color-mix(in oklab, var(--color-destructive) 8%, var(--color-background)); }
   }
 
+  /* ── PageHeader ─────────────────────────────────────────────────────────── */
+
+  /* PageHeader is a flat surface — border-bottom only (LANG-04), no shadow. */
+
+  .fjui-page-header {
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-background);
+    /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* ── Modal ──────────────────────────────────────────────────────────────── */
+
+  /* Modal dialog is an overlay — shadow-md, NO border (LANG-04). */
+
+  .fjui-modal {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    /* NO border — overlay elevation rule (LANG-04) */
+  }
+
+  /* ── KanbanBoard ─────────────────────────────────────────────────────────── */
+
+  /* KanbanBoard columns are flat surfaces — border-only (LANG-04). */
+
+  .fjui-kanban__column {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  .fjui-kanban__column-header {
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-card);
+  }
+
+  /* KanbanCard is interactive — all four states required (SKIN-05). */
+
+  .fjui-kanban__card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-3);
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+    /* NO box-shadow at rest — flat surface (LANG-04) */
+
+    &:hover {
+      background-color: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active {
+      opacity: 0.9;
+    }
+  }
+
+  /* ── DataTable ──────────────────────────────────────────────────────────── */
+
+  /* DataTable outer shell is a flat surface — border via fjui-card (LANG-04).
+   * Row/cell classes are deferred to Plan 08. */
+
+  .fjui-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+  }
+
+  .fjui-table__header {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .fjui-table__header-cell {
+    padding: var(--spacing-3) var(--spacing-4);
+    font-size: var(--text-label-size);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-align: left;
+    white-space: nowrap;
+  }
+
 }
