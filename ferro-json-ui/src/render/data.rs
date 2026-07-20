@@ -1791,4 +1791,120 @@ mod tests {
             "null must render empty cell, no <img; got: {html}"
         );
     }
+
+    // ── Plan 08: fjui-table__ row/cell/numeric/boolean classes ───────────
+
+    /// D-08 migration: body wrapper emits fjui-table__body; rows emit fjui-table__row.
+    #[test]
+    fn data_table_row_emits_fjui_table_row_class() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("fjui-table__row"),
+            "desktop row must emit fjui-table__row; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-table__body"),
+            "tbody must emit fjui-table__body; got: {html}"
+        );
+    }
+
+    /// D-08 migration: default cells emit fjui-table__cell.
+    #[test]
+    fn data_table_cell_emits_fjui_table_cell_class() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("fjui-table__cell"),
+            "desktop cell must emit fjui-table__cell; got: {html}"
+        );
+    }
+
+    /// D-08 migration: numeric columns (currency, date) emit fjui-table__cell--numeric (LANG-03).
+    #[test]
+    fn data_table_numeric_column_emits_fjui_cell_numeric_modifier() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [
+                    {"key": "name", "label": "Name"},
+                    {"key": "total", "label": "Total", "format": "currency"},
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice", "total": "€10.00"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("fjui-table__cell--numeric"),
+            "currency column must emit fjui-table__cell--numeric; got: {html}"
+        );
+        // The base cell class must still be present alongside the modifier.
+        assert!(
+            html.contains("fjui-table__cell"),
+            "cell must carry base fjui-table__cell; got: {html}"
+        );
+    }
+
+    /// D-08 migration: boolean columns emit fjui-table__cell--boolean.
+    #[test]
+    fn data_table_boolean_column_emits_fjui_cell_boolean_modifier() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [
+                    {"key": "name", "label": "Name"},
+                    {"key": "active", "label": "Active", "format": "boolean"},
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice", "active": true}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("fjui-table__cell--boolean"),
+            "boolean column must emit fjui-table__cell--boolean; got: {html}"
+        );
+    }
+
+    /// D-08 migration: zebra-striping utilities must NOT be present (RSK-01).
+    #[test]
+    fn data_table_no_zebra_striping_in_rows() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice"}, {"name": "Bob"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            !html.contains("even:bg-"),
+            "no even: zebra utility; got: {html}"
+        );
+        assert!(
+            !html.contains("odd:bg-"),
+            "no odd: zebra utility; got: {html}"
+        );
+    }
 }
