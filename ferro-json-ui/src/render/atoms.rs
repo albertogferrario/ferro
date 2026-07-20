@@ -669,12 +669,12 @@ pub(crate) fn render_empty_state(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("EmptyState", e),
     };
-    // Centered placeholder card. Same outer shell as the DataTable empty
-    // state so a tab without rows and a tab with no resource-shaped form
-    // (e.g. owner notes) read as the same visual surface. Title and action
-    // are optional; description is the primary message.
+    // Centered placeholder. One pattern only (RSK-04): icon + title + body + one CTA.
+    // Layout utilities (flex, items-center, justify-center, min-h-40, py-8, px-6,
+    // text-center, max-w-md) stay inline per D-02.
+    // Appearance (background, border, radius, typography) is in the skin layer.
     let mut html = String::from(
-        "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
+        "<div class=\"fjui-empty-state flex items-center justify-center min-h-40 py-8 px-6\">\
          <div class=\"text-center max-w-md\">",
     );
     if !props.title.is_empty() {
@@ -692,10 +692,10 @@ pub(crate) fn render_empty_state(
     if let Some(ref action) = props.action {
         let label = props.action_label.as_deref().unwrap_or("Action");
         let url = action.url.as_deref().unwrap_or("#");
+        // CTA uses fjui-btn--primary fjui-btn--md (D-01 literals); layout
+        // utilities inline-flex + items-center stay per D-02.
         html.push_str(&format!(
-            "<a href=\"{}\" class=\"mt-4 inline-flex items-center justify-center rounded-md \
-             border border-border bg-card text-text px-4 py-2 text-sm font-medium \
-             hover:bg-surface {INTERACTIVE_BASE}\">{}</a>",
+            "<a href=\"{}\" class=\"mt-4 fjui-btn fjui-btn--primary fjui-btn--md inline-flex items-center gap-2 {INTERACTIVE_BASE}\">{}</a>",
             html_escape(url),
             html_escape(label)
         ));
@@ -718,36 +718,49 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth:
         .as_deref()
         .and_then(|p| crate::data::resolve_path_string(data, p))
         .unwrap_or_else(|| props.value.clone());
-    // Tone accents the value + icon (OQ-2); `neutral` reproduces the untinted
-    // default look exactly.
-    let (value_class, icon_class) = match props.tone {
-        Tone::Neutral => ("text-text", ""),
-        Tone::Success => ("text-success", " text-success"),
-        Tone::Warning => ("text-warning", " text-warning"),
-        Tone::Destructive => ("text-destructive", " text-destructive"),
+
+    // D-01: full string literals for tone modifier — appearance in skin layer (Plan 05).
+    // Neutral maps to --default (border-only, no colour accent per UI-SPEC §StatCard).
+    let tone_class = match props.tone {
+        Tone::Neutral     => "fjui-stat-card--default",
+        Tone::Success     => "fjui-stat-card--success",
+        Tone::Warning     => "fjui-stat-card--warning",
+        Tone::Destructive => "fjui-stat-card--destructive",
     };
-    let mut html =
-        String::from("<div class=\"bg-card rounded-lg shadow-sm p-4 border border-border\">");
+
+    // Layout utilities (p-4) stay inline per D-02. Icon class stays as a
+    // layout/color helper until the icon system migrates in a later plan.
+    let icon_color_class = match props.tone {
+        Tone::Neutral     => "",
+        Tone::Success     => " text-success",
+        Tone::Warning     => " text-warning",
+        Tone::Destructive => " text-destructive",
+    };
+
+    let mut html = format!("<div class=\"fjui-stat-card {tone_class} p-4\">");
     if let Some(ref icon) = props.icon {
         // Icon string is emitted raw — trusted SVG supplied by server-side
         // authoring; not user input.
         html.push_str(&format!(
-            "<span class=\"inline-block mb-2 w-6 h-6{icon_class}\">{icon}</span>"
+            "<span class=\"inline-block mb-2 w-6 h-6{icon_color_class}\">{icon}</span>"
         ));
     }
+    // Label: skin rule handles font-size/color via .fjui-stat-card p.
+    // Using an explicit meta-size class keeps the label readable if skin is absent.
     html.push_str(&format!(
         "<p class=\"text-sm text-text-muted\">{}</p>",
         html_escape(&props.label)
     ));
+    // Value: fjui-stat-card__value — skin rule applies 24px/600/tabular-nums.
     if let Some(ref sse) = props.sse_target {
         html.push_str(&format!(
-            "<p class=\"text-2xl font-bold {value_class}\" data-sse-target=\"{}\" data-live-value>{}</p>",
+            "<p class=\"fjui-stat-card__value\" data-sse-target=\"{}\" data-live-value>{}</p>",
             html_escape(sse),
             html_escape(&display_value)
         ));
     } else {
         html.push_str(&format!(
-            "<p class=\"text-2xl font-bold {value_class}\">{}</p>",
+            "<p class=\"fjui-stat-card__value\">{}</p>",
             html_escape(&display_value)
         ));
     }
@@ -2333,8 +2346,9 @@ mod tests {
         assert!(html.contains("Users"));
     }
 
-    /// OQ-2 (251-01 handoff): StatCard `tone` accents the value; `neutral`
-    /// (the default) reproduces the untinted look exactly.
+    /// OQ-2 (251-01 handoff): StatCard `tone` accents via fjui-stat-card--{tone} class;
+    /// `neutral` (the default) maps to fjui-stat-card--default.
+    /// Plan 05: value color is skin-owned; this test checks the tone class is present.
     #[test]
     fn stat_card_tone_accents_value() {
         let spec = spec_with_root(
@@ -2346,8 +2360,12 @@ mod tests {
         let el = spec.elements.get("root").unwrap();
         let html = render_stat_card(el, &spec, &json!({}), 1);
         assert!(
-            html.contains("text-2xl font-bold text-destructive"),
-            "destructive tone must accent the value; got: {html}"
+            html.contains("fjui-stat-card--destructive"),
+            "destructive tone must emit fjui-stat-card--destructive; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-stat-card__value"),
+            "value element must carry fjui-stat-card__value; got: {html}"
         );
     }
 
@@ -2360,9 +2378,10 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_stat_card(el, &spec, &json!({}), 1);
+        // Plan 05: neutral tone maps to fjui-stat-card--default; skin owns color.
         assert!(
-            html.contains("text-2xl font-bold text-text"),
-            "neutral (default) tone keeps the untinted value; got: {html}"
+            html.contains("fjui-stat-card--default"),
+            "neutral tone must emit fjui-stat-card--default; got: {html}"
         );
     }
 
@@ -3460,5 +3479,93 @@ mod tests {
             assert!(!html.contains("bg-warning/10"), "old warning tint in alert output; got: {html}");
             assert!(!html.contains("bg-destructive/10"), "old destructive tint in alert output; got: {html}");
         }
+    }
+
+    // ── Plan 05 migration tests (Task 2: StatCard / EmptyState) ─────────────
+
+    /// StatCard emits fjui-stat-card base class + tone modifier.
+    #[test]
+    fn stat_card_emits_fjui_class_and_value_element() {
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "Ordini")
+                .prop("value", "42"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_stat_card(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-stat-card"), "must emit fjui-stat-card; got: {html}");
+        assert!(html.contains("fjui-stat-card--default"), "default tone must emit fjui-stat-card--default; got: {html}");
+        assert!(html.contains("fjui-stat-card__value"), "value element must carry fjui-stat-card__value; got: {html}");
+    }
+
+    /// All 4 StatCard tones emit correct fjui modifier literals.
+    #[test]
+    fn stat_card_all_tones_emit_fjui_classes() {
+        for (tone, expected) in [
+            ("neutral", "fjui-stat-card--default"),
+            ("success", "fjui-stat-card--success"),
+            ("warning", "fjui-stat-card--warning"),
+            ("destructive", "fjui-stat-card--destructive"),
+        ] {
+            let spec = spec_with_root(
+                Element::new("StatCard")
+                    .prop("label", "L")
+                    .prop("value", "0")
+                    .prop("tone", tone),
+            );
+            let el = spec.elements.get("root").unwrap();
+            let html = render_stat_card(el, &spec, &json!({}), 1);
+            assert!(html.contains(expected), "tone {tone} must emit {expected}; got: {html}");
+        }
+    }
+
+    /// StatCard no longer emits old Tailwind appearance utilities (shadow-sm, text-2xl, etc).
+    #[test]
+    fn stat_card_emits_no_old_appearance_utilities() {
+        let spec = spec_with_root(
+            Element::new("StatCard")
+                .prop("label", "L")
+                .prop("value", "5"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_stat_card(el, &spec, &json!({}), 1);
+        assert!(!html.contains("shadow-sm"), "old shadow-sm must be gone; got: {html}");
+        assert!(!html.contains("rounded-lg"), "old rounded-lg must be gone; got: {html}");
+        assert!(!html.contains("text-2xl font-bold"), "old value typography must be gone; got: {html}");
+    }
+
+    /// EmptyState emits fjui-empty-state class and uses fjui-btn for CTA.
+    #[test]
+    fn empty_state_emits_fjui_class_and_btn_cta() {
+        let spec = spec_with_root(
+            Element::new("EmptyState")
+                .prop("title", "Nessun elemento")
+                .prop("description", "Aggiungi qualcosa"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_empty_state(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-empty-state"), "must emit fjui-empty-state; got: {html}");
+    }
+
+    /// EmptyState CTA uses fjui-btn classes (not old Tailwind btn utilities).
+    /// Action must be passed as a JSON prop (EmptyStateProps.action), matching
+    /// how the existing empty_state_cta_carries_token_focus_ring test works.
+    #[test]
+    fn empty_state_cta_uses_fjui_btn() {
+        let spec = spec_with_root(
+            Element::new("EmptyState")
+                .prop("title", "Nessun elemento")
+                .prop(
+                    "action",
+                    json!({"handler": "items.create", "url": "/items/nuovo", "method": "GET"}),
+                )
+                .prop("action_label", "Aggiungi"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_empty_state(el, &spec, &json!({}), 1);
+        assert!(html.contains("fjui-btn"), "CTA must use fjui-btn; got: {html}");
+        assert!(html.contains("fjui-btn--primary"), "CTA must use fjui-btn--primary; got: {html}");
+        assert!(html.contains("fjui-btn--md"), "CTA must use fjui-btn--md; got: {html}");
+        assert!(html.contains("Aggiungi"), "CTA label must appear; got: {html}");
     }
 }
