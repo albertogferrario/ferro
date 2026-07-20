@@ -22,6 +22,7 @@
 mod contrast_lint;
 mod infer;
 mod rules;
+pub mod skin_lint;
 pub mod types;
 
 pub use contrast_lint::check_token_contrast;
