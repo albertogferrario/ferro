@@ -62,16 +62,21 @@ pub fn contrast_ratio(y1: f64, y2: f64) -> f64 {
 
 /// Extract CSS custom-property declarations from a block bounded by `{` and `}`.
 ///
-/// Returns a map of `--property-name` → value string (trimmed, semicolon stripped).
+/// Splits on semicolons first (handles both single-line and multi-line CSS),
+/// then extracts `--property: value` pairs. Returns a map of property name → value.
 fn extract_declarations(block: &str) -> std::collections::HashMap<String, String> {
     let mut map = std::collections::HashMap::new();
-    for line in block.lines() {
-        let line = line.trim();
-        if let Some(rest) = line.strip_prefix("--") {
+    // Split on semicolons to handle same-line declarations like:
+    //   "--color-text: oklch(60% 0 0); --color-background: oklch(55% 0 0);"
+    for segment in block.split(';') {
+        let segment = segment.trim();
+        if let Some(rest) = segment.strip_prefix("--") {
             if let Some(colon_pos) = rest.find(':') {
                 let name = format!("--{}", &rest[..colon_pos].trim());
-                let value = rest[colon_pos + 1..].trim().trim_end_matches(';').trim();
-                map.insert(name, value.to_string());
+                let value = rest[colon_pos + 1..].trim();
+                if !name.is_empty() && !value.is_empty() {
+                    map.insert(name, value.to_string());
+                }
             }
         }
     }
