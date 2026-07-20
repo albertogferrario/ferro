@@ -119,13 +119,56 @@ pub const ALL_TOKENS: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
-    fn all_tokens_len_is_30() {
+    fn all_tokens_len_is_40() {
         assert_eq!(
             ALL_TOKENS.len(),
-            30,
-            "ALL_TOKENS must have exactly 30 slots"
+            40,
+            "ALL_TOKENS must have exactly 40 slots"
+        );
+    }
+
+    #[test]
+    fn all_tokens_contains_text_display_size() {
+        assert!(
+            ALL_TOKENS.contains(&"--text-display-size"),
+            "ALL_TOKENS must contain --text-display-size"
+        );
+    }
+
+    #[test]
+    fn all_tokens_contains_text_body_size() {
+        assert!(
+            ALL_TOKENS.contains(&"--text-body-size"),
+            "ALL_TOKENS must contain --text-body-size"
+        );
+    }
+
+    #[test]
+    fn all_tokens_contains_text_micro_weight() {
+        assert!(
+            ALL_TOKENS.contains(&"--text-micro-weight"),
+            "ALL_TOKENS must contain --text-micro-weight"
+        );
+    }
+
+    #[test]
+    fn all_tokens_contains_font_display() {
+        assert!(
+            ALL_TOKENS.contains(&"--font-display"),
+            "ALL_TOKENS must contain --font-display"
+        );
+    }
+
+    #[test]
+    fn all_tokens_no_duplicates() {
+        let set: HashSet<&&str> = ALL_TOKENS.iter().collect();
+        assert_eq!(
+            set.len(),
+            ALL_TOKENS.len(),
+            "ALL_TOKENS must not contain duplicate slots"
         );
     }
 }
