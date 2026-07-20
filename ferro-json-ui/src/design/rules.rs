@@ -109,6 +109,30 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         intents: &[], // all intents — fill_viewport gate is inside check_fill_viewport_layout_unknown
         check: check_fill_viewport_layout_unknown,
     },
+    DesignRule {
+        id: "skin-raw-literals",
+        title: "Skin rules must use var(--token) references, not raw literals",
+        rationale: "Raw color/size literals in fjui-* rules bypass the token contract; the skin cannot be rethemed by overriding tokens alone.",
+        intents: &[], // all intents — CSS file lint, not intent-specific
+        // Actual check runs via --skin CLI flag; this stub returns empty from the spec-lint path.
+        check: check_skin_raw_literals_stub,
+    },
+    DesignRule {
+        id: "skin-interaction-states",
+        title: "Interactive fjui-* rules must define all four interaction states",
+        rationale: "Missing hover/focus-visible/active/disabled states silently drop keyboard and pointer affordances.",
+        intents: &[], // all intents — CSS file lint, not intent-specific
+        // Actual check runs via --skin CLI flag; this stub returns empty from the spec-lint path.
+        check: check_skin_interaction_states_stub,
+    },
+    DesignRule {
+        id: "contrast-lint",
+        title: "Token contrast ratios must meet WCAG floors",
+        rationale: "Text token pairs must achieve >=4.5:1 and UI/non-text pairs >=3:1 in both light and dark modes.",
+        intents: &[], // all intents — tokens.css file lint, not intent-specific
+        // Actual check runs via --tokens CLI flag; this stub returns empty from the spec-lint path.
+        check: check_token_contrast_stub,
+    },
 ];
 
 // ── Rule check functions ──────────────────────────────────────────────────────
@@ -524,6 +548,26 @@ fn check_fill_viewport_layout_unknown(spec: &Spec, _intent: Option<&str>) -> Vec
             "Use layout: \"app\" or \"dashboard\"; fill_viewport degrades to whole-page scroll on other layouts."
                 .into(),
     }]
+}
+
+// ── Stub check fns for CSS-file rules (skin-raw-literals, skin-interaction-states, contrast-lint)
+//
+// These rules operate on CSS files, not JSON specs.  The RULE_REGISTRY entries
+// are required so D-09 (patterns.md drift guard) stays green.  The actual checks
+// are invoked from the `--skin` / `--tokens` CLI flags in ferro-cli's design_lint
+// command, NOT from the spec-lint path.  These stubs always return vec![] when
+// called from `lint(&spec)`.
+
+fn check_skin_raw_literals_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    vec![]
+}
+
+fn check_skin_interaction_states_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    vec![]
+}
+
+fn check_token_contrast_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    vec![]
 }
 
 // ── Rule tests ─────────────────────────────────────────────────────────────────

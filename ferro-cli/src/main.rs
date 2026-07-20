@@ -505,6 +505,12 @@ enum Commands {
         /// Exit non-zero when any warning-level finding exists (CI mode)
         #[arg(long)]
         deny: bool,
+        /// Lint a ferro-skin.css file for raw literals and interaction-state completeness
+        #[arg(long, value_name = "PATH")]
+        skin: Option<String>,
+        /// Lint a tokens.css file for WCAG contrast ratio compliance
+        #[arg(long, value_name = "PATH")]
+        tokens: Option<String>,
     },
     /// Generate a GitHub Actions CI workflow at .github/workflows/ci.yml
     #[command(name = "ci:init")]
@@ -805,8 +811,14 @@ fn main() {
         Commands::ValidateContracts { filter, json } => {
             commands::validate_contracts::run(filter, json);
         }
-        Commands::DesignLint { path, json, deny } => {
-            commands::design_lint::run(path, json, deny);
+        Commands::DesignLint {
+            path,
+            json,
+            deny,
+            skin,
+            tokens,
+        } => {
+            commands::design_lint::run(path, json, deny, skin, tokens);
         }
         Commands::CiInit { force } => {
             commands::ci_init::run(force);

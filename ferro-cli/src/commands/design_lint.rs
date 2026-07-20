@@ -15,6 +15,23 @@ use serde::Serialize;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
+// Path-traversal guard: canonicalize `path` and reject if it resolves outside
+// the current working directory tree (T-246-06).
+fn safe_canonicalize(path: &str) -> Result<PathBuf, String> {
+    let cwd = std::env::current_dir()
+        .map_err(|e| format!("Cannot determine current directory: {e}"))?;
+    let canonical = std::fs::canonicalize(path)
+        .map_err(|e| format!("Cannot resolve path `{path}`: {e}"))?;
+    if !canonical.starts_with(&cwd) {
+        return Err(format!(
+            "Path `{path}` resolves to `{}` which is outside the current working directory `{}` — rejected for safety.",
+            canonical.display(),
+            cwd.display()
+        ));
+    }
+    Ok(canonical)
+}
+
 /// One finding tagged with the file it came from.
 ///
 /// This flat shape is the stable `--json` contract consumed by downstream CI
@@ -72,7 +89,102 @@ pub(crate) fn has_warning(findings: &[FileFinding]) -> bool {
         .any(|f| matches!(f.finding.severity, Severity::Warning))
 }
 
+/// Lint a `ferro-skin.css` file for raw color literals and missing interaction states.
+///
+/// Reads the file at `skin_path`, runs both skin lint checks, and prints findings.
+/// `--deny` exits non-zero when any warning-level finding exists.
+/// The path is canonicalized and must resolve inside the current working directory (T-246-06).
+pub fn run_skin(skin_path: String, json: bool, deny: bool) {
+    let canonical = match safe_canonicalize(&skin_path) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let content = match std::fs::read_to_string(&canonical) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: cannot read `{}`: {e}", canonical.display());
+            std::process::exit(1);
+        }
+    };
+    let findings: Vec<FileFinding> = ferro_json_ui::design::skin_lint::check_all(&content)
+        .into_iter()
+        .map(|f| FileFinding {
+            file: skin_path.clone(),
+            finding: f,
+        })
+        .collect();
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
+        );
+    } else if findings.is_empty() {
+        println!("{}", style("No skin lint findings — skin is clean.").green().bold());
+    } else {
+        print_human(&findings);
+    }
+
+    if deny && has_warning(&findings) {
+        std::process::exit(1);
+    }
+}
+
+/// Lint a `tokens.css` file for WCAG contrast ratio compliance.
+///
+/// Reads the file at `tokens_path`, runs the contrast lint check, and prints findings.
+/// `--deny` exits non-zero when any warning-level finding exists.
+/// The path is canonicalized and must resolve inside the current working directory (T-246-06).
+pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
+    let canonical = match safe_canonicalize(&tokens_path) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let content = match std::fs::read_to_string(&canonical) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: cannot read `{}`: {e}", canonical.display());
+            std::process::exit(1);
+        }
+    };
+    let findings: Vec<FileFinding> =
+        ferro_json_ui::design::check_token_contrast(&content)
+            .into_iter()
+            .map(|f| FileFinding {
+                file: tokens_path.clone(),
+                finding: f,
+            })
+            .collect();
+
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
+        );
+    } else if findings.is_empty() {
+        println!(
+            "{}",
+            style("No contrast violations — tokens pass WCAG gates.").green().bold()
+        );
+    } else {
+        print_human(&findings);
+    }
+
+    if deny && has_warning(&findings) {
+        std::process::exit(1);
+    }
+}
+
 /// Main entry point for the `design:lint` command.
+///
+/// When `--skin` or `--tokens` are provided, runs the corresponding CSS-file lint
+/// instead of (or in addition to) the JSON-spec walk. Both may be combined.
 ///
 /// Walks `*.json` files under `path` (default `src/views`) without following
 /// symlinks (confining the walk to the given root), lints each ferro-json-ui
@@ -81,7 +193,97 @@ pub(crate) fn has_warning(findings: &[FileFinding]) -> bool {
 /// `--json` emits a flat JSON array of [`FileFinding`] suitable for programmatic
 /// consumption. `--deny` causes a non-zero exit when any warning-level finding
 /// exists (info findings never fail).
-pub fn run(path: Option<String>, json: bool, deny: bool) {
+pub fn run(path: Option<String>, json: bool, deny: bool, skin: Option<String>, tokens: Option<String>) {
+    // If --skin or --tokens are present, run the CSS-file lints.
+    // Both may be combined; the spec-walk runs only when neither flag is given.
+    if skin.is_some() || tokens.is_some() {
+        let mut any_warning = false;
+
+        if let Some(skin_path) = skin {
+            let canonical = match safe_canonicalize(&skin_path) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let content = match std::fs::read_to_string(&canonical) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("error: cannot read `{}`: {e}", canonical.display());
+                    std::process::exit(1);
+                }
+            };
+            let findings: Vec<FileFinding> = ferro_json_ui::design::skin_lint::check_all(&content)
+                .into_iter()
+                .map(|f| FileFinding {
+                    file: skin_path.clone(),
+                    finding: f,
+                })
+                .collect();
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
+                );
+            } else if findings.is_empty() {
+                println!("{}", style("No skin lint findings — skin is clean.").green().bold());
+            } else {
+                print_human(&findings);
+            }
+            if has_warning(&findings) {
+                any_warning = true;
+            }
+        }
+
+        if let Some(tokens_path) = tokens {
+            let canonical = match safe_canonicalize(&tokens_path) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let content = match std::fs::read_to_string(&canonical) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("error: cannot read `{}`: {e}", canonical.display());
+                    std::process::exit(1);
+                }
+            };
+            let findings: Vec<FileFinding> =
+                ferro_json_ui::design::check_token_contrast(&content)
+                    .into_iter()
+                    .map(|f| FileFinding {
+                        file: tokens_path.clone(),
+                        finding: f,
+                    })
+                    .collect();
+            if json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
+                );
+            } else if findings.is_empty() {
+                println!(
+                    "{}",
+                    style("No contrast violations — tokens pass WCAG gates.").green().bold()
+                );
+            } else {
+                print_human(&findings);
+            }
+            if has_warning(&findings) {
+                any_warning = true;
+            }
+        }
+
+        if deny && any_warning {
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    // ── Spec-lint walk (original behaviour when no CSS flags provided) ─────────
     let root = path
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("src/views"));

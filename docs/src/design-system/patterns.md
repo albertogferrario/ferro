@@ -696,3 +696,122 @@ context (e.g., a product catalogue browse page with no selection panel):
 ```json
 { "design": { "allow": ["fill-viewport-layout-unknown"] } }
 ```
+
+---
+
+## `skin-raw-literals`
+
+**Title:** Skin rules must use var(--token) references, not raw literals
+
+**Rationale:** Raw color/size literals in `fjui-*` rules bypass the token contract; the skin cannot be rethemed by overriding tokens alone.
+
+**Surface:** `@layer components` CSS skin file (checked via `ferro design:lint --skin <path>`)
+
+### Conforming example
+
+```css
+@layer components {
+  .fjui-btn {
+    color: var(--color-text);
+    background: var(--color-primary);
+  }
+}
+```
+
+### Violating example
+
+```css
+@layer components {
+  .fjui-btn {
+    color: #1a1a1a;          /* raw hex literal — not a token reference */
+    background: rgb(0,0,0);  /* raw rgb() — not a token reference */
+  }
+}
+```
+
+### How to fix
+
+Replace every raw color/size literal with a `var(--token-name)` reference from the token contract. `color-mix(in oklab, var(--token) N%, transparent)` is also allowed.
+
+---
+
+## `skin-interaction-states`
+
+**Title:** Interactive fjui-* rules must define all four interaction states
+
+**Rationale:** Missing `:hover`, `:focus-visible`, `:active`, or `:disabled` states silently drop keyboard and pointer affordances for users relying on them.
+
+**Surface:** `@layer components` CSS skin file (checked via `ferro design:lint --skin <path>`)
+
+Interactive prefixes that require all four states: `fjui-btn`, `fjui-input`, `fjui-select`, `fjui-textarea`, `fjui-sidebar__nav-item`, `fjui-menu-item`, `fjui-tab`, `fjui-table__row`. Note: `fjui-table__row` is exempt from `:disabled` (rows are not form controls).
+
+### Conforming example
+
+```css
+@layer components {
+  .fjui-btn {
+    color: var(--color-text);
+    &:hover         { background: var(--color-surface); }
+    &:focus-visible { outline: 2px solid var(--color-ring); }
+    &:active        { opacity: 0.85; }
+    &:disabled      { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+```
+
+### Violating example
+
+```css
+@layer components {
+  .fjui-btn {
+    color: var(--color-text);
+    &:hover { background: var(--color-surface); }
+    /* missing :focus-visible, :active, :disabled */
+  }
+}
+```
+
+### How to fix
+
+Add the missing `&:state { ... }` block inside the `fjui-*` rule body for each missing interaction state.
+
+---
+
+## `contrast-lint`
+
+**Title:** Token contrast ratios must meet WCAG floors
+
+**Rationale:** Text token pairs must achieve >=4.5:1 and UI/non-text pairs >=3:1 in both light and dark modes to meet WCAG 2.1 AA contrast requirements.
+
+**Surface:** `tokens.css` file (checked via `ferro design:lint --tokens <path>`)
+
+Checked pairs (light and dark modes independently):
+- `--color-text` vs `--color-background` — text floor 4.5:1
+- `--color-text` vs `--color-card` — text floor 4.5:1
+- `--color-primary-foreground` vs `--color-primary` — text floor 4.5:1
+- `--color-ring` vs `--color-background` — non-text floor 3:1
+- `--color-ring` vs `--color-card` — non-text floor 3:1
+
+### Conforming example
+
+```css
+:root {
+  --color-text:       oklch(15% 0 0);      /* near-black */
+  --color-background: oklch(99% 0 0);      /* near-white */
+  /* ratio >> 4.5:1 */
+}
+```
+
+### Violating example
+
+```css
+:root {
+  --color-text:       oklch(60% 0 0);
+  --color-background: oklch(55% 0 0);
+  /* ratio ~1.2:1 — below the 4.5:1 text floor */
+}
+```
+
+### How to fix
+
+Adjust the offending token's lightness in `tokens.css` until the pair meets or exceeds its floor ratio. Rerun `ferro design:lint --tokens <path> --deny` to confirm.
