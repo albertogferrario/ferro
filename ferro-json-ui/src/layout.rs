@@ -1304,4 +1304,104 @@ mod tests {
             "layout sidebar nav <a> item should have duration-fast (INT-07)"
         );
     }
+
+    // ── Plan 09: fjui-* chrome class migration tests ────────────────────────
+
+    /// Sidebar shell emits fjui-sidebar (T-246-19: swap-target preserved).
+    #[test]
+    fn layout_sidebar_html_emits_fjui_sidebar_class() {
+        use crate::component::SidebarProps;
+        let props = SidebarProps { fixed_top: vec![], groups: vec![], fixed_bottom: vec![] };
+        let html = layout_sidebar_html(&props);
+        assert!(
+            html.contains("fjui-sidebar"),
+            "layout_sidebar_html must emit fjui-sidebar class; found: {html}"
+        );
+        // Structural attributes must be preserved (T-246-19).
+        assert!(html.contains("data-sidebar"), "data-sidebar attribute must be preserved");
+        assert!(html.contains("data-sidebar-backdrop"), "data-sidebar-backdrop must be preserved");
+    }
+
+    /// Header shell emits fjui-header.
+    #[test]
+    fn layout_header_html_emits_fjui_header_class() {
+        use crate::component::HeaderProps;
+        let props = HeaderProps {
+            business_name: "Test".to_string(),
+            notification_count: None,
+            user_name: None,
+            user_avatar: None,
+            logout_url: None,
+        };
+        let html = layout_header_html(&props);
+        assert!(
+            html.contains("fjui-header"),
+            "layout_header_html must emit fjui-header class; found: {html}"
+        );
+    }
+
+    /// Sidebar nav item emits fjui-sidebar__nav-item (not old appearance utilities).
+    #[test]
+    fn layout_sidebar_nav_item_emits_fjui_class() {
+        let item = SidebarNavItem {
+            label: "Dashboard".to_string(),
+            href: "/dashboard".to_string(),
+            icon: None,
+            active: false,
+            disabled: None,
+        };
+        let html = layout_sidebar_nav_item(&item);
+        assert!(
+            html.contains("fjui-sidebar__nav-item"),
+            "inactive nav item must emit fjui-sidebar__nav-item; found: {html}"
+        );
+    }
+
+    /// Active sidebar nav item emits fjui-sidebar__nav-item--active modifier.
+    #[test]
+    fn layout_sidebar_nav_item_active_emits_fjui_active_modifier() {
+        let item = SidebarNavItem {
+            label: "Dashboard".to_string(),
+            href: "/dashboard".to_string(),
+            icon: None,
+            active: true,
+            disabled: None,
+        };
+        let html = layout_sidebar_nav_item(&item);
+        assert!(
+            html.contains("fjui-sidebar__nav-item--active"),
+            "active nav item must emit fjui-sidebar__nav-item--active; found: {html}"
+        );
+    }
+
+    /// Sidebar group label emits fjui-sidebar__group-label.
+    #[test]
+    fn layout_sidebar_group_label_emits_fjui_class() {
+        let group = SidebarGroup {
+            label: "Cassa".to_string(),
+            collapsed: false,
+            items: vec![],
+        };
+        let html = layout_sidebar_group(&group);
+        assert!(
+            html.contains("fjui-sidebar__group-label"),
+            "sidebar group label must emit fjui-sidebar__group-label; found: {html}"
+        );
+    }
+
+    /// DashboardLayout full render emits fjui-sidebar and fjui-header (structural id/attrs preserved).
+    #[test]
+    fn dashboard_layout_shell_emits_fjui_chrome_classes() {
+        let ctx = test_ctx();
+        let html = dashboard_layout().render(&ctx);
+        assert!(html.contains("fjui-sidebar"), "DashboardLayout must emit fjui-sidebar");
+        assert!(html.contains("fjui-header"), "DashboardLayout must emit fjui-header");
+        // Structural swap-target preserved (T-246-19).
+        assert!(html.contains("id=\"ferro-json-ui\""), "ferro-json-ui swap-target must be preserved");
+        assert!(html.contains("data-sidebar"), "data-sidebar must be preserved");
+        assert!(html.contains("data-toast-container"), "data-toast-container must be preserved");
+        // Grid layout utilities preserved (D-02).
+        assert!(html.contains("md:pl-64"), "DashboardLayout grid utility md:pl-64 must be preserved");
+        assert!(html.contains("max-w-7xl"), "DashboardLayout grid utility max-w-7xl must be preserved");
+    }
 }
