@@ -144,24 +144,22 @@ fn base_document_ext(
 /// Render a sidebar nav item for the layout shell.
 fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     let disabled = item.disabled.unwrap_or(false);
+    // Appearance is handled by the fjui-sidebar__nav-item skin rule (SKIN-01).
+    // Layout utilities (flex items-center gap-*) stay inline (D-02).
     let (tag, classes) = if disabled {
         (
             "span",
-            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted opacity-50 pointer-events-none select-none".to_string(),
+            "fjui-sidebar__nav-item flex items-center gap-2 opacity-50 pointer-events-none select-none".to_string(),
         )
     } else if item.active {
         (
             "a",
-            format!(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium bg-card text-primary {INTERACTIVE_BASE}"
-            ),
+            "fjui-sidebar__nav-item fjui-sidebar__nav-item--active flex items-center gap-2".to_string(),
         )
     } else {
         (
             "a",
-            format!(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-text-muted hover:text-text hover:bg-surface {INTERACTIVE_BASE}"
-            ),
+            "fjui-sidebar__nav-item flex items-center gap-2".to_string(),
         )
     };
     let mut html = if disabled {
@@ -188,8 +186,9 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
         html.push_str(" data-collapsed");
     }
     html.push('>');
+    // Appearance (font-size, color, text-transform) handled by fjui-sidebar__group-label skin rule.
     html.push_str(&format!(
-        "<p class=\"px-2 py-1 text-xs font-semibold text-text-muted\">{}</p>",
+        "<p class=\"fjui-sidebar__group-label\">{}</p>",
         html_escape(&group.label)
     ));
     html.push_str("<nav class=\"space-y-1\">");
@@ -202,9 +201,10 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
 
 /// Render the sidebar shell from SidebarProps for DashboardLayout.
 fn layout_sidebar_html(props: &SidebarProps) -> String {
+    // fjui-sidebar: appearance (bg, border-right, width, position:fixed) handled by skin rule (SKIN-01).
+    // Layout utilities (inset-y-0 left-0 z-40 flex flex-col hidden md:flex) stay inline (D-02).
     let mut html = String::from(
-        "<aside data-sidebar class=\"fixed inset-y-0 left-0 z-40 w-64 flex flex-col \
-         bg-background border-r border-border hidden md:flex\">",
+        "<aside data-sidebar class=\"fjui-sidebar inset-y-0 left-0 z-40 flex flex-col hidden md:flex\">",
     );
     if !props.fixed_top.is_empty() {
         html.push_str("<nav class=\"p-4 space-y-1\">");
@@ -237,9 +237,10 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
 
 /// Render the header shell from HeaderProps for DashboardLayout.
 fn layout_header_html(props: &HeaderProps) -> String {
+    // fjui-header: appearance (bg, border-bottom, height, sticky positioning) handled by skin rule (SKIN-01).
+    // Layout utilities (z-30 relative flex items-center md:pl-72) stay inline (D-02).
     let mut html = String::from(
-        "<header class=\"sticky top-0 z-30 relative flex items-center \
-         px-4 py-3 bg-background border-b border-border md:pl-72\">",
+        "<header class=\"fjui-header z-30 relative flex items-center md:pl-72\">",
     );
     // Mobile hamburger button — visible only on small screens.
     html.push_str(&format!(
@@ -1263,7 +1264,9 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_group_label_uses_normal_casing() {
+    fn sidebar_group_label_uses_fjui_class() {
+        // After Plan 09 migration: appearance (11px/500/uppercase) is in the
+        // fjui-sidebar__group-label skin rule; Rust only emits the semantic class.
         let group = SidebarGroup {
             label: "Cassa".to_string(),
             collapsed: false,
@@ -1271,19 +1274,21 @@ mod tests {
         };
         let html = layout_sidebar_group(&group);
         assert!(html.contains("Cassa"));
-        assert!(html.contains("font-semibold"));
-        assert!(html.contains("text-text"));
         assert!(
-            !html.contains("uppercase"),
-            "sidebar group label should not use uppercase"
+            html.contains("fjui-sidebar__group-label"),
+            "sidebar group label must emit fjui-sidebar__group-label"
         );
+        // No appearance utilities in Rust output (SKIN-01).
         assert!(
-            !html.contains("tracking-wider"),
-            "sidebar group label should not use letter-spacing"
+            !html.contains("font-semibold"),
+            "font-semibold must be removed from Rust emission; handled by skin rule"
         );
     }
 
     // ── INT-07 (layout): DashboardLayout sidebar nav item focus ring ──────
+    // After Plan 09 migration: focus ring and transitions are in the
+    // fjui-sidebar__nav-item skin rule (:focus-visible, transition-property).
+    // The Rust emission carries only the semantic class — no appearance utilities.
 
     #[test]
     fn layout_sidebar_nav_focus_ring() {
@@ -1296,12 +1301,18 @@ mod tests {
         };
         let html = layout_sidebar_nav_item(&item);
         assert!(
-            html.contains("focus-visible:ring-ring"),
-            "layout sidebar nav <a> item should have focus-visible:ring-ring (INT-07)"
+            html.contains("fjui-sidebar__nav-item"),
+            "layout sidebar nav <a> item must emit fjui-sidebar__nav-item (INT-07 — focus ring in skin rule)"
+        );
+        // Focus ring and motion are handled by the fjui-sidebar__nav-item skin rule (SKIN-01).
+        // They must NOT be inlined as Tailwind utilities in the Rust output.
+        assert!(
+            !html.contains("focus-visible:ring-ring"),
+            "focus-visible:ring-ring must be removed from Rust emission; handled by skin rule"
         );
         assert!(
-            html.contains("duration-fast"),
-            "layout sidebar nav <a> item should have duration-fast (INT-07)"
+            !html.contains("duration-fast"),
+            "duration-fast must be removed from Rust emission; handled by skin rule"
         );
     }
 
