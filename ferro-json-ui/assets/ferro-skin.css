@@ -1080,4 +1080,109 @@ input, select, textarea {
     white-space: nowrap;
   }
 
+  /* ── DataTable body (Plan 08) ────────────────────────────────────────────── */
+
+  /* fjui-table__body: no direct styling needed — the tbody element is a structural
+   * wrapper; its children (rows) carry the visual weight. */
+  .fjui-table__body {
+    /* structural — intentionally minimal */
+  }
+
+  /* fjui-table__row: 40px rows, hairline separator, hover surface (RSK-01 — NO zebra).
+   * Row is interactive: hover + focus-visible + active required; :disabled exempt
+   * for table rows (rows are <tr> elements, not form controls). */
+  .fjui-table__row {
+    height: 2.5rem;
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-surface);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: -2px;
+    }
+    &:active {
+      background-color: color-mix(in oklab, var(--color-surface) 80%, var(--color-border));
+    }
+  }
+
+  /* fjui-table__cell: body cell base — body-size text, standard padding. */
+  .fjui-table__cell {
+    padding: var(--spacing-3) var(--spacing-4);
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+  }
+
+  /* fjui-table__cell--numeric: tabular numerals + right-align (LANG-03).
+   * Applies to money, date, datetime, count columns. */
+  .fjui-table__cell--numeric {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* fjui-table__cell--boolean: cell layout for status dot; renderer emits dot HTML. */
+  .fjui-table__cell--boolean {
+    /* structural layout only; dot appearance set by the status-dot HTML */
+  }
+
+  /* ── Form controls (Plan 08) ─────────────────────────────────────────────── */
+
+  /* Shared base for fjui-input, fjui-select, fjui-textarea.
+   * font-size repeated here for specificity (base rule above covers the floor;
+   * this ensures the per-control rule wins over any inherited density — LANG-02). */
+
+  .fjui-input,
+  .fjui-select,
+  .fjui-textarea {
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: max(1rem, 16px);
+    color: var(--color-text);
+    transition:
+      border-color var(--motion-duration-fast) var(--motion-ease),
+      box-shadow var(--motion-duration-fast) var(--motion-ease);
+
+    &:hover {
+      border-color: color-mix(in oklab, var(--color-border) 60%, var(--color-text));
+    }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+      border-color: var(--color-ring);
+    }
+    /* :active is N/A for text inputs — focus is the primary keyboard affordance.
+     * The skin-interaction-states lint exempts text inputs from :active (see skin_lint.rs). */
+    &:active {}
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  /* Error state: destructive border (skin owns; fjui-input--error added by render_input). */
+  .fjui-input--error,
+  .fjui-select--error,
+  .fjui-textarea--error {
+    border-color: var(--color-destructive);
+  }
+
+  /* Textarea specifics: min-height, monospace font, code-friendly line-height.
+   * Carries over from the existing gestiscilo override — now canonical in the skin. */
+  .fjui-textarea {
+    min-height: 18rem;
+    font-family: var(--font-mono);
+    line-height: 1.45;
+  }
+
+  /* Form error message: destructive color + meta font size. */
+  .fjui-form-message--error {
+    color: var(--color-destructive);
+    font-size: var(--text-meta-size);
+  }
+
 }

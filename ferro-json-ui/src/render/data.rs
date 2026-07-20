@@ -24,7 +24,7 @@ use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
 
 use super::atoms::{badge_inline_html, render_menu_item};
-use super::classes::{INTERACTIVE_BASE, MOTION_FAST};
+use super::classes::INTERACTIVE_BASE;
 use super::html_escape;
 
 /// Renders a simple `Table` element. Reads `TableProps.columns` and

@@ -196,6 +196,74 @@ mod tests {
         }
     }
 
+    /// D-07 extension (Plan 08): data.rs render functions (DataTable body/rows/cells)
+    /// must not contain the appearance utilities removed by the Plan 08 migration.
+    ///
+    /// Scope: render functions migrated in Plan 08 (DataTable row/cell).
+    ///
+    /// NOT banned (out of scope):
+    /// - Table (simple, not DataTable) — not migrated in Plan 08
+    /// - MediaCardGrid card classes — separate surface, partial migration only
+    #[test]
+    fn data_render_fns_contain_no_migrated_appearance_utilities() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let data_path = std::path::Path::new(&manifest_dir).join("src/render/data.rs");
+        let source = std::fs::read_to_string(&data_path).expect("data.rs readable");
+
+        // Scan only the production source (before #[cfg(test)]).
+        let test_start = source.find("#[cfg(test)]").unwrap_or(source.len());
+        let production_source = &source[..test_start];
+
+        let banned: &[(&str, &str)] = &[
+            // DataTable row zebra striping: removed (RSK-01) — hover surface via skin rule.
+            // Note: render_table (simple Table, non-DataTable) is out of Plan 08 scope.
+            ("even:bg-surface", "DataTable row zebra — removed by RSK-01; skin hover replaces it"),
+            ("odd:bg-surface", "DataTable row zebra — removed by RSK-01; skin hover replaces it"),
+        ];
+
+        for (lit, reason) in banned {
+            assert!(
+                !production_source.contains(lit),
+                "data.rs: appearance utility {lit:?} found — {reason}"
+            );
+        }
+    }
+
+    /// D-07 extension (Plan 08): form.rs render functions (Input/Select/Textarea)
+    /// must not contain the appearance utilities removed by the Plan 08 migration.
+    ///
+    /// Scope: render functions migrated in Plan 08 (render_input, render_select).
+    ///
+    /// NOT banned (out of scope, not migrated in Plan 08):
+    /// - Checkbox/CheckboxList classes (native control micro-styling, deferred)
+    /// - Switch pill classes (complex state machine, deferred)
+    /// - File input classes (specialized input, deferred)
+    #[test]
+    fn form_render_fns_contain_no_migrated_appearance_utilities() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let form_path = std::path::Path::new(&manifest_dir).join("src/render/form.rs");
+        let source = std::fs::read_to_string(&form_path).expect("form.rs readable");
+
+        // Scan only the production source (before #[cfg(test)]).
+        let test_start = source.find("#[cfg(test)]").unwrap_or(source.len());
+        let production_source = &source[..test_start];
+
+        let banned: &[(&str, &str)] = &[
+            // Input/Textarea old appearance: moved to fjui-input/fjui-textarea skin rule
+            ("rounded-md border border-border px-3 py-2", "Input/Textarea border+padding — use fjui-input skin rule"),
+            ("rounded-md border border-destructive px-3 py-2", "Input error border — use fjui-input--error skin rule"),
+            // Select old appearance: moved to fjui-select skin rule
+            ("appearance-none bg-background rounded-md border", "Select appearance — use fjui-select skin rule"),
+        ];
+
+        for (lit, reason) in banned {
+            assert!(
+                !production_source.contains(lit),
+                "form.rs: appearance utility {lit:?} found — {reason}"
+            );
+        }
+    }
+
     #[test]
     fn touch_constants_are_full_literals_and_token_compliant() {
         assert_eq!(TOUCH_ACTION, "touch-manipulation");
