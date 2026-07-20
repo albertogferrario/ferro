@@ -171,12 +171,23 @@ fn extract_fjui_rules(layer_content: &str) -> Vec<RuleBlock> {
 
 // ── Raw-literal detection ─────────────────────────────────────────────────────
 
+/// CSS named color keywords that must not appear as raw values in skin rules.
+///
+/// Whole-word matching is used to avoid false positives on identifiers containing
+/// these strings (e.g. `--color-background`, `blacklist`, var names, comments).
+const NAMED_COLORS: &[&str] = &[
+    "black", "white", "red", "green", "blue", "yellow", "orange", "purple",
+    "gray", "grey", "transparent",
+    // extend per CSS Color Level 4 named colors as needed
+];
+
 /// Returns true if `value` contains a raw color literal not wrapped in `var(...)`.
 ///
 /// Allowed: `var(--token)`, `color-mix(in oklab, var(...) N%, ...)`, `transparent`,
 /// `currentColor`, `inherit`, `initial`, structural geometry values.
 ///
-/// Flagged: `#hex`, `rgb(`, `rgba(`, `hsl(`, `oklch(` used as direct values.
+/// Flagged: `#hex`, `rgb(`, `rgba(`, `hsl(`, `oklch(` used as direct values, and
+/// CSS named color keywords (`black`, `white`, etc.) used as whole words in the value.
 fn contains_raw_color_literal(value: &str) -> bool {
     let v = value.trim();
 
@@ -193,22 +204,36 @@ fn contains_raw_color_literal(value: &str) -> bool {
         return false;
     }
 
-    // Allow color-mix() where all color arguments use var(--...)
-    // e.g. color-mix(in oklab, var(--color-primary) 88%, transparent)
+    // Allow color-mix() — inspect its arguments for raw literals (named colors included)
     if v.starts_with("color-mix(") {
-        // Raw literal inside color-mix is allowed only if all non-keyword
-        // color args are var(--...). Simple check: no bare hex or rgb/hsl/oklch
-        // outside var() in the color-mix args.
-        // We flag color-mix only if it contains raw hex/rgb directly.
         let inner = &v["color-mix(".len()..];
-        return inner.contains('#')
+        // Flag raw hex or functional notations directly
+        if inner.contains('#')
             || inner.contains("rgb(")
             || inner.contains("rgba(")
             || inner.contains("hsl(")
-            || (inner.contains("oklch(") && !inner.contains("var(--"));
+            || (inner.contains("oklch(") && !inner.contains("var(--"))
+        {
+            return true;
+        }
+        // Flag named color keywords inside color-mix arguments.
+        // Avoid false positives on var(--...) names that contain keyword substrings
+        // (e.g. var(--color-background) contains "background", not a named color;
+        // but `black` inside color-mix is a raw named-color argument).
+        let lower = inner.to_lowercase();
+        for kw in NAMED_COLORS {
+            if kw == &"transparent" {
+                // `transparent` is an allowed CSS keyword — skip in color-mix too
+                continue;
+            }
+            if contains_named_color_word(&lower, kw) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    // Check for raw color literals
+    // Check for raw functional color literals
     if v.contains('#') {
         return true;
     }
@@ -223,6 +248,47 @@ fn contains_raw_color_literal(value: &str) -> bool {
         return true;
     }
 
+    // Check for standalone CSS named color keywords.
+    // Uses whole-word matching to avoid false positives on var(--...) identifiers.
+    let lower = v.to_lowercase();
+    for kw in NAMED_COLORS {
+        if kw == &"transparent" {
+            // `transparent` is whitelisted above — skip here
+            continue;
+        }
+        if contains_named_color_word(&lower, kw) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Returns true if `haystack` contains `keyword` as a whole word.
+///
+/// A "word" boundary here is any character that is not alphanumeric and not `-`
+/// (to avoid matching `black` inside `--color-background` or `blacklist`).
+fn contains_named_color_word(haystack: &str, keyword: &str) -> bool {
+    let mut start = 0;
+    while let Some(pos) = haystack[start..].find(keyword) {
+        let abs = start + pos;
+        let before_ok = abs == 0 || {
+            let c = haystack.as_bytes()[abs - 1] as char;
+            !c.is_alphanumeric() && c != '-'
+        };
+        let after_pos = abs + keyword.len();
+        let after_ok = after_pos >= haystack.len() || {
+            let c = haystack.as_bytes()[after_pos] as char;
+            !c.is_alphanumeric() && c != '-'
+        };
+        if before_ok && after_ok {
+            return true;
+        }
+        start = abs + 1;
+        if start >= haystack.len() {
+            break;
+        }
+    }
     false
 }
 

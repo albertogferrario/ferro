@@ -119,7 +119,7 @@ input, select, textarea {
     border: none;
 
     &:hover {
-      background-color: color-mix(in oklab, var(--color-secondary) 88%, black);
+      background-color: color-mix(in oklab, var(--color-secondary) 88%, var(--color-text));
     }
   }
 
@@ -203,7 +203,7 @@ input, select, textarea {
 
   .fjui-badge--warning {
     background-color: color-mix(in oklab, var(--color-warning) 12%, var(--color-background));
-    color: color-mix(in oklab, var(--color-warning) 80%, black);
+    color: color-mix(in oklab, var(--color-warning) 80%, var(--color-text));
   }
 
   .fjui-badge--destructive {
