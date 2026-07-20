@@ -183,8 +183,9 @@ pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
 
 /// Main entry point for the `design:lint` command.
 ///
-/// When `--skin` or `--tokens` are provided, runs the corresponding CSS-file lint
-/// instead of (or in addition to) the JSON-spec walk. Both may be combined.
+/// When `--skin` or `--tokens` are provided, delegates to [`run_skin`] /
+/// [`run_tokens`] respectively. Both flags may be combined; the spec-walk
+/// runs only when neither flag is given.
 ///
 /// Walks `*.json` files under `path` (default `src/views`) without following
 /// symlinks (confining the walk to the given root), lints each ferro-json-ui
@@ -194,91 +195,14 @@ pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
 /// consumption. `--deny` causes a non-zero exit when any warning-level finding
 /// exists (info findings never fail).
 pub fn run(path: Option<String>, json: bool, deny: bool, skin: Option<String>, tokens: Option<String>) {
-    // If --skin or --tokens are present, run the CSS-file lints.
+    // If --skin or --tokens are present, delegate to the dedicated helpers.
     // Both may be combined; the spec-walk runs only when neither flag is given.
     if skin.is_some() || tokens.is_some() {
-        let mut any_warning = false;
-
         if let Some(skin_path) = skin {
-            let canonical = match safe_canonicalize(&skin_path) {
-                Ok(p) => p,
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    std::process::exit(1);
-                }
-            };
-            let content = match std::fs::read_to_string(&canonical) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("error: cannot read `{}`: {e}", canonical.display());
-                    std::process::exit(1);
-                }
-            };
-            let findings: Vec<FileFinding> = ferro_json_ui::design::skin_lint::check_all(&content)
-                .into_iter()
-                .map(|f| FileFinding {
-                    file: skin_path.clone(),
-                    finding: f,
-                })
-                .collect();
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
-                );
-            } else if findings.is_empty() {
-                println!("{}", style("No skin lint findings — skin is clean.").green().bold());
-            } else {
-                print_human(&findings);
-            }
-            if has_warning(&findings) {
-                any_warning = true;
-            }
+            run_skin(skin_path, json, deny);
         }
-
         if let Some(tokens_path) = tokens {
-            let canonical = match safe_canonicalize(&tokens_path) {
-                Ok(p) => p,
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    std::process::exit(1);
-                }
-            };
-            let content = match std::fs::read_to_string(&canonical) {
-                Ok(c) => c,
-                Err(e) => {
-                    eprintln!("error: cannot read `{}`: {e}", canonical.display());
-                    std::process::exit(1);
-                }
-            };
-            let findings: Vec<FileFinding> =
-                ferro_json_ui::design::check_token_contrast(&content)
-                    .into_iter()
-                    .map(|f| FileFinding {
-                        file: tokens_path.clone(),
-                        finding: f,
-                    })
-                    .collect();
-            if json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
-                );
-            } else if findings.is_empty() {
-                println!(
-                    "{}",
-                    style("No contrast violations — tokens pass WCAG gates.").green().bold()
-                );
-            } else {
-                print_human(&findings);
-            }
-            if has_warning(&findings) {
-                any_warning = true;
-            }
-        }
-
-        if deny && any_warning {
-            std::process::exit(1);
+            run_tokens(tokens_path, json, deny);
         }
         return;
     }
