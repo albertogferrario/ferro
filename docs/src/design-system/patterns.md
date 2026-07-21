@@ -815,3 +815,58 @@ Checked pairs (light and dark modes independently):
 ### How to fix
 
 Adjust the offending token's lightness in `tokens.css` until the pair meets or exceeds its floor ratio. Rerun `ferro design:lint --tokens <path> --deny` to confirm.
+
+---
+
+## `skin-border-or-shadow`
+
+**Title:** A fjui-* rule must not declare both a visible border and a non-none box-shadow
+
+**Rationale:** Flat surfaces use border only; overlays use shadow only. Mixing both on the same element blurs the elevation hierarchy and creates visual noise (LANG-04).
+
+**Surface:** `@layer components` CSS skin file (checked via `ferro design:lint --skin <path>`)
+
+**Exceptions (not flagged):**
+- `border: none` or `box-shadow: none` — explicit opt-out of the property
+- `box-shadow` that appears only inside a `&:focus-visible { }` nested block (focus rings)
+
+### Conforming example
+
+```css
+@layer components {
+  /* flat surface — border only */
+  .fjui-card {
+    border: 1px solid var(--color-border);
+    /* NO box-shadow */
+  }
+
+  /* overlay — shadow only */
+  .fjui-menu {
+    box-shadow: var(--shadow-md);
+    /* NO border */
+  }
+
+  /* focus ring exemption — shadow inside :focus-visible is allowed */
+  .fjui-input {
+    border: 1px solid var(--color-border);
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--color-ring);
+    }
+  }
+}
+```
+
+### Violating example
+
+```css
+@layer components {
+  .fjui-card {
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-md);  /* both border AND shadow — violation */
+  }
+}
+```
+
+### How to fix
+
+Choose one elevation signal per surface type. Remove `box-shadow` from flat surfaces (cards, sidebars, headers) or remove `border` from overlay surfaces (dropdowns, modals, toasts). If the shadow is a focus ring, move it inside `&:focus-visible { }`.

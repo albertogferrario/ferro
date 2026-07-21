@@ -450,10 +450,199 @@ pub fn check_skin_interaction_states(css: &str) -> Vec<Finding> {
     findings
 }
 
+// ── Border-or-shadow elevation rule ──────────────────────────────────────────
+
+/// Check that no `.fjui-*` rule block in `@layer components` declares BOTH a
+/// visible border/border-color AND a non-none box-shadow on the same element.
+///
+/// The elevation discipline (LANG-04) requires:
+///   - flat surfaces: border only, no shadow
+///   - overlays:      shadow only, no border
+///
+/// Exceptions (not flagged):
+///   - `border: none` or `box-shadow: none` declarations (opt-out of the property)
+///   - `box-shadow` that appears only inside a `:focus-visible` nested block
+///     (focus rings use box-shadow in some patterns; they are not elevation)
+///
+/// Returns one `Warning` finding per violating rule block.
+pub fn check_skin_border_and_shadow(css: &str) -> Vec<Finding> {
+    let layer = extract_components_layer(css);
+    let content = if layer.is_empty() { css } else { layer };
+    let rules = extract_fjui_rules(content);
+    let mut findings = Vec::new();
+
+    for rule in &rules {
+        if has_border_and_shadow_violation(&rule.selector, &rule.body) {
+            findings.push(Finding {
+                rule: "skin-border-or-shadow",
+                element_id: None,
+                severity: Severity::Warning,
+                message: format!(
+                    "Rule `.{}` declares both a visible border and a non-none box-shadow — use border OR shadow, never both (LANG-04).",
+                    rule.selector
+                ),
+                suggestion: "Flat surfaces use border only (no box-shadow). Overlays use box-shadow only (border: none). Move box-shadow inside :focus-visible if it is a focus ring.".into(),
+            });
+        }
+    }
+
+    findings
+}
+
+/// Returns true if `body` declares both a visible border/border-color AND a
+/// non-none box-shadow at the top level of the rule (not inside :focus-visible).
+fn has_border_and_shadow_violation(selector: &str, body: &str) -> bool {
+    // Build a "top-level-only" view of the rule body by stripping :focus-visible
+    // nested blocks. We keep other nested blocks (e.g. :hover) because a hover
+    // shadow lift paired with a base border IS a violation.
+    let top_level = strip_focus_visible_blocks(body);
+
+    let has_visible_border = rule_has_visible_border(selector, &top_level);
+    let has_non_none_shadow = rule_has_non_none_box_shadow(&top_level);
+
+    has_visible_border && has_non_none_shadow
+}
+
+/// Strip any `&:focus-visible { ... }` nested blocks from `body`, returning the
+/// remainder. This is a simple brace-depth scan — it handles one level of nesting.
+fn strip_focus_visible_blocks(body: &str) -> String {
+    let mut result = String::with_capacity(body.len());
+    let mut pos = 0;
+    let bytes = body.as_bytes();
+    let len = body.len();
+
+    while pos < len {
+        // Look for a :focus-visible token followed (eventually) by `{`
+        let rest = &body[pos..];
+        if let Some(fv_rel) = rest.find(":focus-visible") {
+            let fv_abs = pos + fv_rel;
+            // Check if there's a `{` after it (possibly with whitespace)
+            let after_fv = &body[fv_abs + ":focus-visible".len()..];
+            if let Some(brace_rel) = after_fv.find('{') {
+                // Verify nothing unexpected between :focus-visible and the brace
+                let between = &after_fv[..brace_rel];
+                if between.chars().all(|c| c.is_whitespace()) {
+                    // Emit text up to the :focus-visible token
+                    result.push_str(&body[pos..fv_abs]);
+                    // Skip past the entire nested block
+                    let block_start = fv_abs + ":focus-visible".len() + brace_rel + 1;
+                    let block_body = &body[block_start..];
+                    let mut depth = 1usize;
+                    let mut end_rel = block_body.len();
+                    for (i, ch) in block_body.char_indices() {
+                        match ch {
+                            '{' => depth += 1,
+                            '}' => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    end_rel = i + 1; // include the closing brace
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    pos = block_start + end_rel;
+                    continue;
+                }
+            }
+            // Not a clean :focus-visible { block — emit one char and keep scanning
+            result.push(bytes[pos] as char);
+            pos += 1;
+        } else {
+            // No more :focus-visible tokens — emit the rest
+            result.push_str(&body[pos..]);
+            break;
+        }
+    }
+
+    result
+}
+
+/// Returns true if the rule body contains a visible border declaration (not `none`).
+///
+/// Considers:
+///   - `border: <value>` where value is not `none`
+///   - `border-color: <value>` where value is not `none`/`transparent`
+///   - `border-left:`, `border-right:`, `border-top:`, `border-bottom:` with non-none values
+///   - `border-left-color:` etc. with non-none values
+///
+/// Note: `border-radius` and `border-width` alone are NOT visible borders.
+/// Note: `border-left-width` / `border-top-width` alone are not flagged either.
+fn rule_has_visible_border(_selector: &str, body: &str) -> bool {
+    for segment in body.split(';') {
+        let segment = segment.trim();
+        if segment.is_empty() || segment.contains('{') || segment.starts_with('}') {
+            continue;
+        }
+        let Some(colon) = segment.find(':') else { continue };
+        let prop = segment[..colon].trim().trim_start_matches('&').trim();
+        // Strip pseudo-class prefix (e.g. ":hover color" → "color")
+        let prop = prop.trim_start_matches(':').trim();
+        let value = segment[colon + 1..].trim();
+
+        let is_border_prop = prop == "border"
+            || prop == "border-color"
+            || prop == "border-left"
+            || prop == "border-right"
+            || prop == "border-top"
+            || prop == "border-bottom"
+            || prop == "border-left-color"
+            || prop == "border-right-color"
+            || prop == "border-top-color"
+            || prop == "border-bottom-color";
+
+        if !is_border_prop {
+            continue;
+        }
+
+        // Opt-out values — not a visible border
+        let v = value.to_lowercase();
+        if v == "none" || v == "transparent" || v.is_empty() {
+            continue;
+        }
+
+        return true;
+    }
+    false
+}
+
+/// Returns true if the rule body contains a non-none `box-shadow` declaration.
+///
+/// Scans the full body text (including inside nested blocks like `&:hover`)
+/// rather than splitting on `;`, so that hover-lift shadows are detected.
+/// The caller strips `:focus-visible` blocks before calling this function.
+fn rule_has_non_none_box_shadow(body: &str) -> bool {
+    let needle = "box-shadow";
+    let mut pos = 0;
+    while let Some(rel) = body[pos..].find(needle) {
+        let abs = pos + rel;
+        // After "box-shadow" there must be optional whitespace then ":"
+        let after = body[abs + needle.len()..].trim_start();
+        if !after.starts_with(':') {
+            pos = abs + 1;
+            continue;
+        }
+        // Extract the value up to the next ";" or "}" or end of string
+        let value_start = abs + needle.len() + body[abs + needle.len()..].find(':').unwrap_or(0) + 1;
+        let value_raw = &body[value_start..];
+        let end = value_raw.find([';', '}']).unwrap_or(value_raw.len());
+        let value = value_raw[..end].trim();
+
+        let v = value.to_lowercase();
+        if !v.is_empty() && v != "none" {
+            return true;
+        }
+        pos = abs + 1;
+    }
+    false
+}
+
 /// Run both raw-literal and interaction-state checks over `css`.
 pub fn check_all(css: &str) -> Vec<Finding> {
     let mut findings = check_skin_raw_literals(css);
     findings.extend(check_skin_interaction_states(css));
+    findings.extend(check_skin_border_and_shadow(css));
     findings
 }
 
@@ -638,6 +827,95 @@ mod tests {
         );
     }
 
+    // ── LANG-03: tabular-nums in ferro-skin.css ───────────────────────────────
+
+    /// LANG-03: the committed ferro-skin.css must declare font-variant-numeric:tabular-nums
+    /// in both the numeric table-cell rule and the stat-value rule.
+    ///
+    /// Reads the CSS from disk via CARGO_MANIFEST_DIR — the same path the
+    /// render pipeline would serve — so the test breaks immediately if either
+    /// rule is removed or misspelled.
+    #[test]
+    fn ferro_skin_css_contains_tabular_nums_in_numeric_cell() {
+        let css = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/ferro-skin.css"
+        ))
+        .expect("assets/ferro-skin.css must exist and be readable");
+        assert!(
+            css.contains("fjui-table__cell--numeric"),
+            "ferro-skin.css must contain the .fjui-table__cell--numeric rule (LANG-03)"
+        );
+        // Locate the numeric-cell rule block and verify tabular-nums is inside it.
+        // Strategy: find the rule selector, then scan forward until the closing brace.
+        let marker = "fjui-table__cell--numeric";
+        let start = css.find(marker).expect("fjui-table__cell--numeric selector not found");
+        // Find the opening brace after the selector
+        let brace = css[start..].find('{').expect("opening brace for fjui-table__cell--numeric not found");
+        let body_start = start + brace;
+        // Find the matching closing brace (depth-tracked)
+        let mut depth = 0usize;
+        let mut body_end = body_start;
+        for (i, ch) in css[body_start..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        body_end = body_start + i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let numeric_cell_block = &css[body_start..=body_end];
+        assert!(
+            numeric_cell_block.contains("tabular-nums"),
+            "fjui-table__cell--numeric rule must declare font-variant-numeric:tabular-nums (LANG-03); block: {numeric_cell_block}"
+        );
+    }
+
+    /// LANG-03: ferro-skin.css must declare tabular-nums on the stat value element.
+    #[test]
+    fn ferro_skin_css_contains_tabular_nums_in_stat_value() {
+        let css = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/ferro-skin.css"
+        ))
+        .expect("assets/ferro-skin.css must exist and be readable");
+        assert!(
+            css.contains("fjui-stat-card__value"),
+            "ferro-skin.css must contain the .fjui-stat-card__value rule (LANG-03)"
+        );
+        let marker = "fjui-stat-card__value";
+        let start = css.find(marker).expect("fjui-stat-card__value selector not found");
+        let brace = css[start..].find('{').expect("opening brace for fjui-stat-card__value not found");
+        let body_start = start + brace;
+        let mut depth = 0usize;
+        let mut body_end = body_start;
+        for (i, ch) in css[body_start..].char_indices() {
+            match ch {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        body_end = body_start + i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let stat_block = &css[body_start..=body_end];
+        assert!(
+            stat_block.contains("tabular-nums"),
+            "fjui-stat-card__value rule must declare font-variant-numeric:tabular-nums (LANG-03); block: {stat_block}"
+        );
+    }
+
+    // ── check_all ─────────────────────────────────────────────────────────────
+
     /// check_all combines both checks.
     #[test]
     fn check_all_combines_both_checks() {
@@ -656,6 +934,161 @@ mod tests {
         assert!(
             findings.iter().any(|f| f.rule == "skin-raw-literals"),
             "check_all must include raw-literal findings"
+        );
+    }
+
+    // ── LANG-04: border-or-shadow elevation rule ──────────────────────────────
+
+    /// A rule with BOTH a visible border AND a non-none box-shadow must be flagged.
+    #[test]
+    fn border_and_shadow_on_same_rule_returns_warning() {
+        let css = "@layer components {
+            .fjui-card {
+                border: 1px solid var(--color-border);
+                box-shadow: var(--shadow-md);
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert_eq!(
+            findings.len(),
+            1,
+            "expected 1 border-or-shadow violation, got: {findings:#?}"
+        );
+        assert_eq!(findings[0].severity, Severity::Warning);
+        assert!(
+            findings[0].message.contains("fjui-card"),
+            "message must name the selector"
+        );
+        assert_eq!(findings[0].rule, "skin-border-or-shadow");
+    }
+
+    /// A rule with border only (no box-shadow) must NOT be flagged.
+    #[test]
+    fn border_only_no_shadow_no_warning() {
+        let css = "@layer components {
+            .fjui-card {
+                border: 1px solid var(--color-border);
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert!(
+            findings.is_empty(),
+            "border only (no shadow) must not be flagged, got: {findings:#?}"
+        );
+    }
+
+    /// A rule with box-shadow only (no border) must NOT be flagged.
+    #[test]
+    fn shadow_only_no_border_no_warning() {
+        let css = "@layer components {
+            .fjui-menu {
+                box-shadow: var(--shadow-md);
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert!(
+            findings.is_empty(),
+            "shadow only (no border) must not be flagged, got: {findings:#?}"
+        );
+    }
+
+    /// `border: none` is an opt-out — NOT a visible border, must NOT be flagged.
+    #[test]
+    fn border_none_with_shadow_no_warning() {
+        let css = "@layer components {
+            .fjui-btn--primary {
+                border: none;
+                box-shadow: var(--shadow-sm);
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert!(
+            findings.is_empty(),
+            "border:none with shadow must not be flagged (border is opted out), got: {findings:#?}"
+        );
+    }
+
+    /// `box-shadow` inside `:focus-visible` only — NOT a violation (focus ring exemption).
+    #[test]
+    fn shadow_only_in_focus_visible_no_warning() {
+        let css = "@layer components {
+            .fjui-input {
+                border: 1px solid var(--color-border);
+                &:focus-visible {
+                    box-shadow: 0 0 0 2px var(--color-ring);
+                }
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert!(
+            findings.is_empty(),
+            "box-shadow inside :focus-visible with a base border must not be flagged (focus-ring exemption), got: {findings:#?}"
+        );
+    }
+
+    /// A hover lift (box-shadow in :hover) combined with a base border IS a violation.
+    #[test]
+    fn hover_shadow_lift_with_base_border_returns_warning() {
+        let css = "@layer components {
+            .fjui-card {
+                border: 1px solid var(--color-border);
+                &:hover {
+                    box-shadow: var(--shadow-md);
+                }
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
+        assert_eq!(
+            findings.len(),
+            1,
+            "hover shadow lift + base border must be flagged (LANG-04), got: {findings:#?}"
+        );
+        assert_eq!(findings[0].rule, "skin-border-or-shadow");
+    }
+
+    /// The real ferro-skin.css must pass the border-or-shadow rule with zero violations.
+    #[test]
+    fn ferro_skin_css_passes_border_or_shadow_rule() {
+        let css = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/ferro-skin.css"
+        ))
+        .expect("assets/ferro-skin.css must exist and be readable");
+        let findings = check_skin_border_and_shadow(&css);
+        assert!(
+            findings.is_empty(),
+            "ferro-skin.css must have zero border-or-shadow violations (LANG-04); found: {findings:#?}"
+        );
+    }
+
+    // ── DX-02: token slot docs coverage ──────────────────────────────────────
+
+    /// DX-02: every token slot in ferro-theme's ALL_TOKENS registry must appear
+    /// in the docs/tokens.md file shipped with ferro-json-ui.
+    ///
+    /// This test breaks as soon as a new slot is added to ALL_TOKENS without a
+    /// corresponding entry in the documentation — preventing silent drift.
+    #[test]
+    fn all_tokens_slots_covered_in_tokens_md() {
+        use ferro_theme::token::ALL_TOKENS;
+
+        let tokens_md = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/docs/tokens.md"
+        ))
+        .expect("docs/tokens.md must exist and be readable (DX-02)");
+
+        let mut missing: Vec<&str> = Vec::new();
+        for slot in ALL_TOKENS {
+            if !tokens_md.contains(slot) {
+                missing.push(slot);
+            }
+        }
+
+        assert!(
+            missing.is_empty(),
+            "docs/tokens.md is missing {} token slot(s) — add them to prevent DX-02 drift: {missing:#?}",
+            missing.len()
         );
     }
 }

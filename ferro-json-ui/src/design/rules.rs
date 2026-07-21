@@ -126,6 +126,14 @@ pub(super) static RULE_REGISTRY: &[DesignRule] = &[
         check: check_skin_interaction_states_stub,
     },
     DesignRule {
+        id: "skin-border-or-shadow",
+        title: "A fjui-* rule must not declare both a visible border and a non-none box-shadow",
+        rationale: "Flat surfaces use border only; overlays use shadow only. Mixing both breaks the elevation hierarchy (LANG-04).",
+        intents: &[], // all intents — CSS file lint, not intent-specific
+        // Actual check runs via --skin CLI flag; this stub returns empty from the spec-lint path.
+        check: check_skin_border_or_shadow_stub,
+    },
+    DesignRule {
         id: "contrast-lint",
         title: "Token contrast ratios must meet WCAG floors",
         rationale: "Text token pairs must achieve >=4.5:1 and UI/non-text pairs >=3:1 in both light and dark modes.",
@@ -563,6 +571,10 @@ fn check_skin_raw_literals_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Find
 }
 
 fn check_skin_interaction_states_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
+    vec![]
+}
+
+fn check_skin_border_or_shadow_stub(_spec: &Spec, _intent: Option<&str>) -> Vec<Finding> {
     vec![]
 }
 
