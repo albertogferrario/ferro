@@ -140,6 +140,11 @@ where
 #[cfg(test)]
 mod macro_tests;
 
+// ── Render-path integration tests (SC-3 proof, projections feature-gated) ────
+
+#[cfg(all(test, feature = "projections"))]
+mod render_path_tests;
+
 // ── Unit tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
