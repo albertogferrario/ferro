@@ -228,6 +228,12 @@ pub(super) const SOURCE: &str = r#"
                         return;
                     }
 
+                    // Capture the departing page's scroll position BEFORE the
+                    // swap mutates the DOM: replacing tall content with shorter
+                    // content makes the browser clamp mainEl.scrollTop, so reading
+                    // it after replaceChildren would save 0 (B-03).
+                    var departScrollTop = mainEl ? mainEl.scrollTop : 0;
+
                     // Before-swap cleanup hook (D-13): page scripts can listen
                     // to this event to close transient EventSources.
                     try {
@@ -270,7 +276,7 @@ pub(super) const SOURCE: &str = r#"
                         // before pushing the new state.
                         try {
                             history.replaceState(
-                                { scrollTop: mainEl ? mainEl.scrollTop : 0 },
+                                { scrollTop: departScrollTop },
                                 document.title
                             );
                             history.pushState({ scrollTop: 0 }, document.title, url);
