@@ -26,6 +26,8 @@ pub mod inertia;
 #[cfg(feature = "json-ui")]
 pub mod json_ui;
 pub mod lang;
+/// Request-scoped memoization store (`MemoStore`) and task-local (`MEMO_STORE`).
+pub mod memo;
 pub mod metrics;
 pub mod middleware;
 /// Route definition and registration.
