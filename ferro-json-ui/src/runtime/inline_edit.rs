@@ -132,7 +132,10 @@ pub(super) const SOURCE: &str = r#"
         try { input.focus(); input.select(); } catch (_) {}
 
         // Blur = cancel (never save) — D-09, Italian operator convention.
-        input.addEventListener('blur', function() {
+        // Named function so the keydown Enter path can remove it via
+        // removeEventListener before committing (arguments.callee is forbidden
+        // under 'use strict').
+        function onBlur() {
             // Slight delay to let click events fire first (e.g. click-outside detection).
             setTimeout(function() {
                 if (dd.getAttribute('data-inline-edit-active')) {
@@ -145,13 +148,14 @@ pub(super) const SOURCE: &str = r#"
                     }
                 }
             }, 100);
-        });
+        }
+        input.addEventListener('blur', onBlur);
 
         // Enter = commit; Escape = cancel.
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && kind !== 'textarea') {
                 e.preventDefault();
-                input.removeEventListener('blur', arguments.callee);
+                input.removeEventListener('blur', onBlur);
                 commitInlineEdit(dd, input, endpoint, field);
             }
             if (e.key === 'Escape') {
