@@ -906,7 +906,7 @@ input, select, textarea {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--color-text-muted);
-    padding: calc(var(--spacing) * 4) calc(var(--spacing) * 4) calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3) calc(var(--spacing) * 1);
   }
 
   /* SidebarNavItem IS interactive — all four states required (SKIN-05). */

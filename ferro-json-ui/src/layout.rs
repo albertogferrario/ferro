@@ -207,14 +207,14 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
         "<aside data-sidebar class=\"fjui-sidebar inset-y-0 left-0 z-40 flex flex-col hidden md:flex\">",
     );
     if !props.fixed_top.is_empty() {
-        html.push_str("<nav class=\"p-4 space-y-1\">");
+        html.push_str("<nav class=\"px-4 pt-4 pb-1 space-y-1\">");
         for item in &props.fixed_top {
             html.push_str(&layout_sidebar_nav_item(item));
         }
         html.push_str("</nav>");
     }
     if !props.groups.is_empty() {
-        html.push_str("<div class=\"flex-1 overflow-y-auto p-4 space-y-4\">");
+        html.push_str("<div class=\"flex-1 overflow-y-auto px-4 pb-4 pt-0 space-y-2\">");
         for group in &props.groups {
             html.push_str(&layout_sidebar_group(group));
         }
