@@ -220,13 +220,13 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
             let (extra_class, click_attrs) = if let Some(ref href) = row_href {
                 let onclick = format!(
-                    " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\"",
+                    " onclick=\"if(!event.target.closest('button,a,input,label,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\"",
                     html_escape(href)
                 );
                 (" cursor-pointer", onclick)
             } else if props.row_actions.is_some() {
                 let onclick = format!(
-                    " onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('dt-{}').showPopover()\"",
+                    " onclick=\"if(!event.target.closest('button,a,input,label,[popovertarget],[popover]'))document.getElementById('dt-{}').showPopover()\"",
                     html_escape(&row_key_value)
                 );
                 (" cursor-pointer", onclick)
@@ -298,7 +298,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 // legally contains the button.
                 (
                     format!(
-                        "<div class=\"fjui-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\">",
+                        "<div class=\"fjui-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\" onclick=\"if(!event.target.closest('button,a,input,label,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\">",
                         html_escape(href)
                     ),
                     "</div>".to_string(),
@@ -306,7 +306,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             } else if props.row_actions.is_some() {
                 (
                     format!(
-                        "<div class=\"fjui-card p-4 space-y-2 cursor-pointer\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))document.getElementById('dt-m-{}').showPopover()\">",
+                        "<div class=\"fjui-card p-4 space-y-2 cursor-pointer\" onclick=\"if(!event.target.closest('button,a,input,label,[popovertarget],[popover]'))document.getElementById('dt-m-{}').showPopover()\">",
                         html_escape(&row_key_value)
                     ),
                     "</div>".to_string(),
