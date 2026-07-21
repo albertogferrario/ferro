@@ -38,7 +38,10 @@ pub(super) const SOURCE: &str = r#"
     }
 
     function attachComboboxBehavior(wrapper) {
-        var nativeSelect = wrapper.querySelector('[data-combobox-native]');
+        // The native <select data-combobox-native> is emitted as a sibling of the
+        // wrapper (outer .relative div contains both). Look in the parent container.
+        var nativeSelect = wrapper.querySelector('[data-combobox-native]')
+            || (wrapper.parentElement ? wrapper.parentElement.querySelector('[data-combobox-native]') : null);
         var input = wrapper.querySelector('[data-combobox-input]');
         var listbox = wrapper.querySelector('[role="listbox"]');
 
