@@ -24,6 +24,17 @@
 //!   synchronous functions (Pitfall 4).
 //! - Only `Pat::Ident` argument patterns are supported in v17.0; destructuring
 //!   patterns emit a `compile_error!` naming the offending argument.
+//! - Value arguments are borrowed (not moved) when building the key, so
+//!   non-`Copy` argument types (`String`, `Vec`, user structs) are supported;
+//!   `&T: Hash` forwards to `T`, keeping the key bytes identical.
+//!
+//! # Limitation
+//!
+//! If the memoized body panics, the panic propagates through
+//! [`futures::future::Shared`] to any concurrent awaiters of the same slot in a
+//! version-dependent way. Memoize functions whose failure mode is a returned
+//! `Result::Err` (cached per D-04) or that are infallible; a panicking body has
+//! no defined cross-caller contract.
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -122,6 +133,12 @@ pub fn memoize_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
     // The args tuple uses a trailing comma so that both the zero-arg case
     // `&( , )` and the one-arg case `&(x, )` produce a true tuple rather than
     // parenthesised expressions, ensuring uniform Hash semantics.
+    //
+    // Each argument is borrowed (`&#name`) rather than moved into the key tuple:
+    // `&T: Hash` forwards to `T`'s hash, so the key bytes are identical while the
+    // owned argument stays available for the function body below. Moving here
+    // would consume non-`Copy` args (`String`, `Vec`, structs) before the body
+    // could use them.
     let output = quote! {
         #(#fn_attrs)*
         #fn_vis async fn #fn_name #fn_generics(#(#all_inputs),*) #fn_output
@@ -133,7 +150,7 @@ pub fn memoize_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
             struct #marker_name;
 
             let __ferro_memo_key = #ferro::memo::MemoKey::new::<#marker_name, _>(
-                &( #( #value_arg_names, )* ),
+                &( #( &#value_arg_names, )* ),
             );
 
             if let ::std::option::Option::Some(__ferro_store) =

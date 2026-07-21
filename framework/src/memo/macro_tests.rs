@@ -9,6 +9,8 @@
 //! - LIVE-01: `#[memoize]` on an impl method with `&self` excludes `self` from the key
 //! - D-02: out-of-scope call runs un-memoized without panic
 //! - D-04: `Result`-returning fn caches its `Err` for the request
+//! - Non-`Copy` args: `#[memoize]` compiles and keys correctly on `String`/owned
+//!   arguments (regression guard — the key tuple must borrow, not move, its args)
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -162,4 +164,37 @@ async fn err_is_cached() {
     assert_eq!(r2.unwrap_err(), "boom-0");
     // Body ran exactly once — Err was cached.
     assert_eq!(COUNTER_D04.load(Ordering::SeqCst), 1);
+}
+
+// ── Non-Copy args: #[memoize] must borrow (not move) args into the key ────────
+// Regression guard for WR-01: a moved key tuple would consume `String`/owned
+// arguments before the body could use them, failing to compile. This test only
+// exists if the macro borrows its args — `&T: Hash` keeps the key bytes identical.
+
+static COUNTER_OWNED: AtomicUsize = AtomicUsize::new(0);
+
+#[memoize]
+async fn load_owned(name: String) -> usize {
+    COUNTER_OWNED.fetch_add(1, Ordering::SeqCst);
+    name.len()
+}
+
+#[tokio::test]
+async fn memoize_supports_non_copy_args() {
+    COUNTER_OWNED.store(0, Ordering::SeqCst);
+
+    let store = memo_scope();
+    let (a, b, c) = with_memo_scope(store, async {
+        let a = load_owned("apple".to_string()).await;
+        let b = load_owned("apple".to_string()).await; // equal value → hits cache
+        let c = load_owned("kiwi".to_string()).await; // different value → recomputes
+        (a, b, c)
+    })
+    .await;
+
+    assert_eq!(a, 5);
+    assert_eq!(b, 5); // same result as a
+    assert_eq!(c, 4);
+    // Body ran twice: once for "apple", once for "kiwi".
+    assert_eq!(COUNTER_OWNED.load(Ordering::SeqCst), 2);
 }
