@@ -314,7 +314,12 @@ fn layout_header_html(props: &HeaderProps) -> String {
     ));
     // Avatar menu popover panel: Profilo / Tema toggle (only when `theme_url`
     // is configured) / separator / Esci POST form.
-    // Esci is a <form method="post"> so ferro's CSRF guard applies (T-247-03-02).
+    // Esci is a plain <form method="post"> with no CSRF token — matching how
+    // consumer apps handle their other POST forms. The operative cross-site
+    // mitigation is the app's SameSite=Lax session cookie (cross-site POSTs
+    // arrive unauthenticated). Note ferro's CsrfMiddleware validates only the
+    // X-CSRF-TOKEN/X-XSRF-TOKEN headers, so it would reject token-less form
+    // posts; apps enabling it must exempt or tokenize this form themselves.
     // Tema onclick POSTs to `theme_url`; the dark class toggles only on a 2xx
     // response so visual state stays in sync with the persisted preference.
     let logout_action = props.logout_url.as_deref().unwrap_or("/logout");
