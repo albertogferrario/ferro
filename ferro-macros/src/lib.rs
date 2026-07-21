@@ -12,12 +12,12 @@ use proc_macro::TokenStream;
 
 mod action;
 mod describe;
-mod memoize;
 mod domain_error;
 mod ferro_test;
 mod handler;
 mod inertia;
 mod injectable;
+mod memoize;
 mod model;
 mod redirect;
 mod request;

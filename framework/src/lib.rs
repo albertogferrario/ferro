@@ -4,6 +4,10 @@
 //! events, notifications, broadcasting, storage, caching, and Inertia.js
 //! integration in a single cohesive package.
 #![warn(missing_docs)]
+// Allow in-crate tests that use #[memoize] (and other macros that generate
+// `::ferro::...` paths) to resolve those paths against this crate itself.
+#[cfg(test)]
+extern crate self as ferro;
 
 /// API key management and OpenAPI specification generation.
 pub mod api;

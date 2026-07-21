@@ -135,6 +135,11 @@ where
     MEMO_STORE.scope(store, f).await
 }
 
+// ── Macro-level tests (in-crate, uses #[memoize] via crate::memoize) ─────────
+
+#[cfg(test)]
+mod macro_tests;
+
 // ── Unit tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
