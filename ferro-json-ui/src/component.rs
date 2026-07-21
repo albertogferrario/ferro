@@ -183,6 +183,12 @@ pub struct Column {
     /// Use `right` for numeric/currency columns so magnitudes line up.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub align: Option<ColumnAlign>,
+    /// Display label when the boolean cell value is true. Defaults to "Sì".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_true: Option<String>,
+    /// Display label when the boolean cell value is false. Defaults to "No".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_false: Option<String>,
 }
 
 /// Select option (value + label pair).
@@ -1235,6 +1241,10 @@ pub struct DataTableProps {
     /// URL pattern for row click navigation. Use `{row_key}` as placeholder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_href: Option<String>,
+    /// When true, renders a leading checkbox column for bulk row selection.
+    /// Selection behavior (floating bar, action dispatch) is Phase 249 (LIST-03).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bulk_select: Option<bool>,
 }
 
 /// Props for MediaCardGrid — a responsive card grid backed by a data array.

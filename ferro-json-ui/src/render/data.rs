@@ -187,6 +187,13 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
 
         // Header shell — Plan 07 scope.
         html.push_str("<thead class=\"fjui-table__header\"><tr>");
+        if props.bulk_select.unwrap_or(false) {
+            html.push_str(
+                "<th class=\"fjui-table__header-cell fjui-table__bulk-select-checkbox\">\
+                 <input type=\"checkbox\" aria-label=\"Seleziona tutti\" class=\"cursor-pointer\" />\
+                 </th>",
+            );
+        }
         for col in &props.columns {
             html.push_str(&format!(
                 "<th class=\"fjui-table__header-cell {}\">{}",
@@ -231,6 +238,13 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             html.push_str(&format!(
                 "<tr class=\"fjui-table__row{extra_class}\"{click_attrs}>"
             ));
+            if props.bulk_select.unwrap_or(false) {
+                html.push_str(
+                    "<td class=\"fjui-table__cell fjui-table__bulk-select-checkbox\">\
+                     <input type=\"checkbox\" class=\"cursor-pointer\" />\
+                     </td>",
+                );
+            }
             for col in &props.columns {
                 // Numeric columns (currency, date, datetime) get the --numeric modifier for
                 // font-variant-numeric: tabular-nums + right-align (LANG-03).
@@ -433,6 +447,29 @@ fn render_cell(col: &Column, value: Option<&Value>) -> String {
                 "<span class=\"inline-flex items-center text-text-muted\" aria-hidden=\"true\">{svg}</span>"
             ),
             None => String::new(),
+        };
+    }
+    if let Some(ColumnFormat::Boolean) = col.format {
+        // true → success dot + label_true; false/null → muted dot + label_false.
+        // Full-literal class strings per D-01 (no dynamic class assembly).
+        // label_true/label_false are html-escaped (T-247-02-01).
+        let label_true = col.label_true.as_deref().unwrap_or("Sì");
+        let label_false = col.label_false.as_deref().unwrap_or("No");
+        let is_true = match value {
+            Some(Value::Bool(b)) => *b,
+            Some(Value::Number(n)) => n.as_i64() == Some(1),
+            _ => false,
+        };
+        return if is_true {
+            format!(
+                "<span class=\"fjui-status-dot fjui-status-dot--true\">{}</span>",
+                html_escape(label_true)
+            )
+        } else {
+            format!(
+                "<span class=\"fjui-status-dot fjui-status-dot--false\">{}</span>",
+                html_escape(label_false)
+            )
         };
     }
     html_escape(&cell_string(value))
@@ -1895,6 +1932,67 @@ mod tests {
         assert!(
             html.contains("fjui-table__cell--boolean"),
             "boolean column must emit fjui-table__cell--boolean; got: {html}"
+        );
+    }
+
+    // ── Plan 247-02: boolean status-dot + bulk-select ────────────────────
+
+    /// Boolean column renders fjui-status-dot with configurable labels (RSK-01).
+    #[test]
+    fn boolean_column_renders_status_dot() {
+        use crate::component::{Column, ColumnFormat};
+        let col = Column {
+            key: "active".to_string(),
+            label: "Stato".to_string(),
+            format: Some(ColumnFormat::Boolean),
+            align: None,
+            label_true: Some("Attivo".to_string()),
+            label_false: Some("Non attivo".to_string()),
+        };
+        let true_html = render_cell(&col, Some(&Value::Bool(true)));
+        assert!(
+            true_html.contains("fjui-status-dot--true"),
+            "true → success dot; got: {true_html}"
+        );
+        assert!(true_html.contains("Attivo"), "true label; got: {true_html}");
+        let false_html = render_cell(&col, Some(&Value::Bool(false)));
+        assert!(
+            false_html.contains("fjui-status-dot--false"),
+            "false → muted dot; got: {false_html}"
+        );
+        assert!(false_html.contains("Non attivo"), "false label; got: {false_html}");
+        // integer boolean
+        let int_true = render_cell(
+            &col,
+            Some(&Value::Number(serde_json::Number::from(1))),
+        );
+        assert!(
+            int_true.contains("fjui-status-dot--true"),
+            "Number(1) → true; got: {int_true}"
+        );
+    }
+
+    /// Bulk-select column emits checkbox th+td when bulk_select=Some(true).
+    #[test]
+    fn bulk_select_column_present_when_enabled() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "bulk_select": true,
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("fjui-table__bulk-select-checkbox"),
+            "bulk_select=true must emit fjui-table__bulk-select-checkbox; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"checkbox\""),
+            "bulk-select must include checkbox input; got: {html}"
         );
     }
 
