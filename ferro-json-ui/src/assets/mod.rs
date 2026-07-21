@@ -154,4 +154,56 @@ mod tests {
             "expected --color-ring fallback to --color-primary in generated CSS; run scripts/gen-ferro-base-css.sh"
         );
     }
+
+    // ── SKIN-04: dev-css hot-reload path ──────────────────────────────────────
+
+    /// Release mode (no dev-css): ferro_base_css() must return Cow::Borrowed
+    /// referencing the compile-time embedded constant.
+    ///
+    /// Cow::Borrowed is the only zero-allocation/zero-I/O variant — the test
+    /// uses matches! on the discriminant to distinguish it from Cow::Owned.
+    #[test]
+    #[cfg(not(feature = "dev-css"))]
+    fn ferro_base_css_release_returns_borrowed() {
+        use std::borrow::Cow;
+        let css = ferro_base_css();
+        assert!(
+            matches!(css, Cow::Borrowed(_)),
+            "without dev-css feature, ferro_base_css() must return Cow::Borrowed (zero allocation)"
+        );
+        // Also verify it equals the embedded constant so no divergence can sneak in.
+        assert_eq!(
+            css.as_ref(),
+            FERRO_BASE_CSS,
+            "Cow::Borrowed content must equal the embedded FERRO_BASE_CSS constant"
+        );
+    }
+
+    /// Dev mode (dev-css feature): ferro_base_css() must return Cow::Owned
+    /// whose content equals the on-disk assets/ferro-base.css file.
+    ///
+    /// The file is read independently (via CARGO_MANIFEST_DIR) to prove the
+    /// function actually went to disk rather than returning the embedded bytes.
+    /// This test does NOT mutate the file (parallel-safe).
+    #[test]
+    #[cfg(feature = "dev-css")]
+    fn ferro_base_css_dev_returns_owned_matching_disk() {
+        use std::borrow::Cow;
+        let css = ferro_base_css();
+        assert!(
+            matches!(css, Cow::Owned(_)),
+            "with dev-css feature, ferro_base_css() must return Cow::Owned (disk read)"
+        );
+        // Read the file independently to prove the content matches.
+        let disk_content = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/ferro-base.css"
+        ))
+        .expect("assets/ferro-base.css must exist and be readable for the dev-css test");
+        assert_eq!(
+            css.as_ref(),
+            disk_content.as_str(),
+            "Cow::Owned content must equal the on-disk ferro-base.css (disk read proves hot-reload path is wired)"
+        );
+    }
 }
