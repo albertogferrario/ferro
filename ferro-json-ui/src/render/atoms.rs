@@ -667,9 +667,15 @@ pub(crate) fn render_description_list(
         .unwrap_or_else(|| props.items.clone());
 
     let columns = props.columns.unwrap_or(1);
-    // D-01: fjui-description-list* full literals; layout utilities (grid, grid-cols-N,
-    // gap-4, mt-1) stay inline (D-02). Appearance (text-size, color) owned by skin.
-    let mut html = format!("<dl class=\"fjui-description-list grid grid-cols-{columns} gap-4\">");
+    // D-01: fjui-description-list* full literals; layout utilities (grid, gap-4, mt-1)
+    // stay inline (D-02). Appearance (text-size, color) owned by skin.
+    // RSK-03: columns>=2 are responsive — grid-cols-1 on mobile, md:grid-cols-2 at >=768px.
+    let grid_cols_class = match columns {
+        1 => "grid-cols-1",
+        2 => "grid-cols-1 md:grid-cols-2",
+        _ => "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+    };
+    let mut html = format!("<dl class=\"fjui-description-list grid {grid_cols_class} gap-4\">");
     for item in &items {
         html.push_str(&format!(
             "<div><dt class=\"fjui-description-list__term\">{}</dt><dd class=\"fjui-description-list__detail mt-1\">{}</dd></div>",
@@ -3833,5 +3839,50 @@ mod tests {
         assert!(html.contains("fjui-btn--primary"), "CTA must use fjui-btn--primary; got: {html}");
         assert!(html.contains("fjui-btn--md"), "CTA must use fjui-btn--md; got: {html}");
         assert!(html.contains("Aggiungi"), "CTA label must appear; got: {html}");
+    }
+
+    // ── 247-02: DescriptionList responsive columns (RSK-03) ──────────────
+
+    /// DescriptionList columns=2 emits responsive md:grid-cols-2 (RSK-03).
+    #[test]
+    fn description_list_two_column_responsive() {
+        let spec = spec_with_root(
+            Element::new("DescriptionList")
+                .prop("columns", 2)
+                .prop("items", json!([{"label": "A", "value": "1"}, {"label": "B", "value": "2"}])),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_description_list(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("md:grid-cols-2"),
+            "columns=2 must emit md:grid-cols-2 for responsiveness; got: {html}"
+        );
+        // Must NOT emit the old non-responsive bare class (without a breakpoint prefix).
+        // We check for " grid-cols-2" (space prefix) to avoid matching the correct
+        // "md:grid-cols-2" and "lg:grid-cols-3" substrings.
+        assert!(
+            !html.contains(" grid-cols-2"),
+            "must not emit bare non-responsive grid-cols-2 (without breakpoint prefix); got: {html}"
+        );
+    }
+
+    /// DescriptionList columns=1 emits grid-cols-1 without md: breakpoint.
+    #[test]
+    fn description_list_single_column_no_breakpoint() {
+        let spec = spec_with_root(
+            Element::new("DescriptionList")
+                .prop("columns", 1)
+                .prop("items", json!([{"label": "A", "value": "1"}])),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_description_list(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("grid-cols-1"),
+            "columns=1 must emit grid-cols-1; got: {html}"
+        );
+        assert!(
+            !html.contains("md:grid-cols"),
+            "columns=1 must not emit md: breakpoint; got: {html}"
+        );
     }
 }
