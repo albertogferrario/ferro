@@ -333,6 +333,7 @@ fn emit_datatable_root(service: &ServiceDef) -> ElementBuilder {
         empty_message: None,
         row_key,
         row_href: None,
+        bulk_select: None,
     })
     .expect("DataTableProps serialization cannot fail");
     element_with_props("DataTable", props)
@@ -882,6 +883,8 @@ fn emit_relationships(
                     label: field_display_name(&rel.target),
                     format: None,
                     align: None,
+                    label_true: None,
+                    label_false: None,
                 };
                 serde_json::to_value(TableProps {
                     columns: vec![col],
