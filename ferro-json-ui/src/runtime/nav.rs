@@ -424,6 +424,11 @@ pub(super) const SOURCE: &str = r#"
 
         // click: intercept same-origin GET <a> clicks (D-14).
         document.addEventListener('click', function(event) {
+            // D-12 / T-249-04-04: never intercept clicks while an inline editor is active.
+            try {
+                if (document.querySelector('[data-inline-edit-active]')) return;
+                if (event.target && event.target.closest && event.target.closest('[data-inline-edit-active]')) return;
+            } catch (_) {}
             var a = findAnchor(event.target);
             if (!a) return;
             if (!shouldIntercept(a, event)) return;
