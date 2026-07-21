@@ -460,13 +460,13 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
         html.push_str(&format!(
             "<div class=\"fjui-combobox\" data-combobox>\
-             <input class=\"fjui-combobox__input\" data-combobox-input\
-              type=\"text\" role=\"combobox\"\
-              aria-expanded=\"false\"\
-              aria-controls=\"{controls_id}\"\
-              aria-autocomplete=\"list\"\
-              aria-activedescendant\
-              placeholder=\"{placeholder_esc}\"\
+             <input class=\"fjui-combobox__input\" data-combobox-input \
+              type=\"text\" role=\"combobox\" \
+              aria-expanded=\"false\" \
+              aria-controls=\"{controls_id}\" \
+              aria-autocomplete=\"list\" \
+              aria-activedescendant \
+              placeholder=\"{placeholder_esc}\" \
               autocomplete=\"off\" spellcheck=\"false\">\
              <ul class=\"fjui-combobox__listbox\" id=\"{controls_id}\" role=\"listbox\" hidden>",
             controls_id = controls_id,
