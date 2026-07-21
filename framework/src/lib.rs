@@ -350,6 +350,7 @@ pub use ferro_macros::ferro_test;
 pub use ferro_macros::handler;
 pub use ferro_macros::inertia_response;
 pub use ferro_macros::injectable;
+pub use ferro_macros::memoize;
 pub use ferro_macros::redirect;
 pub use ferro_macros::request;
 pub use ferro_macros::resource_get;

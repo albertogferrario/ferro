@@ -12,6 +12,7 @@ use proc_macro::TokenStream;
 
 mod action;
 mod describe;
+mod memoize;
 mod domain_error;
 mod ferro_test;
 mod handler;
@@ -266,6 +267,33 @@ pub fn handler(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
     action::action_impl(attr, input)
+}
+
+/// Mark an `async fn` or `async` impl method for request-scoped memoization.
+///
+/// The function body runs at most once per `(callsite, arguments)` per request.
+/// Concurrent callers for the same key within one request coalesce onto a single
+/// shared computation.  Outside a request context the body runs normally with no
+/// caching (graceful no-op).
+///
+/// All value arguments must implement [`std::hash::Hash`]. The return type must
+/// implement `Clone + Send + Sync + 'static`. Applied to impl methods, `&self`
+/// is excluded from the key (service singletons are stateless).
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use ferro::memoize;
+///
+/// #[memoize]
+/// pub async fn load_product(id: u32) -> Vec<String> {
+///     // expensive DB query — runs at most once per id per request
+///     vec![format!("product-{id}")]
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn memoize(attr: TokenStream, input: TokenStream) -> TokenStream {
+    memoize::memoize_impl(attr, input)
 }
 
 /// Derive macro for FormRequest trait
