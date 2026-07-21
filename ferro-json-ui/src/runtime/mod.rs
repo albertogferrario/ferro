@@ -222,10 +222,41 @@ mod tests {
             "setupScrollPreserve",
             "setupLazyHeroes",
             "setupLiveFragments",
+            "setupNav",
+            "setupProgressHairline",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
                 "bundle missing {fn_name}"
+            );
+        }
+    }
+
+    /// Nav runtime contract: asserts all key tokens are present in the bundle.
+    /// This test must FAIL before nav.rs is created (RED state) and PASS after (GREEN).
+    #[test]
+    fn runtime_contains_nav_setup() {
+        // Explicit function-name checks (also covered by bundle_contains_all_setup_functions,
+        // but duplicated here so this test is self-contained and readable as a spec).
+        assert!(FERRO_RUNTIME_JS.contains("setupNav"), "bundle missing setupNav");
+        assert!(
+            FERRO_RUNTIME_JS.contains("setupProgressHairline"),
+            "bundle missing setupProgressHairline"
+        );
+        // Nav runtime behavioral tokens:
+        for token in [
+            "fjui:navigated",
+            "fjui:before-navigate",
+            "scrollRestoration",
+            "pointerdown",
+            "AbortController",
+            "ferro-json-ui",
+            "fjui-nav-progress",
+            "fjui-sidebar__nav-item--active",
+        ] {
+            assert!(
+                FERRO_RUNTIME_JS.contains(token),
+                "nav runtime bundle missing token: {token}"
             );
         }
     }
@@ -262,6 +293,8 @@ mod tests {
             "setupScrollPreserve",
             "setupLazyHeroes",
             "setupLiveFragments",
+            "setupNav",
+            "setupProgressHairline",
         ] {
             assert!(
                 dispatcher.contains(name),
