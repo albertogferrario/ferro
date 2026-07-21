@@ -5,12 +5,19 @@
 //! on DOMContentLoaded. The emitted output is a single string — no extra
 //! HTTP requests.
 
+mod bulk_bar;
+mod command_palette;
+mod combobox;
+mod date_picker;
 mod dismissibles;
 mod dropdowns;
+mod filter_bar;
 mod filters;
 mod form_guards;
 mod hero_lazy;
+mod inline_edit;
 mod kanban;
+mod listbox_engine;
 mod live_fragment;
 mod modals;
 mod nav;
@@ -50,6 +57,13 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(hero_lazy::SOURCE);
     s.push_str(live_fragment::SOURCE);
     s.push_str(nav::SOURCE);
+    s.push_str(listbox_engine::SOURCE);
+    s.push_str(command_palette::SOURCE);
+    s.push_str(combobox::SOURCE);
+    s.push_str(date_picker::SOURCE);
+    s.push_str(inline_edit::SOURCE);
+    s.push_str(filter_bar::SOURCE);
+    s.push_str(bulk_bar::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       // Run each setup in isolation: a throw in one concern (e.g. an\n\
@@ -74,7 +88,13 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20           setupLazyHeroes,\n\
          \x20           setupLiveFragments,\n\
          \x20           setupNav,\n\
-         \x20           setupProgressHairline\n\
+         \x20           setupProgressHairline,\n\
+         \x20           setupCommandPalette,\n\
+         \x20           setupCombobox,\n\
+         \x20           setupDatePicker,\n\
+         \x20           setupInlineEdit,\n\
+         \x20           setupFilterBar,\n\
+         \x20           setupBulkBar\n\
          \x20       ];\n\
          \x20       for (var i = 0; i < setups.length; i++) {\n\
          \x20           try { setups[i](); } catch (err) { /* isolated per concern */ }\n\
@@ -228,12 +248,22 @@ mod tests {
             "setupLiveFragments",
             "setupNav",
             "setupProgressHairline",
+            "setupCommandPalette",
+            "setupCombobox",
+            "setupDatePicker",
+            "setupInlineEdit",
+            "setupFilterBar",
+            "setupBulkBar",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
                 "bundle missing {fn_name}"
             );
         }
+        assert!(
+            FERRO_RUNTIME_JS.contains("createListboxEngine"),
+            "bundle missing createListboxEngine shared keyboard engine"
+        );
     }
 
     /// Nav runtime contract: asserts all key tokens are present in the bundle.
@@ -299,6 +329,12 @@ mod tests {
             "setupLiveFragments",
             "setupNav",
             "setupProgressHairline",
+            "setupCommandPalette",
+            "setupCombobox",
+            "setupDatePicker",
+            "setupInlineEdit",
+            "setupFilterBar",
+            "setupBulkBar",
         ] {
             assert!(
                 dispatcher.contains(name),
