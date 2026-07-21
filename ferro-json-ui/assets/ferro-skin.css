@@ -1397,4 +1397,161 @@ input, select, textarea {
     .fjui-nav-progress { display: none; }
   }
 
+  /* ── Command palette ─────────────────────────────────────────────────────── */
+
+  /* .fjui-palette: the <dialog> panel. Overlay elevation — shadow-lg, NO border (LANG-04).
+   * Width: min(640px, 90vw). Max-height: 80vh. Positioned ~15% from viewport top.
+   * CMD-01, CMD-03. */
+
+  .fjui-palette {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    /* NO border — overlay elevation rule (LANG-04) */
+    width: min(640px, 90vw);
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 15vh auto auto;
+    transition-property: opacity, transform;
+    transition-duration: var(--motion-duration-base);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  /* Backdrop: semi-transparent color-background overlay. */
+  .fjui-palette::backdrop {
+    background-color: color-mix(in oklab, var(--color-background) 60%, transparent);
+  }
+
+  /* .fjui-palette__input: search text input at the top of the palette.
+   * 48px tall (aligns with header height convention). 16px font-size (iOS no-zoom exception).
+   * IS interactive: focus-visible ring + disabled state required (SKIN-05). */
+  .fjui-palette__input {
+    height: 3rem;
+    width: 100%;
+    padding: 0 calc(var(--spacing) * 4);
+    font-size: 1rem;
+    color: var(--color-text);
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    outline: none;
+    flex-shrink: 0;
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  /* .fjui-palette__results: the scrollable listbox container. */
+  .fjui-palette__results {
+    list-style: none;
+    margin: 0;
+    padding: calc(var(--spacing) * 1) 0;
+    overflow-y: auto;
+    max-height: calc(80vh - 3rem - 2rem);
+    flex: 1 1 auto;
+  }
+
+  /* .fjui-palette__group-label: section headers (CLIENTI, ORDINI, etc.).
+   * Micro: 12px, weight 500, uppercase, text-muted. NOT interactive. */
+  .fjui-palette__group-label {
+    font-size: var(--text-micro-size);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4) calc(var(--spacing) * 1);
+  }
+
+  /* .fjui-palette__option: individual result row.
+   * 40px min-height. IS interactive: all four states required (SKIN-05).
+   * [aria-selected="true"] = active/selected state. */
+  .fjui-palette__option {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 4);
+    cursor: pointer;
+    list-style: none;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+    &:focus-visible {
+      background-color: var(--color-secondary);
+      outline: 2px solid var(--color-ring);
+      outline-offset: -2px;
+    }
+    &[aria-selected="true"],
+    &:active {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+    }
+  }
+
+  /* Option title (body) and subtitle (meta, muted). */
+  .fjui-palette__option-title {
+    font-size: var(--text-body-size);
+    color: inherit;
+    line-height: 1.3;
+  }
+
+  .fjui-palette__option-subtitle {
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
+    line-height: 1.3;
+  }
+
+  /* When option is selected, subtitle inherits primary-foreground for legibility. */
+  .fjui-palette__option[aria-selected="true"] .fjui-palette__option-subtitle,
+  .fjui-palette__option:active .fjui-palette__option-subtitle {
+    color: inherit;
+    opacity: 0.75;
+  }
+
+  /* .fjui-palette__empty: empty / no-results message. NOT interactive. */
+  .fjui-palette__empty {
+    padding: calc(var(--spacing) * 4) calc(var(--spacing) * 4);
+    font-size: var(--text-body-size);
+    color: var(--color-text-muted);
+    list-style: none;
+    text-align: center;
+  }
+
+  /* .fjui-palette__hint: "ESC per chiudere" keyboard hint row at bottom. NOT interactive. */
+  .fjui-palette__hint {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    font-size: var(--text-micro-size);
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  /* Inner <ul> inside group <li> — structural reset only. */
+  .fjui-palette__results ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* prefers-reduced-motion: disable palette open/close animation. */
+  @media (prefers-reduced-motion: reduce) {
+    .fjui-palette {
+      transition: none;
+    }
+  }
+
 }
