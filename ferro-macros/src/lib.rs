@@ -274,11 +274,22 @@ pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
 /// The function body runs at most once per `(callsite, arguments)` per request.
 /// Concurrent callers for the same key within one request coalesce onto a single
 /// shared computation.  Outside a request context the body runs normally with no
-/// caching (graceful no-op).
+/// caching (graceful no-op, D-02).
 ///
-/// All value arguments must implement [`std::hash::Hash`]. The return type must
-/// implement `Clone + Send + Sync + 'static`. Applied to impl methods, `&self`
-/// is excluded from the key (service singletons are stateless).
+/// The full return value — including `Result::Err` — is cached for the duration
+/// of the request.  Every caller within the same request observes the same
+/// resolved value (D-04).
+///
+/// # Constraints
+///
+/// - All value arguments must implement [`std::hash::Hash`].
+/// - The return type must implement `Clone + Send + Sync + 'static`.
+/// - Applied to impl methods, `&self` is excluded from the key (service
+///   singletons are stateless).
+/// - Only `async fn` is accepted; applying to a synchronous function is a
+///   compile error.
+/// - Only simple identifier argument patterns are supported in v17.0;
+///   destructuring patterns are a compile error.
 ///
 /// # Example
 ///
