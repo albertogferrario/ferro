@@ -685,22 +685,25 @@ async fn memoize_runs_body_once_per_key() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Multi-argument hash tuple construction in the macro**
    - What we know: Multiple value arguments need to be combined into a single hashable value.
    - What's unclear: The macro must construct a tuple `(arg1, arg2, ...)` from the parsed `FnArg::Typed` items. `syn::Pat::Ident` names are available; creating a `(a, b, c)` expression in `quote!` is straightforward but must handle the case where one argument's binding uses a complex pattern.
    - Recommendation: Restrict initial implementation to `Pat::Ident` argument patterns (most common), emit `compile_error!` for tuple/struct destructuring arguments. Document as a limitation.
+   - RESOLVED: `Pat::Ident`-only value args; non-`Pat::Ident` patterns emit a `to_compile_error()` naming the offending arg (Plan 259-02, Task 1, step 6). Documented as the v17.0 limitation.
 
 2. **`#[memoize]` on trait method vs impl method**
    - What we know: The macro can be applied to `async fn` in either location.
    - What's unclear: Should the macro work on trait declarations (rewriting the trait body) or only on impl methods? Trait declaration rewriting is harder (must parse `TraitItemFn` not `ItemFn`) and changes the trait's public API shape.
    - Recommendation: Claude's discretion — apply to impl methods only for v17.0.
+   - RESOLVED: Impl methods only for v17.0 (parse `ItemFn`, exclude `FnArg::Receiver` from the key); trait-declaration rewriting is out of scope. Proven by the `service_method_memoized` test (Plan 259-02, Task 2).
 
 3. **Render-path wiring integration point for D-05**
    - What we know: The current `ServiceDef → JsonUiRenderer` render pass is schema-only (no data fetch).
    - What's unclear: Does D-05 intend to ADD a memoized loader to the render-pipeline call chain, or is the test harness standalone (memoized loader called before `render()`)?
    - Recommendation: The test harness uses a memoized loader that is called before (not inside) the render pass, simulating how a real multi-intent handler would work. This is the honest implementation; document it in the plan.
+   - RESOLVED: Constructed-loader harness — a `#[memoize]`d loader called around a genuine multi-intent render (`derive_intents` + real `JsonUiRenderer`), asserting a single underlying fetch; no fabricated in-renderer fetch (Plan 259-03, Task 1). The render pass stays schema-only per D-05.
 
 ---
 

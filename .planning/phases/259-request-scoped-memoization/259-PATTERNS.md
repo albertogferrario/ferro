@@ -241,8 +241,8 @@ let output = quote! {
         /* Clone + Send + Sync + 'static bound on return type */
     {
         struct #marker_name;
-        let __key = ::ferro_rs::memo::MemoKey::new::<#marker_name, _>(&(#(#value_arg_names),*));
-        if let Some(__store) = ::ferro_rs::memo::current_memo_store() {
+        let __key = #ferro::memo::MemoKey::new::<#marker_name, _>(&(#(#value_arg_names),*));
+        if let Some(__store) = #ferro::memo::current_memo_store() {
             let __slot = __store.get_or_insert(__key, move || {
                 ::std::boxed::Box::pin(async move {
                     let __result = { #fn_block };
