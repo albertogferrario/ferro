@@ -1554,4 +1554,423 @@ input, select, textarea {
     }
   }
 
+  /* ── Searchable combobox ─────────────────────────────────────────────────── */
+
+  /* Wrapper — positions the listbox overlay relative to the input. */
+  .fjui-combobox {
+    position: relative;
+    display: block;
+  }
+
+  /* Filter input (flat, 1px border, --radius-sm). font-size: 1rem prevents
+   * iOS auto-zoom (same as the base input rule). */
+  .fjui-combobox__input {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-card);
+    color: var(--color-text);
+    font-size: 1rem;
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    transition-property: border-color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      border-color: var(--color-text-muted);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  }
+
+  /* Listbox overlay — shadow only, no border (LANG-04 overlay rule). */
+  .fjui-combobox__listbox {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 256px;
+    overflow-y: auto;
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    list-style: none;
+    margin: 0;
+    padding: calc(var(--spacing) * 1) 0;
+    transition-property: opacity;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  /* Option rows — 36px min-height per layout contract. */
+  .fjui-combobox__option {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 calc(var(--spacing) * 4);
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+      background-color: var(--color-secondary);
+    }
+
+    &:active {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+    }
+
+    &[aria-selected="true"] {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+
+      &:hover {
+        background-color: var(--color-primary);
+      }
+    }
+
+    &[aria-disabled="true"],
+    &:disabled {
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  /* prefers-reduced-motion: disable combobox listbox expand animation. */
+  @media (prefers-reduced-motion: reduce) {
+    .fjui-combobox__listbox {
+      transition: none;
+    }
+  }
+
+  /* ── Date + time picker ──────────────────────────────────────────────────── */
+
+  /* Trigger button — flat, 1px border, --radius-sm. */
+  .fjui-datepicker__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-card);
+    color: var(--color-text);
+    font-size: var(--text-body-size);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    cursor: pointer;
+    transition-property: border-color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      border-color: var(--color-text-muted);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+
+    &:active {
+      border-color: var(--color-primary);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  /* Dialog overlay — shadow only, no border (LANG-04 overlay rule). */
+  .fjui-datepicker {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    border: none;
+    padding: calc(var(--spacing) * 4);
+    max-width: min(320px, 90vw);
+    transition-property: opacity;
+    transition-duration: var(--motion-duration-base);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  /* Calendar header — month label + prev/next buttons. */
+  .fjui-datepicker__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    margin-bottom: calc(var(--spacing) * 2);
+  }
+
+  .fjui-datepicker__month-label {
+    font-size: var(--text-section-size);
+    font-weight: var(--text-section-weight);
+    color: var(--color-text);
+  }
+
+  /* Nav buttons (prev/next month). */
+  .fjui-datepicker__nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+
+    &:active {
+      opacity: 0.8;
+    }
+
+    &:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  }
+
+  /* Calendar grid — 7-column equal-width layout. */
+  .fjui-datepicker__grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .fjui-datepicker__grid [role="row"] {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  /* Weekday column headers. */
+  .fjui-datepicker__weekday {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    color: var(--color-text-muted);
+  }
+
+  /* Day cells — 32×32px per layout contract, tabular numerals. */
+  .fjui-datepicker__day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--text-body-size);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+
+    &:active {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+    }
+
+    &[aria-disabled="true"] {
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  /* Today indicator — underline dotted (not a selected state). */
+  .fjui-datepicker__day--today {
+    text-decoration: underline dotted;
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  /* Selected day. */
+  .fjui-datepicker__day--selected {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+
+    &:hover {
+      background-color: var(--color-primary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+
+    &:active {
+      background-color: var(--color-primary);
+    }
+  }
+
+  /* Empty cells (leading/trailing padding cells). */
+  .fjui-datepicker__day--empty {
+    pointer-events: none;
+    cursor: default;
+  }
+
+  /* Time section. */
+  .fjui-datepicker__time-section {
+    margin-top: calc(var(--spacing) * 4);
+  }
+
+  .fjui-datepicker__time-label {
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    color: var(--color-text-muted);
+    margin-bottom: calc(var(--spacing) * 2);
+  }
+
+  .fjui-datepicker__time-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Time option rows — 36px min-height. */
+  .fjui-datepicker__time-option {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 calc(var(--spacing) * 3);
+    font-size: var(--text-body-size);
+    color: var(--color-text);
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+      background-color: var(--color-secondary);
+    }
+
+    &:active {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+    }
+
+    &[aria-selected="true"] {
+      background-color: var(--color-primary);
+      color: var(--color-primary-foreground);
+    }
+
+    &[aria-disabled="true"] {
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+    }
+  }
+
+  /* Footer — Confirm + Clear buttons. */
+  .fjui-datepicker__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: calc(var(--spacing) * 2);
+    margin-top: calc(var(--spacing) * 4);
+  }
+
+  .fjui-datepicker__confirm-btn,
+  .fjui-datepicker__clear-btn {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background-color: transparent;
+    color: var(--color-text);
+    font-size: var(--text-body-size);
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 3);
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+
+    &:hover {
+      background-color: var(--color-secondary);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+  }
+
+  /* prefers-reduced-motion: disable datepicker transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    .fjui-datepicker {
+      transition: none;
+    }
+
+    .fjui-datepicker__day,
+    .fjui-datepicker__time-option,
+    .fjui-datepicker__nav-btn {
+      transition: none;
+    }
+  }
+
 }
