@@ -250,6 +250,7 @@ pub fn build_select_props(field: &FieldDef) -> serde_json::Value {
         description: None,
         default_value: None,
         data_path: Some(format!("/data/{}", field.name)),
+        searchable: None,
     })
     .expect("SelectProps serialization cannot fail")
 }
@@ -287,6 +288,8 @@ pub fn build_column_for_field(field: &FieldDef) -> Column {
         label: field_display_name(&field.name),
         format,
         align: None,
+        label_true: None,
+        label_false: None,
     }
 }
 
@@ -304,6 +307,9 @@ pub fn build_description_item(field: &FieldDef) -> DescriptionItem {
         label: field_display_name(&field.name),
         value: String::new(),
         format,
+        inline_edit_field: None,
+        inline_edit_endpoint: None,
+        inline_edit_kind: None,
     }
 }
 

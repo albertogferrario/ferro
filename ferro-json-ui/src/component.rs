@@ -425,6 +425,10 @@ pub struct SelectProps {
     /// Data path for pre-filling from handler data (e.g., "/data/user/name").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_path: Option<String>,
+    /// When true, renders a progressive-enhancement combobox overlay over the
+    /// native <select>. The native select remains the form value carrier (D-06).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub searchable: Option<bool>,
 }
 
 /// Props for Alert component.
@@ -564,6 +568,17 @@ pub struct DescriptionItem {
     pub value: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub format: Option<ColumnFormat>,
+    /// Field name for inline editing (e.g., "name", "email"). None = read-only.
+    /// Security boundary: this name is HTML-escaped and echoed in data-attrs;
+    /// the server allowlist in the inline-edit endpoint is the real gate (D-10).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_edit_field: Option<String>,
+    /// POST endpoint URL for inline edit (e.g., "/dashboard/clienti/42/field").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_edit_endpoint: Option<String>,
+    /// Input kind: "text" | "textarea" | "number". Defaults to "text".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inline_edit_kind: Option<String>,
 }
 
 /// Props for DescriptionList component.
