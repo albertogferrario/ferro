@@ -271,55 +271,128 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 InputType::Search => "search",
                 InputType::Textarea | InputType::Hidden | InputType::File => unreachable!(),
             };
-            // fjui-input: skin owns border/bg/padding/border-radius/font-size (incl 16px iOS floor).
-            // fjui-input--error: skin owns destructive border color when in error state.
-            // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
-            let error_class = if has_error { " fjui-input--error" } else { "" };
-            html.push_str(&format!(
-                "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"fjui-input{error_class} w-full {MOTION_FAST} {DISABLED_BASE} {}\"",
-                input_type,
-                html_escape(&props.field),
-                html_escape(&props.field),
-                focus_ring_class
-            ));
-            if let Some(ref placeholder) = props.placeholder {
-                html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
-            }
-            if let Some(ref val) = resolved_value {
-                html.push_str(&format!(" value=\"{}\"", html_escape(val)));
-            }
-            if let Some(ref step) = props.step {
-                html.push_str(&format!(" step=\"{}\"", html_escape(step)));
-            }
-            if let Some(ref list_id) = props.list {
-                html.push_str(&format!(" list=\"{}\"", html_escape(list_id)));
-            }
-            if props.required == Some(true) {
-                html.push_str(" required");
-            }
-            if props.disabled == Some(true) {
-                html.push_str(" disabled");
-            }
-            if has_error {
-                html.push_str(&format!(
-                    " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
-                    html_escape(&props.field)
-                ));
-            }
-            html.push('>');
 
-            // Optional `<datalist>` companion: looks up `list_id` as a flat
-            // key on the root data object and emits one `<option>` per
-            // string entry.
-            if let Some(ref list_id) = props.list {
-                if let Some(arr) = data.get(list_id).and_then(|v| v.as_array()) {
-                    html.push_str(&format!("<datalist id=\"{}\">", html_escape(list_id)));
-                    for opt in arr {
-                        if let Some(s) = opt.as_str() {
-                            html.push_str(&format!("<option value=\"{}\">", html_escape(s)));
+            // Date-picker progressive enhancement (ENTRY-02).
+            //
+            // When `date_picker = true` on a date or time input, wrap the native
+            // input in the `[data-date-picker]` contract markup so the client-side
+            // calendar runtime (date_picker.rs) can bind to it:
+            //
+            //   [data-date-picker]             — wrapper
+            //   [data-date-picker-native]       — <input> form value carrier (sr-only)
+            //   [data-date-picker-trigger]      — <button> that opens the dialog
+            //   [data-date-picker-dialog]       — <dialog> element (built by JS)
+            //
+            // The native input is the sole form value carrier; `class="sr-only"` keeps
+            // it accessible but visually hidden so the JS trigger replaces it visually.
+            // If `showModal` is unsupported the runtime exits early, leaving the native
+            // input functional (no-JS fallback, D-08).
+            let use_date_picker = props.date_picker == Some(true)
+                && matches!(
+                    props.input_type,
+                    InputType::Date | InputType::Time
+                );
+
+            if use_date_picker {
+                // Wrapper — runtime binds to this attribute.
+                html.push_str("<div data-date-picker class=\"fjui-datepicker\">");
+
+                // Native input: sr-only form value carrier.
+                let error_attr = if has_error {
+                    format!(
+                        " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+                        html_escape(&props.field)
+                    )
+                } else {
+                    String::new()
+                };
+                html.push_str(&format!(
+                    "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"sr-only\" data-date-picker-native",
+                    input_type,
+                    html_escape(&props.field),
+                    html_escape(&props.field),
+                ));
+                if let Some(ref val) = resolved_value {
+                    html.push_str(&format!(" value=\"{}\"", html_escape(val)));
+                }
+                if props.required == Some(true) {
+                    html.push_str(" required");
+                }
+                if props.disabled == Some(true) {
+                    html.push_str(" disabled");
+                }
+                html.push_str(&error_attr);
+                html.push('>');
+
+                // Trigger button — visible, opens the dialog.
+                let trigger_label = if input_type == "time" {
+                    "Seleziona orario"
+                } else {
+                    "Seleziona data"
+                };
+                html.push_str(&format!(
+                    "<button type=\"button\" class=\"fjui-datepicker__trigger\" \
+                     aria-label=\"{}\" data-date-picker-trigger>{}</button>",
+                    html_escape(trigger_label),
+                    html_escape(trigger_label),
+                ));
+
+                // Dialog shell — JS builds the calendar grid inside on first open.
+                html.push_str("<dialog data-date-picker-dialog class=\"fjui-datepicker__dialog\"></dialog>");
+
+                html.push_str("</div>");
+            } else {
+                // Standard input (no date picker).
+                // fjui-input: skin owns border/bg/padding/border-radius/font-size (incl 16px iOS floor).
+                // fjui-input--error: skin owns destructive border color when in error state.
+                // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
+                let error_class = if has_error { " fjui-input--error" } else { "" };
+                html.push_str(&format!(
+                    "<input type=\"{}\" id=\"{}\" name=\"{}\" class=\"fjui-input{error_class} w-full {MOTION_FAST} {DISABLED_BASE} {}\"",
+                    input_type,
+                    html_escape(&props.field),
+                    html_escape(&props.field),
+                    focus_ring_class
+                ));
+                if let Some(ref placeholder) = props.placeholder {
+                    html.push_str(&format!(" placeholder=\"{}\"", html_escape(placeholder)));
+                }
+                if let Some(ref val) = resolved_value {
+                    html.push_str(&format!(" value=\"{}\"", html_escape(val)));
+                }
+                if let Some(ref step) = props.step {
+                    html.push_str(&format!(" step=\"{}\"", html_escape(step)));
+                }
+                if let Some(ref list_id) = props.list {
+                    html.push_str(&format!(" list=\"{}\"", html_escape(list_id)));
+                }
+                if props.required == Some(true) {
+                    html.push_str(" required");
+                }
+                if props.disabled == Some(true) {
+                    html.push_str(" disabled");
+                }
+                if has_error {
+                    html.push_str(&format!(
+                        " aria-invalid=\"true\" aria-describedby=\"err-{}\"",
+                        html_escape(&props.field)
+                    ));
+                }
+                html.push('>');
+
+                // Optional `<datalist>` companion: looks up `list_id` as a flat
+                // key on the root data object and emits one `<option>` per
+                // string entry.
+                if let Some(ref list_id) = props.list {
+                    if let Some(arr) = data.get(list_id).and_then(|v| v.as_array()) {
+                        html.push_str(&format!("<datalist id=\"{}\">", html_escape(list_id)));
+                        for opt in arr {
+                            if let Some(s) = opt.as_str() {
+                                html.push_str(&format!("<option value=\"{}\">", html_escape(s)));
+                            }
                         }
+                        html.push_str("</datalist>");
                     }
-                    html.push_str("</datalist>");
                 }
             }
         }
@@ -1039,6 +1112,137 @@ mod tests {
         assert!(
             !html.contains("peer-focus:ring-destructive/30"),
             "no error peer ring without error; got: {html}"
+        );
+    }
+
+    // ── Date picker opt-in ───────────────────────────────────────────────
+
+    /// date_picker=true on a date input emits the [data-date-picker] wrapper,
+    /// the sr-only native input as value carrier, the trigger button, and the
+    /// dialog shell. No plain fjui-input class must appear (that class belongs
+    /// to the un-enhanced path).
+    #[test]
+    fn input_date_picker_true_emits_wrapper_markup() {
+        let el = mk_element(
+            "Input",
+            json!({
+                "field": "date",
+                "label": "Data",
+                "input_type": "date",
+                "date_picker": true,
+                "default_value": "2026-07-22"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+
+        // Wrapper attribute present.
+        assert!(html.contains("data-date-picker"), "wrapper attr missing; got: {html}");
+        // Native input is the value carrier with data-date-picker-native.
+        assert!(
+            html.contains("data-date-picker-native"),
+            "native value-carrier attr missing; got: {html}"
+        );
+        // Native input carries sr-only (visually hidden, accessible).
+        assert!(html.contains("sr-only"), "sr-only missing on native input; got: {html}");
+        // Native input carries the default value.
+        assert!(
+            html.contains("value=\"2026-07-22\""),
+            "default value missing on native input; got: {html}"
+        );
+        // Trigger button present.
+        assert!(
+            html.contains("data-date-picker-trigger"),
+            "trigger button attr missing; got: {html}"
+        );
+        // Dialog shell present.
+        assert!(
+            html.contains("data-date-picker-dialog"),
+            "dialog shell attr missing; got: {html}"
+        );
+        // No plain fjui-input class — that is the un-enhanced path.
+        assert!(
+            !html.contains("class=\"fjui-input"),
+            "fjui-input class must not appear on the date-picker path; got: {html}"
+        );
+    }
+
+    /// date_picker=true on a time input emits "Seleziona orario" trigger label.
+    #[test]
+    fn input_date_picker_true_time_emits_orario_label() {
+        let el = mk_element(
+            "Input",
+            json!({
+                "field": "booking_time",
+                "label": "Orario",
+                "input_type": "time",
+                "date_picker": true
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+
+        assert!(html.contains("data-date-picker"), "wrapper attr missing; got: {html}");
+        assert!(
+            html.contains("Seleziona orario"),
+            "time trigger must say 'Seleziona orario'; got: {html}"
+        );
+        assert!(
+            !html.contains("Seleziona data"),
+            "time trigger must not say 'Seleziona data'; got: {html}"
+        );
+    }
+
+    /// date_picker absent (default) on a date input emits the plain fjui-input path.
+    /// Regression guard: the enhancement must not alter existing plain date inputs.
+    #[test]
+    fn input_date_no_picker_emits_plain_input() {
+        let el = mk_element(
+            "Input",
+            json!({"field": "date", "label": "Data", "input_type": "date"}),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+
+        assert!(
+            !html.contains("data-date-picker"),
+            "plain date input must not emit data-date-picker; got: {html}"
+        );
+        assert!(
+            html.contains("class=\"fjui-input"),
+            "plain date input must emit fjui-input class; got: {html}"
+        );
+        assert!(
+            html.contains("type=\"date\""),
+            "plain date input must emit type=\"date\"; got: {html}"
+        );
+    }
+
+    /// date_picker=true propagates error ARIA to the native sr-only input.
+    #[test]
+    fn input_date_picker_error_aria_on_native_input() {
+        let el = mk_element(
+            "Input",
+            json!({
+                "field": "date",
+                "label": "Data",
+                "input_type": "date",
+                "date_picker": true,
+                "error": "obbligatorio"
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_input(&el, &spec, &json!({}), 1);
+
+        assert!(html.contains("aria-invalid=\"true\""), "aria-invalid missing; got: {html}");
+        assert!(
+            html.contains("aria-describedby=\"err-date\""),
+            "aria-describedby missing; got: {html}"
+        );
+        // Error message paragraph still rendered.
+        assert!(
+            html.contains("<p id=\"err-date\""),
+            "error <p> missing; got: {html}"
         );
     }
 

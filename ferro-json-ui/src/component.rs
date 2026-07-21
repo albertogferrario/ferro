@@ -377,6 +377,14 @@ pub struct InputProps {
     /// responsibility (the spec layer does not enforce file content type).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accept: Option<String>,
+    /// Progressive enhancement: wrap the native date/time input in the
+    /// `[data-date-picker]` markup so the client-side calendar picker activates.
+    ///
+    /// Valid only for `input_type = "date"`, `"time"`, or `"datetime-local"`.
+    /// The native input remains the form value carrier (no-JS fallback intact).
+    /// When `false` or absent, a plain `<input>` is emitted as usual.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub date_picker: Option<bool>,
 }
 
 /// Props for RichTextEditor leaf element — rendered by the Quill 2.0.3 plugin.
