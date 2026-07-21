@@ -1202,7 +1202,9 @@ input, select, textarea {
 
   /* fjui-table__cell: body cell base — body-size text, standard padding. */
   .fjui-table__cell {
-    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+    /* 40px row rhythm (RSK-01): 10px block padding + 20px line box. */
+    padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 4);
+    line-height: calc(var(--spacing) * 5);
     font-size: var(--text-body-size);
     color: var(--color-text);
   }

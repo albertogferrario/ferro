@@ -257,8 +257,9 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                     _ => "fjui-table__cell",
                 };
                 html.push_str(&format!(
-                    "<td class=\"{}\">{}</td>",
+                    "<td class=\"{} {}\">{}</td>",
                     cell_class,
+                    col_align_class(col.align),
                     render_cell(col, row.get(&col.key))
                 ));
             }
@@ -644,7 +645,7 @@ pub(crate) fn render_inline_dropdown(menu_id: &str, items: &[DropdownMenuAction]
     let id = html_escape(menu_id);
     let mut html = String::new();
     html.push_str(&format!(
-        "<button type=\"button\" popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-label=\"Azioni\" class=\"cursor-pointer select-none px-2 py-1 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\">\u{22EE}</button>"
+        "<button type=\"button\" popovertarget=\"{id}\" aria-haspopup=\"menu\" aria-label=\"Azioni\" class=\"cursor-pointer select-none inline-flex h-5 items-center justify-center px-2 rounded-md text-text-muted hover:text-text {INTERACTIVE_BASE}\">\u{22EE}</button>"
     ));
     html.push_str(&format!(
         "<div popover id=\"{id}\" data-popover-menu class=\"min-w-[10rem] rounded-md border border-border bg-card shadow-md text-left p-0\" role=\"menu\">"
