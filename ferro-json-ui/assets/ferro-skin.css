@@ -158,20 +158,20 @@ input, select, textarea {
    * §Justified Deviations for the spacing-grid rationale). */
 
   .fjui-btn--sm {
-    padding-inline: var(--spacing-3);
-    padding-block: var(--spacing-1-5);
+    padding-inline: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 1.5);
     font-size: var(--text-meta-size);
   }
 
   .fjui-btn--md {
-    padding-inline: var(--spacing-4);
-    padding-block: var(--spacing-2);
+    padding-inline: calc(var(--spacing) * 4);
+    padding-block: calc(var(--spacing) * 2);
     font-size: var(--text-body-size);
   }
 
   .fjui-btn--lg {
-    padding-inline: var(--spacing-5);
-    padding-block: var(--spacing-2-5);
+    padding-inline: calc(var(--spacing) * 5);
+    padding-block: calc(var(--spacing) * 2.5);
     font-size: var(--text-section-size);
   }
 
@@ -181,8 +181,8 @@ input, select, textarea {
 
   .fjui-badge {
     border-radius: var(--radius-full);
-    padding-inline: var(--spacing-2-5);
-    padding-block: var(--spacing-0-5);
+    padding-inline: calc(var(--spacing) * 2.5);
+    padding-block: calc(var(--spacing) * 0.5);
     font-size: var(--text-micro-size);
     font-weight: var(--text-micro-weight);
     white-space: nowrap;
@@ -231,7 +231,7 @@ input, select, textarea {
     border-radius: var(--radius-sm);
     border: 1px solid var(--color-border);
     border-left-width: 3px;
-    padding: var(--spacing-4);
+    padding: calc(var(--spacing) * 4);
     font-size: var(--text-body-size);
   }
 
@@ -309,7 +309,7 @@ input, select, textarea {
   .fjui-tab {
     font-size: var(--text-body-size);
     font-weight: 500;
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     border: none;
     background: none;
     cursor: pointer;
@@ -352,14 +352,14 @@ input, select, textarea {
 
   .fjui-empty-state {
     text-align: center;
-    padding-block: var(--spacing-12);
+    padding-block: calc(var(--spacing) * 12);
   }
 
   .fjui-empty-state__icon {
     width: 3rem;          /* 48px icon container — allowlisted structural geometry */
     height: 3rem;
     color: var(--color-text-muted);
-    margin-bottom: var(--spacing-4);
+    margin-bottom: calc(var(--spacing) * 4);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -369,13 +369,13 @@ input, select, textarea {
     font-size: var(--text-section-size);
     font-weight: 600;
     color: var(--color-text);
-    margin-bottom: var(--spacing-2);
+    margin-bottom: calc(var(--spacing) * 2);
   }
 
   .fjui-empty-state__body {
     font-size: var(--text-body-size);
     color: var(--color-text-muted);
-    margin-bottom: var(--spacing-6);
+    margin-bottom: calc(var(--spacing) * 6);
   }
 
   /* ── Text ──────────────────────────────────────────────────────────────── */
@@ -457,7 +457,7 @@ input, select, textarea {
   .fjui-progress__label {
     font-size: var(--text-meta-size);
     color: var(--color-text-muted);
-    margin-top: var(--spacing-1);
+    margin-top: calc(var(--spacing) * 1);
   }
 
   /* ── Avatar ────────────────────────────────────────────────────────────── */
@@ -543,7 +543,7 @@ input, select, textarea {
   }
 
   .fjui-pagination__btn {
-    padding: var(--spacing-1) var(--spacing-2);
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
     border-radius: var(--radius-sm);
     color: var(--color-text);
     background-color: transparent;
@@ -566,7 +566,7 @@ input, select, textarea {
   }
 
   .fjui-pagination__ellipsis {
-    padding: var(--spacing-1) var(--spacing-2);
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
     color: var(--color-text-muted);
   }
 
@@ -603,7 +603,7 @@ input, select, textarea {
     font-size: var(--text-section-size);
     font-weight: var(--text-section-weight);
     color: var(--color-text);
-    margin-bottom: var(--spacing-3);
+    margin-bottom: calc(var(--spacing) * 3);
   }
 
   /* ── Toast ─────────────────────────────────────────────────────────────── */
@@ -616,7 +616,7 @@ input, select, textarea {
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     /* NO border — overlay elevation rule (LANG-04) */
-    padding: var(--spacing-4);
+    padding: calc(var(--spacing) * 4);
     font-size: var(--text-body-size);
     color: var(--color-text);
   }
@@ -692,12 +692,12 @@ input, select, textarea {
     color: var(--color-text-muted);
     font-size: var(--text-body-size);
     text-align: center;
-    padding: var(--spacing-4);
+    padding: calc(var(--spacing) * 4);
   }
 
   .fjui-notification-dropdown__item {
     border-bottom: 1px solid var(--color-border);
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     transition: background-color var(--motion-duration-fast) var(--motion-ease);
 
     &:hover { background-color: var(--color-surface); }
@@ -720,7 +720,7 @@ input, select, textarea {
   .fjui-notification-dropdown__timestamp {
     font-size: var(--text-meta-size);
     color: var(--color-text-muted);
-    margin-top: var(--spacing-1);
+    margin-top: calc(var(--spacing) * 1);
   }
 
   .fjui-notification-dropdown__unread-dot {
@@ -736,7 +736,7 @@ input, select, textarea {
 
   .fjui-calendar-cell {
     min-height: 5rem;
-    padding: var(--spacing-1);
+    padding: calc(var(--spacing) * 1);
     border-right: 1px solid var(--color-border);
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-background);
@@ -755,7 +755,7 @@ input, select, textarea {
     font-size: var(--text-meta-size);
     color: var(--color-text-muted);
     font-weight: var(--text-meta-weight);
-    margin-bottom: var(--spacing-1);
+    margin-bottom: calc(var(--spacing) * 1);
   }
 
   .fjui-calendar-cell__day--today {
@@ -899,7 +899,7 @@ input, select, textarea {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--color-text-muted);
-    padding: var(--spacing-4) var(--spacing-4) var(--spacing-2);
+    padding: calc(var(--spacing) * 4) calc(var(--spacing) * 4) calc(var(--spacing) * 2);
   }
 
   /* SidebarNavItem IS interactive — all four states required (SKIN-05). */
@@ -907,8 +907,8 @@ input, select, textarea {
   .fjui-sidebar__nav-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-2) var(--spacing-3);
+    gap: calc(var(--spacing) * 3);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
     border-radius: var(--radius-sm);
     font-size: var(--text-body-size);
     color: var(--color-text-muted);
@@ -943,7 +943,7 @@ input, select, textarea {
     border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
-    padding-inline: var(--spacing-6);
+    padding-inline: calc(var(--spacing) * 6);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -962,7 +962,7 @@ input, select, textarea {
   .fjui-header__search-btn {
     color: var(--color-text-muted);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-1-5) var(--spacing-2);
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
     border: none;
     background: transparent;
     cursor: pointer;
@@ -996,8 +996,8 @@ input, select, textarea {
   .fjui-menu-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-2);
-    padding: var(--spacing-2) var(--spacing-3);
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
     font-size: var(--text-body-size);
     color: var(--color-text);
     cursor: pointer;
@@ -1033,7 +1033,7 @@ input, select, textarea {
     box-shadow: var(--shadow-md);
     /* NO border — overlay elevation rule (LANG-04) */
     overflow: hidden;
-    padding: var(--spacing-1) 0;
+    padding: calc(var(--spacing) * 1) 0;
     min-width: 12rem;
   }
 
@@ -1041,8 +1041,8 @@ input, select, textarea {
   .fjui-avatar-menu__item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-2);
-    padding: var(--spacing-2) var(--spacing-3);
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
     font-size: var(--text-body-size);
     color: var(--color-text);
     cursor: pointer;
@@ -1070,7 +1070,7 @@ input, select, textarea {
   .fjui-avatar-menu__separator {
     height: 1px;
     background-color: var(--color-border);
-    margin: var(--spacing-1) 0;
+    margin: calc(var(--spacing) * 1) 0;
   }
 
   /* ── PageHeader ─────────────────────────────────────────────────────────── */
@@ -1116,7 +1116,7 @@ input, select, textarea {
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-3);
+    padding: calc(var(--spacing) * 3);
     transition-property: background-color, box-shadow;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease);
@@ -1159,7 +1159,7 @@ input, select, textarea {
   }
 
   .fjui-table__header-cell {
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     /* 11px/500 uppercase — allowlisted sub-role literal per UI-SPEC §Justified Deviations */
     font-size: 0.6875rem;
     font-weight: 500;
@@ -1201,7 +1201,7 @@ input, select, textarea {
 
   /* fjui-table__cell: body cell base — body-size text, standard padding. */
   .fjui-table__cell {
-    padding: var(--spacing-3) var(--spacing-4);
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     font-size: var(--text-body-size);
     color: var(--color-text);
   }
@@ -1228,13 +1228,13 @@ input, select, textarea {
   [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: calc(100% + var(--spacing-2));
+    bottom: calc(100% + calc(var(--spacing) * 2));
     left: 50%;
     transform: translateX(-50%);
     background-color: var(--color-text);
     color: var(--color-background);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-1) var(--spacing-2);
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
     font-size: var(--text-micro-size);
     font-weight: var(--text-micro-weight);
     white-space: nowrap;
@@ -1254,7 +1254,7 @@ input, select, textarea {
     border: 1px solid var(--color-border);
     border-bottom-width: 2px;
     border-radius: var(--radius-sm);
-    padding: 0 var(--spacing-1);
+    padding: 0 calc(var(--spacing) * 1);
     font-size: var(--text-micro-size);
     font-family: var(--font-mono);
     color: var(--color-text-muted);
@@ -1269,7 +1269,7 @@ input, select, textarea {
   .fjui-status-dot {
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-1-5);
+    gap: calc(var(--spacing) * 1.5);
     font-size: var(--text-meta-size);
     color: var(--color-text);
   }
@@ -1289,7 +1289,7 @@ input, select, textarea {
    * Browser native :checked/:focus handled by the UA — no skin override needed. */
   .fjui-table__bulk-select-checkbox {
     width: 2.5rem;
-    padding-inline: var(--spacing-2);
+    padding-inline: calc(var(--spacing) * 2);
     color: var(--color-text-muted);
   }
 
@@ -1305,7 +1305,7 @@ input, select, textarea {
     background-color: var(--color-background);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    padding: var(--spacing-2) var(--spacing-3);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
     font-size: max(1rem, 16px);
     color: var(--color-text);
     transition:
