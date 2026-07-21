@@ -302,6 +302,12 @@ pub(super) const SOURCE: &str = r#"
                         try {
                             document.dispatchEvent(new CustomEvent('fjui:navigated'));
                         } catch (_) {}
+                        // D-16: re-initialize page-scoped components after every
+                        // content swap. All setup functions are idempotent via their
+                        // own guards, so re-invoking ferroRuntime() is always safe.
+                        // Do NOT call ferroRuntime() from inside a setup function
+                        // (infinite-loop anti-pattern).
+                        try { if (typeof ferroRuntime === 'function') ferroRuntime(); } catch (_) {}
                     }
                     if (newEl) {
                         var scripts = newEl.querySelectorAll('script');
