@@ -914,6 +914,10 @@ pub struct HeaderProps {
     /// menu item entirely.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme_url: Option<String>,
+    /// Destination of the avatar-menu "Profilo" item. The settings route is
+    /// app-specific, so consumers must provide it; `None` omits the item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_url: Option<String>,
 }
 
 /// Gap size for Grid layout.

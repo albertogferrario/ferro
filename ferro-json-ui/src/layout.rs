@@ -337,9 +337,16 @@ fn layout_header_html(props: &HeaderProps) -> String {
         }
         None => String::new(),
     };
+    let profile_item = match props.profile_url.as_deref() {
+        Some(url) => format!(
+            "<a href=\"{}\" class=\"fjui-avatar-menu__item\">Profilo</a>",
+            html_escape(url)
+        ),
+        None => String::new(),
+    };
     html.push_str(&format!(
         "<div popover id=\"fjui-avatar-menu\" class=\"fjui-avatar-menu\">\
-           <a href=\"/dashboard/impostazioni\" class=\"fjui-avatar-menu__item\">Profilo</a>\
+           {profile_item}\
            {theme_item}\
            <div class=\"fjui-avatar-menu__separator\"></div>\
            <form method=\"post\" action=\"{}\">\
@@ -582,6 +589,7 @@ pub fn footer(text: &str) -> String {
 ///         user_avatar: None,
 ///         logout_url: Some("/logout".to_string()),
 ///         theme_url: Some("/theme".to_string()),
+///         profile_url: Some("/settings".to_string()),
 ///     },
 ///     sse_url: None,
 /// }));
@@ -622,6 +630,7 @@ pub struct DashboardLayoutConfig {
 ///         user_avatar: None,
 ///         logout_url: None,
 ///         theme_url: None,
+///         profile_url: None,
 ///     },
 ///     sse_url: None,
 /// }));
@@ -1114,6 +1123,7 @@ mod tests {
                 user_avatar: None,
                 logout_url: Some("/logout".to_string()),
                 theme_url: None,
+                profile_url: None,
             },
             sse_url: None,
         })
@@ -1204,6 +1214,7 @@ mod tests {
                 user_avatar: None,
                 logout_url: None,
                 theme_url: None,
+                profile_url: None,
             },
             sse_url: Some("/events".to_string()),
         });
@@ -1228,6 +1239,7 @@ mod tests {
                 user_avatar: None,
                 logout_url: None,
                 theme_url: None,
+                profile_url: None,
             },
             sse_url: Some("/events?a=1&b=2".to_string()),
         });
@@ -1252,6 +1264,7 @@ mod tests {
                 user_avatar: None,
                 logout_url: None,
                 theme_url: None,
+                profile_url: None,
             },
             sse_url: None,
         });
@@ -1387,6 +1400,7 @@ mod tests {
             user_avatar: None,
             logout_url: None,
             theme_url: None,
+            profile_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1472,6 +1486,7 @@ mod tests {
             user_avatar: None,
             logout_url: Some("/logout".into()),
             theme_url: None,
+            profile_url: None,
         };
         let html = layout_header_html(&props);
         assert!(html.contains("fjui-avatar"), "avatar button must be present; got: {html}");
@@ -1495,6 +1510,7 @@ mod tests {
             user_avatar: None,
             logout_url: Some("/logout".into()),
             theme_url: None,
+            profile_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1517,6 +1533,7 @@ mod tests {
             user_avatar: None,
             logout_url: None,
             theme_url: None,
+            profile_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1549,6 +1566,7 @@ mod tests {
             user_avatar: None,
             logout_url: None,
             theme_url: None,
+            profile_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
