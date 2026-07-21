@@ -386,13 +386,25 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     // fjui-select: skin owns border/bg/padding/border-radius/font-size/appearance.
     // fjui-select--error: skin owns destructive border when in error state.
     // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
+    //
+    // When searchable=true the native <select> is the hidden form value carrier:
+    // it gets class="sr-only" and data-combobox-native instead of the visible skin
+    // classes. The combobox.rs runtime syncs value back via nativeSelect.value.
     let select_error_class = if has_error { " fjui-select--error" } else { "" };
-    html.push_str(&format!(
-        "<select id=\"{}\" name=\"{}\" class=\"fjui-select{select_error_class} w-full pr-10 {MOTION_FAST} {DISABLED_BASE} {}\"",
-        html_escape(&props.field),
-        html_escape(&props.field),
-        focus_ring_class
-    ));
+    if props.searchable == Some(true) {
+        html.push_str(&format!(
+            "<select id=\"{}\" name=\"{}\" class=\"sr-only\" data-combobox-native",
+            html_escape(&props.field),
+            html_escape(&props.field),
+        ));
+    } else {
+        html.push_str(&format!(
+            "<select id=\"{}\" name=\"{}\" class=\"fjui-select{select_error_class} w-full pr-10 {MOTION_FAST} {DISABLED_BASE} {}\"",
+            html_escape(&props.field),
+            html_escape(&props.field),
+            focus_ring_class
+        ));
+    }
     if props.required == Some(true) {
         html.push_str(" required");
     }
@@ -426,12 +438,65 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
     }
 
     html.push_str("</select>");
-    html.push_str(concat!(
-        "<span class=\"pointer-events-none absolute inset-y-0 right-3 flex items-center\" aria-hidden=\"true\">",
-        "<svg class=\"h-4 w-4 text-text-muted\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
-        "<path fill-rule=\"evenodd\" d=\"M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" clip-rule=\"evenodd\"/>",
-        "</svg></span>"
-    ));
+
+    if props.searchable == Some(true) {
+        // Combobox progressive enhancement overlay.
+        // The native <select> above becomes the hidden form value carrier
+        // (class="sr-only" data-combobox-native). The visible widget is
+        // emitted below; the runtime (combobox.rs) binds the two on init.
+        //
+        // All fjui-* class names are full string literals (D-01 lock — no
+        // format! interpolation of class names). Interpolation is only for
+        // id/aria/data attribute VALUES, and every user-supplied value goes
+        // through html_escape.
+
+        let field_esc = html_escape(&props.field);
+        let placeholder = props
+            .placeholder
+            .as_deref()
+            .unwrap_or("Cerca\u{2026}");
+        let listbox_id = format!("fjui-combo-listbox-{}", field_esc);
+        let controls_id = html_escape(&listbox_id);
+
+        html.push_str(&format!(
+            "<div class=\"fjui-combobox\" data-combobox>\
+             <input class=\"fjui-combobox__input\" data-combobox-input\
+              type=\"text\" role=\"combobox\"\
+              aria-expanded=\"false\"\
+              aria-controls=\"{controls_id}\"\
+              aria-autocomplete=\"list\"\
+              aria-activedescendant\
+              placeholder=\"{placeholder_esc}\"\
+              autocomplete=\"off\" spellcheck=\"false\">\
+             <ul class=\"fjui-combobox__listbox\" id=\"{controls_id}\" role=\"listbox\" hidden>",
+            controls_id = controls_id,
+            placeholder_esc = html_escape(placeholder),
+        ));
+
+        for (i, opt) in props.options.iter().enumerate() {
+            let opt_id = format!(
+                "fjui-combo-opt-{}-{}",
+                html_escape(&props.field),
+                i
+            );
+            html.push_str(&format!(
+                "<li class=\"fjui-combobox__option\" role=\"option\"\
+                  id=\"{opt_id}\" data-value=\"{val}\" aria-selected=\"false\">{label}</li>",
+                opt_id = html_escape(&opt_id),
+                val = html_escape(&opt.value),
+                label = html_escape(&opt.label),
+            ));
+        }
+
+        html.push_str("</ul></div>");
+    } else {
+        html.push_str(concat!(
+            "<span class=\"pointer-events-none absolute inset-y-0 right-3 flex items-center\" aria-hidden=\"true\">",
+            "<svg class=\"h-4 w-4 text-text-muted\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">",
+            "<path fill-rule=\"evenodd\" d=\"M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z\" clip-rule=\"evenodd\"/>",
+            "</svg></span>"
+        ));
+    }
     html.push_str("</div>");
 
     if let Some(ref desc) = props.description {
@@ -2057,6 +2122,92 @@ mod tests {
         assert!(
             html.contains("fjui-form-message--error"),
             "error paragraph must emit fjui-form-message--error class; got: {html}"
+        );
+    }
+
+    // ── Select / Combobox ────────────────────────────────────────────────
+
+    /// Searchable=true must produce the combobox overlay markup with the native
+    /// select as a hidden form value carrier.
+    #[test]
+    fn searchable_true_emits_combobox_markup() {
+        let el = mk_element(
+            "Select",
+            json!({
+                "field": "customer_id",
+                "label": "Cliente",
+                "searchable": true,
+                "options": [
+                    {"value": "1", "label": "Alice"},
+                    {"value": "2", "label": "Bob"}
+                ]
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_select(&el, &spec, &json!({}), 1);
+
+        // Native select must be hidden as form value carrier.
+        assert!(
+            html.contains("data-combobox-native"),
+            "hidden native select must carry data-combobox-native; got: {html}"
+        );
+        assert!(
+            html.contains("class=\"sr-only\""),
+            "native select must have class=sr-only; got: {html}"
+        );
+
+        // Combobox wrapper and input ARIA.
+        assert!(
+            html.contains("data-combobox"),
+            "combobox wrapper must carry data-combobox; got: {html}"
+        );
+        assert!(
+            html.contains("role=\"combobox\""),
+            "filter input must carry role=combobox; got: {html}"
+        );
+        assert!(
+            html.contains("aria-autocomplete=\"list\""),
+            "filter input must carry aria-autocomplete=list; got: {html}"
+        );
+
+        // Stable option ids — index-based, never value-based.
+        assert!(
+            html.contains("id=\"fjui-combo-opt-customer_id-0\""),
+            "first option must have stable id fjui-combo-opt-customer_id-0; got: {html}"
+        );
+        assert!(
+            html.contains("id=\"fjui-combo-opt-customer_id-1\""),
+            "second option must have stable id fjui-combo-opt-customer_id-1; got: {html}"
+        );
+
+        // No diagnostic comments in the happy path.
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no diagnostic comments in happy path; got: {html}"
+        );
+    }
+
+    /// Searchable=false (or None) must preserve the original native select unchanged.
+    #[test]
+    fn searchable_false_emits_native_select_only() {
+        let el = mk_element(
+            "Select",
+            json!({
+                "field": "status",
+                "label": "Stato",
+                "options": [{"value": "a", "label": "Active"}]
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let html = render_select(&el, &spec, &json!({}), 1);
+
+        assert!(
+            !html.contains("data-combobox"),
+            "non-searchable select must not emit combobox markup; got: {html}"
+        );
+        assert!(
+            html.contains("class=\"fjui-select"),
+            "non-searchable select must keep fjui-select class; got: {html}"
         );
     }
 }
