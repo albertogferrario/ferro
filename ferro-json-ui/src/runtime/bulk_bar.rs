@@ -49,7 +49,14 @@ pub(super) const SOURCE: &str = r#"
     function confirmBulkAction(keys, action, endpoint, selected, bar, countEl) {
         var dlg = document.getElementById('fjui-bulk-confirm');
         if (!dlg || typeof dlg.showModal !== 'function') {
-            // Degrade: execute without confirm if dialog absent.
+            // Degrade: dialog absent or not supported — fall back to native confirm
+            // so the user still sees a confirmation prompt before a destructive action
+            // executes (IN-02). A missing dialog may indicate a render bug; the native
+            // confirm prevents silent data loss in that case.
+            var msg = 'Confermi l\'operazione su ' + keys.length + ' elementi?';
+            if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+                if (!window.confirm(msg)) { return; }
+            }
             executeBulkAction(keys, action, endpoint, selected, bar, countEl);
             return;
         }
