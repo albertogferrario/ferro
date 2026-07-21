@@ -3885,4 +3885,75 @@ mod tests {
             "columns=1 must not emit md: breakpoint; got: {html}"
         );
     }
+
+    /// DescriptionItem with inline_edit_field emits enhanced <dd> with data attrs + pencil button.
+    #[test]
+    fn description_item_with_inline_edit_emits_data_attrs_and_pencil() {
+        let spec = spec_with_root(
+            Element::new("DescriptionList")
+                .prop("items", json!([{
+                    "label": "Nome",
+                    "value": "Alice",
+                    "inline_edit_field": "name",
+                    "inline_edit_endpoint": "/dashboard/clienti/42/field",
+                    "inline_edit_kind": "text"
+                }])),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_description_list(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-inline-edit-field=\"name\""),
+            "must emit data-inline-edit-field; got: {html}"
+        );
+        assert!(
+            html.contains("data-inline-edit-endpoint=\"/dashboard/clienti/42/field\""),
+            "must emit data-inline-edit-endpoint; got: {html}"
+        );
+        assert!(
+            html.contains("data-inline-edit-kind=\"text\""),
+            "must emit data-inline-edit-kind; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-inline-edit__value"),
+            "must emit value span with fjui-inline-edit__value class; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-inline-edit__pencil"),
+            "must emit pencil button with fjui-inline-edit__pencil class; got: {html}"
+        );
+        assert!(
+            html.contains("aria-label=\"Modifica Nome\""),
+            "pencil button must have aria-label 'Modifica {{label}}'; got: {html}"
+        );
+    }
+
+    /// DescriptionItem WITHOUT inline_edit_field emits plain <dd> (existing behavior unchanged).
+    #[test]
+    fn description_item_without_inline_edit_emits_plain_dd() {
+        let spec = spec_with_root(
+            Element::new("DescriptionList")
+                .prop("items", json!([{
+                    "label": "Nome",
+                    "value": "Alice"
+                }])),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_description_list(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("data-inline-edit-field"),
+            "no inline_edit_field → must not emit data-inline-edit-field; got: {html}"
+        );
+        assert!(
+            !html.contains("fjui-inline-edit__pencil"),
+            "no inline_edit_field → must not emit pencil button; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-description-list__detail"),
+            "plain dd must still have fjui-description-list__detail class; got: {html}"
+        );
+        assert!(
+            html.contains("Alice"),
+            "plain dd must contain the value; got: {html}"
+        );
+    }
 }

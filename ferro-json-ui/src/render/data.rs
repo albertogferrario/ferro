@@ -1997,6 +1997,59 @@ mod tests {
         );
     }
 
+    /// T-249-04-01: bulk-select td must emit html-escaped data-row-key (no attribute break-out).
+    #[test]
+    fn bulk_select_emits_html_escaped_data_row_key() {
+        // row_key value contains a double-quote — must be escaped to &#34; or &quot;
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "bulk_select": true,
+                "row_key": "id",
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        // The id value contains a double-quote which would break an HTML attribute if unescaped.
+        let data = json!({"rows": [{"id": "42\"xss", "name": "Alice"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("data-row-key="),
+            "bulk_select=true must emit data-row-key; got: {html}"
+        );
+        // The raw quote must NOT appear inside an attribute context.
+        assert!(
+            !html.contains("data-row-key=\"42\""),
+            "double-quote in row key must be html-escaped in attribute; got: {html}"
+        );
+        // The escaped form must be present.
+        assert!(
+            html.contains("42&quot;xss") || html.contains("42&#"),
+            "escaped quote must appear in html; got: {html}"
+        );
+    }
+
+    /// data-bulk-select-table attribute must be present on the table root when bulk_select enabled.
+    #[test]
+    fn bulk_select_table_root_has_data_bulk_select_table() {
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/rows",
+                "bulk_select": true,
+                "columns": [{"key": "name", "label": "Name"}],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"rows": [{"name": "Alice"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        assert!(
+            html.contains("data-bulk-select-table"),
+            "bulk_select=true must emit data-bulk-select-table on the table wrapper; got: {html}"
+        );
+    }
+
     /// D-08 migration: zebra-striping utilities must NOT be present (RSK-01).
     #[test]
     fn data_table_no_zebra_striping_in_rows() {
