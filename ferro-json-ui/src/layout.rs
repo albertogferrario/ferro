@@ -312,15 +312,30 @@ fn layout_header_html(props: &HeaderProps) -> String {
          popovertarget=\"fjui-avatar-menu\" aria-label=\"Menu utente\" aria-haspopup=\"true\">{}</button>",
         html_escape(&initials)
     ));
-    // Avatar menu popover panel: Profilo / Tema toggle / separator / Esci POST form.
+    // Avatar menu popover panel: Profilo / Tema toggle (only when `theme_url`
+    // is configured) / separator / Esci POST form.
     // Esci is a <form method="post"> so ferro's CSRF guard applies (T-247-03-02).
-    // Theme toggle onclick POSTs to /dashboard/theme (Plan 05 endpoint).
+    // Tema onclick POSTs to `theme_url`; the dark class toggles only on a 2xx
+    // response so visual state stays in sync with the persisted preference.
     let logout_action = props.logout_url.as_deref().unwrap_or("/logout");
+    let theme_item = match props.theme_url.as_deref() {
+        Some(url) => {
+            // JS-string-escape then HTML-escape: the URL sits inside a
+            // single-quoted JS literal within a double-quoted onclick attribute
+            // (entities decode before JS parses, so `'` alone would break out).
+            let js_url = url.replace('\\', "\\\\").replace('\'', "\\'");
+            format!(
+                "<button type=\"button\" class=\"fjui-avatar-menu__item\" \
+                 onclick=\"fetch('{}',{{method:'POST',body:'theme='+(document.documentElement.classList.contains('dark')?'light':'dark'),headers:{{'Content-Type':'application/x-www-form-urlencoded'}}}}).then(function(r){{if(r.ok)document.documentElement.classList.toggle('dark')}})\">Tema</button>",
+                html_escape(&js_url)
+            )
+        }
+        None => String::new(),
+    };
     html.push_str(&format!(
         "<div popover id=\"fjui-avatar-menu\" class=\"fjui-avatar-menu\">\
            <a href=\"/dashboard/impostazioni\" class=\"fjui-avatar-menu__item\">Profilo</a>\
-           <button type=\"button\" class=\"fjui-avatar-menu__item\" \
-             onclick=\"fetch('/dashboard/theme',{{method:'POST',body:'theme='+(document.documentElement.classList.contains('dark')?'light':'dark'),headers:{{'Content-Type':'application/x-www-form-urlencoded'}}}}).then(function(){{document.documentElement.classList.toggle('dark')}})\">Tema</button>\
+           {theme_item}\
            <div class=\"fjui-avatar-menu__separator\"></div>\
            <form method=\"post\" action=\"{}\">\
              <button type=\"submit\" class=\"fjui-avatar-menu__item fjui-avatar-menu__item--destructive\">Esci</button>\
@@ -561,6 +576,7 @@ pub fn footer(text: &str) -> String {
 ///         user_name: Some("Alice".to_string()),
 ///         user_avatar: None,
 ///         logout_url: Some("/logout".to_string()),
+///         theme_url: Some("/theme".to_string()),
 ///     },
 ///     sse_url: None,
 /// }));
@@ -600,6 +616,7 @@ pub struct DashboardLayoutConfig {
 ///         user_name: None,
 ///         user_avatar: None,
 ///         logout_url: None,
+///         theme_url: None,
 ///     },
 ///     sse_url: None,
 /// }));
@@ -1091,6 +1108,7 @@ mod tests {
                 user_name: Some("Alice".to_string()),
                 user_avatar: None,
                 logout_url: Some("/logout".to_string()),
+                theme_url: None,
             },
             sse_url: None,
         })
@@ -1180,6 +1198,7 @@ mod tests {
                 user_name: None,
                 user_avatar: None,
                 logout_url: None,
+                theme_url: None,
             },
             sse_url: Some("/events".to_string()),
         });
@@ -1203,6 +1222,7 @@ mod tests {
                 user_name: None,
                 user_avatar: None,
                 logout_url: None,
+                theme_url: None,
             },
             sse_url: Some("/events?a=1&b=2".to_string()),
         });
@@ -1226,6 +1246,7 @@ mod tests {
                 user_name: None,
                 user_avatar: None,
                 logout_url: None,
+                theme_url: None,
             },
             sse_url: None,
         });
@@ -1360,6 +1381,7 @@ mod tests {
             user_name: None,
             user_avatar: None,
             logout_url: None,
+            theme_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1444,6 +1466,7 @@ mod tests {
             user_name: Some("Alice Rossi".into()),
             user_avatar: None,
             logout_url: Some("/logout".into()),
+            theme_url: None,
         };
         let html = layout_header_html(&props);
         assert!(html.contains("fjui-avatar"), "avatar button must be present; got: {html}");
@@ -1466,6 +1489,7 @@ mod tests {
             user_name: None,
             user_avatar: None,
             logout_url: Some("/logout".into()),
+            theme_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1487,6 +1511,7 @@ mod tests {
             user_name: None,
             user_avatar: None,
             logout_url: None,
+            theme_url: None,
         };
         let html = layout_header_html(&props);
         assert!(
@@ -1504,6 +1529,37 @@ mod tests {
         assert!(
             html.contains("fjui-kbd"),
             "search button must include fjui-kbd chip; got: {html}"
+        );
+    }
+
+    /// Tema item renders only when theme_url is configured, POSTs to that URL,
+    /// and toggles the dark class only on a 2xx response (WR-04).
+    #[test]
+    fn header_theme_toggle_only_when_theme_url_set() {
+        use crate::component::HeaderProps;
+        let mut props = HeaderProps {
+            business_name: "Acme".to_string(),
+            notification_count: None,
+            user_name: None,
+            user_avatar: None,
+            logout_url: None,
+            theme_url: None,
+        };
+        let html = layout_header_html(&props);
+        assert!(
+            !html.contains(">Tema</button>"),
+            "Tema item must be omitted when theme_url is None; got: {html}"
+        );
+
+        props.theme_url = Some("/dashboard/theme".to_string());
+        let html = layout_header_html(&props);
+        assert!(
+            html.contains("fetch('/dashboard/theme'"),
+            "Tema must POST to the configured theme_url; got: {html}"
+        );
+        assert!(
+            html.contains("if(r.ok)document.documentElement.classList.toggle('dark')"),
+            "dark-class toggle must be gated on response.ok; got: {html}"
         );
     }
 }

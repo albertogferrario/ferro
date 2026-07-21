@@ -909,6 +909,11 @@ pub struct HeaderProps {
     pub user_avatar: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub logout_url: Option<String>,
+    /// POST endpoint for the avatar-menu theme toggle. The endpoint is
+    /// app-specific, so consumers must provide it; `None` omits the Tema
+    /// menu item entirely.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme_url: Option<String>,
 }
 
 /// Gap size for Grid layout.
