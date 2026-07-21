@@ -237,11 +237,11 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
 
 /// Render the header shell from HeaderProps for DashboardLayout.
 fn layout_header_html(props: &HeaderProps) -> String {
-    // fjui-header: appearance (bg, border-bottom, height, sticky positioning) handled by skin rule (SKIN-01).
-    // Layout utilities (z-30 relative flex items-center md:pl-72) stay inline (D-02).
-    let mut html = String::from(
-        "<header class=\"fjui-header z-30 relative flex items-center md:pl-72\">",
-    );
+    // fjui-header: appearance (bg, border-bottom, height, sticky positioning, padding) handled by skin rule (SKIN-01).
+    // Layout utilities (z-30 relative flex items-center) stay inline (D-02). The header sits
+    // inside the sidebar-offset content column, so it must NOT re-pad for the sidebar itself
+    // (a legacy md:pl-72 here doubled the offset and pushed the workspace label off-left).
+    let mut html = String::from("<header class=\"fjui-header z-30 relative flex items-center\">");
     // Mobile hamburger button — visible only on small screens.
     html.push_str(&format!(
         "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \
