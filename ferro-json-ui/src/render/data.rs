@@ -183,7 +183,11 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     );
 
     {
-        html.push_str("<table class=\"fjui-table\">");
+        if props.bulk_select.unwrap_or(false) {
+            html.push_str("<table class=\"fjui-table\" data-bulk-select-table>");
+        } else {
+            html.push_str("<table class=\"fjui-table\">");
+        }
 
         // Header shell — Plan 07 scope.
         html.push_str("<thead class=\"fjui-table__header\"><tr>");
@@ -239,11 +243,12 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 "<tr class=\"fjui-table__row{extra_class}\"{click_attrs}>"
             ));
             if props.bulk_select.unwrap_or(false) {
-                html.push_str(
+                html.push_str(&format!(
                     "<td class=\"fjui-table__cell fjui-table__bulk-select-checkbox\">\
-                     <input type=\"checkbox\" class=\"cursor-pointer\" />\
+                     <input type=\"checkbox\" data-row-key=\"{}\" class=\"cursor-pointer\" />\
                      </td>",
-                );
+                    html_escape(&row_key_value)
+                ));
             }
             for col in &props.columns {
                 // Numeric columns (currency, date, datetime) get the --numeric modifier for
