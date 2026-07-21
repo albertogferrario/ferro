@@ -4,8 +4,8 @@ milestone: v17.0
 milestone_name: Live Projection Surface
 status: executing
 stopped_at: Phase 259 context gathered (v17.0 started)
-last_updated: "2026-07-21T01:52:04.642Z"
-last_activity: 2026-07-21 -- Phase 259 planning complete
+last_updated: "2026-07-21T01:53:45.074Z"
+last_activity: 2026-07-21 -- Phase 259 execution started
 progress:
   total_phases: 135
   completed_phases: 115
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v16.6 complete — archive via `/gsd-complete-milestone v16.6`
+**Current focus:** Phase 259 — Request-scoped memoization
 
 ## Current Position
 
-Phase: 258 (last of v16.6)
-Plan: 3/3 complete
-Status: Ready to execute
-Last activity: 2026-07-21 -- Phase 259 planning complete
+Phase: 259 (Request-scoped memoization) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 259
+Last activity: 2026-07-21 -- Phase 259 execution started
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
 
