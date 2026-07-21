@@ -250,10 +250,9 @@ fn layout_header_html(props: &HeaderProps) -> String {
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
          d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>"
     ));
-    // Business name — absolutely centered relative to the header box,
-    // independent of hamburger/notification/user elements.
+    // Business name — left-aligned workspace label (CHR-01).
     html.push_str(&format!(
-        "<span class=\"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-semibold text-text pointer-events-none\">{}</span>",
+        "<span class=\"fjui-header__workspace\">{}</span>",
         html_escape(&props.business_name)
     ));
     html.push_str("<div class=\"ml-auto flex items-center gap-4\">");
@@ -282,36 +281,54 @@ fn layout_header_html(props: &HeaderProps) -> String {
         "<div data-notification-dropdown class=\"hidden absolute right-0 top-full mt-1 w-80 \
          bg-card rounded-lg shadow-lg border border-border z-50\"></div></div>",
     );
-    // User section.
-    html.push_str("<div class=\"flex items-center gap-2\">");
-    if let Some(ref avatar) = props.user_avatar {
-        html.push_str(&format!(
-            "<img src=\"{}\" alt=\"User avatar\" class=\"h-8 w-8 rounded-full object-cover\">",
-            html_escape(avatar)
-        ));
-    } else if let Some(ref name) = props.user_name {
-        let initials: String = name
-            .split_whitespace()
-            .filter_map(|w| w.chars().next())
-            .take(2)
-            .collect();
-        html.push_str(&format!(
-            "<span class=\"inline-flex items-center justify-center h-8 w-8 rounded-full \
-             bg-card text-text-muted text-sm font-medium\">{}</span>",
-            html_escape(&initials)
-        ));
-        html.push_str(&format!(
-            "<span class=\"text-sm text-text\">{}</span>",
-            html_escape(name)
-        ));
-    }
-    if let Some(ref logout) = props.logout_url {
-        html.push_str(&format!(
-            "<a href=\"{}\" class=\"text-sm text-text-muted hover:text-text {INTERACTIVE_BASE}\">Logout</a>",
-            html_escape(logout)
-        ));
-    }
-    html.push_str("</div></div></header>");
+    // Search affordance button (CHR-01 / UX-02): magnifier + ⌘K kbd chip + tooltip.
+    // Dispatches fjui:open-command-palette — handler wired in Phase 249 (D-06).
+    html.push_str(&format!(
+        "<button type=\"button\" class=\"fjui-header__search-btn inline-flex items-center gap-2 {INTERACTIVE_BASE}\" \
+         data-tooltip=\"Cerca\" aria-label=\"Cerca (⌘K)\" \
+         onclick=\"document.dispatchEvent(new CustomEvent('fjui:open-command-palette'))\">\
+         <svg class=\"h-4 w-4\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" stroke-width=\"2\" \
+           stroke-linecap=\"round\" stroke-linejoin=\"round\">\
+           <circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/>\
+         </svg>\
+         <kbd class=\"fjui-kbd hidden md:inline\">\u{2318}K</kbd></button>"
+    ));
+    // Avatar initials button opens the fjui-avatar-menu popover (CHR-01).
+    // Falls back to business_name initials when user_name is absent.
+    let name_source = props
+        .user_name
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(&props.business_name);
+    let initials: String = name_source
+        .split_whitespace()
+        .filter_map(|w| w.chars().next())
+        .take(2)
+        .collect::<String>()
+        .to_uppercase();
+    html.push_str(&format!(
+        "<button class=\"fjui-avatar fjui-avatar--md inline-flex items-center justify-center \
+         cursor-pointer {INTERACTIVE_BASE}\" \
+         popovertarget=\"fjui-avatar-menu\" aria-label=\"Menu utente\" aria-haspopup=\"true\">{}</button>",
+        html_escape(&initials)
+    ));
+    // Avatar menu popover panel: Profilo / Tema toggle / separator / Esci POST form.
+    // Esci is a <form method="post"> so ferro's CSRF guard applies (T-247-03-02).
+    // Theme toggle onclick POSTs to /dashboard/theme (Plan 05 endpoint).
+    let logout_action = props.logout_url.as_deref().unwrap_or("/logout");
+    html.push_str(&format!(
+        "<div popover id=\"fjui-avatar-menu\" class=\"fjui-avatar-menu\">\
+           <a href=\"/dashboard/impostazioni\" class=\"fjui-avatar-menu__item\">Profilo</a>\
+           <button type=\"button\" class=\"fjui-avatar-menu__item\" \
+             onclick=\"fetch('/dashboard/theme',{{method:'POST',body:'theme='+(document.documentElement.classList.contains('dark')?'light':'dark'),headers:{{'Content-Type':'application/x-www-form-urlencoded'}}}}).then(function(){{document.documentElement.classList.toggle('dark')}})\">Tema</button>\
+           <div class=\"fjui-avatar-menu__separator\"></div>\
+           <form method=\"post\" action=\"{}\">\
+             <button type=\"submit\" class=\"fjui-avatar-menu__item fjui-avatar-menu__item--destructive\">Esci</button>\
+           </form>\
+         </div>",
+        html_escape(logout_action)
+    ));
+    html.push_str("</div></header>");
     html
 }
 
