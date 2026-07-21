@@ -4109,7 +4109,7 @@ plugin-not-builtin —, non-goals, honest limitations, deferred list-diffing dir
 
 ### Phases
 
-- [ ] **Phase 259: Request-scoped memoization** — `MemoStore` in request extensions +
+- [x] **Phase 259: Request-scoped memoization** — `MemoStore` in request extensions + (completed 2026-07-21)
   `#[memoize]` attribute (fan-out dedup + concurrent-call coalescing via a shared future) +
   wiring into the `ServiceDef → IntentGraph` render pass so N intents over one key issue one
   fetch.
@@ -4144,10 +4144,10 @@ multi-intent projection render needs.
      a single computation (coalescing test), and the store is dropped with the request.
   3. A projection render deriving multiple intents over one key issues a single underlying
      fetch through the memo store (render-path integration test).
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 259-01-PLAN.md — MemoStore + MEMO_STORE task-local + futures dep + server.rs scope entry + re-export (wave 1)
 - [x] 259-02-PLAN.md — #[memoize] proc-macro in ferro-macros + registration + macro-level proofs (wave 2)
-- [ ] 259-03-PLAN.md — SC-3 render-path integration harness + rustdoc audit + CI-exact gate (wave 3)
+- [x] 259-03-PLAN.md — SC-3 render-path integration harness + rustdoc audit + CI-exact gate (wave 3)
 
 #### Phase 260: Live reactive fragment
 **Goal:** Add a `LiveFragment` JSON-UI element that binds a child template to a projection
