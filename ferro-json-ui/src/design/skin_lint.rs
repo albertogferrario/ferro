@@ -607,33 +607,38 @@ fn rule_has_visible_border(_selector: &str, body: &str) -> bool {
     false
 }
 
-/// Returns true if the rule body contains a non-none `box-shadow` declaration.
+/// Returns true if the rule body contains a non-none `box-shadow` declaration
+/// at the TOP LEVEL of the rule (not inside any nested pseudo-class block).
 ///
-/// Scans the full body text (including inside nested blocks like `&:hover`)
-/// rather than splitting on `;`, so that hover-lift shadows are detected.
-/// The caller strips `:focus-visible` blocks before calling this function.
+/// Only top-level declarations are checked. A `box-shadow` that appears
+/// exclusively inside `&:hover {}`, `&:focus-visible {}`, `&:active {}`, etc.
+/// is NOT flagged — those are interaction-state overrides, not resting elevation.
+/// This means a card can have a base border and add a hover-lift shadow without
+/// violating the elevation rule; the resting state is still border-only.
 fn rule_has_non_none_box_shadow(body: &str) -> bool {
-    let needle = "box-shadow";
-    let mut pos = 0;
-    while let Some(rel) = body[pos..].find(needle) {
-        let abs = pos + rel;
-        // After "box-shadow" there must be optional whitespace then ":"
-        let after = body[abs + needle.len()..].trim_start();
-        if !after.starts_with(':') {
-            pos = abs + 1;
+    for segment in body.split(';') {
+        let segment = segment.trim();
+        // Skip empty segments, nested block openers, and closing braces.
+        // Segments containing '{' are block openers for nested pseudo-class blocks
+        // — skip them entirely so only top-level declarations are checked.
+        if segment.is_empty() || segment.contains('{') || segment.starts_with('}') {
             continue;
         }
-        // Extract the value up to the next ";" or "}" or end of string
-        let value_start = abs + needle.len() + body[abs + needle.len()..].find(':').unwrap_or(0) + 1;
-        let value_raw = &body[value_start..];
-        let end = value_raw.find([';', '}']).unwrap_or(value_raw.len());
-        let value = value_raw[..end].trim();
+        let Some(colon) = segment.find(':') else { continue };
+        let prop = segment[..colon].trim().trim_start_matches('&').trim();
+        let prop = prop.trim_start_matches(':').trim();
+        let value = segment[colon + 1..].trim();
+
+        if prop != "box-shadow" {
+            continue;
+        }
 
         let v = value.to_lowercase();
-        if !v.is_empty() && v != "none" {
-            return true;
+        if v == "none" || v.is_empty() {
+            continue;
         }
-        pos = abs + 1;
+
+        return true;
     }
     false
 }
@@ -1026,9 +1031,14 @@ mod tests {
         );
     }
 
-    /// A hover lift (box-shadow in :hover) combined with a base border IS a violation.
+    /// A hover lift (box-shadow only in :hover) with a base border must NOT be flagged.
+    ///
+    /// The rule checks only TOP-LEVEL declarations — a hover-lift shadow that
+    /// appears exclusively inside `&:hover {}` is an interaction-state override,
+    /// not a resting elevation. The resting state is border-only (conforming).
+    /// This matches the real ferro-skin.css kanban card pattern.
     #[test]
-    fn hover_shadow_lift_with_base_border_returns_warning() {
+    fn hover_shadow_lift_with_base_border_no_warning() {
         let css = "@layer components {
             .fjui-card {
                 border: 1px solid var(--color-border);
@@ -1038,10 +1048,26 @@ mod tests {
             }
         }";
         let findings = check_skin_border_and_shadow(css);
+        assert!(
+            findings.is_empty(),
+            "hover-lift shadow (only in :hover) + base border must NOT be flagged — resting state is border-only, got: {findings:#?}"
+        );
+    }
+
+    /// A top-level box-shadow with a visible border IS a violation (both at rest).
+    #[test]
+    fn top_level_shadow_with_border_returns_warning() {
+        let css = "@layer components {
+            .fjui-card {
+                border: 1px solid var(--color-border);
+                box-shadow: var(--shadow-md);
+            }
+        }";
+        let findings = check_skin_border_and_shadow(css);
         assert_eq!(
             findings.len(),
             1,
-            "hover shadow lift + base border must be flagged (LANG-04), got: {findings:#?}"
+            "top-level border AND top-level box-shadow must be flagged (LANG-04), got: {findings:#?}"
         );
         assert_eq!(findings[0].rule, "skin-border-or-shadow");
     }
