@@ -1351,4 +1351,41 @@ input, select, textarea {
     font-size: var(--text-meta-size);
   }
 
+  /* ── NavProgress hairline ──────────────────────────────────────────────── */
+
+  /* NavProgress is NOT interactive — display-only overlay.
+   * Three states: hidden (default), active (loading), done (completing).
+   * Shown only when navigation exceeds 150ms — the escape hatch, not the norm. */
+
+  .fjui-nav-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background-color: var(--color-primary);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition-property: width, opacity;
+    transition-duration: var(--motion-duration-fast);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .fjui-nav-progress--active {
+    opacity: 1;
+    width: 85%;
+    transition-duration: var(--motion-duration-base);
+  }
+
+  .fjui-nav-progress--done {
+    width: 100%;
+    opacity: 0;
+    transition-duration: var(--motion-duration-fast);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fjui-nav-progress { display: none; }
+  }
+
 }

@@ -13,6 +13,7 @@ mod hero_lazy;
 mod kanban;
 mod live_fragment;
 mod modals;
+mod nav;
 mod notifications;
 mod numpad;
 mod scroll_preserve;
@@ -48,6 +49,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(scroll_preserve::SOURCE);
     s.push_str(hero_lazy::SOURCE);
     s.push_str(live_fragment::SOURCE);
+    s.push_str(nav::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       // Run each setup in isolation: a throw in one concern (e.g. an\n\
@@ -70,7 +72,9 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20           setupModals,\n\
          \x20           setupToasts,\n\
          \x20           setupLazyHeroes,\n\
-         \x20           setupLiveFragments\n\
+         \x20           setupLiveFragments,\n\
+         \x20           setupNav,\n\
+         \x20           setupProgressHairline\n\
          \x20       ];\n\
          \x20       for (var i = 0; i < setups.length; i++) {\n\
          \x20           try { setups[i](); } catch (err) { /* isolated per concern */ }\n\

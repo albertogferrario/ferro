@@ -1,0 +1,401 @@
+pub(super) const SOURCE: &str = r#"
+    // ── Instant navigation runtime ────────────────────────────────────────
+    //
+    // Intercepts same-origin GET <a> clicks on the dashboard, fetches the
+    // destination page, and swaps only the #ferro-json-ui content region.
+    // The sidebar, header, toast container, and SSE EventSource are never
+    // re-rendered (persistent frame — NAV-01).
+    //
+    // Prefetch on pointerdown / hover-dwell so warm navigations apply
+    // immediately with no visible loading state (NAV-02).
+    //
+    // History, scroll position, and focus are managed explicitly:
+    //   - history.scrollRestoration = 'manual'
+    //   - scroll state stored in history.state (main.scrollTop)
+    //   - focus moves to PageHeader h2 after forward navigation (NAV-03)
+    //
+    // SSE EventSource is never torn down. Scripts in swapped content are
+    // re-executed by cloning into fresh <script> nodes (same-origin only).
+    // fjui:navigated fires after re-execution; fjui:before-navigate fires
+    // before the swap so page-scoped EventSources can close (NAV-04).
+    //
+    // POST forms, modified clicks, target=_blank, download, hash-only, and
+    // cross-origin links are never intercepted (D-14).
+
+    // ── Progress hairline ─────────────────────────────────────────────────
+
+    function setupProgressHairline() {
+        if (document.querySelector('.fjui-nav-progress')) return;
+        var bar = document.createElement('div');
+        bar.className = 'fjui-nav-progress';
+        bar.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(bar);
+
+        function showHairline() {
+            bar.classList.add('fjui-nav-progress--active');
+        }
+        function doneHairline() {
+            bar.classList.remove('fjui-nav-progress--active');
+            bar.classList.add('fjui-nav-progress--done');
+            setTimeout(function() {
+                bar.classList.remove('fjui-nav-progress--done');
+            }, 300);
+        }
+        function resetHairline() {
+            bar.classList.remove('fjui-nav-progress--active');
+            bar.classList.remove('fjui-nav-progress--done');
+        }
+
+        // Expose helpers for setupNav (same closure scope).
+        window.__fjuiHairline = {
+            show: showHairline,
+            done: doneHairline,
+            reset: resetHairline
+        };
+    }
+
+    // ── Navigation runtime ────────────────────────────────────────────────
+
+    function setupNav() {
+        if (!document.getElementById('ferro-json-ui')) return;
+
+        // Disable browser scroll restoration — we manage it manually (D-07).
+        history.scrollRestoration = 'manual';
+
+        // The actual scroll container (HIDE_SCROLLBARS_CSS pins html/body to
+        // overflow:hidden; only <main> scrolls).
+        var mainEl = document.querySelector('body > div.flex.flex-col > main');
+
+        // In-memory prefetch cache. Each entry: { promise, controller, ts }.
+        var prefetchCache = {};
+        var inflight = 0;
+        var MAX_INFLIGHT = 2;
+        var PREFETCH_TTL = 5000;
+        var HOVER_DWELL = 80;
+
+        // Track the URL that a click actually intends to navigate to, so a
+        // late-arriving prefetch for a superseded URL cannot be applied (Pitfall 4).
+        var intendedUrl = null;
+
+        function evictStale(url) {
+            var entry = prefetchCache[url];
+            if (entry && (Date.now() - entry.ts) > PREFETCH_TTL) {
+                delete prefetchCache[url];
+                return true;
+            }
+            return false;
+        }
+
+        function prefetch(url) {
+            if (prefetchCache[url]) {
+                evictStale(url);
+                if (prefetchCache[url]) return; // still fresh
+            }
+            if (inflight >= MAX_INFLIGHT) return;
+            var controller = new AbortController();
+            inflight++;
+            var entry = {
+                promise: fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'X-FJUI-Nav': '1' },
+                    signal: controller.signal
+                }).then(function(r) {
+                    inflight--;
+                    return r;
+                }).catch(function() {
+                    inflight--;
+                    delete prefetchCache[url];
+                }),
+                controller: controller,
+                ts: Date.now()
+            };
+            prefetchCache[url] = entry;
+        }
+
+        function abortAllPrefetchesExcept(keepUrl) {
+            for (var k in prefetchCache) {
+                if (k !== keepUrl && prefetchCache[k] && prefetchCache[k].controller) {
+                    try { prefetchCache[k].controller.abort(); } catch (_) {}
+                    delete prefetchCache[k];
+                }
+            }
+        }
+
+        function shouldIntercept(a, event) {
+            if (!a || !a.href) return false;
+            if (event.defaultPrevented) return false;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+            if (event.button !== 0) return false;
+            if (a.target && a.target !== '' && a.target !== '_self') return false;
+            if (a.hasAttribute('download')) return false;
+            var href = a.href;
+            // Hash-only: same page, only fragment changes.
+            if (href.indexOf('#') !== -1) {
+                try {
+                    var u = new URL(href);
+                    if (u.pathname === window.location.pathname && u.search === window.location.search) {
+                        return false;
+                    }
+                } catch (_) { return false; }
+            }
+            try {
+                var urlObj = new URL(href);
+                if (urlObj.origin !== window.location.origin) return false;
+                if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') return false;
+            } catch (_) {
+                return false;
+            }
+            return true;
+        }
+
+        function findAnchor(el) {
+            var node = el;
+            while (node && node !== document.body) {
+                if (node.tagName === 'A') return node;
+                node = node.parentElement;
+            }
+            return null;
+        }
+
+        function navigate(url, isPopstate) {
+            var hairline = window.__fjuiHairline;
+            var timer = null;
+
+            // Only show hairline (after 150ms delay) for navigations that aren't
+            // already resolved in the prefetch cache.
+            var hasCached = prefetchCache[url] && !evictStale(url);
+            if (!hasCached && hairline) {
+                timer = setTimeout(function() { hairline.show(); }, 150);
+            }
+
+            // Abort all other in-flight prefetches — their responses must not
+            // overwrite this navigation's result (D-05, Pitfall 4).
+            abortAllPrefetchesExcept(url);
+
+            var responsePromise;
+            if (prefetchCache[url] && !evictStale(url)) {
+                responsePromise = prefetchCache[url].promise;
+                delete prefetchCache[url];
+            } else {
+                var controller = new AbortController();
+                responsePromise = fetch(url, {
+                    credentials: 'same-origin',
+                    headers: { 'X-FJUI-Nav': '1' },
+                    signal: controller.signal
+                });
+            }
+
+            responsePromise.then(function(response) {
+                // Swappable check (D-03).
+                var contentType = response.headers.get('content-type') || '';
+                if (!response.ok || contentType.indexOf('text/html') === -1) {
+                    if (timer) clearTimeout(timer);
+                    if (hairline) hairline.reset();
+                    window.location.assign(url);
+                    return;
+                }
+                // Response-URL correlation: check origin is still same-origin
+                // (guards against unexpected redirects to external sites).
+                try {
+                    var responseUrl = new URL(response.url);
+                    if (responseUrl.origin !== window.location.origin) {
+                        if (timer) clearTimeout(timer);
+                        if (hairline) hairline.reset();
+                        window.location.assign(url);
+                        return;
+                    }
+                } catch (_) {
+                    if (timer) clearTimeout(timer);
+                    if (hairline) hairline.reset();
+                    window.location.assign(url);
+                    return;
+                }
+
+                response.text().then(function(html) {
+                    // Concurrency guard: if another click superseded this one, discard.
+                    if (!isPopstate && url !== intendedUrl) {
+                        if (timer) clearTimeout(timer);
+                        if (hairline) hairline.reset();
+                        return;
+                    }
+
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var newEl = doc.getElementById('ferro-json-ui');
+                    if (!newEl) {
+                        if (timer) clearTimeout(timer);
+                        if (hairline) hairline.reset();
+                        window.location.assign(url);
+                        return;
+                    }
+
+                    // Before-swap cleanup hook (D-13): page scripts can listen
+                    // to this event to close transient EventSources.
+                    try {
+                        document.dispatchEvent(new CustomEvent('fjui:before-navigate', {
+                            detail: { url: url }
+                        }));
+                    } catch (_) {}
+
+                    // Swap inner content of #ferro-json-ui (swap target only — never
+                    // an ancestor node; sidebar/header node identity preserved).
+                    var target = document.getElementById('ferro-json-ui');
+                    if (target) {
+                        var children = Array.prototype.slice.call(newEl.childNodes);
+                        target.replaceChildren.apply(target, children);
+                    }
+
+                    // Update document title.
+                    var titleEl = doc.querySelector('title');
+                    if (titleEl) document.title = titleEl.textContent;
+
+                    // Sidebar active-item update (D-03, Pitfall 6).
+                    var oldActive = document.querySelector('.fjui-sidebar__nav-item--active');
+                    if (oldActive) {
+                        oldActive.classList.remove('fjui-sidebar__nav-item--active');
+                    }
+                    try {
+                        var newPath = new URL(url).pathname;
+                        var navLinks = document.querySelectorAll('.fjui-sidebar__nav-item[href]');
+                        for (var j = 0; j < navLinks.length; j++) {
+                            if (navLinks[j].getAttribute('href') === newPath) {
+                                navLinks[j].classList.add('fjui-sidebar__nav-item--active');
+                                break;
+                            }
+                        }
+                    } catch (_) {}
+
+                    // History + scroll management (D-07).
+                    if (!isPopstate) {
+                        // Save current scroll position into the current history entry
+                        // before pushing the new state.
+                        try {
+                            history.replaceState(
+                                { scrollTop: mainEl ? mainEl.scrollTop : 0 },
+                                document.title
+                            );
+                            history.pushState({ scrollTop: 0 }, document.title, url);
+                        } catch (_) {}
+                        if (mainEl) mainEl.scrollTop = 0;
+                    } else {
+                        // popstate: restore scroll from event state (set by caller).
+                        // Caller passes the state value as the third arg via closure.
+                    }
+
+                    // Hairline done.
+                    if (timer) clearTimeout(timer);
+                    if (hairline) hairline.done();
+
+                    // Script re-execution (D-12, B-02): scripts set via innerHTML/
+                    // replaceChildren are inert; clone into fresh <script> nodes.
+                    // Same-origin guard: never execute scripts from external origins.
+                    if (newEl) {
+                        var scripts = newEl.querySelectorAll('script');
+                        for (var i = 0; i < scripts.length; i++) {
+                            var s = document.createElement('script');
+                            if (scripts[i].src) {
+                                try {
+                                    if (new URL(scripts[i].src).origin !== window.location.origin) {
+                                        continue;
+                                    }
+                                } catch (_) {
+                                    continue;
+                                }
+                                s.src = scripts[i].src;
+                            } else {
+                                s.textContent = scripts[i].textContent;
+                            }
+                            document.head.appendChild(s);
+                        }
+                    }
+
+                    // Fire navigated event after re-execution (D-12).
+                    try {
+                        document.dispatchEvent(new CustomEvent('fjui:navigated'));
+                    } catch (_) {}
+
+                    // Focus PageHeader h2 on forward navigation (D-09).
+                    if (!isPopstate) {
+                        try {
+                            var h2 = document.querySelector('#ferro-json-ui h2.fjui-text--display');
+                            if (h2) {
+                                h2.setAttribute('tabindex', '-1');
+                                h2.focus({ preventScroll: true });
+                            }
+                        } catch (_) {}
+                    }
+
+                }).catch(function() {
+                    if (timer) clearTimeout(timer);
+                    if (hairline) hairline.reset();
+                    window.location.assign(url);
+                });
+
+            }).catch(function() {
+                if (timer) clearTimeout(timer);
+                if (hairline) hairline.reset();
+                window.location.assign(url);
+            });
+        }
+
+        // pointerdown: start prefetch early (D-04).
+        document.addEventListener('pointerdown', function(event) {
+            var a = findAnchor(event.target);
+            if (a && shouldIntercept(a, event)) {
+                prefetch(a.href);
+            }
+        }, true);
+
+        // mouseover with dwell timer (D-04 secondary trigger).
+        var hoverTimer = null;
+        var hoverUrl = null;
+        document.addEventListener('mouseover', function(event) {
+            var a = findAnchor(event.target);
+            if (a && shouldIntercept(a, { button: 0 })) {
+                if (a.href !== hoverUrl) {
+                    if (hoverTimer) clearTimeout(hoverTimer);
+                    hoverUrl = a.href;
+                    hoverTimer = setTimeout(function() {
+                        prefetch(hoverUrl);
+                    }, HOVER_DWELL);
+                }
+            } else {
+                if (hoverTimer) clearTimeout(hoverTimer);
+                hoverTimer = null;
+                hoverUrl = null;
+            }
+        });
+        document.addEventListener('mouseout', function() {
+            if (hoverTimer) clearTimeout(hoverTimer);
+            hoverTimer = null;
+            hoverUrl = null;
+        });
+
+        // click: intercept same-origin GET <a> clicks (D-14).
+        document.addEventListener('click', function(event) {
+            var a = findAnchor(event.target);
+            if (!a) return;
+            if (!shouldIntercept(a, event)) return;
+            event.preventDefault();
+            intendedUrl = a.href;
+            navigate(intendedUrl, false);
+        }, true);
+
+        // popstate: re-fetch the page and restore scroll (D-08).
+        window.addEventListener('popstate', function(event) {
+            var url = window.location.href;
+            var scrollTop = event.state && typeof event.state.scrollTop === 'number'
+                ? event.state.scrollTop : 0;
+            intendedUrl = url;
+            navigate(url, true);
+            // Scroll is restored after the swap completes; pass via closure.
+            // Override: patch scroll restoration into the navigate callback.
+            // Since navigate is async, we defer the scroll restore via a
+            // listener on fjui:navigated (fired after the swap).
+            var restoreOnce = function() {
+                if (mainEl) mainEl.scrollTop = scrollTop;
+                document.removeEventListener('fjui:navigated', restoreOnce);
+            };
+            document.addEventListener('fjui:navigated', restoreOnce);
+        });
+    }
+"#;
