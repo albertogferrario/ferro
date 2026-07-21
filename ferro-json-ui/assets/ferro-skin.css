@@ -382,6 +382,12 @@ input, select, textarea {
 
   /* Text is NOT interactive. Five semantic roles per §Typography. */
 
+  /* Programmatic focus target for post-navigation screen-reader announcement
+   * (nav runtime focuses the page title). Non-interactive: no visible ring. */
+  .fjui-text--display[tabindex="-1"]:focus {
+    outline: none;
+  }
+
   .fjui-text--display {
     font-size: var(--text-display-size);
     font-weight: var(--text-display-weight);
