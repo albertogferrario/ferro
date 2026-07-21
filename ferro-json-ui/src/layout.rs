@@ -345,7 +345,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
         None => String::new(),
     };
     html.push_str(&format!(
-        "<div popover id=\"fjui-avatar-menu\" class=\"fjui-avatar-menu\">\
+        "<div popover id=\"fjui-avatar-menu\" data-popover-menu class=\"fjui-avatar-menu\">\
            {profile_item}\
            {theme_item}\
            <div class=\"fjui-avatar-menu__separator\"></div>\
