@@ -866,6 +866,10 @@ input, select, textarea {
     font-size: var(--text-body-size);
     font-weight: 500;
     color: var(--color-text);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
   }
 
   .fjui-tile__price {
@@ -1212,6 +1216,81 @@ input, select, textarea {
   /* fjui-table__cell--boolean: cell layout for status dot; renderer emits dot HTML. */
   .fjui-table__cell--boolean {
     /* structural layout only; dot appearance set by the status-dot HTML */
+  }
+
+  /* ── Tooltip primitive ───────────────────────────────────────────────────── */
+
+  /* CSS-only tooltip — NOT interactive as a block. Appears on :hover and :focus-visible.
+   * content is server-controlled (hardcoded attribute strings), no user input. */
+  [data-tooltip] {
+    position: relative;
+  }
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + var(--spacing-2));
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--color-text);
+    color: var(--color-background);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-1) var(--spacing-2);
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--motion-duration-fast) var(--motion-ease);
+    z-index: 50;
+  }
+  [data-tooltip]:hover::after,
+  [data-tooltip]:focus-visible::after { opacity: 1; }
+
+  /* ── Kbd chip ─────────────────────────────────────────────────────────────── */
+
+  /* Keyboard shortcut chip. NOT interactive. */
+  .fjui-kbd {
+    display: inline-block;
+    border: 1px solid var(--color-border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+    padding: 0 var(--spacing-1);
+    font-size: var(--text-micro-size);
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    background-color: var(--color-surface);
+    line-height: 1.5;
+  }
+
+  /* ── Status dot ───────────────────────────────────────────────────────────── */
+
+  /* fjui-status-dot: display-only indicator — NOT interactive.
+   * true=success (green), false=muted (neutral off-state, NOT destructive — D-10). */
+  .fjui-status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1-5);
+    font-size: var(--text-meta-size);
+    color: var(--color-text);
+  }
+  .fjui-status-dot::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+  }
+  .fjui-status-dot--true::before  { background-color: var(--color-success); }
+  .fjui-status-dot--false::before { background-color: var(--color-text-muted); }
+
+  /* ── Bulk-select checkbox column ──────────────────────────────────────────── */
+
+  /* fjui-table__bulk-select-checkbox: opt-in column for batch selection.
+   * Browser native :checked/:focus handled by the UA — no skin override needed. */
+  .fjui-table__bulk-select-checkbox {
+    width: 2.5rem;
+    padding-inline: var(--spacing-2);
+    color: var(--color-text-muted);
   }
 
   /* ── Form controls (Plan 08) ─────────────────────────────────────────────── */
