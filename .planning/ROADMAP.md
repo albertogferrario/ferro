@@ -4144,9 +4144,9 @@ multi-intent projection render needs.
      a single computation (coalescing test), and the store is dropped with the request.
   3. A projection render deriving multiple intents over one key issues a single underlying
      fetch through the memo store (render-path integration test).
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [x] 259-01-PLAN.md — MemoStore + MEMO_STORE task-local + futures dep + server.rs scope entry + re-export (wave 1)
-- [ ] 259-02-PLAN.md — #[memoize] proc-macro in ferro-macros + registration + macro-level proofs (wave 2)
+- [x] 259-02-PLAN.md — #[memoize] proc-macro in ferro-macros + registration + macro-level proofs (wave 2)
 - [ ] 259-03-PLAN.md — SC-3 render-path integration harness + rustdoc audit + CI-exact gate (wave 3)
 
 #### Phase 260: Live reactive fragment
