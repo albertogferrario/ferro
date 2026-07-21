@@ -1432,4 +1432,78 @@ mod tests {
         assert!(html.contains("md:pl-64"), "DashboardLayout grid utility md:pl-64 must be preserved");
         assert!(html.contains("max-w-7xl"), "DashboardLayout grid utility max-w-7xl must be preserved");
     }
+
+    // ── Plan 03 (247): Avatar menu + search affordance tests ────────────────
+
+    #[test]
+    fn header_emits_avatar_initials() {
+        use crate::component::HeaderProps;
+        let props = HeaderProps {
+            business_name: "Acme".to_string(),
+            notification_count: None,
+            user_name: Some("Alice Rossi".into()),
+            user_avatar: None,
+            logout_url: Some("/logout".into()),
+        };
+        let html = layout_header_html(&props);
+        assert!(html.contains("fjui-avatar"), "avatar button must be present; got: {html}");
+        assert!(
+            html.contains("popovertarget=\"fjui-avatar-menu\""),
+            "avatar button must wire to fjui-avatar-menu popover; got: {html}"
+        );
+        assert!(
+            html.contains("AR"),
+            "initials AR must be present from 'Alice Rossi'; got: {html}"
+        );
+    }
+
+    #[test]
+    fn header_no_bare_logout_link() {
+        use crate::component::HeaderProps;
+        let props = HeaderProps {
+            business_name: "Acme".to_string(),
+            notification_count: None,
+            user_name: None,
+            user_avatar: None,
+            logout_url: Some("/logout".into()),
+        };
+        let html = layout_header_html(&props);
+        assert!(
+            !html.contains(">Logout</a>"),
+            "bare Logout link must be gone; got: {html}"
+        );
+        assert!(
+            html.contains("action=\"/logout\""),
+            "logout must be moved into Esci POST form; got: {html}"
+        );
+    }
+
+    #[test]
+    fn header_search_button_present() {
+        use crate::component::HeaderProps;
+        let props = HeaderProps {
+            business_name: "Acme".to_string(),
+            notification_count: None,
+            user_name: None,
+            user_avatar: None,
+            logout_url: None,
+        };
+        let html = layout_header_html(&props);
+        assert!(
+            html.contains("fjui-header__search-btn"),
+            "search button must be present; got: {html}"
+        );
+        assert!(
+            html.contains("data-tooltip=\"Cerca\""),
+            "search button must carry data-tooltip Cerca (UX-02); got: {html}"
+        );
+        assert!(
+            html.contains("fjui:open-command-palette"),
+            "search button must dispatch fjui:open-command-palette (D-06); got: {html}"
+        );
+        assert!(
+            html.contains("fjui-kbd"),
+            "search button must include fjui-kbd chip; got: {html}"
+        );
+    }
 }
