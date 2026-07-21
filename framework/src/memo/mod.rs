@@ -1,7 +1,7 @@
 //! Request-scoped memoization store.
 //!
 //! A [`MemoStore`] is created fresh per HTTP request and held in the
-//! [`MEMO_STORE`] task-local. Any async function annotated with
+//! `MEMO_STORE` task-local. Any async function annotated with
 //! `#[memoize]` reads the ambient store via [`current_memo_store()`];
 //! outside a request context the function runs normally with no caching
 //! (graceful no-op, D-02).

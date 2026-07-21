@@ -26,7 +26,7 @@ pub mod inertia;
 #[cfg(feature = "json-ui")]
 pub mod json_ui;
 pub mod lang;
-/// Request-scoped memoization store (`MemoStore`) and task-local (`MEMO_STORE`).
+/// Request-scoped memoization store ([`MemoStore`]) and per-request task-local slot.
 pub mod memo;
 pub mod metrics;
 pub mod middleware;
@@ -125,6 +125,7 @@ pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedI
 #[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
 pub use lang::{lang_choice, lang_init, locale, set_locale, t, trans, LangMiddleware};
+pub use memo::{current_memo_store, MemoKey, MemoStore};
 pub use sea_orm::{
     ActiveModelTrait, ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, ModelTrait,
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,

@@ -275,9 +275,13 @@ async fn handle_request(
             let route_middleware = router.get_route_middleware(&route_pattern);
             chain.extend(route_middleware);
 
-            // 3. Execute chain with handler inside request host context
+            // 3. Execute chain with handler inside request host + memo-store context
+            let __memo_store = Arc::new(crate::memo::MemoStore::new());
             let response = crate::http::request_context::REQUEST_HOST
-                .scope(request_host, chain.execute(request, handler))
+                .scope(
+                    request_host,
+                    crate::memo::MEMO_STORE.scope(__memo_store, chain.execute(request, handler)),
+                )
                 .await;
 
             // Unwrap the Result - both Ok and Err contain HttpResponse
@@ -308,6 +312,9 @@ async fn handle_request(
                 chain.extend(fallback_middleware);
 
                 // 3. Execute chain with fallback handler
+                // Intentionally not wrapped in REQUEST_HOST or MEMO_STORE scope (Assumption A6):
+                // fallback handlers run outside the normal request-context chain; a #[memoize]
+                // call from a fallback handler degrades gracefully to an un-memoized call (D-02).
                 let response = chain.execute(request, fallback_handler).await;
 
                 // Unwrap the Result - both Ok and Err contain HttpResponse
