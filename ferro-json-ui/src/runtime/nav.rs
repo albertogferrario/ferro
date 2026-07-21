@@ -288,9 +288,23 @@ pub(super) const SOURCE: &str = r#"
                     // Script re-execution (D-12, B-02): scripts set via innerHTML/
                     // replaceChildren are inert; clone into fresh <script> nodes.
                     // Same-origin guard: never execute scripts from external origins.
+                    // Type guard: skip non-executable script types (data islands,
+                    // JSON-LD, templates, module scripts) — only classic JS
+                    // (no type, or type="text/javascript") is re-executed.
+                    var pendingLoads = 0;
+                    function dispatchNavigated() {
+                        try {
+                            document.dispatchEvent(new CustomEvent('fjui:navigated'));
+                        } catch (_) {}
+                    }
                     if (newEl) {
                         var scripts = newEl.querySelectorAll('script');
                         for (var i = 0; i < scripts.length; i++) {
+                            var srcType = scripts[i].type;
+                            // Skip non-executable script types.
+                            if (srcType && srcType !== '' && srcType !== 'text/javascript') {
+                                continue;
+                            }
                             var s = document.createElement('script');
                             if (scripts[i].src) {
                                 try {
@@ -300,7 +314,25 @@ pub(super) const SOURCE: &str = r#"
                                 } catch (_) {
                                     continue;
                                 }
+                                // External-src scripts load asynchronously.
+                                // Track pending loads so fjui:navigated fires only
+                                // after all same-origin external scripts have executed
+                                // (or failed). A 5 s timeout ensures a hung script
+                                // cannot block the event indefinitely.
                                 s.src = scripts[i].src;
+                                pendingLoads++;
+                                (function(node) {
+                                    var settled = false;
+                                    function settle() {
+                                        if (settled) return;
+                                        settled = true;
+                                        pendingLoads--;
+                                        if (pendingLoads === 0) dispatchNavigated();
+                                    }
+                                    node.onload = settle;
+                                    node.onerror = settle;
+                                    setTimeout(settle, 5000);
+                                }(s));
                             } else {
                                 s.textContent = scripts[i].textContent;
                             }
@@ -308,10 +340,18 @@ pub(super) const SOURCE: &str = r#"
                         }
                     }
 
-                    // Fire navigated event after re-execution (D-12).
-                    try {
-                        document.dispatchEvent(new CustomEvent('fjui:navigated'));
-                    } catch (_) {}
+                    // Fire navigated event after all inline scripts have executed
+                    // (synchronous) and all same-origin external-src scripts have
+                    // loaded (or timed out after 5 s). If there are no external-src
+                    // scripts, fires immediately here (pendingLoads === 0).
+                    // NOTE: fjui:navigated fires after all inline scripts in the
+                    // swapped content have executed. External-src scripts (same-origin
+                    // only) are appended and awaited via onload; a 5 s fallback
+                    // prevents a hung script from blocking the event indefinitely.
+                    // Phase-249 init hooks may be inline or same-origin external-src.
+                    if (pendingLoads === 0) {
+                        dispatchNavigated();
+                    }
 
                     // Focus PageHeader h2 on forward navigation (D-09).
                     if (!isPopstate) {
