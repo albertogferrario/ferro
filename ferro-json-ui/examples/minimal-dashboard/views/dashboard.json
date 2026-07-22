@@ -1,0 +1,167 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Dashboard",
+  "layout": "dashboard",
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1, "gap": "md" },
+      "children": [
+        "page_header",
+        "stat_row",
+        "main_row"
+      ]
+    },
+
+    "page_header": {
+      "type": "PageHeader",
+      "props": {
+        "title": "Dashboard",
+        "actions": ["new_client_button"]
+      }
+    },
+    "new_client_button": {
+      "type": "Button",
+      "props": {
+        "label": "Nuovo cliente",
+        "variant": "primary"
+      }
+    },
+
+    "stat_row": {
+      "type": "Grid",
+      "props": { "columns": 1, "md_columns": 3, "gap": "md" },
+      "children": ["stat_clienti", "stat_ordini", "stat_ricavi"]
+    },
+    "stat_clienti": {
+      "type": "StatCard",
+      "props": {
+        "label": "Clienti attivi",
+        "value_path": "/stat_clienti",
+        "value": "—",
+        "subtitle": "totale registrati"
+      }
+    },
+    "stat_ordini": {
+      "type": "StatCard",
+      "props": {
+        "label": "Ordini questo mese",
+        "value_path": "/stat_ordini",
+        "value": "—",
+        "subtitle": "ultimi 30 giorni"
+      }
+    },
+    "stat_ricavi": {
+      "type": "StatCard",
+      "props": {
+        "label": "Ricavi questo mese",
+        "value_path": "/stat_ricavi",
+        "value": "—",
+        "subtitle": "IVA inclusa",
+        "tone": "success"
+      }
+    },
+
+    "main_row": {
+      "type": "Grid",
+      "props": { "columns": 1, "md_columns": 3, "gap": "lg", "spans": [2, 1] },
+      "children": ["clienti_table", "form_card"]
+    },
+
+    "clienti_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "nome",            "label": "Nome" },
+          { "key": "email",           "label": "Email" },
+          { "key": "stato",           "label": "Stato" },
+          { "key": "data_iscrizione", "label": "Iscritto il" }
+        ],
+        "data_path": "/clienti",
+        "row_key": "id",
+        "empty_message": "Nessun cliente ancora. Crea il primo con \"Nuovo cliente\".",
+        "row_actions": [
+          {
+            "label": "Vedi dettagli",
+            "action": { "handler": "/clienti/{row_key}", "method": "GET" }
+          },
+          {
+            "label": "Modifica",
+            "action": { "handler": "/clienti/{row_key}/modifica", "method": "GET" }
+          },
+          {
+            "label": "Elimina",
+            "destructive": true,
+            "action": {
+              "handler": "/clienti/{row_key}/elimina",
+              "method": "POST",
+              "confirm": {
+                "title": "Eliminare il cliente?",
+                "message": "Tutti i dati associati verranno eliminati definitivamente.",
+                "tone": "destructive"
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    "form_card": {
+      "type": "Card",
+      "props": {
+        "title": "Nuovo cliente",
+        "description": "Aggiungi un cliente al tuo archivio."
+      },
+      "children": ["registration_form"]
+    },
+    "registration_form": {
+      "type": "Form",
+      "props": {
+        "action": { "handler": "/clienti", "method": "POST" },
+        "method": "POST"
+      },
+      "children": [
+        "field_nome",
+        "field_email",
+        "field_telefono",
+        "submit_button"
+      ]
+    },
+    "field_nome": {
+      "type": "Input",
+      "props": {
+        "field": "nome",
+        "label": "Nome e cognome",
+        "required": true,
+        "placeholder": "es. Marco Rossi"
+      }
+    },
+    "field_email": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email",
+        "input_type": "email",
+        "placeholder": "mario@esempio.it"
+      }
+    },
+    "field_telefono": {
+      "type": "Input",
+      "props": {
+        "field": "telefono",
+        "label": "Telefono",
+        "input_type": "tel",
+        "placeholder": "+39 333 000 0000"
+      }
+    },
+    "submit_button": {
+      "type": "Button",
+      "props": {
+        "label": "Salva cliente",
+        "button_type": "submit",
+        "variant": "primary"
+      }
+    }
+  }
+}
