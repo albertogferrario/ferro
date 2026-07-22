@@ -7,6 +7,8 @@
 
 mod bulk_bar;
 mod command_palette;
+mod peek;
+mod toast_undo;
 mod combobox;
 mod date_picker;
 mod dismissibles;
@@ -64,6 +66,8 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(inline_edit::SOURCE);
     s.push_str(filter_bar::SOURCE);
     s.push_str(bulk_bar::SOURCE);
+    s.push_str(peek::SOURCE);
+    s.push_str(toast_undo::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       // Run each setup in isolation: a throw in one concern (e.g. an\n\
@@ -94,7 +98,9 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20           setupDatePicker,\n\
          \x20           setupInlineEdit,\n\
          \x20           setupFilterBar,\n\
-         \x20           setupBulkBar\n\
+         \x20           setupBulkBar,\n\
+         \x20           setupPeek,\n\
+         \x20           setupUndo\n\
          \x20       ];\n\
          \x20       for (var i = 0; i < setups.length; i++) {\n\
          \x20           try { setups[i](); } catch (err) { /* isolated per concern */ }\n\
@@ -254,6 +260,8 @@ mod tests {
             "setupInlineEdit",
             "setupFilterBar",
             "setupBulkBar",
+            "setupPeek",
+            "setupUndo",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -335,6 +343,8 @@ mod tests {
             "setupInlineEdit",
             "setupFilterBar",
             "setupBulkBar",
+            "setupPeek",
+            "setupUndo",
         ] {
             assert!(
                 dispatcher.contains(name),
