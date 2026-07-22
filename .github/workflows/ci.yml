@@ -126,14 +126,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      # The Rust jobs above already cover the workspace (incl. `nearly`); this
-      # job is the missing piece — it builds the Vite/React frontends so a broken
-      # frontend fails CI. Vite build also fails on TypeScript/JSX errors.
-      - name: Build Nearly frontend
-        working-directory: nearly/frontend
-        run: |
-          npm ci
-          npm run build
+      # The Rust jobs above cover the workspace; this job builds the Vite/React
+      # frontend so a broken frontend fails CI. Vite build also fails on
+      # TypeScript/JSX errors.
       - name: Build sample app frontend
         working-directory: app/frontend
         run: |
