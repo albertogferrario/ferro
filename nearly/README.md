@@ -89,9 +89,11 @@ cargo test -p nearly
 
 ## Production hardening
 
-- **CSRF**: `CsrfMiddleware` protects every POST/PUT/PATCH/DELETE. The React
-  client sends the session token as `X-CSRF-TOKEN` (read from the
-  `<meta name="csrf-token">` the Inertia root emits) via an axios default.
+- **CSRF**: `CsrfMiddleware` protects every POST/PUT/PATCH/DELETE. The framework
+  sets a JS-readable `XSRF-TOKEN` cookie each response; the client echoes it as
+  `X-XSRF-TOKEN` (an axios request interceptor + the WebSocket auth fetch). Reading
+  the cookie per-request keeps the token correct even after it rotates on login —
+  a one-time `<meta>` read does not.
 - **Boot check**: `Inertia::preflight()` fails startup with a clear message if
   the production frontend build is missing (no blank pages).
 - **Friendly errors**: unmatched routes and missing entities render a styled

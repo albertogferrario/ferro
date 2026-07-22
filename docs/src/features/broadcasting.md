@@ -288,12 +288,19 @@ ws.onmessage = (event) => {
 
 Private channels require an auth token. The client first authenticates via the HTTP endpoint, then includes the token in the subscribe message:
 
+The `/broadcasting/auth` POST is CSRF-protected. The framework sets a JS-readable
+`XSRF-TOKEN` cookie every response; read it fresh and echo it as `X-XSRF-TOKEN`
+(reading per-request keeps the token valid after it rotates on login):
+
 ```javascript
+const xsrf = () =>
+    decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '')
+
 async function subscribePrivate(ws, socketId, channel) {
     // Step 1: Get auth token from server
     const res = await fetch('/broadcasting/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': xsrf() },
         credentials: 'include', // Send session cookie
         body: JSON.stringify({
             channel_name: channel,

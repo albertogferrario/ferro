@@ -3,14 +3,17 @@ import { createRoot } from 'react-dom/client'
 import axios from 'axios'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
+import { xsrfToken } from './useChannel'
 
-// CSRF: send the session token (emitted in <meta name="csrf-token">) as the
-// X-CSRF-TOKEN header on every request. Inertia uses axios under the hood and
-// respects these defaults, so all POST/PUT/PATCH/DELETE are protected.
-const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-if (csrf) {
-  axios.defaults.headers.common['X-CSRF-TOKEN'] = csrf
-}
+// CSRF: read the framework's JS-readable XSRF-TOKEN cookie fresh on every request
+// and echo it as X-XSRF-TOKEN. Reading per-request (not once from the <meta> tag)
+// keeps the token correct even after it rotates on login. Inertia uses this axios
+// instance, so all POST/PUT/PATCH/DELETE are protected.
+axios.interceptors.request.use((config) => {
+  const t = xsrfToken()
+  if (t) config.headers['X-XSRF-TOKEN'] = t
+  return config
+})
 
 createInertiaApp({
   resolve: (name) => {

@@ -156,6 +156,33 @@ impl SessionMiddleware {
 
         cookie
     }
+
+    /// Cookie carrying the current CSRF token for JS clients.
+    ///
+    /// Unlike the session cookie this is **not** `http_only` — SPA clients
+    /// (Inertia/axios) read `XSRF-TOKEN` and echo it back as `X-XSRF-TOKEN` on
+    /// every request. Emitting it here, from the session's final state, keeps the
+    /// client's token in sync even after the token rotates (e.g. on login), which
+    /// a one-time `<meta>` tag cannot do. The CSRF token is not a secret to the
+    /// page — it already ships in the meta tag — so exposing it to JS is expected.
+    fn create_xsrf_cookie(&self, csrf_token: &str) -> Cookie {
+        let mut cookie = Cookie::new("XSRF-TOKEN", csrf_token)
+            .http_only(false)
+            .secure(self.config.cookie_secure)
+            .path(&self.config.cookie_path)
+            .max_age(std::cmp::max(
+                self.config.idle_lifetime,
+                self.config.absolute_lifetime,
+            ));
+
+        cookie = match self.config.cookie_same_site.to_lowercase().as_str() {
+            "strict" => cookie.same_site(SameSite::Strict),
+            "none" => cookie.same_site(SameSite::None),
+            _ => cookie.same_site(SameSite::Lax),
+        };
+
+        cookie
+    }
 }
 
 #[async_trait]
@@ -215,9 +242,13 @@ impl Middleware for SessionMiddleware {
                     eprintln!("Session write error: {e}");
                 }
                 let cookie = self.create_session_cookie(&session.id);
+                // Refresh the (JS-readable) XSRF-TOKEN cookie from the session's
+                // final CSRF token so the client always signs with the current
+                // value — even right after a login rotation.
+                let xsrf = self.create_xsrf_cookie(&session.csrf_token);
                 match response {
-                    Ok(res) => Ok(res.cookie(cookie)),
-                    Err(res) => Err(res.cookie(cookie)),
+                    Ok(res) => Ok(res.cookie(cookie).cookie(xsrf)),
+                    Err(res) => Err(res.cookie(cookie).cookie(xsrf)),
                 }
             }
             _ => response,
@@ -301,6 +332,27 @@ mod tests {
             "sid".into(),
             "csrf".into(),
         ))))
+    }
+
+    #[test]
+    fn xsrf_cookie_is_js_readable_and_carries_the_token() {
+        let mw = SessionMiddleware::new(SessionConfig::default());
+        let session = mw.create_session_cookie("sid-123").to_header_value();
+        let xsrf = mw.create_xsrf_cookie("tok-abc").to_header_value();
+        // The session id stays HttpOnly; the XSRF token cookie must be readable by
+        // JS so the SPA can echo the current token after it rotates on login.
+        assert!(
+            session.contains("HttpOnly"),
+            "session cookie must be HttpOnly"
+        );
+        assert!(
+            xsrf.contains("XSRF-TOKEN=tok-abc"),
+            "xsrf cookie carries the current token"
+        );
+        assert!(
+            !xsrf.contains("HttpOnly"),
+            "xsrf cookie must NOT be HttpOnly (the client reads it)"
+        );
     }
 
     // The middleware persists + sets the cookie iff this flag (or `dirty`) is set.

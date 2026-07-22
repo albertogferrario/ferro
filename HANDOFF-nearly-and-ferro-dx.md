@@ -21,6 +21,15 @@ WS client (`nearly/scripts/ws-smoke.mjs`): presence + trillo delivery, 403 on
 another user's channel, forged subscriptions rejected. Full clippy + framework
 (522) / broadcast (32) / nearly (4) tests green.
 
+**Follow-up — CSRF token sync fix (found via screenshots):** driving the UI in a
+real browser surfaced that the first page after login had a **stale CSRF token**
+(session-regeneration rotates it; a one-time `<meta>` read went stale) → real-time
+subscribe + any raw POST 419'd until a navigation. Fixed at the framework: the
+session middleware now sets a JS-readable **`XSRF-TOKEN` cookie** each response
+(session id stays HttpOnly); Nearly reads it per-request (axios interceptor +
+`xsrfToken()` in `useChannel`). Verified the toast now fires on the first
+post-login page. Framework test added (`xsrf_cookie_is_js_readable…`).
+
 ## What exists now
 
 ### `nearly/` — a reference app (fully Inertia.js + React)
