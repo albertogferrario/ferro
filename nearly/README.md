@@ -87,6 +87,31 @@ cargo test -p nearly
 - `presence_freshness` — presence expires after the TTL (stale pins drop off the map).
 - `no_chat_surface` — the no-messaging principle is enforced in code.
 
+## Production hardening
+
+- **CSRF**: `CsrfMiddleware` protects every POST/PUT/PATCH/DELETE. The React
+  client sends the session token as `X-CSRF-TOKEN` (read from the
+  `<meta name="csrf-token">` the Inertia root emits) via an axios default.
+- **Boot check**: `Inertia::preflight()` fails startup with a clear message if
+  the production frontend build is missing (no blank pages).
+- **Friendly errors**: unmatched routes and missing entities render a styled
+  Inertia 404 page.
+
+## Deploy (Docker)
+
+The image is multi-stage (Vite build → cargo release → slim runtime). Build from
+the **repo root** (Nearly depends on workspace crates by path):
+
+```bash
+docker build -f nearly/Dockerfile -t nearly .
+docker run --rm -p 8080:8080 nearly     # → http://localhost:8080
+```
+
+`SERVER_HOST=0.0.0.0` (set in the image) makes it reachable outside the
+container; SQLite lives at `/app/data/nearly.db` (mount a volume to persist).
+For Postgres, override `DATABASE_URL`. The frontend is built inside the image,
+so no local `npm run build` is required for the container.
+
 ## What's intentionally out of v1
 
 Any messaging/chat (a permanent product principle), real-time WebSocket

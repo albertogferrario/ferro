@@ -117,3 +117,25 @@ jobs:
             exit 1
           fi
           echo "ferro-base.css is up to date."
+
+  frontend:
+    name: Frontend build (Inertia apps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # The Rust jobs above already cover the workspace (incl. `nearly`); this
+      # job is the missing piece — it builds the Vite/React frontends so a broken
+      # frontend fails CI. Vite build also fails on TypeScript/JSX errors.
+      - name: Build Nearly frontend
+        working-directory: nearly/frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Build sample app frontend
+        working-directory: app/frontend
+        run: |
+          npm ci
+          npm run build
