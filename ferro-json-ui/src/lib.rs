@@ -46,6 +46,7 @@ pub mod visibility;
 pub mod runtime;
 
 pub use action::{Action, ActionOutcome, ConfirmDialog, HttpMethod};
+pub use assets::leaflet::{leaflet_image, LEAFLET_CSS, LEAFLET_JS};
 pub use assets::FERRO_BASE_CSS;
 pub use component::{
     ActionCardProps, ActionGroupProps, ActionItem, AlertProps, AvatarProps, BadgeProps,

@@ -6,6 +6,8 @@
 
 pub(crate) mod quill;
 
+pub mod leaflet;
+
 /// Pre-built Tailwind CSS covering every utility class emitted by
 /// ferro-json-ui components.
 ///
