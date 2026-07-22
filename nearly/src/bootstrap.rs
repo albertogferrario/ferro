@@ -5,7 +5,8 @@
 //! component + props; `ShareInertiaData` adds auth + CSRF to every response.
 
 use ferro::{
-    bind, global_middleware, ModelUserProvider, SessionConfig, SessionMiddleware, UserProvider, DB,
+    bind, global_middleware, CsrfMiddleware, ModelUserProvider, SessionConfig, SessionMiddleware,
+    UserProvider, DB,
 };
 
 use crate::middleware;
@@ -44,6 +45,10 @@ pub async fn register() {
     // Global middleware. Session first so the cookie wraps everything downstream.
     global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
     global_middleware!(middleware::LoggingMiddleware);
+    // CSRF on state-changing requests. Runs after Session (needs the session
+    // token). The React client sends it as the `X-CSRF-TOKEN` header, read from
+    // the `<meta name="csrf-token">` the Inertia root emits (see frontend/main.tsx).
+    global_middleware!(CsrfMiddleware::new());
     // Share auth user + CSRF token with every Inertia page.
     global_middleware!(middleware::ShareInertiaData);
 
