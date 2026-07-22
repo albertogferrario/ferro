@@ -813,6 +813,13 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth:
             html_escape(subtitle)
         ));
     }
+    // Sparkline: sibling of the value element, aria-hidden (decorative trend, INS-03).
+    // The SVG is Rust-generated from DB integers — no user input in path; safe to emit raw.
+    if let Some(ref svg) = props.sparkline_svg {
+        html.push_str("<div class=\"fjui-sparkline\" aria-hidden=\"true\">");
+        html.push_str(svg); // trusted server-generated SVG; not html_escape'd (would corrupt SVG)
+        html.push_str("</div>");
+    }
     html.push_str("</div>");
     html
 }

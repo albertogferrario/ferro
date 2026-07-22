@@ -189,6 +189,11 @@ pub struct Column {
     /// Display label when the boolean cell value is false. Defaults to "No".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label_false: Option<String>,
+    /// When set, opts the link column into peek-cards by emitting
+    /// data-peek-entity and data-peek-id attributes on the rendered <a>.
+    /// Value is the entity kind, e.g. "clienti", "prodotti".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub peek_entity: Option<String>,
 }
 
 /// Select option (value + label pair).
@@ -861,6 +866,12 @@ pub struct StatCardProps {
     /// `ImageProps.data_path` / `DescriptionListProps.data_path`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_path: Option<String>,
+    /// Pre-rendered inline SVG sparkline string from the consumer handler.
+    /// Emitted as a sibling <div> of the value element — NOT inside the
+    /// data-sse-target element (Pitfall 5: SSE updates replace the value element's
+    /// textContent and must not erase the sparkline).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sparkline_svg: Option<String>,
 }
 
 /// Props for Checklist component.

@@ -250,6 +250,16 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                     html_escape(&row_key_value)
                 ));
             }
+            // Resolve the row id for peek-card data-peek-id attribute (when any column
+            // opts into peek via peek_entity). Falls back to row_key_value when no id field.
+            let row_id_str = row
+                .get("id")
+                .and_then(|v| match v {
+                    Value::String(s) => Some(s.clone()),
+                    Value::Number(n) => Some(n.to_string()),
+                    _ => None,
+                })
+                .unwrap_or_else(|| row_key_value.clone());
             for col in &props.columns {
                 // Numeric columns (currency, date, datetime) get the --numeric modifier for
                 // font-variant-numeric: tabular-nums + right-align (LANG-03).
@@ -261,11 +271,28 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                     Some(ColumnFormat::Boolean) => "fjui-table__cell fjui-table__cell--boolean",
                     _ => "fjui-table__cell",
                 };
+                // When peek_entity is set AND the row has a href, wrap the cell content in
+                // an <a> with data-peek-entity + data-peek-id so the peek overlay fires.
+                // Full-literal class name per D-01 (246 lock).
+                let cell_content = if let (Some(ref entity), Some(ref href)) =
+                    (&col.peek_entity, &row_href)
+                {
+                    format!(
+                        "<a href=\"{}\" class=\"fjui-table__link\" \
+                         data-peek-entity=\"{}\" data-peek-id=\"{}\">{}</a>",
+                        html_escape(href),
+                        html_escape(entity),
+                        html_escape(&row_id_str),
+                        render_cell(col, row.get(&col.key))
+                    )
+                } else {
+                    render_cell(col, row.get(&col.key))
+                };
                 html.push_str(&format!(
                     "<td class=\"{} {}\">{}</td>",
                     cell_class,
                     col_align_class(col.align),
-                    render_cell(col, row.get(&col.key))
+                    cell_content
                 ));
             }
             if let Some(ref actions) = props.row_actions {
@@ -1954,6 +1981,7 @@ mod tests {
             align: None,
             label_true: Some("Attivo".to_string()),
             label_false: Some("Non attivo".to_string()),
+            peek_entity: None,
         };
         let true_html = render_cell(&col, Some(&Value::Bool(true)));
         assert!(
