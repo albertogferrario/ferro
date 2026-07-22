@@ -3,6 +3,7 @@
 
 pub mod account;
 pub mod auth;
+pub mod errors;
 pub mod home;
 pub mod places;
 pub mod presence;

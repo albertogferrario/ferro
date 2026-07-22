@@ -1,6 +1,6 @@
 //! Application routes.
 
-use ferro::{get, group, post, routes};
+use ferro::{fallback, get, group, post, routes};
 
 use crate::controllers;
 use crate::middleware;
@@ -38,4 +38,7 @@ routes! {
         post!("/trilli/:id/accept", controllers::trilli::accept).name("trilli.accept"),
         post!("/trilli/:id/decline", controllers::trilli::decline).name("trilli.decline"),
     }).middleware(middleware::authenticate::auth()),
+
+    // Friendly 404 for any unmatched route.
+    fallback!(controllers::errors::not_found),
 }

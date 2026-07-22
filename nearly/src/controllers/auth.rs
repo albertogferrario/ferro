@@ -47,6 +47,14 @@ pub async fn login(req: Request) -> Response {
         )
     };
 
+    if input.email.trim().is_empty() || input.password.is_empty() {
+        return Inertia::render_ctx(
+            &ctx,
+            "auth/Login",
+            json!({ "errors": { "email": "Inserisci email e password." } }),
+        );
+    }
+
     let user = match User::find_by_email(&input.email).await? {
         Some(u) => u,
         None => return invalid(),
