@@ -19,6 +19,18 @@ pub async fn register() {
         std::process::exit(1);
     });
 
+    // Fail fast in production if the frontend build is missing/mismatched, rather
+    // than serving a blank page. No-op in development (the Vite dev server serves
+    // assets), so `cargo run` with APP_ENV=local is unaffected.
+    if let Err(e) = ferro::Inertia::preflight() {
+        eprintln!("Error: Inertia frontend assets are not ready\n  Cause: {e}");
+        eprintln!(
+            "How to fix: run `cd frontend && npm install && npm run build`, or use \
+             the Vite dev server (`npm run dev`) with APP_ENV=local."
+        );
+        std::process::exit(1);
+    }
+
     // Global middleware. Session first so the cookie wraps everything downstream.
     global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
     global_middleware!(middleware::LoggingMiddleware);
