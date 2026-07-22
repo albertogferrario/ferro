@@ -2,7 +2,7 @@
 
 use ferro::database::ModelMut;
 use ferro::serde_json::json;
-use ferro::{handler, Auth, JsonUi, Redirect, Request, Response};
+use ferro::{handler, Auth, Inertia, Redirect, Request, Response};
 use sea_orm::Set;
 use serde::Deserialize;
 
@@ -16,7 +16,7 @@ struct AccountInput {
 
 /// GET /account
 #[handler]
-pub async fn show() -> Response {
+pub async fn show(req: Request) -> Response {
     let Some(uid) = Auth::id() else {
         return Redirect::to("/login").into();
     };
@@ -25,8 +25,9 @@ pub async fn show() -> Response {
         .map(|p| (p.display_name, p.status))
         .unwrap_or_default();
 
-    JsonUi::render_file(
-        "src/views/account.json",
+    Inertia::render(
+        &req,
+        "Account",
         json!({ "display_name": display_name, "status": status }),
     )
 }
@@ -37,7 +38,7 @@ pub async fn update(req: Request) -> Response {
     let Some(uid) = Auth::id() else {
         return Redirect::to("/login").into();
     };
-    let input: AccountInput = req.form().await?;
+    let input: AccountInput = req.input().await?;
 
     if let Some(profile) = Profile::find_by_user(uid as i32).await? {
         let mut active: crate::models::profile::ActiveModel = profile.into();

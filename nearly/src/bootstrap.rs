@@ -1,14 +1,14 @@
-//! Application bootstrap — global middleware, the app shell, and demo seed data.
+//! Application bootstrap — global middleware and demo seed data.
+//!
+//! The UI is Inertia.js + React (see `frontend/`). The framework generates the
+//! root HTML (with the Vite/manifest asset tags) and hands React the page
+//! component + props; `ShareInertiaData` adds auth + CSRF to every response.
 
-use ferro::{
-    global_middleware, register_layout, DashboardLayout, DashboardLayoutConfig, HeaderProps,
-    SessionConfig, SessionMiddleware, SidebarGroup, SidebarNavItem, SidebarProps, Theme,
-    ThemeMiddleware, DB,
-};
+use ferro::{global_middleware, SessionConfig, SessionMiddleware, DB};
 
 use crate::middleware;
 
-/// Register global middleware, the app shell layout, and seed demo data.
+/// Register global middleware and seed demo data.
 pub async fn register() {
     // Database.
     DB::init().await.unwrap_or_else(|e| {
@@ -22,51 +22,10 @@ pub async fn register() {
     // Global middleware. Session first so the cookie wraps everything downstream.
     global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
     global_middleware!(middleware::LoggingMiddleware);
-    // Inject the design tokens into every JSON-UI page.
-    global_middleware!(ThemeMiddleware::new().default_theme(Theme::default_theme()));
-
-    // The Nearly app shell: a sidebar of the primary destinations from the
-    // navigability wireframe (menu → mappa, trilli, luoghi, account, settings).
-    register_layout(
-        "dashboard",
-        DashboardLayout::new(DashboardLayoutConfig {
-            sidebar: SidebarProps {
-                fixed_top: vec![],
-                groups: vec![SidebarGroup {
-                    label: "Nearly".to_string(),
-                    collapsed: false,
-                    items: vec![
-                        nav("Mappa", "/map"),
-                        nav("Trilli", "/trilli"),
-                        nav("Luoghi", "/places"),
-                        nav("Account", "/account"),
-                        nav("Impostazioni", "/settings"),
-                    ],
-                }],
-                fixed_bottom: vec![],
-            },
-            header: HeaderProps {
-                business_name: "Nearly".to_string(),
-                notification_count: None,
-                user_name: None,
-                user_avatar: None,
-                logout_url: Some("/logout".to_string()),
-            },
-            sse_url: None,
-        }),
-    );
+    // Share auth user + CSRF token with every Inertia page.
+    global_middleware!(middleware::ShareInertiaData);
 
     seed_demo_data().await;
-}
-
-fn nav(label: &str, href: &str) -> SidebarNavItem {
-    SidebarNavItem {
-        label: label.to_string(),
-        href: href.to_string(),
-        icon: None,
-        active: false,
-        disabled: None,
-    }
 }
 
 /// Seed a living demo city (Milan) so the map is alive on first boot.

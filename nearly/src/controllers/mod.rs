@@ -5,6 +5,7 @@ pub mod account;
 pub mod auth;
 pub mod home;
 pub mod places;
+pub mod presence;
 pub mod settings;
 pub mod trilli;
 pub mod utenti;

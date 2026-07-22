@@ -1,11 +1,10 @@
 //! Password authentication: register, login, logout.
 
+use ferro::database::ModelMut;
 use ferro::serde_json::json;
-use ferro::{handler, Auth, JsonUi, Redirect, Request, Response};
+use ferro::{handler, Auth, Inertia, Redirect, Request, Response, SavedInertiaContext};
 use sea_orm::Set;
 use serde::Deserialize;
-
-use ferro::database::ModelMut;
 
 use crate::models::presence::{ActiveModel as PresenceActive, Entity as PresenceEntity};
 use crate::models::profile::{ActiveModel as ProfileActive, Entity as ProfileEntity};
@@ -30,28 +29,28 @@ struct RegisterInput {
 
 /// GET /login
 #[handler]
-pub async fn login_page() -> Response {
-    JsonUi::render_file("src/views/login.json", json!({}))
+pub async fn login_page(req: Request) -> Response {
+    Inertia::render(&req, "auth/Login", json!({}))
 }
 
 /// POST /login
 #[handler]
 pub async fn login(req: Request) -> Response {
-    let input: LoginInput = req.form().await?;
+    let ctx = SavedInertiaContext::from(&req);
+    let input: LoginInput = req.input().await?;
 
     let invalid = || {
-        JsonUi::render_file(
-            "src/views/login.json",
-            json!({ "email": "", "error": "Email o password non validi." }),
+        Inertia::render_ctx(
+            &ctx,
+            "auth/Login",
+            json!({ "errors": { "email": "Email o password non validi." } }),
         )
-        .map(|r| r.status(422))
     };
 
     let user = match User::find_by_email(&input.email).await? {
         Some(u) => u,
         None => return invalid(),
     };
-
     if !user.verify_password(&input.password)? {
         return invalid();
     }
@@ -62,34 +61,31 @@ pub async fn login(req: Request) -> Response {
 
 /// GET /register
 #[handler]
-pub async fn register_page() -> Response {
-    JsonUi::render_file("src/views/register.json", json!({}))
+pub async fn register_page(req: Request) -> Response {
+    Inertia::render(&req, "auth/Register", json!({}))
 }
 
 /// POST /register — create the account plus its profile and starting presence.
 #[handler]
 pub async fn register(req: Request) -> Response {
-    let input: RegisterInput = req.form().await?;
+    let ctx = SavedInertiaContext::from(&req);
+    let input: RegisterInput = req.input().await?;
 
-    let reject = |msg: &str| {
-        JsonUi::render_file(
-            "src/views/register.json",
-            json!({ "name": "", "email": "", "error": msg }),
-        )
-        .map(|r| r.status(422))
+    let reject = |field: &str, msg: &str| {
+        Inertia::render_ctx(&ctx, "auth/Register", json!({ "errors": { field: msg } }))
     };
 
     if input.name.trim().len() < 2 {
-        return reject("Inserisci un nome di almeno 2 caratteri.");
+        return reject("name", "Inserisci un nome di almeno 2 caratteri.");
     }
     if !input.email.contains('@') {
-        return reject("Inserisci un indirizzo email valido.");
+        return reject("email", "Inserisci un indirizzo email valido.");
     }
     if input.password.len() < 8 {
-        return reject("La password deve avere almeno 8 caratteri.");
+        return reject("password", "La password deve avere almeno 8 caratteri.");
     }
     if User::find_by_email(&input.email).await?.is_some() {
-        return reject("Questa email è già registrata.");
+        return reject("email", "Questa email è già registrata.");
     }
 
     let user = User::create(input.name.trim(), input.email.trim(), &input.password).await?;

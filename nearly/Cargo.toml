@@ -11,7 +11,9 @@ name = "nearly"
 path = "src/main.rs"
 
 [dependencies]
-ferro = { path = "../framework", package = "ferro-rs", features = ["projections", "json-ui", "theme"] }
+# UI is Inertia.js + React (frontend/). The projection/intent ServiceDefs stay as
+# backend truth (introspection), so the `projections` feature is retained.
+ferro = { path = "../framework", package = "ferro-rs", features = ["projections"] }
 ferro-projections = { path = "../ferro-projections" }
 tokio = { version = "1", features = ["full"] }
 sea-orm-migration = { version = "1.0", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
@@ -23,6 +25,3 @@ dotenvy = "0.15"
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
-
-[dev-dependencies]
-ferro-json-ui = { path = "../ferro-json-ui" }

@@ -30,6 +30,9 @@ routes! {
         get!("/settings", controllers::settings::show).name("settings.show"),
         post!("/settings", controllers::settings::update).name("settings.update"),
 
+        post!("/presence", controllers::presence::update).name("presence.update"),
+        post!("/presence/checkin", controllers::presence::checkin).name("presence.checkin"),
+
         get!("/trilli", controllers::trilli::index).name("trilli.index"),
         post!("/trilli", controllers::trilli::send).name("trilli.send"),
         post!("/trilli/:id/accept", controllers::trilli::accept).name("trilli.accept"),

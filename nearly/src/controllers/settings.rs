@@ -2,7 +2,7 @@
 
 use ferro::database::ModelMut;
 use ferro::serde_json::json;
-use ferro::{handler, Auth, JsonUi, Redirect, Request, Response};
+use ferro::{handler, Auth, Inertia, Redirect, Request, Response};
 use sea_orm::Set;
 use serde::Deserialize;
 
@@ -10,14 +10,13 @@ use crate::models::profile::{Entity as ProfileEntity, Profile};
 
 #[derive(Deserialize)]
 struct SettingsInput {
-    /// A checkbox/switch submits its value only in some states; treat any of
-    /// "true"/"on"/"1" as visible, everything else (including absent) as hidden.
-    visible: Option<String>,
+    /// The React toggle always submits an explicit boolean.
+    visible: bool,
 }
 
 /// GET /settings
 #[handler]
-pub async fn show() -> Response {
+pub async fn show(req: Request) -> Response {
     let Some(uid) = Auth::id() else {
         return Redirect::to("/login").into();
     };
@@ -26,7 +25,7 @@ pub async fn show() -> Response {
         .map(|p| p.visible)
         .unwrap_or(true);
 
-    JsonUi::render_file("src/views/settings.json", json!({ "visible": visible }))
+    Inertia::render(&req, "Settings", json!({ "visible": visible }))
 }
 
 /// POST /settings — update visibility.
@@ -35,12 +34,11 @@ pub async fn update(req: Request) -> Response {
     let Some(uid) = Auth::id() else {
         return Redirect::to("/login").into();
     };
-    let input: SettingsInput = req.form().await?;
-    let visible = matches!(input.visible.as_deref(), Some("true" | "on" | "1"));
+    let input: SettingsInput = req.input().await?;
 
     if let Some(profile) = Profile::find_by_user(uid as i32).await? {
         let mut active: crate::models::profile::ActiveModel = profile.into();
-        active.visible = Set(visible);
+        active.visible = Set(input.visible);
         active.updated_at = Set(crate::models::now());
         ProfileEntity::update_one(active).await?;
     }

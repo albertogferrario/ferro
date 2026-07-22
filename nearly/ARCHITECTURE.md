@@ -1,70 +1,86 @@
 # Nearly — Architecture
 
-Nearly is a standard Ferro application. This document maps the code to the
-framework's patterns so a new contributor (human or agent) can navigate it.
+Nearly is a standard Ferro application with an Inertia.js + React frontend.
+This document maps the code to the framework's patterns.
 
 ## Module map
 
 ```
-nearly/src
-├── main.rs            entry point: serve + db:* subcommands
-├── bootstrap.rs       DB init, global middleware, app-shell layout, demo seed
-├── config/            registers DatabaseConfig from env
-├── middleware/        logging + auth/guest helpers
-├── models/            SeaORM entities + query helpers (user, profile, presence, trillo, place)
-├── migrations/        one migration per table (+ sessions)
-├── projections/       ServiceDef per domain service — the core abstraction
-├── controllers/       one module per screen; assemble data, render a view
-├── views/*.json       declarative JSON-UI specs (the entire UI)
-├── routes.rs          route table with guest/auth middleware groups
-└── tests/             design-lint gate, projection intents, no-chat guard
+nearly
+├── src                     # Rust backend
+│   ├── main.rs             # entry point: serve + db:* subcommands
+│   ├── bootstrap.rs        # DB init, session + ShareInertiaData middleware, demo seed
+│   ├── middleware/         # logging, auth/guest helpers, ShareInertiaData
+│   ├── models/             # SeaORM entities + query helpers
+│   ├── migrations/         # one migration per table (+ sessions)
+│   ├── projections/        # ServiceDef per domain service — the core abstraction
+│   ├── controllers/        # one module per screen; assemble props, Inertia::render
+│   ├── routes.rs           # route table with guest/auth middleware groups
+│   └── tests/              # projection intents, presence freshness, no-chat guard
+├── frontend                # Inertia + React (Vite, TypeScript)
+│   └── src
+│       ├── main.tsx        # createInertiaApp — resolves ./pages/*
+│       ├── styles.css      # the design system (brand tokens, shell, pins)
+│       ├── Layout.tsx      # app shell: header + bottom tab bar
+│       └── pages/          # one component per screen
+└── public                  # Vite build output (git-ignored): manifest + assets
 ```
 
 ## Request lifecycle
 
-1. A route in `routes.rs` maps a method + path to a controller handler.
-   `SessionMiddleware` (global) wraps every request; guest/auth groups gate
-   access and redirect.
-2. The handler queries models (`Model::query().filter(...).all()`), shapes a
-   small `serde_json` payload, and calls `JsonUi::render_file("src/views/X.json", data)`.
-3. The framework loads the cached spec, expands directives, resolves `$data`
-   expressions (injecting the handler's data into element props), resolves
-   action handlers to URLs, applies the active theme, and renders HTML inside
-   the declared layout (`auth` for sign-in, `dashboard` for the app shell).
+1. A route maps method + path to a controller. `SessionMiddleware` and
+   `ShareInertiaData` (globals) wrap every request; guest/auth groups gate access.
+2. The controller queries models and returns `Inertia::render(&req, "Page", props)`.
+3. The framework performs content negotiation:
+   - **First load / full navigation** → full HTML document. In development it
+     emits the Vite dev-server script tags (`@vite/client` + entry); in
+     production it reads `public/.vite/manifest.json` and emits the hashed
+     `/assets/*` tags. The `<div id="app" data-page="…">` carries the page JSON.
+   - **Inertia XHR** (`X-Inertia` header) → a JSON `{component, props, url,
+     version}` body; React swaps the page without a full reload.
+4. `ShareInertiaData` merges the auth user + CSRF token into every page's props,
+   so the shell (`Layout.tsx`) can render nav/logout and forms can post safely.
+
+## Asset contract (production)
+
+`vite.config.ts` builds to `../public` with `manifest: true`:
+
+- manifest → `public/.vite/manifest.json` (the framework default `manifest_path`)
+- assets   → `public/assets/*` → served at `/assets/*` (immutable cache)
+
+`InertiaConfig::from_env()` selects dev vs prod from `APP_ENV`
+(`production`/`staging` ⇒ production asset resolution).
 
 ## Projection / intent
 
-`src/projections/*.rs` each return a `ServiceDef` describing a service's fields
-and their `FieldMeaning` (e.g. `EntityName`, `Status`, `latitude`). This is the
-framework's central abstraction: `ferro_projections::derive_intents(&svc)`
-turns a service into scored intents. The seven intents (`browse`, `focus`,
-`collect`, `process`, `summarize`, `analyze`, `track`) are the same archetypes
-each view declares in `design.intent`, so a view's structure and its service's
-derived intent stay aligned (guarded by the design linter).
+`src/projections/*.rs` return a `ServiceDef` describing each service's fields and
+their `FieldMeaning`. `ferro_projections::derive_intents(&svc)` scores a service
+into the seven intents (`browse`, `focus`, `collect`, `process`, `summarize`,
+`analyze`, `track`). These stay as backend truth for introspection even though
+rendering is now React.
 
 ## The map data flow
 
 `GET /map` (`controllers/home.rs`):
 
 1. Load visible profiles, all presences, all places.
-2. Join profiles↔presences by `user_id` in memory.
-3. Emit a `markers` array: people (blue) with a popup linking to
-   `/utenti/:id`; places (gold if premium, else green) with a category popup.
-4. Render `views/map.json`, whose `Map` element pulls `center` and `markers`
-   from handler data via `{"$data": "/…"}`. Ferro's Leaflet `Map` plugin
-   renders the interactive map and injects the Leaflet CSS/JS assets.
+2. Join profiles↔presences by `user_id`, keeping only **fresh** presences
+   (`Presence::is_fresh`) so stale positions expire off the map.
+3. Emit `people` and `places` arrays as props.
+4. `pages/Map.tsx` renders a react-leaflet map with custom `DivIcon` pins and
+   pop-ups; person pop-ups link to `/utenti/:id`; a check-in button posts to
+   `/presence/checkin`.
 
 ## The trillo (no-chat) design
 
-A `trillo` row is `{from_user_id, to_user_id, status, created_at}` — **no
-message column**. Sending is a POST with only a hidden `to_user_id`; responding
-is `accept`/`decline`. The `no_chat_surface` test fails the build if any view
-introduces a `Chat` component or a `message` field, keeping the product
-principle enforceable rather than aspirational.
+A `trillo` row is `{from_user_id, to_user_id, status, created_at}` — no message
+column. Sending posts only a hidden `to_user_id`; responding is
+`accept`/`decline`. The `no_chat_surface` test fails the build if the trillo
+projection grows a message field or any React page adds a chat component or a
+message input.
 
 ## Extending
 
-Add a feature the same way each existing vertical was built:
-`migration → model → projection → controller → view → route`, then keep the
-design linter and the no-chat guard green.
-</content>
+Add a feature the same way each vertical was built:
+`migration → model → projection → controller → React page → route`, then keep
+the projection-intent and no-chat guards green.

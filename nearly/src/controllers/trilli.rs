@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use ferro::serde_json::json;
-use ferro::{handler, Auth, JsonUi, Redirect, Request, Response};
+use ferro::{handler, Auth, Inertia, Redirect, Request, Response};
 use serde::Deserialize;
 
 use crate::models::profile::Profile;
@@ -17,7 +17,7 @@ struct SendInput {
 /// Human label for a trillo status.
 fn status_label(status: &str) -> &'static str {
     match status {
-        STATUS_ACCEPTED => "Accettato ✓",
+        STATUS_ACCEPTED => "Accettato",
         STATUS_DECLINED => "Ignorato",
         _ => "In attesa",
     }
@@ -25,7 +25,7 @@ fn status_label(status: &str) -> &'static str {
 
 /// GET /trilli — trilli received by the current user (browse).
 #[handler]
-pub async fn index() -> Response {
+pub async fn index(req: Request) -> Response {
     let Some(uid) = Auth::id() else {
         return Redirect::to("/login").into();
     };
@@ -34,14 +34,12 @@ pub async fn index() -> Response {
     let mut trilli = Trillo::inbox(uid).await.unwrap_or_default();
     trilli.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-    // Resolve sender display names.
-    let names: HashMap<i32, String> = {
-        let profiles = Profile::all_visible().await.unwrap_or_default();
-        profiles
-            .into_iter()
-            .map(|p| (p.user_id, p.display_name))
-            .collect()
-    };
+    let names: HashMap<i32, String> = Profile::all_visible()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| (p.user_id, p.display_name))
+        .collect();
 
     let rows: Vec<_> = trilli
         .iter()
@@ -49,13 +47,14 @@ pub async fn index() -> Response {
             json!({
                 "id": t.id,
                 "from": names.get(&t.from_user_id).cloned().unwrap_or_else(|| "Qualcuno".to_string()),
-                "status": status_label(&t.status),
+                "status": t.status,
+                "status_label": status_label(&t.status),
                 "pending": t.status == STATUS_PENDING,
             })
         })
         .collect();
 
-    JsonUi::render_file("src/views/trilli.json", json!({ "trilli": rows }))
+    Inertia::render(&req, "Trilli", json!({ "trilli": rows }))
 }
 
 /// POST /trilli — send a trillo to another user (no message body, by design).
@@ -66,7 +65,7 @@ pub async fn send(req: Request) -> Response {
     };
     let from = uid as i32;
 
-    let input: SendInput = req.form().await?;
+    let input: SendInput = req.input().await?;
     if input.to_user_id != from {
         Trillo::send(from, input.to_user_id).await?;
     }
