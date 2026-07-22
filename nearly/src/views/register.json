@@ -1,0 +1,66 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Registrati",
+  "layout": "auth",
+  "design": { "intent": "collect" },
+  "root": "card",
+  "elements": {
+    "card": {
+      "type": "Card",
+      "props": {
+        "title": "Crea il tuo account",
+        "description": "Bastano pochi secondi per iniziare.",
+        "appearance": "elevated"
+      },
+      "children": ["form", "to_login"]
+    },
+    "form": {
+      "type": "Form",
+      "props": {
+        "action": { "handler": "/register", "method": "POST" },
+        "method": "POST",
+        "max_width": "narrow"
+      },
+      "children": ["name", "email", "password", "submit"]
+    },
+    "name": {
+      "type": "Input",
+      "props": {
+        "field": "name",
+        "label": "Nome",
+        "input_type": "text",
+        "required": true,
+        "data_path": "/name",
+        "error": { "$data": "/error" }
+      }
+    },
+    "email": {
+      "type": "Input",
+      "props": {
+        "field": "email",
+        "label": "Email",
+        "input_type": "email",
+        "required": true,
+        "data_path": "/email"
+      }
+    },
+    "password": {
+      "type": "Input",
+      "props": {
+        "field": "password",
+        "label": "Password (min 8 caratteri)",
+        "input_type": "password",
+        "required": true
+      }
+    },
+    "submit": {
+      "type": "Button",
+      "props": { "label": "Registrati", "button_type": "submit", "variant": "primary" }
+    },
+    "to_login": {
+      "type": "Button",
+      "props": { "label": "Hai già un account? Accedi", "variant": "ghost" },
+      "action": { "handler": "/login", "method": "GET" }
+    }
+  }
+}

@@ -9,6 +9,7 @@ exclude = [
 members = [
     "framework",
     "app",
+    "nearly",
     "ferro-cli",
     "ferro-macros",
     "ferro-events",
