@@ -4551,7 +4551,6 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
- "ferro-json-ui",
  "ferro-projections",
  "ferro-rs",
  "sea-orm",
