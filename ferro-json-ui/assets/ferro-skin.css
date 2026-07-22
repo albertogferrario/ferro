@@ -2402,4 +2402,206 @@ input, select, textarea {
     }
   }
 
+  /* ── Peek card ───────────────────────────────────────────────────────────── */
+
+  /* Overlay elevation: shadow-only, NO border (LANG-04: shadow OR border, never both).
+   * Width locked at 320px per UI-SPEC §Spacing exceptions. Max-height 240px with scroll. */
+
+  .fjui-peek-card {
+    background-color: var(--color-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    /* NO border — overlay elevation rule (LANG-04) */
+    width: 320px;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: var(--spacing-4);
+    position: absolute;
+  }
+
+  .fjui-peek-card__title {
+    font-size: var(--text-section-size);
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: calc(var(--spacing) * 2);
+
+    &:hover { text-decoration: underline; }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active { opacity: 0.8; }
+  }
+
+  .fjui-peek-card__label {
+    font-size: var(--text-meta-size);
+    font-weight: 400;
+    color: var(--color-text-muted);
+    display: block;
+  }
+
+  .fjui-peek-card__value {
+    font-size: var(--text-body-size);
+    font-weight: 400;
+    color: var(--color-text);
+    display: block;
+    margin-bottom: calc(var(--spacing) * 1);
+  }
+
+  /* ── Undo toast action button ────────────────────────────────────────────── */
+
+  /* Extends existing fjui-toast skin with action + neutral tone rules. */
+
+  .fjui-toast__action {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-radius: var(--radius-sm);
+    padding: 0 calc(var(--spacing) * 3);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    line-height: 1.75rem;
+
+    &:hover { opacity: 0.9; }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active { opacity: 0.7; }
+    &:disabled { opacity: 0.4; pointer-events: none; }
+  }
+
+  .fjui-toast__close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 0 calc(var(--spacing) * 1);
+    line-height: 1;
+    font-size: var(--text-section-size);
+    font-weight: 600;
+
+    &:hover { color: var(--color-text); }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active { opacity: 0.7; }
+  }
+
+  .fjui-toast--neutral {
+    background-color: var(--color-card);
+    box-shadow: var(--shadow-lg);
+    /* NO border — overlay elevation rule (LANG-04) */
+  }
+
+  /* ── Activity Timeline ───────────────────────────────────────────────────── */
+
+  /* Flat surface: 1px border, NO shadow (LANG-04). Row rhythm matches DataTable 40px. */
+
+  .fjui-timeline {
+    /* display-only container */
+  }
+
+  .fjui-timeline__event {
+    min-height: 40px;
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 4);
+    border-bottom: 1px solid var(--color-border);
+
+    &:hover { background-color: var(--color-surface); }
+  }
+
+  .fjui-timeline__day-header {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4) calc(var(--spacing) * 1);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .fjui-timeline__load-more {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+
+    &:hover { background-color: var(--color-secondary); }
+    &:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
+    &:active { opacity: 0.8; }
+    &:disabled { opacity: 0.4; pointer-events: none; }
+    &[aria-busy] { opacity: 0.6; cursor: wait; }
+  }
+
+  /* ── Highlights row ──────────────────────────────────────────────────────── */
+
+  /* Flat surface: 1px border-bottom only, NO shadow (LANG-04). 56px height per UI-SPEC. */
+
+  .fjui-highlights-row {
+    background-color: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--spacing-4);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+  }
+
+  .fjui-highlights-row__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .fjui-highlights-row__value {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  /* ── Home widget grid ────────────────────────────────────────────────────── */
+
+  /* Flat-surface cards: 1px border, NO shadow (LANG-04). */
+
+  .fjui-widget-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-4);
+  }
+
+  .fjui-agenda__event:hover,
+  .fjui-recent-activity__event:hover {
+    background-color: var(--color-surface);
+  }
+
+  .fjui-agenda__event a:hover,
+  .fjui-recent-activity__event a:hover {
+    text-decoration: underline;
+  }
+
+  .fjui-agenda__event a:focus-visible,
+  .fjui-recent-activity__event a:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  /* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+  @media (prefers-reduced-motion: reduce) {
+    .fjui-peek-card { transition: none; }
+    .fjui-toast     { transition: none; }
+  }
+
 }
