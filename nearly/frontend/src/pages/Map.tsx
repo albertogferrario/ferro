@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Head, Link, router, usePage } from '@inertiajs/react'
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'
 import L from 'leaflet'
 import Layout from '../Layout'
+import { useChannel } from '../useChannel'
 
 type Person = { user_id: number; name: string; status: string; lat: number; lng: number }
 type Place = { id: number; name: string; category: string; premium: boolean; lat: number; lng: number }
@@ -17,11 +19,22 @@ function pin(kind: 'person' | 'place' | 'premium') {
 }
 
 export default function Map() {
-  const { center, people, places } = usePage().props as unknown as {
+  const { center, people: initialPeople, places } = usePage().props as unknown as {
     center: [number, number]
     people: Person[]
     places: Place[]
   }
+
+  // Presence is live: seed from the server render, then upsert as `nearby`
+  // broadcasts arrive so pins appear/move without a reload.
+  const [people, setPeople] = useState<Person[]>(initialPeople)
+  useChannel('nearby', (event, data) => {
+    if (event !== 'PresenceUpdated') return
+    setPeople((prev) => {
+      const rest = prev.filter((p) => p.user_id !== data.user_id)
+      return [...rest, { user_id: data.user_id, name: data.name, status: data.status, lat: data.lat, lng: data.lng }]
+    })
+  })
 
   return (
     <Layout active="map" bare>

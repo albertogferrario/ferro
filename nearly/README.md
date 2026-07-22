@@ -112,8 +112,23 @@ container; SQLite lives at `/app/data/nearly.db` (mount a volume to persist).
 For Postgres, override `DATABASE_URL`. The frontend is built inside the image,
 so no local `npm run build` is required for the container.
 
+## Real-time
+
+Nearly is live over WebSocket via `ferro-broadcast` (the framework's
+`/_ferro/ws` endpoint):
+
+- **Presence** broadcasts on the public `nearby` channel — the map adds/moves
+  pins without a reload as people check in.
+- **Trillo pings** broadcast on the recipient's **signed private channel**
+  (`private-user.{id}`); their app flashes a tap-to-open toast. Only the
+  sender's name travels — no message body, so the no-chat rule still holds.
+
+Private channels are HMAC-signed (`BROADCAST_SECRET`): a client cannot subscribe
+to another user's channel. `scripts/ws-smoke.mjs` verifies the whole stack live
+(presence delivery, trillo delivery, and rejection of forged subscriptions).
+
 ## What's intentionally out of v1
 
-Any messaging/chat (a permanent product principle), real-time WebSocket
-presence streaming (a v2 direction via `ferro-broadcast`), and native GPS
-capture (the demo seeds/updates presence server-side).
+Any messaging/chat (a permanent product principle) and native GPS capture (the
+demo seeds/updates presence server-side; `POST /presence` is the endpoint a real
+mobile client would call with device coordinates).

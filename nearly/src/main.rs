@@ -27,6 +27,7 @@ mod migrations;
 mod models;
 #[allow(dead_code)]
 mod projections;
+mod realtime;
 mod routes;
 #[cfg(test)]
 mod tests;

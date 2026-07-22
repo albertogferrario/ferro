@@ -33,6 +33,9 @@ routes! {
         post!("/presence", controllers::presence::update).name("presence.update"),
         post!("/presence/checkin", controllers::presence::checkin).name("presence.checkin"),
 
+        // Real-time channel authorization (session-authenticated; signs the token).
+        post!("/broadcasting/auth", ferro::broadcasting_auth).name("broadcasting.auth"),
+
         get!("/trilli", controllers::trilli::index).name("trilli.index"),
         post!("/trilli", controllers::trilli::send).name("trilli.send"),
         post!("/trilli/:id/accept", controllers::trilli::accept).name("trilli.accept"),

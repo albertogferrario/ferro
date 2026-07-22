@@ -79,6 +79,23 @@ column. Sending posts only a hidden `to_user_id`; responding is
 projection grows a message field or any React page adds a chat component or a
 message input.
 
+## Real-time (WebSocket)
+
+The framework hosts the socket (`/_ferro/ws`) and resolves the `Broadcaster`
+registered in `bootstrap` (`App::singleton`). Two channels:
+
+- **`nearby`** (public) — `controllers/presence.rs` calls `realtime::emit` on
+  every `POST /presence` and check-in, sending `PresenceUpdated`. `Map.tsx`
+  seeds `people` from the server render, then upserts on each event via the
+  `useChannel` hook — pins appear/move with no reload.
+- **`private-user.{id}`** (private, signed) — `controllers/trilli.rs` emits
+  `TrilloReceived` to the recipient. `Layout.tsx` subscribes to the current
+  user's channel and flashes a toast.
+
+`NearlyChannelAuth` (in `bootstrap`) authorizes only a user's own private
+channel; `/broadcasting/auth` then HMAC-signs the subscription (`BROADCAST_SECRET`)
+so the socket can't be forged. The browser flow lives in `frontend/src/useChannel.ts`.
+
 ## Extending
 
 Add a feature the same way each vertical was built:

@@ -5,11 +5,29 @@
 //! component + props; `ShareInertiaData` adds auth + CSRF to every response.
 
 use ferro::{
-    bind, global_middleware, CsrfMiddleware, ModelUserProvider, SessionConfig, SessionMiddleware,
+    async_trait, bind, global_middleware, App, AuthData, BroadcastConfig, Broadcaster,
+    ChannelAuthorizer, CsrfMiddleware, ModelUserProvider, SessionConfig, SessionMiddleware,
     UserProvider, DB,
 };
 
 use crate::middleware;
+
+/// Authorizes real-time channel subscriptions. The public `nearby` channel needs
+/// no authorization; a `private-user.{id}` channel (trillo pings) may only be
+/// accessed by that user. `auth_token` is the session user id injected by the
+/// `/broadcasting/auth` handler, and the framework signs the result so the
+/// socket can't be forged (see `BROADCAST_SECRET`).
+struct NearlyChannelAuth;
+
+#[async_trait]
+impl ChannelAuthorizer for NearlyChannelAuth {
+    async fn authorize(&self, data: &AuthData) -> bool {
+        match data.auth_token.as_deref() {
+            Some(uid) => data.channel == format!("private-user.{uid}"),
+            None => false,
+        }
+    }
+}
 
 /// Register global middleware and seed demo data.
 pub async fn register() {
@@ -41,6 +59,16 @@ pub async fn register() {
         dyn UserProvider,
         ModelUserProvider::<crate::models::user::Entity>::default()
     );
+
+    // Real-time: register the broadcaster the framework's `/_ferro/ws` endpoint
+    // resolves. A signing secret makes private channels tamper-proof; we default
+    // one for local dev so the signed path (not the dev-only legacy path) is
+    // always exercised — production sets BROADCAST_SECRET to a real random value.
+    let mut broadcast_cfg = BroadcastConfig::from_env();
+    if broadcast_cfg.signing_secret.is_none() {
+        broadcast_cfg = broadcast_cfg.signing_secret("nearly-dev-secret-set-BROADCAST_SECRET");
+    }
+    App::singleton(Broadcaster::with_config(broadcast_cfg).with_authorizer(NearlyChannelAuth));
 
     // Global middleware. Session first so the cookie wraps everything downstream.
     global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
@@ -211,4 +239,28 @@ async fn seed_demo_data() {
         ids.len(),
         places.len()
     );
+}
+
+#[cfg(test)]
+mod channel_auth_tests {
+    use super::*;
+
+    fn data(channel: &str, uid: Option<&str>) -> AuthData {
+        AuthData {
+            socket_id: "sock".into(),
+            channel: channel.into(),
+            auth_token: uid.map(String::from),
+        }
+    }
+
+    #[tokio::test]
+    async fn user_may_only_access_own_private_channel() {
+        let auth = NearlyChannelAuth;
+        // Own channel: allowed.
+        assert!(auth.authorize(&data("private-user.7", Some("7"))).await);
+        // Someone else's channel: denied.
+        assert!(!auth.authorize(&data("private-user.8", Some("7"))).await);
+        // Unauthenticated: denied.
+        assert!(!auth.authorize(&data("private-user.7", None)).await);
+    }
 }

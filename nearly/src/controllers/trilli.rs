@@ -68,6 +68,20 @@ pub async fn send(req: Request) -> Response {
     let input: SendInput = req.input().await?;
     if input.to_user_id != from {
         Trillo::send(from, input.to_user_id).await?;
+        // Live ping to just the recipient's private channel. Only the sender's
+        // display name travels — no message body, so the no-chat rule holds.
+        let from_name = Profile::find_by_user(from)
+            .await
+            .ok()
+            .flatten()
+            .map(|p| p.display_name)
+            .unwrap_or_else(|| "Qualcuno".to_string());
+        crate::realtime::emit(
+            &format!("private-user.{}", input.to_user_id),
+            "TrilloReceived",
+            json!({ "from": from_name }),
+        )
+        .await;
     }
     Redirect::to("/trilli").into()
 }

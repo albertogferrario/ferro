@@ -1,5 +1,6 @@
 import { Link, usePage, router } from '@inertiajs/react'
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
+import { useChannel } from './useChannel'
 
 type Auth = { id: number; name: string; display_name: string } | null
 
@@ -21,8 +22,22 @@ export default function Layout({
 }) {
   const auth = (usePage().props as any).auth as Auth
 
+  // Live trillo pings: subscribe to this user's private channel and flash a
+  // toast when someone trillos them. Just the sender's name — no message body.
+  const [toast, setToast] = useState<string | null>(null)
+  useChannel(auth ? `private-user.${auth.id}` : null, (event, data) => {
+    if (event !== 'TrilloReceived') return
+    setToast(`${data.from ?? 'Qualcuno'} ti ha trillato 🔔`)
+    setTimeout(() => setToast(null), 5000)
+  })
+
   return (
     <div className="shell">
+      {toast && (
+        <button className="toast" onClick={() => router.visit('/trilli')}>
+          {toast}
+        </button>
+      )}
       <div className="shell__top">
         <Link href="/map" className="wordmark">Nearly</Link>
         {auth ? (
