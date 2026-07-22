@@ -354,6 +354,9 @@ pub use ferro_macros::resource_post;
 pub use ferro_macros::service;
 pub use ferro_macros::ApiResource;
 pub use ferro_macros::FerroModel;
+// The `Authenticatable` trait (re-exported above from `crate::auth`) and this
+// derive macro share a name, exactly like `serde::Serialize`.
+pub use ferro_macros::Authenticatable;
 pub use ferro_macros::FormRequest as FormRequestDerive;
 pub use ferro_macros::InertiaProps;
 pub use ferro_macros::ValidateRules;

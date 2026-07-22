@@ -2,7 +2,12 @@
 //!
 //! Adds shared props (auth, flash, csrf) to every Inertia response.
 
-use ferro::{async_trait, csrf_token, InertiaShared, Middleware, Next, Request, Response};
+use ferro::{
+    async_trait, csrf_token, serde_json::json, Auth, InertiaShared, Middleware, Next, Request,
+    Response,
+};
+
+use crate::models::users::User;
 
 /// Middleware that shares common data with all Inertia responses
 ///
@@ -30,14 +35,16 @@ impl Middleware for ShareInertiaData {
             shared = shared.csrf(token);
         }
 
-        // TODO: Add authenticated user when Auth is properly integrated
-        // if let Some(user) = Auth::user::<User>().await {
-        //     shared = shared.auth(serde_json::json!({
-        //         "id": user.id,
-        //         "name": user.name,
-        //         "email": user.email,
-        //     }));
-        // }
+        // Share the authenticated user (if any). `User` derives / implements
+        // `Authenticatable`, so `Auth::user_as` casts the provider's principal
+        // back to the concrete model — no manual session/id plumbing here.
+        if let Ok(Some(user)) = Auth::user_as::<User>().await {
+            shared = shared.auth(json!({
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }));
+        }
 
         // TODO: Add flash messages when session flash is implemented
         // if let Some(flash) = session::flash() {
