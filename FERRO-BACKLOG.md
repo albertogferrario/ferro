@@ -27,13 +27,13 @@ Note: the `ferro new` **template** vite.config was already correct
 
 ### P1 — correctness / silent-failure
 
-**1. Boot-time validation of the Inertia asset contract.**
-`resolve_assets` now warns, but a missing manifest still yields a blank page.
-- *Change:* at server start in production, verify the entry point resolves in
-  `manifest_path`; fail fast (or log an error banner) with the exact paths.
-- *Accept:* starting with `APP_ENV=production` and no build prints a single clear
-  error naming the manifest path and the fix (`npm run build`).
-- *Crates:* `ferro-inertia`, `framework`.
+**1. Boot-time validation of the Inertia asset contract — ✅ DONE.**
+`Inertia::preflight()` (opt-in, called from `bootstrap`) verifies in production
+that the Vite manifest exists and contains the entry point; no-op in dev. Nearly
+calls it and now fails fast with a clear message + fix when the frontend build is
+missing, instead of serving a blank page. Verified live (negative + positive) and
+unit-tested (`verify_manifest`, `verify_production_assets`). Opt-in so non-Inertia
+apps never get a false positive. *Crates:* `ferro-inertia`, `framework`.
 
 **2. First-class self-hosted Leaflet — ✅ DONE (see fix E above).**
 

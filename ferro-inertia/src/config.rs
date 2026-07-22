@@ -172,6 +172,20 @@ impl InertiaConfig {
         self.mount_id = id.into();
         self
     }
+
+    /// Verify that production assets resolve, for fail-fast boot validation.
+    ///
+    /// In development this is a no-op (the Vite dev server serves assets). In
+    /// production it checks that the Vite manifest exists and contains the
+    /// entry point, so a missing or mismatched build fails at startup with a
+    /// clear message instead of serving a blank page. Returns a human-readable
+    /// error describing what to fix.
+    pub fn verify_production_assets(&self) -> Result<(), String> {
+        if self.development {
+            return Ok(());
+        }
+        crate::manifest::verify_manifest(&self.manifest_path, &self.entry_point)
+    }
 }
 
 impl Default for InertiaConfig {
@@ -212,6 +226,21 @@ mod tests {
             Some(r#"<link rel="icon" href="/favicon.ico">"#)
         );
         assert_eq!(c.mount_id, "root");
+    }
+
+    #[test]
+    fn verify_production_assets_dev_noop_prod_checks() {
+        // Development → always Ok (Vite dev server serves assets).
+        assert!(InertiaConfig::new()
+            .development()
+            .verify_production_assets()
+            .is_ok());
+
+        // Production with a missing manifest → Err with actionable message.
+        let c = InertiaConfig::new()
+            .production()
+            .manifest_path("/nonexistent/manifest.json");
+        assert!(c.verify_production_assets().is_err());
     }
 
     #[test]
