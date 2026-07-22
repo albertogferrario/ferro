@@ -1,5 +1,26 @@
 //! Application tests.
 
+/// The `#[derive(Authenticatable)]` macro wires the trait from the `id` field,
+/// removing the hand-written impl every user model used to need.
+#[test]
+fn user_authenticatable_derive() {
+    use crate::models::user::User;
+    use ferro::Authenticatable;
+
+    let now = crate::models::now();
+    let u = User {
+        id: 7,
+        name: "Alex".into(),
+        email: "alex@nearly.app".into(),
+        password: String::new(),
+        created_at: now.clone(),
+        updated_at: now,
+    };
+    assert_eq!(u.auth_identifier(), 7);
+    assert_eq!(u.auth_identifier_name(), "id");
+    assert!(u.as_any().downcast_ref::<User>().is_some());
+}
+
 /// Each service projection must derive at least one intent — the core
 /// projection / intent abstraction working end to end. The ServiceDefs remain
 /// backend truth even though the UI is now Inertia/React.

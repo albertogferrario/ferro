@@ -1,11 +1,15 @@
 //! User model — account identity.
 
 use ferro::database::{Model as DatabaseModel, ModelMut, QueryBuilder};
+use ferro::Authenticatable;
 use sea_orm::entity::prelude::*;
 use sea_orm::Set;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize)]
+// `Authenticatable` derive → `Auth::user_as::<User>()` works without the ~17
+// lines of hand-written trait impl. (Requires a registered `UserProvider` to
+// actually load the user; this crate reads the session id directly instead.)
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Authenticatable)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
     #[sea_orm(primary_key)]

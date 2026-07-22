@@ -37,15 +37,19 @@ Note: the `ferro new` **template** vite.config was already correct
 
 **2. First-class self-hosted Leaflet — ✅ DONE (see fix E above).**
 
-**3. `Authenticatable` ergonomics.**
-`Auth::user_as::<T>()` fails to compile for ordinary models, and the template's
-`ShareInertiaData` ships auth-sharing commented out.
-- *Change:* `#[derive(Authenticatable)]` (or blanket impl for models with `id`);
-  a `Auth::user()` returning a serializable principal; complete the template
-  `ShareInertiaData` (auth + flash wired).
-- *Accept:* sharing the current user with Inertia is a one-liner; the "get current
-  user" path compiles without hand-rolling `find_by_pk`.
-- *Crates:* `framework` (auth, macros), CLI template.
+**3. `Authenticatable` ergonomics — ✅ mostly done.**
+- ✅ `#[derive(Authenticatable)]` (ferro-macros) generates the trait from an
+  integer `id` field (`#[auth(id = "…")]` to override); re-exported from the
+  framework alongside the trait (same name, like `serde::Serialize`). Kills the
+  ~17-line hand-written impl. Dogfooded + tested in `nearly`.
+- ✅ Sample app `ShareInertiaData` now actually shares the auth user via
+  `Auth::user_as::<User>()` (the commented-out TODO is done).
+- ⏳ *Remaining:* a generic `ModelUserProvider<E>` so apps don't hand-write a
+  `UserProvider` for the common "load model by pk" case. Non-trivial because the
+  primary-key type varies (i32/i64/uuid) — needs care with SeaORM bounds. Until
+  then `Auth::user_as` still needs a registered provider (the derive removes the
+  *trait* boilerplate, not the provider).
+- *Crates:* `ferro-macros`, `framework` (auth).
 
 ### P2 — developer experience
 
