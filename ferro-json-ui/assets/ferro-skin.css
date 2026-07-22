@@ -909,33 +909,38 @@ input, select, textarea {
     padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3) calc(var(--spacing) * 1);
   }
 
-  /* SidebarNavItem IS interactive — all four states required (SKIN-05). */
+  /* SidebarNavItem IS interactive — all four states required (SKIN-05).
+   * Pill treatment: compact 32px rows, 6px radius pill, no left-border.
+   * Active = tinted surface pill (color-mix primary tint); hover = faint
+   * surface tint distinct from active. Both modes correct (Finding 2). */
 
   .fjui-sidebar__nav-item {
     display: flex;
     align-items: center;
-    gap: calc(var(--spacing) * 3);
-    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-    border-radius: var(--radius-sm);
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5);
+    border-radius: 6px;
     font-size: var(--text-body-size);
     color: var(--color-text-muted);
     cursor: pointer;
     text-decoration: none;
-    border-left: 2px solid transparent;
+    min-height: 2rem;
     transition-property: background-color, color;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease);
 
-    &:hover        { background-color: var(--color-card); color: var(--color-text); }
+    &:hover        {
+      background-color: color-mix(in oklab, var(--color-primary) 6%, var(--color-surface));
+      color: var(--color-text);
+    }
     &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: -2px; }
     &:active       { opacity: 0.85; }
     &:disabled     { opacity: 0.4; pointer-events: none; }
   }
 
   .fjui-sidebar__nav-item--active {
-    background-color: var(--color-card);
+    background-color: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface));
     color: var(--color-text);
-    border-left-color: var(--color-primary);
     font-weight: 500;
   }
 

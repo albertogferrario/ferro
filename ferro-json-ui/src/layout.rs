@@ -241,7 +241,11 @@ fn layout_header_html(props: &HeaderProps) -> String {
     // Layout utilities (z-30 relative flex items-center) stay inline (D-02). The header sits
     // inside the sidebar-offset content column, so it must NOT re-pad for the sidebar itself
     // (a legacy md:pl-72 here doubled the offset and pushed the workspace label off-left).
-    let mut html = String::from("<header class=\"fjui-header z-30 relative flex items-center\">");
+    // md:pl-64 offsets the header *content* to clear the sidebar, while the
+    // border-bottom on the fjui-header element spans the full viewport width
+    // (Finding 3 — full-width separator). The header element itself is
+    // full-width; only its inner padding mirrors the content column offset.
+    let mut html = String::from("<header class=\"fjui-header z-30 relative flex items-center md:pl-64\">");
     // Mobile hamburger button — visible only on small screens.
     html.push_str(&format!(
         "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \
@@ -669,11 +673,15 @@ impl Layout for DashboardLayout {
             format!("{}\n{}", ctx.scripts, runtime_script)
         };
 
+        // Header is a sibling of the content column (not inside it) so its
+        // border-bottom spans the full viewport width edge-to-edge (Finding 3).
+        // The header's own md:pl-64 class mirrors the sidebar offset for content
+        // alignment. Main keeps md:pl-64 so its content also clears the sidebar.
         let body_content = format!(
             r#"{sidebar_html}
-    <div class="flex flex-col md:pl-64">
+    <div class="flex flex-col">
         {header_html}
-        <main class="flex-1 px-3 py-4 md:p-6">
+        <main class="flex-1 px-3 py-4 md:p-6 md:pl-64">
             <div class="mx-auto w-full max-w-7xl">
                 {wrapper}
             </div>
@@ -1159,7 +1167,8 @@ mod tests {
     fn dashboard_layout_has_main_content_area() {
         let ctx = test_ctx();
         let html = dashboard_layout().render(&ctx);
-        assert!(html.contains("<main class=\"flex-1 px-3 py-4 md:p-6\">"));
+        // md:pl-64 clears the fixed sidebar; added alongside md:p-6 (Finding 3).
+        assert!(html.contains("<main class=\"flex-1 px-3 py-4 md:p-6 md:pl-64\">"));
     }
 
     #[test]
