@@ -11,6 +11,16 @@ reference app on Ferro, then fixing framework frictions found while doing so.
 deploy docs (`SERVER_HOST=0.0.0.0`). Docker daemon was unavailable in-sandbox, so
 the image build wasn't executed — steps verified locally.
 
+**Milestone "Real-time Nearly" — ✅ done:** Found + fixed a **security gap in
+ferro-broadcast** (private/presence subscribe trusted a client-supplied token —
+no signing). Added Pusher-style HMAC-signed channel auth (`BROADCAST_SECRET`;
+`/broadcasting/auth` signs, WS `subscribe` verifies; presence binds `user_id`),
+backward-compatible. On top: live map pins on public `nearby` and secure live
+trillo pings on `private-user.{id}` with a toast. Verified end-to-end with a real
+WS client (`nearly/scripts/ws-smoke.mjs`): presence + trillo delivery, 403 on
+another user's channel, forged subscriptions rejected. Full clippy + framework
+(522) / broadcast (32) / nearly (4) tests green.
+
 ## What exists now
 
 ### `nearly/` — a reference app (fully Inertia.js + React)
