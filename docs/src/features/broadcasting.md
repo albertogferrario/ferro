@@ -126,7 +126,7 @@ The handler:
 1. Verifies the user is authenticated via session (`Auth::id()`)
 2. Receives `channel_name` and `socket_id` from the client
 3. Calls `Broadcaster::check_auth()` with the user's ID as the auth token
-4. Returns 200 with auth confirmation if authorized, 401 if unauthenticated, 403 if unauthorized
+4. Returns 200 with a signed `auth` token if authorized (see [Signed subscriptions](#signed-subscriptions-production)), 401 if unauthenticated, 403 if unauthorized
 5. For presence channels, includes `channel_data` with `user_id`
 
 ### Private Channel Auth Flow
@@ -136,9 +136,36 @@ The full authorization flow for private and presence channels:
 1. Client connects to `ws://host/_ferro/ws` and receives a `socket_id`
 2. Client sends HTTP POST to `/broadcasting/auth` with `channel_name` and `socket_id`
 3. Server validates session auth and calls the registered `ChannelAuthorizer`
-4. If authorized, client receives auth confirmation
+4. If authorized, the client receives a **signed** `auth` token (see below)
 5. Client sends a `subscribe` message over WebSocket with the `auth` token
-6. Server subscribes the client to the channel
+6. Server **verifies the signature** and subscribes the client to the channel
+
+### Signed subscriptions (production)
+
+Set a **signing secret** and the whole flow becomes tamper-proof. Without it,
+the WebSocket `subscribe` path can only see the client-supplied `auth` token and
+must trust it — fine for local development, but it means a client could forge a
+subscription to any channel. **Always set a secret in production.**
+
+```bash
+# ferro-broadcast reads BROADCAST_SECRET, falling back to APP_KEY.
+BROADCAST_SECRET=$(openssl rand -hex 32)
+```
+
+With a secret configured:
+
+- `/broadcasting/auth` (session-authenticated) runs your `ChannelAuthorizer` to
+  make the policy decision, then returns `auth = HMAC-SHA256(secret, payload)`
+  where the payload is `"{socket_id}:{channel}"` for private channels and
+  `"{socket_id}:{channel}:{user_id}"` for presence channels.
+- The WebSocket `subscribe` handler recomputes the HMAC and rejects any token it
+  did not issue. Because the presence signature binds the `user_id`, a client
+  cannot subscribe as a different user.
+
+The secret never leaves the server, so the `auth` token cannot be forged. The
+`ChannelAuthorizer` is still where your app decides *who may access what*; the
+signature is what lets the socket trust that decision was made for this exact
+socket, channel, and identity.
 
 ## Broadcasting from Handlers
 

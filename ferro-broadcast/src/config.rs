@@ -16,6 +16,15 @@ pub struct BroadcastConfig {
     pub client_timeout: Duration,
     /// Whether to allow client-to-client messages (whisper).
     pub allow_client_events: bool,
+    /// Secret used to sign private/presence channel subscriptions (HMAC-SHA256).
+    ///
+    /// When set, `/broadcasting/auth` issues a signature bound to the socket +
+    /// channel (+ user for presence), and the WebSocket subscribe path verifies
+    /// it — so a client cannot forge access to a channel it was not authorized
+    /// for. When `None`, private/presence channels fall back to the legacy
+    /// authorizer-only path, which trusts the client-supplied token and is
+    /// therefore **development-only**.
+    pub signing_secret: Option<String>,
 }
 
 impl Default for BroadcastConfig {
@@ -26,6 +35,7 @@ impl Default for BroadcastConfig {
             heartbeat_interval: Duration::from_secs(30),
             client_timeout: Duration::from_secs(60),
             allow_client_events: true,
+            signing_secret: None,
         }
     }
 }
@@ -78,7 +88,19 @@ impl BroadcastConfig {
             allow_client_events: env::var("BROADCAST_ALLOW_CLIENT_EVENTS")
                 .map(|v| v.to_lowercase() != "false" && v != "0")
                 .unwrap_or(true),
+            // Prefer a broadcast-specific secret; fall back to the app key so an
+            // app that already sets APP_KEY gets signed channels for free.
+            signing_secret: env::var("BROADCAST_SECRET")
+                .or_else(|_| env::var("APP_KEY"))
+                .ok()
+                .filter(|s| !s.is_empty()),
         }
+    }
+
+    /// Set the signing secret for private/presence channel authorization.
+    pub fn signing_secret(mut self, secret: impl Into<String>) -> Self {
+        self.signing_secret = Some(secret.into());
+        self
     }
 
     /// Set maximum subscribers per channel.
