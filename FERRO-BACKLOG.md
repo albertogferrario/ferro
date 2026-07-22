@@ -37,18 +37,21 @@ apps never get a false positive. *Crates:* `ferro-inertia`, `framework`.
 
 **2. First-class self-hosted Leaflet — ✅ DONE (see fix E above).**
 
-**3. `Authenticatable` ergonomics — ✅ mostly done.**
+**3. `Authenticatable` ergonomics — ✅ DONE.**
 - ✅ `#[derive(Authenticatable)]` (ferro-macros) generates the trait from an
   integer `id` field (`#[auth(id = "…")]` to override); re-exported from the
   framework alongside the trait (same name, like `serde::Serialize`). Kills the
-  ~17-line hand-written impl. Dogfooded + tested in `nearly`.
-- ✅ Sample app `ShareInertiaData` now actually shares the auth user via
-  `Auth::user_as::<User>()` (the commented-out TODO is done).
-- ⏳ *Remaining:* a generic `ModelUserProvider<E>` so apps don't hand-write a
-  `UserProvider` for the common "load model by pk" case. Non-trivial because the
-  primary-key type varies (i32/i64/uuid) — needs care with SeaORM bounds. Until
-  then `Auth::user_as` still needs a registered provider (the derive removes the
-  *trait* boilerplate, not the provider).
+  ~17-line hand-written impl.
+- ✅ Generic `ModelUserProvider<E>` (framework) loads the user model by primary
+  key (narrows the session `i64` via `TryFrom`, so i32/i64 pks both work) —
+  removes the hand-written `UserProvider` for the common case. Register with
+  `bind!(dyn UserProvider, ModelUserProvider::<…::Entity>::default())`.
+- ✅ Sample app `ShareInertiaData` shares the auth user via `Auth::user_as`;
+  `nearly` dogfoods the whole chain (derive + generic provider) — verified live:
+  the `auth` page prop populates on login with **no** hand-written impl or
+  provider.
+- *Remaining:* composite / non-integer (uuid) primary keys and password-login
+  still need a hand-written provider (documented on `ModelUserProvider`).
 - *Crates:* `ferro-macros`, `framework` (auth).
 
 ### P2 — developer experience

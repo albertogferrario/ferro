@@ -4,7 +4,9 @@
 //! root HTML (with the Vite/manifest asset tags) and hands React the page
 //! component + props; `ShareInertiaData` adds auth + CSRF to every response.
 
-use ferro::{global_middleware, SessionConfig, SessionMiddleware, DB};
+use ferro::{
+    bind, global_middleware, ModelUserProvider, SessionConfig, SessionMiddleware, UserProvider, DB,
+};
 
 use crate::middleware;
 
@@ -30,6 +32,14 @@ pub async fn register() {
         );
         std::process::exit(1);
     }
+
+    // Auth: the generic provider hydrates `Auth::user()`/`Auth::user_as::<User>()`
+    // by loading the user model by primary key — no hand-written provider needed
+    // (User derives Authenticatable).
+    bind!(
+        dyn UserProvider,
+        ModelUserProvider::<crate::models::user::Entity>::default()
+    );
 
     // Global middleware. Session first so the cookie wraps everything downstream.
     global_middleware!(SessionMiddleware::new(SessionConfig::from_env()));
