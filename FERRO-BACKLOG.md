@@ -16,6 +16,7 @@ prioritized backlog for the next Ferro work, each with acceptance criteria.
 | B | Map plugin can self-host Leaflet via `FERRO_LEAFLET_BASE` (loads `{base}/leaflet.{css,js}` without SRI) — the escape hatch for TLS-terminating proxies / offline / CI. Default (SRI-pinned unpkg) unchanged. Unit-tested. | `ferro-json-ui/src/plugins/map.rs` |
 | C | `ferro-inertia` now logs a loud, actionable warning when the production Vite manifest/entry is missing, instead of silently falling back to `/assets/main.js` (which 404s to a blank page). | `ferro-inertia/src/manifest.rs` |
 | D | The sample Inertia example builds again: dropped the failing `tsc &&` from the build script (moved to a `typecheck` script), and corrected `vite.config` `outDir` to `../public` so the manifest + assets match the framework's production asset contract. | `app/frontend/package.json`, `app/frontend/vite.config.ts` |
+| E | **Leaflet is now vendored and self-hosted** (backlog P1.2 below). Leaflet 1.9.4 (js/css/marker images) is embedded in `ferro-json-ui` and served at `/_ferro/leaflet/*`; the Map plugin **defaults** to it (no CDN, no SRI) so the map renders offline / behind TLS-terminating proxies with zero config. `FERRO_LEAFLET_CDN=1` opts back into the unpkg CDN; `FERRO_LEAFLET_BASE` still overrides. Unit + route tests, live-verified. | `ferro-json-ui/src/assets/leaflet.rs`, `ferro-json-ui/src/plugins/map.rs`, `framework/src/server.rs` |
 
 Note: the `ferro new` **template** vite.config was already correct
 (`outDir: '../public'`); only the checked-in sample `app/frontend` had drifted.
@@ -34,13 +35,7 @@ Note: the `ferro new` **template** vite.config was already correct
   error naming the manifest path and the fix (`npm run build`).
 - *Crates:* `ferro-inertia`, `framework`.
 
-**2. First-class self-hosted Leaflet (remove the CDN dependency by default).**
-`FERRO_LEAFLET_BASE` is a stopgap; the default still needs the network + SRI.
-- *Change:* vendor Leaflet 1.9.4 and serve it from the framework (like
-  `ferro-base.css` at `/_ferro/…`); make that the default, CDN opt-in.
-- *Accept:* a fresh app renders the Map plugin offline / behind a MITM proxy with
-  no config.
-- *Crates:* `ferro-json-ui`, `framework` (static routes).
+**2. First-class self-hosted Leaflet — ✅ DONE (see fix E above).**
 
 **3. `Authenticatable` ergonomics.**
 `Auth::user_as::<T>()` fails to compile for ordinary models, and the template's
