@@ -41,6 +41,7 @@ members = [
     "ferro-deployments",
     "ferro-assets",
     "ferro-text",
+    "ferro-json-ui/examples/minimal-dashboard",
 ]
 
 [workspace.package]

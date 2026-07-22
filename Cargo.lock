@@ -4440,6 +4440,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-dashboard"
+version = "0.2.94"
+dependencies = [
+ "ferro-rs",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
