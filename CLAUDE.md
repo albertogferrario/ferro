@@ -61,6 +61,7 @@ The **core abstraction is projection / intent** (`ferro-projections`, shipped in
 | `ferro-reservation` | Generic hold/commit/release reservation kernel | `src/lib.rs` |
 | `ferro-projection` | Live read-model runtime: subscribe to domain events, persist per-key snapshots, broadcast deltas. **Not the same as `ferro-projections` (plural)** — see crate docs for the distinction. | `src/lib.rs` |
 | `app` | Sample application | Reference implementation |
+| `nearly` | Nearly reference app: location-based, chat-less social app (map + trillo) | `nearly/README.md`, `nearly/PRODUCT.md` |
 
 ## Key Patterns
 
