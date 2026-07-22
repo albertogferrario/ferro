@@ -2556,6 +2556,26 @@ input, select, textarea {
     align-items: center;
   }
 
+  /* Inner <dl> stretches full width so items distribute horizontally. */
+  .fjui-highlights-row__fields {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: calc(var(--spacing) * 6);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Each field: flex item, label stacked above value. */
+  .fjui-highlights-row__item {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 0.5);
+    min-width: 0;
+  }
+
   .fjui-highlights-row__label {
     font-size: 0.75rem;
     font-weight: 500;
@@ -2568,6 +2588,23 @@ input, select, textarea {
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 390 px: wrap to 2-column grid (UI-SPEC D-12). */
+  @media (max-width: 640px) {
+    .fjui-highlights-row {
+      min-height: auto;
+      padding: var(--spacing-3) var(--spacing-4);
+    }
+
+    .fjui-highlights-row__fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-3) calc(var(--spacing) * 6);
+    }
   }
 
   /* ── Home widget grid ────────────────────────────────────────────────────── */
