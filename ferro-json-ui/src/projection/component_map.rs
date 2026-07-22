@@ -291,6 +291,7 @@ pub fn build_column_for_field(field: &FieldDef) -> Column {
         align: None,
         label_true: None,
         label_false: None,
+        peek_entity: None,
     }
 }
 

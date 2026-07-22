@@ -563,6 +563,7 @@ fn emit_statcard_root(
         icon: None,
         subtitle: None,
         sse_target: None,
+        sparkline_svg: None,
     })
     .expect("StatCardProps serialization cannot fail");
     element_with_props("StatCard", props)
@@ -885,6 +886,7 @@ fn emit_relationships(
                     align: None,
                     label_true: None,
                     label_false: None,
+                    peek_entity: None,
                 };
                 serde_json::to_value(TableProps {
                     columns: vec![col],
