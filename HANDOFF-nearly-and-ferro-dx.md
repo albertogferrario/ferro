@@ -4,6 +4,13 @@ State snapshot for a fresh context. Everything below is **committed and pushed
 to `master`** (working tree clean). Session role: CTO/PM building the `nearly`
 reference app on Ferro, then fixing framework frictions found while doing so.
 
+**Milestone "Ship-ready Nearly" — ✅ done:** CSRF (Inertia `X-CSRF-TOKEN` via a
+`<meta>` + axios default; verified 419/302), friendly Inertia 404 pages
+(`fallback!` + missing-entity) + login validation, a CI `frontend` job (`npm ci`
++ `npm run build` for both frontends), and a multi-stage `nearly/Dockerfile` +
+deploy docs (`SERVER_HOST=0.0.0.0`). Docker daemon was unavailable in-sandbox, so
+the image build wasn't executed — steps verified locally.
+
 ## What exists now
 
 ### `nearly/` — a reference app (fully Inertia.js + React)
