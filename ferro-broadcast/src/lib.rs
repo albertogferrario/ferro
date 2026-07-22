@@ -56,6 +56,7 @@ mod channel;
 mod config;
 mod error;
 mod message;
+mod sign;
 
 pub use broadcast::{Broadcast, BroadcastBuilder};
 pub use broadcaster::{AuthData, Broadcaster, ChannelAuthorizer, Client};
