@@ -212,8 +212,27 @@ impl JsonUi {
         config: &JsonUiConfig,
     ) -> Response {
         let reload = !crate::Config::is_production();
-        let arc_spec = ferro_json_ui::load_cached(path.as_ref(), reload)
-            .map_err(|e| HttpResponse::text(format!("Failed to load spec: {e}")).status(500))?;
+        let arc_spec = ferro_json_ui::load_cached(path.as_ref(), reload).map_err(|e| {
+            // Spec paths are resolved relative to the process working directory.
+            // Running the binary from the wrong directory is the most common
+            // cause of this error, so surface the attempted absolute path + CWD.
+            let p = path.as_ref();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            let attempted = if p.is_absolute() {
+                p.to_path_buf()
+            } else {
+                cwd.join(p)
+            };
+            HttpResponse::text(format!(
+                "Failed to load JSON-UI spec '{}': {e}.\n\
+                 Looked for '{}' (cwd '{}').\n\
+                 Hint: run the server from the crate directory, or pass an absolute path.",
+                p.display(),
+                attempted.display(),
+                cwd.display(),
+            ))
+            .status(500)
+        })?;
         let spec = (*arc_spec).clone().merge_data(handler_data);
         let data = spec.data.clone();
         let resolved = Self::resolve(&spec);

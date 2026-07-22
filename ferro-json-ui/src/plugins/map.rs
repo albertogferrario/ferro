@@ -72,6 +72,29 @@ pub struct MapMarker {
     pub href: Option<String>,
 }
 
+/// Base URL for self-hosted Leaflet assets, from the `FERRO_LEAFLET_BASE`
+/// environment variable. When set (e.g. `/vendor/leaflet`), the plugin loads
+/// `{base}/leaflet.css` and `{base}/leaflet.js` without SRI/crossorigin instead
+/// of the SRI-pinned unpkg CDN — required behind TLS-terminating proxies or
+/// offline, where the integrity check on CDN assets fails and Leaflet never
+/// loads. Unset (default) preserves the CDN behavior.
+fn leaflet_base() -> Option<String> {
+    std::env::var("FERRO_LEAFLET_BASE")
+        .ok()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Build a Leaflet asset: self-hosted `{base}/{file}` (no SRI) when a base is
+/// configured, else the SRI-pinned CDN URL. Pure so the branch is unit-testable
+/// without mutating the process environment.
+fn leaflet_asset(base: Option<&str>, file: &str, cdn_url: &str, cdn_sri: &str) -> Asset {
+    match base {
+        Some(b) => Asset::new(format!("{b}/{file}")),
+        None => Asset::new(cdn_url).integrity(cdn_sri).crossorigin(""),
+    }
+}
+
 /// Global counter for unique map container IDs.
 static MAP_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -220,15 +243,21 @@ impl JsonUiPlugin for MapPlugin {
     }
 
     fn css_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(LEAFLET_CSS_URL)
-            .integrity(LEAFLET_CSS_SRI)
-            .crossorigin("")]
+        vec![leaflet_asset(
+            leaflet_base().as_deref(),
+            "leaflet.css",
+            LEAFLET_CSS_URL,
+            LEAFLET_CSS_SRI,
+        )]
     }
 
     fn js_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(LEAFLET_JS_URL)
-            .integrity(LEAFLET_JS_SRI)
-            .crossorigin("")]
+        vec![leaflet_asset(
+            leaflet_base().as_deref(),
+            "leaflet.js",
+            LEAFLET_JS_URL,
+            LEAFLET_JS_SRI,
+        )]
     }
 
     fn init_script(&self) -> Option<String> {
@@ -488,6 +517,28 @@ mod tests {
     fn test_map_component_type() {
         let plugin = MapPlugin;
         assert_eq!(plugin.component_type(), "Map");
+    }
+
+    #[test]
+    fn leaflet_asset_defaults_to_sri_cdn() {
+        let a = leaflet_asset(None, "leaflet.css", LEAFLET_CSS_URL, LEAFLET_CSS_SRI);
+        assert_eq!(a.url, LEAFLET_CSS_URL);
+        assert_eq!(a.integrity.as_deref(), Some(LEAFLET_CSS_SRI));
+    }
+
+    #[test]
+    fn leaflet_asset_self_hosted_drops_sri() {
+        let a = leaflet_asset(
+            Some("/vendor/leaflet"),
+            "leaflet.js",
+            LEAFLET_JS_URL,
+            LEAFLET_JS_SRI,
+        );
+        assert_eq!(a.url, "/vendor/leaflet/leaflet.js");
+        assert!(
+            a.integrity.is_none(),
+            "self-hosted asset must not carry an SRI hash"
+        );
     }
 
     #[test]

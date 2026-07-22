@@ -64,13 +64,29 @@ static MANIFEST: OnceLock<Option<ViteManifest>> = OnceLock::new();
 pub fn resolve_assets(manifest_path: &str, entry_point: &str) -> ResolvedAssets {
     let manifest = MANIFEST.get_or_init(|| ViteManifest::load(manifest_path));
 
-    manifest
-        .as_ref()
-        .and_then(|m| m.resolve(entry_point))
-        .unwrap_or_else(|| ResolvedAssets {
-            js: "/assets/main.js".to_string(),
-            css: vec!["/assets/main.css".to_string()],
-        })
+    if let Some(assets) = manifest.as_ref().and_then(|m| m.resolve(entry_point)) {
+        return assets;
+    }
+
+    // Production asset resolution failed. Rather than silently serve a guessed
+    // `/assets/main.js` (which 404s and leaves a blank page with no clue), warn
+    // once with the exact cause. This runs only on the production path — the dev
+    // path uses the Vite server and never calls `resolve_assets`.
+    let reason = if manifest.is_none() {
+        format!("manifest not found or unparseable at '{manifest_path}'")
+    } else {
+        format!("entry point '{entry_point}' not present in '{manifest_path}'")
+    };
+    eprintln!(
+        "[ferro-inertia] WARNING: {reason}. Falling back to '/assets/main.js'. \
+         Run the frontend build (`npm run build`) and check that Vite's outDir + \
+         manifest path line up with InertiaConfig::manifest_path and the static root."
+    );
+
+    ResolvedAssets {
+        js: "/assets/main.js".to_string(),
+        css: vec!["/assets/main.css".to_string()],
+    }
 }
 
 #[cfg(test)]
