@@ -32,6 +32,10 @@ use crate::error::ProjectionError;
 use crate::key::ProjectionKey;
 use crate::projection::Projection;
 
+/// Type alias for the renderer-agnostic re-render hook (D-01, D-02).
+/// Receives `(key: &str, post-apply state as serde_json::Value)`.
+type FragmentHook = Arc<dyn Fn(&str, serde_json::Value) + Send + Sync>;
+
 /// Live read-model runtime owning the DB connection, the broadcaster
 /// handle, the projection impl, and the per-key Mutex registry (D-13).
 pub struct ProjectionRuntime<P: Projection> {
@@ -43,7 +47,7 @@ pub struct ProjectionRuntime<P: Projection> {
     /// broadcast (D-01, D-02). Receives `(key, post-apply state as Value)`.
     /// Type-erased at the `serde_json::Value` boundary so this crate needs no
     /// dependency on any renderer crate.
-    pub(crate) fragment_hook: Option<Arc<dyn Fn(&str, serde_json::Value) + Send + Sync>>,
+    pub(crate) fragment_hook: Option<FragmentHook>,
 }
 
 impl<P: Projection> ProjectionRuntime<P> {
@@ -183,8 +187,7 @@ impl<P: Projection> ProjectionRuntime<P> {
         // Fires synchronously inside the per-key Mutex, AFTER the delta broadcast.
         // The hook drives its own async broadcast (via tokio::spawn) — see Phase 260.
         if let Some(ref hook) = self.fragment_hook {
-            let snapshot_value =
-                serde_json::to_value(&state).unwrap_or(serde_json::Value::Null);
+            let snapshot_value = serde_json::to_value(&state).unwrap_or(serde_json::Value::Null);
             hook(key.as_str(), snapshot_value);
         }
 
@@ -642,6 +645,94 @@ mod tests {
         rt.apply_event(&CounterEvent { delta: 3 })
             .await
             .expect("apply without hook still succeeds and broadcasts delta");
+    }
+
+    /// SC2 full-chain integration test (VALIDATION.md SC2 row).
+    /// Proves: apply_event → hook synthesizes { html } → fragment broadcast →
+    /// subscribed client receives BOTH the base delta frame AND the fragment frame.
+    /// D-02: additive semantics — the fragment frame is a second message on the
+    /// same channel, NOT a replacement of the delta frame.
+    /// D-01: renderer-free (no renderer crate dependency) — HTML synthesized with format!.
+    #[tokio::test]
+    async fn live_fragment_hook() {
+        use ferro_broadcast::{BroadcastMessage, ServerMessage};
+        use sea_orm::Database;
+        use sea_orm_migration::MigratorTrait;
+        use tokio::sync::mpsc;
+
+        // --- Build a real broadcaster + subscribed test client on the channel ---
+        let broadcaster = Arc::new(ferro_broadcast::Broadcaster::new());
+        let channel = format!("projection.{}.{}", CounterProjection::NAME, "default-key");
+        let (tx, mut rx) = mpsc::channel::<ServerMessage>(32);
+        broadcaster.add_client("test-client".to_string(), tx);
+        broadcaster
+            .subscribe("test-client", &channel, None, None)
+            .await
+            .expect("subscribe to projection channel");
+
+        // --- Build the runtime on the SAME broadcaster, mirroring fresh_runtime ---
+        let conn = Database::connect("sqlite::memory:").await.expect("connect");
+        TestMigrator::up(&conn, None).await.expect("migrate");
+        let bc_for_hook = broadcaster.clone();
+        let rt = ProjectionRuntime::new(conn, broadcaster.clone(), CounterProjection)
+            // Production-shaped hook: synthesize HTML from the snapshot, then drive
+            // the SECOND broadcast (distinct `fragment` event, { html }, same channel)
+            // via tokio::spawn — exactly as the app-side wiring will (D-02).
+            .with_fragment_renderer(move |key: &str, snapshot: serde_json::Value| {
+                let html = format!("<span>{}</span>", snapshot["total"]);
+                let ch = format!("projection.{}.{}", CounterProjection::NAME, key);
+                let bc = bc_for_hook.clone();
+                tokio::spawn(async move {
+                    let _ = ferro_broadcast::Broadcast::new(bc)
+                        .channel(ch)
+                        .event("fragment")
+                        .data(serde_json::json!({ "html": html }))
+                        .send()
+                        .await;
+                });
+            });
+
+        // --- Dispatch an event through apply_event ---
+        rt.apply_event(&CounterEvent { delta: 5 })
+            .await
+            .expect("apply");
+
+        // --- Collect frames with a bounded poll loop (delta is sync; fragment is spawned) ---
+        let mut delta_seen = false;
+        let mut fragment_html: Option<String> = None;
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        while tokio::time::Instant::now() < deadline && (!delta_seen || fragment_html.is_none()) {
+            match rx.try_recv() {
+                Ok(ServerMessage::Event(BroadcastMessage {
+                    event,
+                    channel: ch,
+                    data,
+                })) => {
+                    assert_eq!(ch, channel, "frame delivered on the projection channel");
+                    if event == "delta" {
+                        delta_seen = true;
+                    } else if event == "fragment" {
+                        fragment_html = data["html"].as_str().map(|s| s.to_string());
+                    }
+                }
+                Ok(other) => panic!("unexpected server message: {other:?}"),
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => break,
+            }
+        }
+
+        // --- Assert BOTH frames arrived (D-02 additive) and the fragment carries the HTML ---
+        assert!(
+            delta_seen,
+            "base delta frame must still be broadcast on the channel"
+        );
+        let html = fragment_html.expect("fragment frame with { html } must be delivered");
+        assert!(
+            html.contains("<span>5</span>"),
+            "fragment HTML must reflect the post-apply snapshot total, got: {html}"
+        );
     }
 
     // D-45 #10: rebuild with empty iterator wipes row and returns Default
