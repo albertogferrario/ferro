@@ -2,12 +2,12 @@
 //!
 //! See the crate README for the bundle-vs-filesystem split: ferro-bundle handles
 //! compile-time-embedded immutable assets; the framework's filesystem static-file
-//! handler at `ferro_rs::static_files` handles mutable on-disk tenant assets.
+//! handler at `ferro::static_files` handles mutable on-disk tenant assets.
 //!
 //! # Usage
 //!
-//! Register bundles at boot, then dispatch via [`Bundle::serve`] in a handler mounted
-//! on `/bundles/{filename}` and on each registered alias path.
+//! Register bundles at boot, then dispatch via the framework adapter (`ferro::bundle::Bundle::serve`)
+//! in a handler mounted on `/bundles/{filename}` and on each registered alias path.
 //!
 //! ```rust,ignore
 //! use ferro_bundle::Bundle;
@@ -17,9 +17,8 @@
 //!     .content_type("application/javascript")
 //!     .with_alias("/embed/v1.js");
 //!
-//! async fn handler(req: ferro_rs::Request) -> ferro_rs::HttpResponse {
-//!     Bundle::serve(req)
-//! }
+//! // Mount the framework adapter (in framework crate) on /bundles/* and alias paths.
+//! // ferro::bundle::Bundle::serve(req) wraps serve_path into an HttpResponse.
 //! ```
 //!
 //! # Builder order
@@ -31,7 +30,6 @@
 
 use bytes::Bytes;
 use dashmap::DashMap;
-use ferro_rs::{HttpResponse, Request};
 use sha2::{Digest, Sha256};
 use std::sync::OnceLock;
 
@@ -39,9 +37,9 @@ use std::sync::OnceLock;
 
 /// Single error type for the ferro-bundle crate.
 ///
-/// `Bundle::serve` returns `HttpResponse` directly (not `Result`), so this enum is
+/// `serve_path` returns `BundleResponse` directly (not `Result`), so this enum is
 /// primarily an internal/registration-time signal. The `DuplicateName` variant is
-/// produced as a `panic!` message per D-06 (developer error, caught at boot).
+/// produced as a `panic!` message (developer error, caught at boot).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("bundle not found at path: {0}")]
@@ -102,6 +100,78 @@ fn ext_from_content_type(ct: &str) -> &'static str {
         "font/woff" => "woff",
         "application/wasm" => "wasm",
         _ => "",
+    }
+}
+
+/// Map a file extension to its MIME type string.
+///
+/// Used by the `asset!()` macro to infer content-type from the path extension.
+/// Unknown extensions return `"application/octet-stream"`, preserving
+/// byte-identical passthrough for unrecognized file types (SC #2). Input is
+/// expected lowercase (e.g. from `Path::extension`); matching is exact.
+pub fn mime_from_ext(ext: &str) -> &'static str {
+    match ext {
+        "js" | "mjs" => "application/javascript",
+        "css" => "text/css",
+        "html" | "htm" => "text/html",
+        "txt" => "text/plain",
+        "json" => "application/json",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "svg" => "image/svg+xml",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "woff2" => "font/woff2",
+        "woff" => "font/woff",
+        "wasm" => "application/wasm",
+        _ => "application/octet-stream",
+    }
+}
+
+// ── Framework-agnostic response type ───────────────────────────────────
+
+/// Framework-agnostic result of dispatching a bundle request.
+///
+/// `ferro-bundle` is a leaf crate: it does NOT depend on `ferro-rs`. The
+/// `framework` crate wraps this into an `HttpResponse` at its serve boundary.
+pub struct BundleResponse {
+    status: u16,
+    headers: Vec<(String, String)>,
+    body: Bytes,
+}
+
+impl BundleResponse {
+    fn new(status: u16) -> Self {
+        Self {
+            status,
+            headers: Vec::new(),
+            body: Bytes::new(),
+        }
+    }
+
+    fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.push((name.into(), value.into()));
+        self
+    }
+
+    fn with_body(mut self, body: Bytes) -> Self {
+        self.body = body;
+        self
+    }
+
+    /// HTTP status code (200, 301, 304, 404).
+    pub fn status_code(&self) -> u16 {
+        self.status
+    }
+
+    /// Response headers as `(name, value)` pairs.
+    pub fn headers(&self) -> &[(String, String)] {
+        &self.headers
+    }
+
+    /// Response body bytes (empty for 301/304/404).
+    pub fn body_bytes(&self) -> &Bytes {
+        &self.body
     }
 }
 
@@ -205,32 +275,22 @@ impl Bundle {
             .map(|v| v.value().clone())
             .unwrap_or_default()
     }
-
-    /// Dispatch a request to the bundle registry. Mount this as the handler for
-    /// `/bundles/{filename}` and for each registered alias path.
-    ///
-    /// Order of checks (D-03):
-    /// 1. Alias check → 301 redirect.
-    /// 2. Bundle check → 304 fast-path on `If-None-Match` match, else 200 with bytes.
-    /// 3. Otherwise → 404.
-    pub fn serve(req: Request) -> HttpResponse {
-        let path = req.path().to_string();
-        let if_none_match = req.header("if-none-match").map(|s| s.to_string());
-        serve_inner(&path, if_none_match.as_deref())
-    }
 }
 
-// ── Dispatcher (private; pub(crate) so integration tests can bypass Request) ────
+// ── Public dispatcher ──────────────────────────────────────────────────
 
-/// Dispatch by path + optional If-None-Match. Exposed at crate-visibility so
-/// integration tests can call it directly without constructing a synthetic
-/// `Request` (RESEARCH OQ #3 resolution).
-pub(crate) fn serve_inner(path: &str, if_none_match: Option<&str>) -> HttpResponse {
+/// Dispatch a request to the bundle registry by path + optional If-None-Match.
+///
+/// Returns a framework-agnostic [`BundleResponse`]. Mount via the framework
+/// adapter (`ferro::bundle::Bundle::serve`) on `/bundles/{filename}` and each
+/// alias path.
+///
+/// Order of checks (D-03): 1) alias → 301 redirect, 2) bundle → 304 fast-path
+/// on ETag match else 200 with bytes, 3) 404.
+pub fn serve_path(path: &str, if_none_match: Option<&str>) -> BundleResponse {
     // Alias check first (D-03 ordering).
     if let Some(target) = alias_registry().get(path) {
-        return HttpResponse::new()
-            .status(301)
-            .header("Location", target.value().clone());
+        return BundleResponse::new(301).header("Location", target.value().clone());
     }
 
     // Bundle check.
@@ -238,45 +298,20 @@ pub(crate) fn serve_inner(path: &str, if_none_match: Option<&str>) -> HttpRespon
         let etag = format!("\"{}\"", entry.sha256_full_hex);
         if let Some(inm) = if_none_match {
             if inm == etag {
-                return HttpResponse::new()
-                    .status(304)
+                return BundleResponse::new(304)
                     .header("ETag", etag)
                     .header("Cache-Control", "public, max-age=31536000, immutable");
             }
         }
-        return HttpResponse::bytes(Bytes::from_static(entry.bytes))
+        return BundleResponse::new(200)
+            .with_body(Bytes::from_static(entry.bytes))
             .header("Content-Type", entry.content_type.clone())
             .header("Cache-Control", "public, max-age=31536000, immutable")
             .header("ETag", etag);
     }
 
     // 404 fallback (defensive — caller is expected to route only /bundles/... here).
-    HttpResponse::new()
-        .status(404)
-        .header("Content-Type", "text/plain")
-}
-
-// ── Integration-test access shim ───────────────────────────────────────
-
-/// Doc-hidden wrapper around the crate-private `serve_inner` dispatcher for
-/// integration tests.
-///
-/// Each `tests/*.rs` file is its own compilation unit and cannot see `pub(crate)`
-/// items. This shim provides reachability without polluting the public crate API.
-/// The `__test_internals` name signals "do not call from production code."
-///
-/// We expose a thin `pub fn` wrapper (rather than a `pub use`) because Rust's
-/// visibility rules forbid `pub use` of a `pub(crate)` item — the re-export
-/// cannot exceed the imported item's visibility. The wrapper is inlined.
-#[doc(hidden)]
-pub mod __test_internals {
-    use ferro_rs::HttpResponse;
-
-    /// Doc-hidden bridge to the crate-private dispatcher. Integration tests only.
-    #[inline]
-    pub fn serve_inner(path: &str, if_none_match: Option<&str>) -> HttpResponse {
-        crate::serve_inner(path, if_none_match)
-    }
+    BundleResponse::new(404).header("Content-Type", "text/plain")
 }
 
 // ── Test isolation helper (D-13) ───────────────────────────────────────
@@ -302,6 +337,32 @@ pub(crate) fn reset() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_mime_from_ext() {
+        assert_eq!(mime_from_ext("js"), "application/javascript");
+        assert_eq!(mime_from_ext("mjs"), "application/javascript");
+        assert_eq!(mime_from_ext("css"), "text/css");
+        assert_eq!(mime_from_ext("html"), "text/html");
+        assert_eq!(mime_from_ext("htm"), "text/html");
+        assert_eq!(mime_from_ext("txt"), "text/plain");
+        assert_eq!(mime_from_ext("json"), "application/json");
+        assert_eq!(mime_from_ext("png"), "image/png");
+        assert_eq!(mime_from_ext("jpg"), "image/jpeg");
+        assert_eq!(mime_from_ext("jpeg"), "image/jpeg");
+        assert_eq!(mime_from_ext("svg"), "image/svg+xml");
+        assert_eq!(mime_from_ext("gif"), "image/gif");
+        assert_eq!(mime_from_ext("webp"), "image/webp");
+        assert_eq!(mime_from_ext("woff2"), "font/woff2");
+        assert_eq!(mime_from_ext("woff"), "font/woff");
+        assert_eq!(mime_from_ext("wasm"), "application/wasm");
+    }
+
+    #[test]
+    fn mime_from_ext_unknown_is_octet_stream() {
+        assert_eq!(mime_from_ext("xyz"), "application/octet-stream");
+        assert_eq!(mime_from_ext(""), "application/octet-stream");
+    }
 
     #[test]
     fn hash_is_deterministic() {
