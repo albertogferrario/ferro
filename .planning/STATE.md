@@ -4,7 +4,7 @@ milestone: v17.0
 milestone_name: Live Projection Surface
 status: verifying
 stopped_at: Completed 261-04-PLAN.md (asset!() proc-macro + trybuild pass fixture)
-last_updated: "2026-07-26T19:03:32.233Z"
+last_updated: "2026-07-26T19:46:25.022Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 261 (asset!() ergonomics) — EXECUTING
-Plan: 4 of 4
+Phase: 262
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-26
 
@@ -124,6 +124,7 @@ Progress: [██████████] 100%
 | 258 | 3 | - | - |
 | 259 | 3 | - | - |
 | 260 | 4 | - | - |
+| 261 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
