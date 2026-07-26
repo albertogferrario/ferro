@@ -213,14 +213,15 @@ input, select, textarea {
 
   /* ── Card ──────────────────────────────────────────────────────────────── */
 
-  /* Card is NOT interactive and is a flat surface — border only, NO box-shadow
-   * (elevation rule LANG-04). Interactive cards use fjui-action-card (Plan 07). */
+  /* Card is NOT interactive. Elevation via bottom-weighted shadow (LANG-04):
+   * shadow-only, no border. Dark mode: shadow token resolves to transparent so
+   * separation comes from the card/surface tint hierarchy. */
 
   .fjui-card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
-    /* NO box-shadow — flat surface elevation rule (LANG-04) */
+    box-shadow: var(--shadow-card);
   }
 
   /* ── Alert ─────────────────────────────────────────────────────────────── */
@@ -261,18 +262,18 @@ input, select, textarea {
 
   /* ── StatCard ──────────────────────────────────────────────────────────── */
 
-  /* StatCard is NOT interactive — flat surface, border only (LANG-04). */
+  /* StatCard is NOT interactive — shadow-only elevated surface (LANG-04). */
 
   .fjui-stat-card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
-    /* NO box-shadow — flat surface (LANG-04) */
+    box-shadow: var(--shadow-card);
   }
 
-  /* Tone modifiers add a top accent stripe */
+  /* Tone modifiers add a top accent stripe — border-only rule, no shadow (LANG-04). */
   .fjui-stat-card--default {
-    /* border-only, no colour accent */
+    /* no accent */
   }
 
   .fjui-stat-card--success {
@@ -793,24 +794,25 @@ input, select, textarea {
 
   .fjui-action-card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
     padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     color: var(--color-text);
     text-decoration: none;
     cursor: pointer;
+    box-shadow: var(--shadow-card);
     transition-property: background-color, box-shadow;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease);
 
-    &:hover        { background-color: var(--color-surface); }
+    &:hover        { background-color: var(--color-surface); box-shadow: var(--shadow-sm); }
     &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
     &:active       { opacity: 0.85; }
     &:disabled     { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
   }
 
   .fjui-action-card--neutral {
-    /* Border-only, no accent */
+    /* no accent */
   }
 
   .fjui-action-card--success {
@@ -1126,13 +1128,13 @@ input, select, textarea {
 
   .fjui-kanban__card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
     padding: calc(var(--spacing) * 3);
+    box-shadow: var(--shadow-card);
     transition-property: background-color, box-shadow;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease);
-    /* NO box-shadow at rest — flat surface (LANG-04) */
 
     &:hover {
       background-color: var(--color-surface);
