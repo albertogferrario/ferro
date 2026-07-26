@@ -2614,7 +2614,7 @@ input, select, textarea {
 
   /* ── Home widget grid ────────────────────────────────────────────────────── */
 
-  /* Flat-surface cards: 1px border, NO shadow (LANG-04). */
+  /* Flat-surface card: 1px border, NO shadow (LANG-04). */
 
   .fjui-widget-card {
     background-color: var(--color-card);
@@ -2623,20 +2623,83 @@ input, select, textarea {
     padding: var(--spacing-4);
   }
 
-  .fjui-agenda__event:hover,
-  .fjui-recent-activity__event:hover {
-    background-color: var(--color-surface);
+  /* Section label — Micro (12px/500/uppercase/muted). */
+  .fjui-agenda__section-label {
+    font-size: var(--text-micro-size);
+    font-weight: var(--text-micro-weight);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 0 0 calc(var(--spacing) * 2) 0;
   }
 
-  .fjui-agenda__event a:hover,
-  .fjui-recent-activity__event a:hover {
-    text-decoration: underline;
+  /* Compact event row: ~40px min-height, time left (muted tabular) + customer right (primary). */
+  .fjui-agenda__event {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 3);
+    min-height: 40px;
+    padding: 0 calc(var(--spacing) * 2);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease);
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    &:hover {
+      background-color: var(--color-surface);
+    }
+
+    & a:hover {
+      text-decoration: underline;
+    }
+
+    & a:focus-visible {
+      outline: 2px solid var(--color-ring);
+      outline-offset: 2px;
+    }
   }
 
-  .fjui-agenda__event a:focus-visible,
-  .fjui-recent-activity__event a:focus-visible {
-    outline: 2px solid var(--color-ring);
-    outline-offset: 2px;
+  /* Time column: Meta (13px/400), muted, tabular numerals, fixed width. */
+  .fjui-agenda__time {
+    font-size: var(--text-meta-size);
+    font-weight: var(--text-meta-weight);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    min-width: 3.5rem;
+  }
+
+  /* Customer column: Body (14px/400), primary text. */
+  .fjui-agenda__customer {
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    color: var(--color-text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Empty state: icon + text centered (RSK-04 / rubric dim-10). */
+  .fjui-agenda__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 4);
+    color: var(--color-text-muted);
+  }
+
+  .fjui-agenda__empty-icon {
+    opacity: 0.4;
+  }
+
+  .fjui-agenda__empty-text {
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    text-align: center;
   }
 
   /* ── Reduced motion ──────────────────────────────────────────────────────── */
