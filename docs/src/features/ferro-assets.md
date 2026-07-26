@@ -233,6 +233,39 @@ impl Transform for MyBatchTransform {
 }
 ```
 
+## Compile-time Asset Embedding
+
+`asset!("path")` is a proc-macro that embeds a static file at compile time and registers it in the content-hashed bundle registry at first use. It is part of the framework layer (`ferro::asset!`), not a pipeline transform — it works independently of the `ferro-assets` pipeline described above.
+
+```rust,ignore
+use ferro::asset;
+
+// Returns a content-hashed URL as &'static str, e.g. "/bundles/assets_app.a1b2c3d4.js"
+let url: &'static str = asset!("assets/app.js");
+```
+
+The path is resolved relative to the call site's source file (using `include_bytes!` semantics). The bytes are registered once via `OnceLock` on the first call and never re-read. The content hash is derived from the bytes at compile time.
+
+**Requirements:**
+
+- The app must mount `ferro::bundle` serving (e.g. `ferro::bundle::serve`) so that the hashed URL resolves to a response. Without this mount, the URL is emitted correctly but requests to it return 404.
+- The MIME type is inferred from the file extension (`.js` → `text/javascript`, `.css` → `text/css`, etc.).
+
+**Return type:** `&'static str` — the content-hashed URL string, valid for the lifetime of the process.
+
+## `ferro assets fetch`
+
+Downloads third-party assets (icon sets, font files) to a local path at author time, so they can be embedded with `asset!()` without depending on a CDN at runtime.
+
+```
+ferro assets fetch iconify
+ferro assets fetch fontsource
+```
+
+`ferro assets fetch iconify` downloads the Iconify offline bundle. `ferro assets fetch fontsource` downloads font files from the Fontsource CDN.
+
+The fetched files are written to a local directory. They are **not** auto-wired into `asset!()` calls or route generation. After fetching, reference the downloaded paths manually in `asset!()` calls.
+
 ## Error Reference
 
 | Variant | Meaning |

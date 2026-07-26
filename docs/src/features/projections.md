@@ -699,3 +699,32 @@ The agent must call `request_confirm_delete_<svc>` to obtain a token, then `conf
 ### Separation from developer-MCP CRUD tools
 
 `ferro-mcp/src/tools/crud_operations.rs` is a separate developer-facing tool (`ferro mcp` CLI) that provides SQL-level model introspection. It is not related to the projection-derived consumer-MCP CRUD tools described here. Do not conflate them.
+
+## Request-Scoped Render Deduplication
+
+When multiple intents or projection renders call the same data-fetch function with the same arguments in one request, `#[memoize]` coalesces them into a single in-flight `await` and returns the cached result to every caller.
+
+```rust,ignore
+use ferro::memoize;
+
+#[memoize]
+async fn fetch_stock(warehouse_id: String) -> Result<StockLevel, AppError> {
+    // body executes at most once per (call site, warehouse_id) per request
+    db_query(warehouse_id).await
+}
+```
+
+The `warehouse_id` / `StockLevel` names above are sample identifiers for illustration.
+
+**Semantics:**
+
+- **Scope:** request-scoped task-local store (`MEMO_STORE`). The cache is dropped with the request; there is no cross-request sharing.
+- **Coalescing:** concurrent callers waiting on the same key are all resumed when the first in-flight future resolves.
+- **Error caching:** a transient error is returned to all coalesced callers.
+- **Outside request scope:** calling a memoized fn outside a request context (e.g. in a background job or a test) is a graceful no-op — the fn runs un-memoized, without panicking.
+
+**Relationship to `eager_loading` / `BatchLoad`:**
+
+`#[memoize]` and `eager_loading`/`BatchLoad` address different levels of the same problem. `eager_loading` batches N rows into one query up front. `#[memoize]` deduplicates N calls to the same fn during a render pass. They complement each other and can be used together.
+
+`#[memoize]` is not a cross-request cache. For cross-request caching, use `ferro-cache`.
