@@ -25,24 +25,44 @@ decisions:
   - "ferro-bundle confirmed in Wave 1a of publish.yml (line 217), ferro-a2ui absent (D-13)"
   - "cargo publish --dry-run structural failure is expected: ferro-rs depends on wave-1a crates not yet published; publish.yml wave ordering resolves this"
 metrics:
-  duration: ~35min
-  completed: "2026-07-26T21:48:56Z"
-  tasks_completed: 1
-  tasks_pending: 2
+  duration: ~35min gate + reconcile
+  completed: "2026-07-27"
+  tasks_completed: 3
+  tasks_pending: 0
   files_changed: 6
 ---
 
 # Phase 262 Plan 03: Publish Gate Summary
 
-One-liner: CI-exact gate green (fmt/clippy/test/doc all exit 0), version resolved to 0.2.102, staged for operator-gated publish.
+One-liner: CI-exact gate green, version 0.2.102 published to crates.io — via an operator-gated force-push that also reconciled a diverged remote master (see Publish Outcome).
 
 ## Status
 
 | Task | Name | Status |
 |------|------|--------|
 | 1 | Full CI-exact gate + version resolution + commit staging | COMPLETE |
-| 2 | Pre-publish checklist + operator approval | AWAITING OPERATOR |
-| 3 | Commit, push, post-publish verification | NOT STARTED |
+| 2 | Pre-publish checklist + operator approval | APPROVED |
+| 3 | Commit, push, post-publish verification | COMPLETE (force-push; crates.io 0.2.102 live) |
+
+## Publish Outcome (2026-07-27)
+
+At the operator publish gate, the assumed clean fast-forward was **false**: GitHub
+`master` had diverged — re-rooted at ~Phase 257 into an independent ~74-commit line
+carrying a mistaken "Nearly" app + real framework work, published as 0.2.101, with
+**no common git ancestor** with local (which held the full history + v17.0). Operator
+directed: reconcile the legit remote work (except Nearly), then force-push.
+
+- **8 legit framework features cherry-picked** onto local master (Nearly excluded):
+  self-hosted Leaflet, `#[derive(Authenticatable)]`+ShareInertiaData, `Inertia::preflight()`,
+  generic `ModelUserProvider`, ferro-broadcast HMAC channel auth, MailLayout footer/color-scheme
+  fixes, ferro-json-ui filter-tab `type=button`, ferro-json-ui mobile DataTable `div+onclick`.
+- Full CI-exact gate re-run **green** on the reconciled tree (fmt/clippy `--all-features`/
+  test `--all-features`/doc `-Dwarnings`/mdbook). Cargo.lock synced (hmac/sha2).
+- **Force-pushed** `--force-with-lease` local `fc28fbe7` over remote `8154007b`; GitHub
+  master is now the canonical line, Nearly discarded. Safety branch `backup/pre-reconcile-262`.
+- **Publish run 30223533291: success** — Publish to crates.io ✅ + post-publish scaffold
+  smoke ✅. **ferro-rs 0.2.102 live on crates.io.** Release workflow (binaries/tag/brew) followed.
+- Full detail in memory `project_master_divergence_reconcile_262.md`.
 
 ## Task 1: Gate Results
 
@@ -156,11 +176,12 @@ No new network endpoints, no new auth paths, no new file access patterns. The do
 
 - [x] Staged files exist: `git status --short` shows M Cargo.toml, M Cargo.lock, M ferro-macros/src/lib.rs, M ferro-mcp/src/tools/generation_context.rs, M ferro-notifications/src/layout.rs, M framework/src/bundle.rs
 - [x] No polluting paths staged (.vite, config.json, phantom-158)
-- [x] Version 0.2.102 in Cargo.toml confirmed
-- [x] crates.io readings recorded (ferro-rs: 0.2.101, ferro-payments: 0.1.6)
-- [ ] Task 2: awaiting operator approval
-- [ ] Task 3: not started (requires operator go)
+- [x] Version 0.2.102 in Cargo.toml confirmed (now published on crates.io)
+- [x] crates.io readings recorded (ferro-rs pre-publish: 0.2.101, ferro-payments: 0.1.6)
+- [x] Task 2: operator approved (publish + reconcile force-push)
+- [x] Task 3: complete — force-pushed `fc28fbe7`; Publish run 30223533291 success; ferro-rs 0.2.102 live
 
-## Self-Check: PARTIAL — awaiting operator gate (Task 2) and publish (Task 3)
+## Self-Check: PASSED — ferro-rs 0.2.102 published to crates.io
 
-Task 1 gate is fully green. Task 3 commit hash will be recorded after operator approval.
+Task 1 gate green; Task 3 shipped via the operator-gated force-push that also reconciled the
+diverged remote master (see Publish Outcome). crates.io confirms 0.2.102.
