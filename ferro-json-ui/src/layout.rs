@@ -221,7 +221,9 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
         html.push_str("</div>");
     }
     if !props.fixed_bottom.is_empty() {
-        html.push_str("<nav class=\"p-4 space-y-1 border-t border-border\">");
+        // pb-safe: env(safe-area-inset-bottom) prevents bottom items from being clipped
+        // by Chrome mobile's dynamic URL bar when the sidebar is open full-height (dvh fix).
+        html.push_str("<nav class=\"fjui-sidebar__bottom p-4 space-y-1 border-t border-border\">");
         for item in &props.fixed_bottom {
             html.push_str(&layout_sidebar_nav_item(item));
         }
@@ -238,14 +240,18 @@ fn layout_sidebar_html(props: &SidebarProps) -> String {
 /// Render the header shell from HeaderProps for DashboardLayout.
 fn layout_header_html(props: &HeaderProps) -> String {
     // fjui-header: appearance (bg, border-bottom, height, sticky positioning, padding) handled by skin rule (SKIN-01).
-    // Layout utilities (z-30 relative flex items-center) stay inline (D-02). The header sits
-    // inside the sidebar-offset content column, so it must NOT re-pad for the sidebar itself
+    // Layout utilities (z-30 flex items-center) stay inline (D-02). `relative` is intentionally
+    // absent: the skin sets `position: sticky` on .fjui-header, and `relative` (a Tailwind
+    // utility outside @layer components) would override it, causing the header to scroll away
+    // (Finding A — sticky header fix). Sticky positioning creates its own stacking context,
+    // so z-30 remains effective without an explicit `relative`. The header sits inside the
+    // sidebar-offset content column, so it must NOT re-pad for the sidebar itself
     // (a legacy md:pl-72 here doubled the offset and pushed the workspace label off-left).
     // md:pl-64 offsets the header *content* to clear the sidebar, while the
     // border-bottom on the fjui-header element spans the full viewport width
     // (Finding 3 — full-width separator). The header element itself is
     // full-width; only its inner padding mirrors the content column offset.
-    let mut html = String::from("<header class=\"fjui-header z-30 relative flex items-center md:pl-64\">");
+    let mut html = String::from("<header class=\"fjui-header z-30 flex items-center md:pl-64\">");
     // Mobile hamburger button — visible only on small screens.
     html.push_str(&format!(
         "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \

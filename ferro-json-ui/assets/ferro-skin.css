@@ -896,9 +896,17 @@ input, select, textarea {
     width: 15rem;
     background-color: var(--color-surface);
     border-right: 1px solid var(--color-border);
-    height: 100vh;
+    height: 100vh;           /* fallback for browsers without dvh */
+    height: 100dvh;          /* dynamic viewport height: excludes browser chrome (URL bar, toolbars) */
     position: fixed;
     /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* Bottom nav group: safe-area padding so Impostazioni and other last items
+   * are not clipped by Chrome mobile's dynamic URL bar. Pairs with the dvh
+   * height fix above (Finding B). */
+  .fjui-sidebar__bottom {
+    padding-bottom: max(calc(var(--spacing) * 4), env(safe-area-inset-bottom, 0px));
   }
 
   .fjui-sidebar__group-label {
