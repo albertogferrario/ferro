@@ -175,9 +175,10 @@ pub(super) const SOURCE: &str = r#"
     // D-12: presentational integer-cents formatter.
     // T-256-15: the (n/100).toFixed(2) float is display-only; no stored/POSTed value
     // is ever derived from this string. The hidden input always carries integer cents.
+    // Italian decimal convention: comma separator (€1.234,56), not period.
     function formatMoney(cents, symbol) {
         var n = parseInt(cents, 10) || 0;
-        var s = (n / 100).toFixed(2);
+        var s = (n / 100).toFixed(2).replace('.', ',');
         return symbol ? symbol + s : s;
     }
 "#;

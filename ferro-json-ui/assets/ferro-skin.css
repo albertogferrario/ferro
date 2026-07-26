@@ -839,27 +839,34 @@ input, select, textarea {
 
   /* ── Tile ──────────────────────────────────────────────────────────────── */
 
-  /* Tile IS interactive (register product tile, tappable). */
+  /* Tile IS interactive (register product tile, tappable).
+   * Elevation treatment (LANG-04): NO border, shadow-card at rest; shadow-md on hover.
+   * Selected state uses inset ring so border-encoding is not needed. */
 
   .fjui-tile {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
     cursor: pointer;
     transition-property: background-color, box-shadow;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease);
 
-    &:hover        { background-color: var(--color-surface); }
+    &:hover        { background-color: var(--color-surface); box-shadow: var(--shadow-md); }
     &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
     &:active       { opacity: 0.85; }
     &:disabled     { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+    &[aria-pressed="true"], &[data-selected="true"] {
+      box-shadow: inset 0 0 0 2px var(--color-primary), var(--shadow-card);
+    }
   }
 
-  .fjui-tile--neutral    { /* Border-only, no accent */ }
-  .fjui-tile--success    { border-top: 2px solid var(--color-success); }
-  .fjui-tile--warning    { border-top: 2px solid var(--color-warning); }
-  .fjui-tile--destructive { border-top: 2px solid var(--color-destructive); }
+  /* Accent variants: top accent stripe preserved; outer border removed (LANG-04). */
+  .fjui-tile--neutral    { /* No accent stripe */ }
+  .fjui-tile--success    { box-shadow: inset 0 2px 0 var(--color-success), var(--shadow-card); }
+  .fjui-tile--warning    { box-shadow: inset 0 2px 0 var(--color-warning), var(--shadow-card); }
+  .fjui-tile--destructive { box-shadow: inset 0 2px 0 var(--color-destructive), var(--shadow-card); }
 
   .fjui-tile__name {
     font-size: var(--text-body-size);
@@ -1238,6 +1245,14 @@ input, select, textarea {
   /* fjui-table__cell--boolean: cell layout for status dot; renderer emits dot HTML. */
   .fjui-table__cell--boolean {
     /* structural layout only; dot appearance set by the status-dot HTML */
+  }
+
+  /* fjui-table__cell icon span: inline-flex wrapper emitted by ColumnFormat::Icon.
+   * vertical-align: middle prevents the inline-flex box from adding extra line-box
+   * height above the 40px row rhythm (F11: files table rows measured 46px → 40px). */
+  .fjui-table__cell > span[aria-hidden="true"] {
+    vertical-align: middle;
+    line-height: 0;
   }
 
   /* ── Tooltip primitive ───────────────────────────────────────────────────── */
@@ -2420,6 +2435,82 @@ input, select, textarea {
     }
   }
 
+  /* ── Bulk confirm dialog ─────────────────────────────────────────────────── */
+
+  /* Overlay elevation — shadow-md, NO border (LANG-04). Token-based colors so
+   * the dialog renders correctly in both light and dark modes. */
+
+  dialog.fjui-bulk-confirm {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: calc(var(--spacing) * 6);
+    max-width: 400px;
+    width: calc(100vw - var(--spacing) * 8);
+  }
+
+  dialog.fjui-bulk-confirm::backdrop {
+    background-color: rgb(0 0 0 / 0.4);
+  }
+
+  .fjui-bulk-confirm__title {
+    font-size: var(--text-section-size);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 calc(var(--spacing) * 2);
+  }
+
+  .fjui-bulk-confirm__body {
+    font-size: var(--text-body-size);
+    color: var(--color-text-muted);
+    margin: 0 0 calc(var(--spacing) * 6);
+  }
+
+  .fjui-bulk-confirm__actions {
+    display: flex;
+    gap: calc(var(--spacing) * 2);
+    justify-content: flex-end;
+  }
+
+  .fjui-bulk-confirm__cancel {
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover { background-color: color-mix(in oklab, var(--color-secondary) 88%, var(--color-text)); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active { opacity: 0.85; }
+  }
+
+  .fjui-bulk-confirm__proceed {
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 4);
+    font-size: var(--text-body-size);
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover { background-color: color-mix(in oklab, var(--color-secondary) 88%, var(--color-text)); }
+    &:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 2px; }
+    &:active { opacity: 0.85; }
+  }
+
+  .fjui-bulk-confirm__proceed--destructive {
+    background-color: var(--color-destructive);
+    color: var(--color-primary-foreground);
+
+    &:hover { background-color: color-mix(in oklab, var(--color-destructive) 88%, transparent); }
+  }
+
   /* ── Peek card ───────────────────────────────────────────────────────────── */
 
   /* Overlay elevation: shadow-only, NO border (LANG-04: shadow OR border, never both).
@@ -2562,12 +2653,14 @@ input, select, textarea {
 
   /* ── Highlights row ──────────────────────────────────────────────────────── */
 
-  /* Flat surface: 1px border-bottom only, NO shadow (LANG-04). 56px height per UI-SPEC. */
+  /* Card-elevation panel — shadow-card, NO border (LANG-04). 56px height per UI-SPEC.
+   * Reads as a distinct panel in both light (shadow visible) and dark (tint separation). */
 
   .fjui-highlights-row {
     background-color: var(--color-card);
-    border-bottom: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
     padding: 0 var(--spacing-4);
     min-height: 56px;
     display: flex;

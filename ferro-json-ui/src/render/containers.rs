@@ -1553,6 +1553,16 @@ pub(crate) fn render_selection_panel(
             .as_deref()
             .unwrap_or("No items selected"),
     );
+    let empty_body_html = props
+        .empty_body
+        .as_deref()
+        .map(|b| {
+            format!(
+                "<p class=\"fjui-empty-state__body\">{}</p>",
+                html_escape(b)
+            )
+        })
+        .unwrap_or_default();
     let currency_attr = props
         .currency
         .as_deref()
@@ -1606,15 +1616,16 @@ pub(crate) fn render_selection_panel(
          <div data-selection-lines \
          class=\"flex-1 overflow-y-auto min-h-0 scrollbar-none\"></div>\
          <div data-selection-empty \
-         class=\"flex-1 flex items-center justify-center py-8 px-4\">\
-         <div class=\"text-center\">\
-         <p class=\"text-sm text-text-muted\">{empty_message}</p>\
+         class=\"flex-1 flex items-center justify-center\">\
+         <div class=\"fjui-empty-state\">\
+         <p class=\"fjui-empty-state__title\">{empty_message}</p>\
+         {empty_body_html}\
          </div></div>\
          <div class=\"flex-shrink-0 flex items-center justify-between \
          py-3 border-t border-border\">\
          <span class=\"text-sm font-semibold text-text\">{total_label}</span>\
          <span data-selection-total{currency_attr} \
-         class=\"text-base font-semibold text-text tabular-nums\">0.00</span>\
+         class=\"text-base font-semibold text-text tabular-nums\">0,00</span>\
          </div>\
          <div class=\"flex-shrink-0 pt-2\">{confirm_children}</div>\
          </div>"

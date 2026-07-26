@@ -1531,12 +1531,16 @@ pub struct TileGridProps {
 pub struct SelectionPanelProps {
     /// Scope isolator matching the paired TileGrid `form_id`.
     pub form_id: String,
-    /// Placeholder text shown by the EmptyState when the panel has no line items.
+    /// Heading text shown in the EmptyState when the panel has no line items.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_message: Option<String>,
+    /// Optional supplementary body text shown below `empty_message` in the
+    /// EmptyState. Omit when no actionable guidance exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub empty_body: Option<String>,
     /// Optional currency symbol (e.g. "€") emitted as `data-selection-currency`
     /// on the running-total element. Neutral default is no symbol — the runtime
-    /// formats the integer-cents total with two decimals and a "." separator and
+    /// formats the integer-cents total with two decimals and a "," separator and
     /// prepends this symbol only when present. No locale tables; display only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,

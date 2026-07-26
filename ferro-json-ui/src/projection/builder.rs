@@ -667,6 +667,7 @@ fn emit_register_root(
         serde_json::to_value(SelectionPanelProps {
             form_id: "sale_form".into(),
             empty_message: None,
+            empty_body: None,
             currency: None,
             total_label: None,
         })

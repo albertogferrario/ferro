@@ -167,8 +167,8 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     if items.is_empty() {
         let _ = col_count; // silence unused — column count irrelevant when empty
         return format!(
-            "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
-             <p class=\"text-sm text-text-muted text-center max-w-md\">{}</p>\
+            "<div class=\"fjui-empty-state\">\
+             <p class=\"fjui-empty-state__title\">{}</p>\
              </div>",
             html_escape(empty_msg)
         );
@@ -724,8 +724,8 @@ pub(crate) fn render_media_card_grid(
 
     if items.is_empty() {
         return format!(
-            "<div class=\"rounded-lg border border-border bg-card min-h-40 py-8 px-6 flex items-center justify-center\">\
-             <p class=\"text-sm text-text-muted text-center max-w-md\">{}</p>\
+            "<div class=\"fjui-empty-state\">\
+             <p class=\"fjui-empty-state__title\">{}</p>\
              </div>",
             html_escape(empty_msg)
         );
@@ -788,7 +788,7 @@ pub(crate) fn render_media_card_grid(
             .unwrap_or_default();
 
         html.push_str(
-            "<div class=\"rounded-lg border border-border bg-card overflow-hidden flex flex-col\">",
+            "<div class=\"fjui-card overflow-hidden flex flex-col\">",
         );
 
         // Image section. If image_key resolves to null/empty, render a blank
