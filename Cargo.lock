@@ -2403,7 +2403,6 @@ version = "0.2.91"
 dependencies = [
  "bytes",
  "dashmap 6.1.0",
- "ferro-rs",
  "hex",
  "sha2",
  "thiserror 2.0.17",
@@ -2768,6 +2767,7 @@ dependencies = [
  "ferro-ai",
  "ferro-audit",
  "ferro-broadcast",
+ "ferro-bundle",
  "ferro-cache",
  "ferro-events",
  "ferro-inertia",

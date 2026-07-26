@@ -39,6 +39,7 @@ bytes = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 ferro-macros = { path = "../ferro-macros", version = "0.2" }
+ferro-bundle = { path = "../ferro-bundle", version = "0.2" }
 ferro-events = { path = "../ferro-events", version = "0.2" }
 ferro-queue = { path = "../ferro-queue", version = "0.2" }
 ferro-notifications = { path = "../ferro-notifications", version = "0.2" }

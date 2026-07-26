@@ -15,6 +15,8 @@ pub mod app;
 pub mod auth;
 pub mod authorization;
 pub mod broadcast;
+/// Content-hashed static asset bundles. See [`bundle::Bundle`] for the framework adapter.
+pub mod bundle;
 pub mod cache;
 pub mod config;
 pub mod container;
