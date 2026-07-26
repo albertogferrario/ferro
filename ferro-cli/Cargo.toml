@@ -41,10 +41,10 @@ toml_edit = "0.22"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ferro-json-ui = { path = "../ferro-json-ui", version = "0.2" }
-ferro-mcp = { path = "../ferro-mcp", version = "0.2" }
-ferro-ai = { path = "../ferro-ai", version = "0.2" }
-ferro-projections = { path = "../ferro-projections", version = "0.2", optional = true }
+ferro-json-ui = { path = "../ferro-json-ui", version = "0.3" }
+ferro-mcp = { path = "../ferro-mcp", version = "0.3" }
+ferro-ai = { path = "../ferro-ai", version = "0.3" }
+ferro-projections = { path = "../ferro-projections", version = "0.3", optional = true }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 rand = "0.8"
 sha2 = "0.10"

@@ -22,11 +22,11 @@ tracing = "0.1"
 async-trait = "0.1"
 dashmap = "6"
 tokio = { version = "1", features = ["sync", "rt"] }
-ferro-events    = { path = "../ferro-events",    version = "0.2" }
-ferro-broadcast = { path = "../ferro-broadcast", version = "0.2" }
+ferro-events    = { path = "../ferro-events",    version = "0.3" }
+ferro-broadcast = { path = "../ferro-broadcast", version = "0.3" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 sea-orm = { version = "1.0", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
 proptest = "1"
-ferro-reservation = { path = "../ferro-reservation", version = "0.2" }
+ferro-reservation = { path = "../ferro-reservation", version = "0.3" }

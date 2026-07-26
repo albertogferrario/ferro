@@ -21,7 +21,7 @@ sea-orm-migration = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 bytes = "1"
-ferro-storage = { path = "../ferro-storage", version = "0.2" }
+ferro-storage = { path = "../ferro-storage", version = "0.3" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }

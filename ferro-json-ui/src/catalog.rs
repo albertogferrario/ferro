@@ -2227,9 +2227,11 @@ mod tests {
         // values inlined in prop docs — canonical Variant/Tone/Size surfaced).
         // Budget bumped from 12 KB to 13 KB in Phase 256 Plan 03 (QuantityStepper + Numpad +
         // SelectionPanel added — 52 components total).
+        // Budget bumped from 13 KB to 14 KB in Phase 250 (CommandPalette, Combobox, DatePicker,
+        // InlineEdit, FilterBar, BulkBar, Peek, Map, LiveFragment added — v7.3 interactive suite).
         assert!(
-            bytes <= 13 * 1024,
-            "prompt() is {bytes} bytes, exceeds 13 KB budget (CONTEXT D-17)"
+            bytes <= 14 * 1024,
+            "prompt() is {bytes} bytes, exceeds 14 KB budget (CONTEXT D-17)"
         );
     }
 

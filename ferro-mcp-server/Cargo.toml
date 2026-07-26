@@ -14,16 +14,16 @@ categories = ["web-programming", "web-programming::http-server"]
 # The transition-execution kernel (dispatch_write + WriteDispatcher + WriteError)
 # lives in framework::write; this crate is framing that calls into it. No cycle:
 # `ferro-rs` (framework) does not depend on `ferro-mcp-server`.
-ferro-rs = { path = "../framework", version = "0.2", default-features = false, features = ["projections"] }
-ferro-projections = { path = "../ferro-projections", version = "0.2" }
-ferro-mcp-oauth = { path = "../ferro-mcp-oauth", version = "0.2" }
-ferro-audit = { path = "../ferro-audit", version = "0.2" }
+ferro-rs = { path = "../framework", version = "0.3", default-features = false, features = ["projections"] }
+ferro-projections = { path = "../ferro-projections", version = "0.3" }
+ferro-mcp-oauth = { path = "../ferro-mcp-oauth", version = "0.3" }
+ferro-audit = { path = "../ferro-audit", version = "0.3" }
 # Optional: pulled in only when the `confirmation` or `ai` feature is enabled.
 # default-features = false prevents the ferro-ai `llm` default from dragging
 # reqwest into ferro-mcp-server's dependency graph (D-06).
 # features = ["confirmation", "classifier-trait"]: confirmation store + ClassificationProvider
 # trait (reqwest-free); the `llm` feature is only added by `ai-live` (adds reqwest).
-ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true, default-features = false, features = ["confirmation", "classifier-trait"] }
+ferro-ai = { path = "../ferro-ai", version = "0.3", optional = true, default-features = false, features = ["confirmation", "classifier-trait"] }
 rand = { version = "0.8", optional = true }
 rmcp = { version = "0.12", default-features = false, features = ["server", "macros", "base64"] }
 serde = { version = "1.0", features = ["derive"] }

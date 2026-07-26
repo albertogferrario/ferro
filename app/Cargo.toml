@@ -19,10 +19,10 @@ async-trait = "0.1"
 dotenvy = "0.15"
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
-ferro-mcp-server = { path = "../ferro-mcp-server", version = "0.2" }
+ferro-mcp-server = { path = "../ferro-mcp-server", version = "0.3" }
 ferro-mcp-oauth = { path = "../ferro-mcp-oauth" }
-ferro-ai = { path = "../ferro-ai", version = "0.2", optional = true, default-features = false, features = ["confirmation"] }
-ferro-audit = { path = "../ferro-audit", version = "0.2" }
+ferro-ai = { path = "../ferro-ai", version = "0.3", optional = true, default-features = false, features = ["confirmation"] }
+ferro-audit = { path = "../ferro-audit", version = "0.3" }
 rand = "0.8"
 base64 = "0.22"
 tracing = "0.1"

@@ -11,7 +11,7 @@ keywords = ["text", "renderer", "projections", "ferro"]
 categories = ["web-programming", "web-programming::http-server"]
 
 [dependencies]
-ferro-projections = { path = "../ferro-projections", version = "0.2" }
+ferro-projections = { path = "../ferro-projections", version = "0.3" }
 
 [dev-dependencies]
 insta = { version = "1", features = ["yaml"] }
