@@ -127,6 +127,7 @@ pub async fn register() {
                 user_avatar: None,
                 logout_url: None,
                 theme_url: None,
+                profile_url: None,
             },
             sse_url: None,
         }),
