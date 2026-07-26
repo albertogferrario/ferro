@@ -4209,9 +4209,9 @@ operator-gated publish.
      `cargo clippy --all --all-targets -- -D warnings`, `cargo test --all-features`);
      `cargo publish -p ferro-rs` exits 0; the published version exceeds 0.2.89.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 - [x] 262-01-PLAN.md — LiveProjectionGuidance in generation_context (LiveFragment/#[memoize]/asset!()) + drift guard + SC-1 catalog evidence (wave 1)
-- [ ] 262-02-PLAN.md — docs/src sections for all three capabilities + mdBook build gate (wave 1)
+- [x] 262-02-PLAN.md — docs/src sections for all three capabilities + mdBook build gate (wave 1)
 - [ ] 262-03-PLAN.md — full CI-exact gate + operator-gated single crates.io publish (wave 2)
 
 ### Requirement → Phase Mapping (v17.0)
