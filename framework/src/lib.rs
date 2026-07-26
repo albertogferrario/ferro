@@ -68,7 +68,8 @@ pub use api::openapi::{
 
 pub use app::Application;
 pub use auth::{
-    Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, OptionalUser, UserProvider,
+    Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, ModelUserProvider,
+    OptionalUser, UserProvider,
 };
 pub use authorization::{AuthResponse, Authorizable, AuthorizationError, Authorize, Gate, Policy};
 pub use cache::{Cache, CacheConfig, CacheStore, InMemoryCache, RedisCache};
