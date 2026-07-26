@@ -4,7 +4,7 @@ milestone: v17.0
 milestone_name: Live Projection Surface
 status: verifying
 stopped_at: Completed 260-04-PLAN.md (catalog lockstep + end-to-end proof)
-last_updated: "2026-07-26T16:06:11.558Z"
+last_updated: "2026-07-26T16:40:49.582Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 260 (live-reactive-fragment) — EXECUTING
-Plan: 4 of 4
+Phase: 261
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-07-26
 
@@ -123,6 +123,7 @@ Progress: [██████████] 100%
 | 257 | 4 | - | - |
 | 258 | 3 | - | - |
 | 259 | 3 | - | - |
+| 260 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
