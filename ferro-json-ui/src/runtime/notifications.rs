@@ -6,6 +6,13 @@ pub(super) const SOURCE: &str = r#"
         var dropdown = document.querySelector('[data-notification-dropdown]');
         if (!toggleBtn || !dropdown) return;
 
+        // Idempotency guard: notification toggle is in the persistent frame
+        // (outside #ferro-json-ui). ferroRuntime() runs on every navigation;
+        // without this check each navigation adds another listener pair —
+        // the second toggle listener immediately re-hides the dropdown.
+        if (toggleBtn.__fjuiNotifBound) return;
+        toggleBtn.__fjuiNotifBound = true;
+
         toggleBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             var hidden = dropdown.classList.contains('hidden');

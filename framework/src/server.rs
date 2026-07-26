@@ -393,11 +393,15 @@ async fn health_response(query: &str) -> hyper::Response<FerroBody> {
 
 /// Serve the pre-built ferro-json-ui base CSS.
 ///
-/// In release builds: returns the compile-time embedded constant.
-/// In `dev-css` builds: reads `ferro-base.css` from disk at each call so that
-/// a running Tailwind `--watch` process can update the skin without a Rust
-/// recompile. The `dev-css` feature is forwarded from `ferro-json-ui/dev-css`
-/// via `framework/Cargo.toml [features] dev-css`.
+/// In release builds: returns the compile-time embedded constant with a
+/// long-lived immutable cache header (the `?v=` version param in the URL
+/// busts the cache on each crate publish).
+///
+/// In debug builds (`cfg(debug_assertions)`): serves `no-store` so that
+/// skin edits made between Rust rebuilds are always visible without waiting
+/// for a version bump. The `?v=` param only changes on publish, so a debug
+/// server that was rebuilt after a skin edit would otherwise serve stale CSS
+/// to any browser that already cached the previous response.
 ///
 /// No user input reaches this handler — the match arm is an exact string, and
 /// the body is static framework content.
@@ -406,11 +410,19 @@ fn serve_ferro_base_css() -> hyper::Response<FerroBody> {
     let css = ferro_json_ui::ferro_base_css();
     let css_bytes = css.as_bytes().to_vec();
     let len = css_bytes.len();
+    // Debug: no-store forces a fresh fetch on every reload so in-session skin
+    // edits are immediately visible without a version bump or cache clear.
+    // Release: immutable + long max-age; the ?v= param in the URL busts on publish.
+    let cache_control = if cfg!(debug_assertions) {
+        "no-store"
+    } else {
+        "public, max-age=31536000, immutable"
+    };
     hyper::Response::builder()
         .status(200)
         .header("Content-Type", "text/css; charset=utf-8")
         .header("Content-Length", len.to_string())
-        .header("Cache-Control", "public, max-age=31536000, immutable")
+        .header("Cache-Control", cache_control)
         .body(FerroBody::Full(Full::new(Bytes::from(css_bytes))))
         .unwrap()
 }
@@ -515,7 +527,13 @@ mod ferro_base_css_route_tests {
             .expect("Cache-Control header missing")
             .to_str()
             .unwrap();
-        assert_eq!(cc, "public, max-age=31536000, immutable");
+        // Tests run with debug_assertions=true → expect no-store.
+        // Release builds get the long-lived immutable header instead.
+        if cfg!(debug_assertions) {
+            assert_eq!(cc, "no-store");
+        } else {
+            assert_eq!(cc, "public, max-age=31536000, immutable");
+        }
 
         let cl = response
             .headers()

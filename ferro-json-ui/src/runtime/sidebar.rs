@@ -7,6 +7,14 @@ pub(super) const SOURCE: &str = r#"
         var backdropEl = document.querySelector('[data-sidebar-backdrop]');
         if (!toggleBtn || !sidebarEl) return;
 
+        // Idempotency guard: toggleBtn lives in the persistent frame (outside
+        // #ferro-json-ui) and is never re-created on navigation. ferroRuntime()
+        // is called once per navigation, so without this guard each navigation
+        // adds another click listener — two listeners make the sidebar open and
+        // immediately close on the same click, so the toggle appears broken.
+        if (toggleBtn.__fjuiSidebarBound) return;
+        toggleBtn.__fjuiSidebarBound = true;
+
         function openSidebar() {
             sidebarEl.classList.remove('hidden');
             if (backdropEl) backdropEl.classList.remove('hidden');
