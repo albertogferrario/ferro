@@ -614,7 +614,7 @@ fn main() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **D-06 resolution path**
    - What we know: A cycle exists (`ferro-bundle` → `ferro-rs` → ??? → `ferro-bundle`). Two viable resolutions identified (Option A: break ferro-bundle's dep on ferro-rs; Option B: emit `::ferro_bundle::Bundle` directly from macro).
