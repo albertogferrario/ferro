@@ -31,7 +31,7 @@ use crate::component::{
     ButtonGroupProps, ButtonProps, CalendarCellProps, CardProps, CheckboxListProps, CheckboxProps,
     ChecklistProps, CollapsibleProps, DataTableProps, DescriptionListProps, DetailPageProps,
     EmptyStateProps, FilterTabsProps, FormProps, FormSectionProps, GridProps, HeaderProps,
-    ImageProps, InputProps, KanbanBoardProps, MediaCardGridProps, ModalProps,
+    ImageProps, InputProps, KanbanBoardProps, LiveFragmentProps, MediaCardGridProps, ModalProps,
     NotificationDropdownProps, NumpadProps, PageHeaderProps, PaginationProps, ProgressProps,
     QuantityStepperProps, RawHtmlProps, SegmentedControlProps, SelectProps, SelectionPanelProps,
     SeparatorProps, SidebarLayoutProps, SidebarProps, SkeletonProps, StatCardProps,
@@ -376,6 +376,13 @@ static BUILTIN_SPECS: &[(&str, &str, SchemaFn, &[&str])] = &[
         "SelectionPanel",
         "Live client-side view of the register form state: lines appear as tiles are tapped, each with a per-line stepper + remove, a running total, an EmptyState, and a confirm slot; pins and scrolls under fill_viewport.",
         || to_value(schema_for!(SelectionPanelProps)).unwrap(),
+        &[],
+    ),
+    (
+        "LiveFragment",
+        "Binds a child template to a ferro-projection per-key snapshot; re-renders \
+         in place on each delta via server-push HTML over the ferro-broadcast WebSocket.",
+        || to_value(schema_for!(LiveFragmentProps)).unwrap(),
         &[],
     ),
     // === Form controls (form.rs) ===
@@ -1292,8 +1299,8 @@ mod tests {
         // History: 39 → 40 (CheckboxList) → 42 (DetailPage) → 43 (CheckboxGroup)
         // → 44 (MediaCardGrid) → 45 (StreamText) → 47 (SegmentedControl, SidebarLayout)
         // → 47 (DropdownMenu replaced by ActionGroup) → 48 (TileGrid) → 49 (FilterTabs)
-        // → 50 (QuantityStepper) → 51 (Numpad) → 52 (SelectionPanel).
-        assert_eq!(crate::render::BUILTIN_TYPES.len(), 52);
+        // → 50 (QuantityStepper) → 51 (Numpad) → 52 (SelectionPanel) → 53 (LiveFragment).
+        assert_eq!(crate::render::BUILTIN_TYPES.len(), 53);
     }
 
     // ── D-19 canonical enum-set drift guard ─────────────────────────────────
