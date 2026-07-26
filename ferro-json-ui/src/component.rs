@@ -739,6 +739,29 @@ pub struct StreamTextProps {
     pub loading_text: Option<String>,
 }
 
+/// Props for the `LiveFragment` builtin — binds a child template to a
+/// `ferro-projection` per-key snapshot for server-push in-place re-render.
+///
+/// First paint: the handler resolves `projection` + `key` via
+/// `ProjectionRuntime::read`, serializes the state (or uses `{}` when absent,
+/// per D-04), and passes the `Value` as the data scope for `template`.
+///
+/// On delta: the registered fragment hook re-renders `template` against the
+/// new snapshot and broadcasts `{ html }` on the same
+/// `projection.{name}.{key}` channel; the client runtime swaps `innerHTML`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct LiveFragmentProps {
+    /// ferro-projection NAME — the `Projection::NAME` const of the target projection.
+    #[serde(default)]
+    pub projection: String,
+    /// Per-key channel selector (the `key` segment of `projection.{name}.{key}`).
+    #[serde(default)]
+    pub key: String,
+    /// Child template spec rendered against the snapshot as its data scope.
+    /// A `serde_json::Value` encoding a valid ferro-json-ui `Spec`.
+    pub template: serde_json::Value,
+}
+
 /// A single item in a checklist.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ChecklistItem {
