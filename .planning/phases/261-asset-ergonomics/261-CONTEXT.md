@@ -81,13 +81,31 @@ Out of scope: catalog/`generation_context`/docs/publish (Phase 262 closes the lo
     registration. Do not force the two together.
 
 ### Crate wiring / re-export
-- **D-06:** **Re-export `ferro-bundle` from `framework` as `ferro::bundle`** so the
-  macro can emit `::ferro::bundle::Bundle` and compile wherever `ferro` is a dependency
-  — mirroring the `::ferro::memo::*` path `#[memoize]` reaches via
-  `crate::utils::ferro` (`ferro-macros/src/memoize.rs:44`). The `asset` macro lives in
-  `ferro-macros` (`#[proc_macro] pub fn asset`), re-exported as `ferro::asset!`, and
-  reuses the same `crate::utils::ferro` root-path helper so it works both inside the
-  workspace (`crate`) and downstream (`::ferro`).
+- **D-06 (REVISED 2026-07-26 after research — cycle blocker):** The macro reaches
+  `Bundle` via **`::ferro::bundle::Bundle`**, a re-export from `framework`. But a
+  naive re-export is a **hard Cargo cycle**: `ferro-bundle` today depends on `ferro-rs`
+  (the `framework` crate) solely for `Request`/`HttpResponse` (`ferro-bundle/src/lib.rs:34`)
+  and publishes in Wave 3 while framework is Wave 2 (`.github/workflows/publish.yml`).
+  **Resolution (user-selected: Decouple):**
+  1. **Drop the `ferro-rs` dependency from `ferro-bundle`.** Change its public serving
+     surface so it no longer names `ferro_rs` types — return a framework-agnostic value
+     (e.g. a small `BundleResponse { status, headers, body: Bytes }`, or `http::Response<Bytes>`).
+     The existing `serve_inner(path, if_none_match)` already contains the logic; lift it
+     to the public API. ferro-bundle becomes a **Wave 1a leaf** (move it in `publish.yml`).
+  2. **`framework` gains the thin adapter + re-export:** `pub mod bundle { pub use ferro_bundle::Bundle; }`
+     (→ `ferro::bundle`), plus a `Request → HttpResponse` adapter (e.g. `Bundle::serve(req)`
+     living in framework, or a free fn) that wraps ferro-bundle's framework-agnostic serve.
+     framework adds `ferro-bundle` as a dependency (now safe — no cycle, ferro-bundle is a leaf).
+  3. The `asset` macro lives in `ferro-macros` (`#[proc_macro] pub fn asset`), re-exported as
+     `ferro::asset!`, and emits `::ferro::bundle::Bundle::…` via the same `crate::utils::ferro`
+     root-path helper `#[memoize]` uses (`ferro-macros/src/memoize.rs:44`), so it resolves both
+     inside the workspace (`crate`) and downstream (`::ferro`) — consistent with `::ferro::memo`.
+  - **Blast radius is tiny:** ferro-bundle has **zero external code consumers** today (only its
+    own tests + README). The `Bundle::serve(Request)` API change is a breaking change to
+    ferro-bundle — explicitly allowed pre-1.0 — and only ferro-bundle's own tests/README/PROJECT.md
+    doc line need updating. Rejected alternatives: emit `::ferro_bundle::` directly (forces
+    consumer dep, inconsistent with `::ferro::memo`); move `Bundle` into framework (largest churn,
+    undoes the Phase 183 leaf-crate split).
 
 ### `ferro assets fetch` subcommand
 - **D-07:** **Command shape:** an `assets` command group with a `fetch` subcommand,
@@ -171,9 +189,12 @@ Out of scope: catalog/`generation_context`/docs/publish (Phase 262 closes the lo
   workspace (`crate`) and downstream (`::ferro`).
 
 ### Integration Points
-- **`framework/src/lib.rs`** — needs a `pub use ferro_bundle as bundle;` (or equivalent)
-  re-export so `::ferro::bundle::Bundle` resolves (D-06); add `ferro-bundle` to
-  `framework/Cargo.toml` deps if not already present.
+- **`ferro-bundle` decouple (D-06 revised):** remove `ferro-rs` from `ferro-bundle/Cargo.toml`;
+  make the public serve API framework-agnostic (lift `serve_inner`); move ferro-bundle to
+  **Wave 1a** in `.github/workflows/publish.yml`. Then **`framework`** adds `ferro-bundle` as a
+  dep and exposes `pub mod bundle { pub use ferro_bundle::Bundle; }` (→ `ferro::bundle`) plus a
+  `Request → HttpResponse` adapter. Update ferro-bundle's own tests/README + the `PROJECT.md:325`
+  / `ROADMAP.md:1949` doc lines that show the old `Bundle::serve(req)` signature.
 - **`ferro-macros/src/lib.rs`** — register `#[proc_macro] pub fn asset`; re-export as
   `ferro::asset!` from `framework`.
 - **App boot** — the app must still mount `Bundle::serve` on `/bundles/{filename}` (+
