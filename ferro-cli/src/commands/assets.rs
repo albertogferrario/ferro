@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use reqwest::blocking::Client;
+use reqwest::Url;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
@@ -70,6 +71,28 @@ pub fn write_icon(out_dir: &Path, prefix: &str, name: &str, svg: &str) -> anyhow
     std::fs::create_dir_all(dest.parent().expect("parent always exists for file path"))?;
     std::fs::write(&dest, svg)?;
     Ok(dest)
+}
+
+/// Validate a woff2 download URL returned by the Fontsource API.
+///
+/// Requires HTTPS and a host in the known Fontsource CDN allowlist.
+/// Rejects non-HTTPS schemes, bare IP addresses, and any host not in the list,
+/// preventing SSRF via a malicious or compromised API response.
+fn validate_woff2_url(url: &str) -> anyhow::Result<()> {
+    let parsed = Url::parse(url).map_err(|_| anyhow::anyhow!("invalid woff2 URL: {url:?}"))?;
+    if parsed.scheme() != "https" {
+        anyhow::bail!(
+            "woff2 URL must use HTTPS; got scheme {:?}",
+            parsed.scheme()
+        );
+    }
+    let host = parsed.host_str().unwrap_or("");
+    // Fontsource CDN hosts only. This allowlist is the SSRF control: any URL
+    // returned by the API that points elsewhere is rejected.
+    if !matches!(host, "cdn.fontsource.com" | "api.fontsource.org") {
+        anyhow::bail!("woff2 URL host {host:?} is not an allowed Fontsource host");
+    }
+    Ok(())
 }
 
 /// Return the destination path for a woff2 file without writing it.
@@ -194,6 +217,7 @@ fn fetch_fontsource(
                     continue;
                 }
             };
+            validate_woff2_url(woff2_url)?;
             let bytes = client.get(woff2_url).send()?.error_for_status()?.bytes()?;
             let dest = woff2_dest(out_dir, family, subset, *weight);
             std::fs::create_dir_all(dest.parent().expect("parent always exists"))?;
@@ -237,7 +261,7 @@ fn run_inner(subcommand: AssetsCommand) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_segment, woff2_dest, write_icon};
+    use super::{validate_segment, validate_woff2_url, woff2_dest, write_icon};
 
     // ── validate_segment ────────────────────────────────────────────────────
 
@@ -302,5 +326,52 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let d700 = woff2_dest(tmp.path(), "inter", "latin", 700);
         assert!(d700.ends_with("inter/latin-700-normal.woff2"));
+    }
+
+    // ── validate_woff2_url ──────────────────────────────────────────────────
+
+    #[test]
+    fn woff2_url_accepts_allowed_cdn_hosts() {
+        assert!(
+            validate_woff2_url(
+                "https://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2"
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_woff2_url(
+                "https://api.fontsource.org/v1/fonts/inter/latin-400-normal.woff2"
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn woff2_url_rejects_non_allowlisted_host() {
+        assert!(
+            validate_woff2_url("https://evil.example/fonts/inter.woff2").is_err()
+        );
+    }
+
+    #[test]
+    fn woff2_url_rejects_http_scheme() {
+        assert!(
+            validate_woff2_url(
+                "http://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn woff2_url_rejects_file_scheme() {
+        assert!(validate_woff2_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn woff2_url_rejects_metadata_endpoint() {
+        assert!(
+            validate_woff2_url("http://169.254.169.254/latest/meta-data/").is_err()
+        );
     }
 }
