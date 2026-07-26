@@ -759,7 +759,13 @@ mod tests {
         // collection reconciliation code in the LiveFragment renderer.
         let src = include_str!("containers.rs");
         // The renderer must not implement keyed diffing / reconciliation.
-        assert!(!src.contains("reconcile"), "no list reconciliation in v17.0");
-        assert!(!src.contains("keyed_diff"), "no keyed list diffing in v17.0");
+        assert!(
+            !src.contains("reconcile"),
+            "no list reconciliation in v17.0"
+        );
+        assert!(
+            !src.contains("keyed_diff"),
+            "no keyed list diffing in v17.0"
+        );
     }
 }

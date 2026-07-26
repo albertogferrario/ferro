@@ -3522,12 +3522,18 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_live_fragment(el, &spec, &json!({"total": 42}), 0);
-        assert!(html.contains("data-live-fragment"), "container marker present; got: {html}");
+        assert!(
+            html.contains("data-live-fragment"),
+            "container marker present; got: {html}"
+        );
         assert!(
             html.contains(r#"data-channel="projection.inventory.dashboard.warehouse-a""#),
             "channel attribute present; got: {html}"
         );
-        assert!(html.contains("hello"), "child template rendered; got: {html}");
+        assert!(
+            html.contains("hello"),
+            "child template rendered; got: {html}"
+        );
     }
 
     #[test]
@@ -3547,7 +3553,10 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_live_fragment(el, &spec, &json!({}), 0);
-        assert!(html.contains("data-live-fragment"), "container present; got: {html}");
+        assert!(
+            html.contains("data-live-fragment"),
+            "container present; got: {html}"
+        );
         assert!(
             !html.contains("<!-- ferro-json-ui:"),
             "no decode/parse error comment; got: {html}"

@@ -55,8 +55,14 @@ mod tests {
     #[test]
     fn live_fragment_runtime_no_wasm_no_state() {
         let src = super::SOURCE;
-        assert!(src.contains("setupLiveFragments"), "must define the setup fn");
-        assert!(src.contains("data-live-fragment"), "must scan for the marker");
+        assert!(
+            src.contains("setupLiveFragments"),
+            "must define the setup fn"
+        );
+        assert!(
+            src.contains("data-live-fragment"),
+            "must scan for the marker"
+        );
         assert!(src.contains("/_ferro/ws"), "must use the fixed WS path");
         assert!(src.contains("innerHTML"), "must swap innerHTML");
         // SC3: no WASM, no client-side reactive state, no eval.
