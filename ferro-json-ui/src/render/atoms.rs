@@ -720,15 +720,20 @@ pub(crate) fn render_empty_state(
         "<div class=\"fjui-empty-state flex items-center justify-center min-h-40 py-8 px-6\">\
          <div class=\"text-center max-w-md\">",
     );
+    if let Some(ref icon_svg) = props.icon {
+        html.push_str(&format!(
+            "<div class=\"fjui-empty-state__icon\" aria-hidden=\"true\">{icon_svg}</div>"
+        ));
+    }
     if !props.title.is_empty() {
         html.push_str(&format!(
-            "<h3 class=\"text-base font-semibold text-text mb-2\">{}</h3>",
+            "<h3 class=\"fjui-empty-state__title\">{}</h3>",
             html_escape(&props.title)
         ));
     }
     if let Some(ref desc) = props.description {
         html.push_str(&format!(
-            "<p class=\"text-sm text-text-muted\">{}</p>",
+            "<p class=\"fjui-empty-state__body\">{}</p>",
             html_escape(desc)
         ));
     }

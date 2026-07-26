@@ -1026,6 +1026,10 @@ pub struct CollapsibleProps {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct EmptyStateProps {
     pub title: String,
+    /// Raw SVG string rendered inside `.fjui-empty-state__icon`. Callers supply the
+    /// contextual icon (shopping-cart for orders, calendar for bookings, etc.).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -2637,12 +2637,13 @@ input, select, textarea {
 
   /* ── Home widget grid ────────────────────────────────────────────────────── */
 
-  /* Flat-surface card: 1px border, NO shadow (LANG-04). */
+  /* Elevated card surface — matches .fjui-card (borderless + shadow, LANG-04). */
 
   .fjui-widget-card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-border);
+    border: none;
     border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
     padding: var(--spacing-4);
   }
 
