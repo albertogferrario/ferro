@@ -311,7 +311,8 @@ pub fn serve_path(path: &str, if_none_match: Option<&str>) -> BundleResponse {
     }
 
     // 404 fallback (defensive — caller is expected to route only /bundles/... here).
-    BundleResponse::new(404).header("Content-Type", "text/plain")
+    // No Content-Type header: the body is empty, so the header would be misleading.
+    BundleResponse::new(404)
 }
 
 // ── Test isolation helper (D-13) ───────────────────────────────────────
