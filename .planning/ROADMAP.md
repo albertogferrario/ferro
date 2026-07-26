@@ -4117,7 +4117,7 @@ plugin-not-builtin —, non-goals, honest limitations, deferred list-diffing dir
   key + child template); `ferro-projection` render hook that re-renders the fragment on
   delta; server-push-HTML transport on the existing channel; a small no-WASM client runtime
   that swaps inner HTML. One binding pattern (per-key snapshot).
-- [ ] **Phase 261: `asset!()` ergonomics** — `asset!("path")` macro (embed + content-type
+- [x] **Phase 261: `asset!()` ergonomics** — `asset!("path")` macro (embed + content-type (completed 2026-07-26)
   inference + `ferro-bundle` registration returning the hashed URL); opt-in
   `ferro assets fetch` subcommand for Iconify sets + Fontsource families through the existing
   pipeline.
@@ -4186,7 +4186,7 @@ pipeline); `ferro-cli` (fetch subcommand).
      byte-identical (pipeline passthrough guarantee preserved).
   3. `ferro assets fetch` downloads an Iconify set / Fontsource family into the asset dir on
      the Rust toolchain alone; it is opt-in and absent from a normal `cargo build`.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
   - Wave 0: [ ] `261-01-PLAN.md` — Decouple ferro-bundle from ferro-rs (leaf crate) + `mime_from_ext` + publish-wave move
   - Wave 1: [ ] `261-02-PLAN.md` — `ferro::bundle` re-export + `Bundle::serve` Request adapter (framework side of D-06)
   - Wave 1: [ ] `261-03-PLAN.md` — `ferro assets fetch` CLI (Iconify/Fontsource, validated, rustls-tls)
