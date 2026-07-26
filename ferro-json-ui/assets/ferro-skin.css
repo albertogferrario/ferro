@@ -1434,13 +1434,18 @@ input, select, textarea {
     width: min(640px, 90vw);
     max-height: 80vh;
     overflow: hidden;
-    display: flex;
     flex-direction: column;
     padding: 0;
     margin: 15vh auto auto;
     transition-property: opacity, transform;
     transition-duration: var(--motion-duration-base);
     transition-timing-function: var(--motion-ease);
+  }
+
+  /* display only when open — an unconditional display would override the UA's
+   * dialog:not([open]) { display: none } and leave an empty panel in the page flow. */
+  .fjui-palette[open] {
+    display: flex;
   }
 
   /* Backdrop: semi-transparent color-background overlay. */
