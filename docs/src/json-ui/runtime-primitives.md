@@ -59,3 +59,37 @@ The runtime scans the DOM once, when `DOMContentLoaded` fires. Elements inserted
 ### Performance, not access control
 
 `data-lazy-hero` defers a fetch the browser would otherwise issue at page load. It does not prevent a fetch. Once the element approaches the viewport, the runtime initiates the fetch. Do not use this attribute to gate paid content or otherwise restrict resource access — that is an access-control concern, not a performance concern.
+
+## `data-live-fragment` / `data-channel`
+
+Emitted by the `LiveFragment` builtin on its container `<div>`. The runtime opens one shared WebSocket to `/_ferro/ws` per page, subscribes to each declared channel, and swaps the container's `innerHTML` when a `fragment` event arrives for the matching channel.
+
+### Contract
+
+| Attribute | Set by | Description |
+|-----------|--------|-------------|
+| `data-live-fragment` | `LiveFragment` renderer | Opt-in marker; selects the container for WebSocket subscription |
+| `data-channel` | `LiveFragment` renderer | Subscription key — `"projection.{name}.{key}"` where `name` and `key` are HTML-escaped by the server |
+
+### Channel format
+
+`projection.{projection_name}.{projection_key}` — matches the channel the server publishes on via `ferro-projection`. Both segments are HTML-escaped server-side; channel values are server-controlled and not user-injectable.
+
+### Subscribe + swap
+
+The runtime:
+
+1. Collects all `[data-live-fragment]` containers on `DOMContentLoaded` and builds a `channelMap` keyed by `data-channel`.
+2. Opens one shared WebSocket to `/_ferro/ws`.
+3. On `open`, sends `{ "type": "subscribe", "channel": "..." }` for each channel.
+4. On `message`, matches `{ "type": "event", "event": "fragment", "channel": "...", "data": { "html": "..." } }` and sets `target.innerHTML = msg.data.html`.
+
+No WASM, no client-side reactive state, no `eval`.
+
+### Limitations
+
+- One `LiveFragment` element per unique channel per page (first container wins for duplicate channels).
+- No automatic reconnect on WebSocket error.
+- No list or collection reconciliation — the entire container HTML is replaced on each delta. This is an explicit non-goal; one binding pattern is supported.
+
+Elements inserted into the DOM after `DOMContentLoaded` are not observed. The `LiveFragment` builtin always renders its container in the initial server HTML.

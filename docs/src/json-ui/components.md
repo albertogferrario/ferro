@@ -34,6 +34,7 @@ The sections below document every built-in component: its props table (with JSON
 | **Commerce / Register** | Tile, TileGrid, SelectionPanel, FilterTabs, QuantityStepper, Numpad |
 | **Kanban** | KanbanBoard, KanbanColumn |
 | **Extensible** | RawHtml, Plugin (see [Plugins](plugins.md)) |
+| **Live / Real-time** | LiveFragment |
 
 ---
 
@@ -1720,6 +1721,43 @@ connection closes, causing the component to re-fetch the endpoint in a loop.
 **Security.** Tokens are appended as plain text nodes — `innerHTML` is never
 called. Streamed content cannot inject HTML or execute scripts regardless of
 its content.
+
+---
+
+## Live / Real-time Components
+
+### LiveFragment
+
+Binds a child template to a ferro-projection per-key snapshot and re-renders it in place when the projection emits a delta — server-authoritatively, without a page reload or client-side state.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `projection` | `string` | ferro-projection NAME (the `Projection::NAME` const) |
+| `key` | `string` | Per-key channel selector; combined with `projection` to form the subscription channel |
+| `template` | `object` | Child JSON-UI spec rendered against the snapshot as its data scope |
+
+```json
+"live_stock": {
+  "type": "LiveFragment",
+  "props": {
+    "projection": "inventory",
+    "key": "warehouse-a",
+    "template": {
+      "$schema": "ferro-json-ui/v2",
+      "root": "count",
+      "elements": {
+        "count": { "type": "Text", "props": { "content": { "$data": "/count" } } }
+      }
+    }
+  }
+}
+```
+
+The `"inventory"` / `"warehouse-a"` values above are sample identifiers for illustration.
+
+When no snapshot exists for the key at first paint, the container renders empty (the child template receives `{}` as data). On each server delta the client runtime swaps the container's `innerHTML` without a page reload.
+
+One binding pattern is supported: a single per-key snapshot per container. There is no list or collection reconciliation — the whole container HTML is replaced on each delta. For the client subscription details see [Runtime Primitives](runtime-primitives.md#data-live-fragment--data-channel).
 
 ---
 
