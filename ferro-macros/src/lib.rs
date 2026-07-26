@@ -11,6 +11,7 @@
 use proc_macro::TokenStream;
 
 mod action;
+mod asset;
 mod describe;
 mod domain_error;
 mod ferro_test;
@@ -267,6 +268,23 @@ pub fn handler(attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
     action::action_impl(attr, input)
+}
+
+/// Embed a static asset at compile time and register it as a content-hashed
+/// [`ferro::bundle::Bundle`], returning the hashed URL as `&'static str`.
+///
+/// The path is resolved relative to the source file (call-site-source-relative,
+/// identical to `include_bytes!`). Registration is lazy and happens once per call
+/// site, so `asset!()` is safe inside per-request / hot render paths.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let url: &'static str = ferro::asset!("assets/app.js");
+/// ```
+#[proc_macro]
+pub fn asset(input: TokenStream) -> TokenStream {
+    asset::asset_impl(input)
 }
 
 /// Mark an `async fn` or `async` impl method for request-scoped memoization.
