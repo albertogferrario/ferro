@@ -15,9 +15,9 @@ use crate::action::HttpMethod;
 use crate::component::{
     ActionGroupProps, ActionItem, ButtonGroupProps, CardAppearance, CardProps, CollapsibleProps,
     DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout, FormSectionProps,
-    GapSize, GridProps, KanbanBoardProps, ModalProps, PageHeaderProps, SegmentedControlProps,
-    SegmentedItem, SelectionPanelProps, SidebarLayoutItem, SidebarLayoutProps, Size, TabsProps,
-    TileGridProps, Variant,
+    GapSize, GridProps, KanbanBoardProps, LiveFragmentProps, ModalProps, PageHeaderProps,
+    SegmentedControlProps, SegmentedItem, SelectionPanelProps, SidebarLayoutItem,
+    SidebarLayoutProps, Size, TabsProps, TileGridProps, Variant,
 };
 use crate::data::resolve_path;
 use crate::spec::{Element, Spec};
@@ -1627,6 +1627,55 @@ pub(crate) fn render_selection_panel(
          <div class=\"flex-shrink-0 pt-2\">{confirm_children}</div>\
          </div>"
     )
+}
+
+/// Render the `LiveFragment` builtin (Phase 260, D-04/D-05).
+///
+/// `data` IS the pre-resolved snapshot `Value` (the caller resolved it via
+/// `ProjectionRuntime::read`, using `{}` when absent). The child template is
+/// rendered against it through the existing binding engine; the result is
+/// wrapped in a marked container carrying the projection channel so the client
+/// runtime can subscribe and swap `innerHTML` on delta.
+// Plan 04 wires the dispatch arm in render/mod.rs; until then, allow dead_code
+// so clippy stays clean on this plan's boundary.
+#[allow(dead_code)]
+pub(crate) fn render_live_fragment(
+    el: &Element,
+    _spec: &Spec,
+    data: &Value,
+    _depth: usize,
+) -> String {
+    let props: LiveFragmentProps = match serde_json::from_value(el.props.clone()) {
+        Ok(p) => p,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: failed to decode LiveFragment props: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    let child_spec: crate::spec::Spec = match serde_json::from_value(props.template.clone()) {
+        Ok(s) => s,
+        Err(e) => {
+            return format!(
+                "<!-- ferro-json-ui: LiveFragment template parse error: {} -->",
+                html_escape(&e.to_string())
+            );
+        }
+    };
+
+    // D-05: `data` (the snapshot) is the child template's data scope; the
+    // existing render_spec_to_html engine performs all expression binding.
+    let inner_html = super::render_spec_to_html(&child_spec, data);
+
+    let channel = format!(
+        "projection.{}.{}",
+        html_escape(&props.projection),
+        html_escape(&props.key)
+    );
+
+    format!(r#"<div data-live-fragment data-channel="{channel}">{inner_html}</div>"#)
 }
 
 #[cfg(test)]
@@ -3455,6 +3504,56 @@ mod tests {
         assert!(
             html2.contains("Cart is empty"),
             "custom message respected; got: {html2}"
+        );
+    }
+
+    #[test]
+    fn render_live_fragment_renders_container_with_channel() {
+        // Build child spec: a Text element with content "hello"
+        let child = build_spec(vec![(
+            "content",
+            Element::new("Text").prop("content", "hello"),
+        )]);
+        let template = serde_json::to_value(&child).expect("serialize child");
+        // Build host spec with LiveFragment at root
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("LiveFragment")
+                .prop("projection", "inventory.dashboard")
+                .prop("key", "warehouse-a")
+                .prop("template", template),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_live_fragment(el, &spec, &json!({"total": 42}), 0);
+        assert!(html.contains("data-live-fragment"), "container marker present; got: {html}");
+        assert!(
+            html.contains(r#"data-channel="projection.inventory.dashboard.warehouse-a""#),
+            "channel attribute present; got: {html}"
+        );
+        assert!(html.contains("hello"), "child template rendered; got: {html}");
+    }
+
+    #[test]
+    fn render_live_fragment_absent_snapshot_renders_container() {
+        // D-04: empty object snapshot must render the container, never error.
+        let child = build_spec(vec![(
+            "content",
+            Element::new("Text").prop("content", "static"),
+        )]);
+        let template = serde_json::to_value(&child).expect("serialize child");
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("LiveFragment")
+                .prop("projection", "p")
+                .prop("key", "k")
+                .prop("template", template),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_live_fragment(el, &spec, &json!({}), 0);
+        assert!(html.contains("data-live-fragment"), "container present; got: {html}");
+        assert!(
+            !html.contains("<!-- ferro-json-ui:"),
+            "no decode/parse error comment; got: {html}"
         );
     }
 }
