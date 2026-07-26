@@ -416,8 +416,8 @@ mod tests {
         // pub(crate) in ferro-json-ui, so this side can't assert it relationally).
         assert_eq!(
             catalog.components.len(),
-            52,
-            "Catalog should contain all 52 built-in components (incl. TileGrid, FilterTabs, QuantityStepper, Numpad, SelectionPanel), got {}",
+            53,
+            "Catalog should contain all 53 built-in components (incl. TileGrid, FilterTabs, QuantityStepper, Numpad, SelectionPanel, LiveFragment), got {}",
             catalog.components.len()
         );
 
@@ -475,6 +475,7 @@ mod tests {
             "QuantityStepper",
             "Numpad",
             "SelectionPanel",
+            "LiveFragment",
         ];
         for name in &expected {
             assert!(names.contains(name), "Missing component: {name}");
