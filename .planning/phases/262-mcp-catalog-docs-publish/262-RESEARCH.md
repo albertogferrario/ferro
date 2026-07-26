@@ -456,16 +456,15 @@ RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --all-features
 | A2 | `cargo doc --no-deps --all-features` with `RUSTDOCFLAGS=-Dwarnings` matches the CI Docs job exactly | Common Pitfalls / CI gate | Risk LOW: verified against `ci.yml:72-74` — exact match |
 | A3 | `ferro-payments 0.1.6` on crates.io is current (will not need re-publish) | D-12 | Risk LOW: memory confirms 0.1.6 shipped with v16.6; no code changes in v17.0 |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **D-02: Does the LiveFragment per-component catalog output (props schema) need any supplemental description?**
-   - What we know: `LiveFragmentProps` has `projection` (String), `key` (String), `template` (serde_json::Value). The `BUILTIN_SPECS` entry at `catalog.rs:382` has a description string: "Binds a child template to a ferro-projection per-key snapshot; re-renders in place on each delta via server-push HTML over the ferro-broadcast WebSocket." The `schemars`-derived schema for `LiveFragmentProps` gives types but minimal field descriptions.
-   - What's unclear: Whether agents reading the catalog JSON Schema for `LiveFragment` get enough guidance on `template` (it's a `Value` → `{}` in JSON Schema, not a nested Spec schema). A `BUILTIN_SPECS` description line for the `template` field may help.
-   - Recommendation: During execution, inspect the actual catalog output for `LiveFragment` (call `execute(None)` and print `component_schemas["LiveFragment"]`). If `template` shows as `{}` or `true`, add a supplemental description in the `BUILTIN_SPECS` entry; if it shows a nested structure, no change needed. This is a D-02 discretion call.
+1. **RESOLVED — D-02: LiveFragment per-component catalog output needs NO supplemental description; no `catalog.rs` change.**
+   - What we know: `LiveFragmentProps` has `projection` (String), `key` (String), `template` (serde_json::Value). The `BUILTIN_SPECS` entry at `catalog.rs:382` already carries an adequate description string: "Binds a child template to a ferro-projection per-key snapshot; re-renders in place on each delta via server-push HTML over the ferro-broadcast WebSocket." The `schemars`-derived schema gives types; `template` renders as `{}` in JSON Schema (a `Value` slot), which is the SAME shape every other container component with a child/template slot already exposes — a known, accepted pattern, not a LiveFragment-specific gap.
+   - **Resolution (pre-execution scope decision):** No `BUILTIN_SPECS` / `catalog.rs` modification. The existing component description is sufficient; the WHERE/WHEN/HOW guidance for `template` is delivered by the new `generation_context` `LiveProjectionGuidance` prose (Plan 01), not by the per-field JSON Schema. **Plan 01 stays scoped to `ferro-mcp/src/tools/generation_context.rs` only** — `ferro-json-ui/src/catalog.rs` is NOT modified and is NOT added to Plan 01's `files_modified`. Plan 01 Task 2's catalog work is strictly verification-only (re-run the two pre-satisfied drift guards + record evidence, per D-01).
 
-2. **D-13 publish.yml verification: is `ferro-bundle` Wave 1a?**
-   - What we know: `publish.yml:217` contains `WAVE1A_CRATES="... ferro-bundle"` — `ferro-bundle` is already in Wave 1a. [VERIFIED: publish.yml line 217]
-   - No action needed. D-13 is pre-satisfied.
+2. **RESOLVED — D-13 publish.yml verification: `ferro-bundle` is already Wave 1a.**
+   - `publish.yml:217` contains `WAVE1A_CRATES="... ferro-bundle"` — `ferro-bundle` is already in Wave 1a. [VERIFIED: publish.yml line 217]
+   - No action needed. D-13 is pre-satisfied; Plan 03's publish.yml step is verify-only.
 
 ## Environment Availability
 
