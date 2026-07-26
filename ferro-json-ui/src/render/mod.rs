@@ -86,6 +86,8 @@ pub(crate) const BUILTIN_TYPES: &[&str] = &[
     "SidebarLayout",
     "ActionGroup",
     "SelectionPanel",
+    // Live reactive primitive — ferro-projection per-key snapshot binding (Phase 260)
+    "LiveFragment",
     // Form controls (form.rs)
     "Form",
     "Input",
@@ -224,6 +226,7 @@ pub(crate) fn render_element(id: &str, spec: &Spec, data: &Value, depth: usize) 
         "SidebarLayout" => containers::render_sidebar_layout(el, spec, data, depth),
         "ActionGroup" => containers::render_action_group(el, spec, data, depth),
         "SelectionPanel" => containers::render_selection_panel(el, spec, data, depth),
+        "LiveFragment" => containers::render_live_fragment(el, spec, data, depth),
         // Form controls
         "Form" => form::render_form(el, spec, data, depth),
         "Input" => form::render_input(el, spec, data, depth),

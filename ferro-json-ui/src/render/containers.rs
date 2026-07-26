@@ -1636,9 +1636,6 @@ pub(crate) fn render_selection_panel(
 /// rendered against it through the existing binding engine; the result is
 /// wrapped in a marked container carrying the projection channel so the client
 /// runtime can subscribe and swap `innerHTML` on delta.
-// Plan 04 wires the dispatch arm in render/mod.rs; until then, allow dead_code
-// so clippy stays clean on this plan's boundary.
-#[allow(dead_code)]
 pub(crate) fn render_live_fragment(
     el: &Element,
     _spec: &Spec,
