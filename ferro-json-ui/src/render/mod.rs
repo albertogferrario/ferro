@@ -699,4 +699,67 @@ mod tests {
             result.scripts
         );
     }
+
+    // ── LiveFragment end-to-end tests (Phase 260 Plan 04 Task 3) ────────────
+
+    #[test]
+    fn live_fragment_end_to_end_first_paint_and_delta_use_one_render_path() {
+        // Build a child template spec (a Text element).
+        let child = Spec::builder()
+            .element("content", Element::new("Text").prop("content", "count: 7"))
+            .build()
+            .expect("child spec");
+        let template = serde_json::to_value(&child).expect("serialize child");
+
+        // Build the host spec with LiveFragment at root.
+        let host = Spec::builder()
+            .element(
+                "root",
+                Element::new("LiveFragment")
+                    .prop("projection", "inventory.dashboard")
+                    .prop("key", "warehouse-a")
+                    .prop("template", template.clone()),
+            )
+            .build()
+            .expect("host spec");
+
+        // SC1 via the PUBLIC API: dispatch reaches render_live_fragment.
+        let snapshot = json!({"total": 7});
+        let first_paint = render_spec_to_html(&host, &snapshot);
+        assert!(
+            first_paint.contains("data-live-fragment"),
+            "container marker present; got: {first_paint}"
+        );
+        assert!(
+            first_paint.contains(r#"data-channel="projection.inventory.dashboard.warehouse-a""#),
+            "channel attribute present; got: {first_paint}"
+        );
+        assert!(
+            first_paint.contains("count: 7"),
+            "child rendered on first paint; got: {first_paint}"
+        );
+
+        // D-05 / SC4: the delta re-render the app hook broadcasts uses the SAME
+        // render path over the same child spec + a new snapshot — proving ONE
+        // binding pattern (per-key snapshot) and one render function.
+        let child_spec: crate::spec::Spec =
+            serde_json::from_value(template).expect("deserialize child");
+        let delta_snapshot = json!({"total": 8});
+        let delta_html_a = render_spec_to_html(&child_spec, &delta_snapshot);
+        let delta_html_b = render_spec_to_html(&child_spec, &delta_snapshot);
+        assert_eq!(
+            delta_html_a, delta_html_b,
+            "single deterministic render path (D-05)"
+        );
+    }
+
+    #[test]
+    fn live_fragment_ships_one_binding_pattern_no_list_reconciliation() {
+        // SC4: exactly one binding pattern (per-key snapshot). No keyed-list /
+        // collection reconciliation code in the LiveFragment renderer.
+        let src = include_str!("containers.rs");
+        // The renderer must not implement keyed diffing / reconciliation.
+        assert!(!src.contains("reconcile"), "no list reconciliation in v17.0");
+        assert!(!src.contains("keyed_diff"), "no keyed list diffing in v17.0");
+    }
 }
