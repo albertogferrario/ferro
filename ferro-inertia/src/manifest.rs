@@ -56,6 +56,29 @@ impl ViteManifest {
 /// Global cache for the parsed manifest.
 static MANIFEST: OnceLock<Option<ViteManifest>> = OnceLock::new();
 
+/// Verify — without caching — that `entry_point` resolves in the manifest at
+/// `manifest_path`. Returns a human-readable error describing exactly what's
+/// missing. Used for fail-fast boot validation (see `InertiaConfig::verify_production_assets`).
+pub fn verify_manifest(manifest_path: &str, entry_point: &str) -> Result<(), String> {
+    match ViteManifest::load(manifest_path) {
+        None => Err(format!(
+            "Vite manifest not found or unparseable at '{manifest_path}'. \
+             Run the frontend build (`npm run build`)."
+        )),
+        Some(m) => {
+            if m.resolve(entry_point).is_some() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "entry point '{entry_point}' is not present in the Vite manifest \
+                     '{manifest_path}'. Check the Vite `rollupOptions.input` and that \
+                     the build output matches InertiaConfig::entry_point."
+                ))
+            }
+        }
+    }
+}
+
 /// Resolve production asset paths from the Vite manifest.
 ///
 /// On first call, reads and parses `manifest_path`. Subsequent calls return
@@ -144,6 +167,27 @@ mod tests {
     #[test]
     fn load_nonexistent_returns_none() {
         assert!(ViteManifest::load("/nonexistent/path/manifest.json").is_none());
+    }
+
+    #[test]
+    fn verify_manifest_ok_and_errors() {
+        // Missing manifest → error mentioning the build.
+        let err = verify_manifest("/nonexistent/manifest.json", "src/main.tsx").unwrap_err();
+        assert!(err.contains("npm run build"), "got: {err}");
+
+        let mut tmp = tempfile::NamedTempFile::new().unwrap();
+        write!(
+            tmp,
+            r#"{{"src/main.tsx":{{"file":"assets/main-x.js","isEntry":true}}}}"#
+        )
+        .unwrap();
+        let p = tmp.path().to_str().unwrap();
+
+        // Present entry → ok.
+        assert!(verify_manifest(p, "src/main.tsx").is_ok());
+        // Wrong entry → error naming the entry point.
+        let err = verify_manifest(p, "src/other.tsx").unwrap_err();
+        assert!(err.contains("src/other.tsx"), "got: {err}");
     }
 
     #[test]

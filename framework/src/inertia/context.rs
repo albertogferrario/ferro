@@ -222,6 +222,23 @@ impl Inertia {
         response
     }
 
+    /// Fail-fast production asset check for Inertia apps.
+    ///
+    /// Call this from `bootstrap` (after config is loaded) so a missing or
+    /// mismatched frontend build errors clearly at startup instead of serving a
+    /// blank page. No-op in development. Uses the process-global `InertiaConfig`
+    /// (`from_env()` by default; override with `set_inertia_config`).
+    ///
+    /// ```rust,ignore
+    /// if let Err(e) = Inertia::preflight() {
+    ///     eprintln!("Inertia assets not ready: {e}");
+    ///     std::process::exit(1);
+    /// }
+    /// ```
+    pub fn preflight() -> Result<(), String> {
+        crate::inertia::global::get_inertia_config().verify_production_assets()
+    }
+
     /// Check if the current request is an Inertia XHR request.
     pub fn is_inertia_request(req: &Request) -> bool {
         req.is_inertia()
