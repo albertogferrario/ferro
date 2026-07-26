@@ -15,6 +15,9 @@ pub struct GenerationContext {
     /// Register composition guidance for POS-style sale screens (D-03). Everything derivable is
     /// derived; prose is drift-guarded by `register_composition_drift_guard`.
     pub register_composition: RegisterCompositionGuidance,
+    /// Live projection surface guidance for v17.0 capabilities (D-03). Prose drift-guarded
+    /// by `live_projection_drift_guard`.
+    pub live_projection: LiveProjectionGuidance,
 }
 
 /// Naming conventions for different framework artifacts
@@ -127,6 +130,26 @@ pub struct RegisterRuleRef {
     pub id: &'static str,
     pub title: &'static str,
     pub rationale: &'static str,
+}
+
+/// Live projection surface guidance for the v17.0 capabilities (D-03). Everything derivable
+/// is derived from a registry; prose is drift-guarded by `live_projection_drift_guard`.
+#[derive(Debug, Serialize)]
+pub struct LiveProjectionGuidance {
+    /// (a) LiveFragment — when to use, the projection/key/template contract, first-paint
+    /// behavior with an absent snapshot, and the one-binding-pattern limitation.
+    pub live_fragment: &'static str,
+    /// (b) Container + channel contract — the `data-live-fragment` marker and the
+    /// `data-channel="projection.{name}.{key}"` value format the server emits.
+    pub container_contract: &'static str,
+    /// (c) #[memoize] — when to annotate, request-scoped dedup, coalescing, error caching,
+    /// graceful no-op outside request scope, complement to eager_loading/BatchLoad.
+    pub memoize: &'static str,
+    /// (d) asset!() — one-line embed, content-hashed &'static str URL, lazy register-once,
+    /// ferro::bundle mount required, `ferro assets fetch` CLI.
+    pub asset_macro: &'static str,
+    /// Pointer to docs/src for depth (D-04 compact style).
+    pub docs: &'static str,
 }
 
 /// Semantic token descriptions — maintained in parallel with `ferro_theme::token::ALL_TOKENS`.
@@ -380,6 +403,38 @@ pub fn execute() -> GenerationContext {
             the projection-derived /cassa sample.",
     };
 
+    // ── Live projection surface guidance (D-03) ──────────────────────────────
+    let live_projection = LiveProjectionGuidance {
+        live_fragment: "Use a LiveFragment builtin when a page element must reflect a \
+            ferro-projection per-key snapshot in real time without a page reload or client \
+            state. Props: projection (the ferro-projection NAME / Projection::NAME const), key \
+            (the per-key channel selector), and template (the child JSON-UI spec rendered \
+            against the snapshot as its data scope). At first paint with no snapshot the \
+            container renders empty (child receives {}); it binds ONE per-key snapshot only — \
+            list/collection reconciliation is an explicit non-goal.",
+        container_contract: "The server wraps the rendered child in \
+            <div data-live-fragment data-channel=\"projection.{name}.{key}\">...</div>; both \
+            channel segments are HTML-escaped server-side (server-controlled, not \
+            user-injectable). A no-WASM client runtime opens one socket to /_ferro/ws, \
+            subscribes per channel, and swaps the container innerHTML on each `fragment` event. \
+            See docs/src/json-ui/runtime-primitives.md.",
+        memoize: "Annotate an async fn or #[service] method with #[memoize] (use ferro::memoize) \
+            when N intents over one key call it during a render pass: it runs the body at most \
+            once per (callsite, args) per request and coalesces concurrent callers onto one \
+            shared computation (errors cached). It is request-scoped (dropped with the request), \
+            a graceful no-op outside request scope, and COMPLEMENTS eager_loading/BatchLoad — it \
+            is NOT cross-request caching (that stays ferro-cache).",
+        asset_macro:
+            "asset!(\"path\") (use ferro::asset!) embeds a file at the call-site-relative \
+            path via include_bytes!, registers it once (OnceLock), and returns a content-hashed \
+            &'static str URL (e.g. \"/bundles/app.a1b2c3d4.js\") with MIME inferred from the \
+            extension. The app must mount ferro::bundle serving for the URL to resolve; \
+            `ferro assets fetch iconify|fontsource` downloads third-party assets at author time.",
+        docs: "See docs/src/json-ui/components.md, docs/src/json-ui/runtime-primitives.md, \
+            docs/src/features/ferro-assets.md, and docs/src/features/projections.md for usage \
+            examples.",
+    };
+
     GenerationContext {
         naming_conventions: NamingConventions {
             models: "PascalCase singular (User, BlogPost, Animal)".to_string(),
@@ -495,6 +550,7 @@ use serde::{Deserialize, Serialize};"#.to_string(),
         },
         design_system,
         register_composition,
+        live_projection,
     }
 }
 
@@ -552,6 +608,24 @@ mod tests {
             context.register_composition.lint_rules.len(),
             4,
             "must derive all four register-composition rules from design::rules()"
+        );
+
+        // Verify live projection guidance populated (D-03)
+        assert!(
+            !context.live_projection.live_fragment.is_empty(),
+            "live_projection.live_fragment must be non-empty"
+        );
+        assert!(
+            !context.live_projection.container_contract.is_empty(),
+            "live_projection.container_contract must be non-empty"
+        );
+        assert!(
+            !context.live_projection.memoize.is_empty(),
+            "live_projection.memoize must be non-empty"
+        );
+        assert!(
+            !context.live_projection.asset_macro.is_empty(),
+            "live_projection.asset_macro must be non-empty"
         );
     }
 
@@ -644,6 +718,54 @@ mod tests {
             ferro_theme::token::ALL_TOKENS.len(),
             "DESIGN_TOKEN_DESCRIPTIONS must have one entry per ALL_TOKENS slot (D-06 drift guard)"
         );
+    }
+
+    #[test]
+    fn live_projection_drift_guard() {
+        use std::collections::HashSet;
+        let ctx = execute();
+
+        // 1. LiveFragment is a builtin and the guidance prose mentions it.
+        let builtins: HashSet<String> = ferro_json_ui::global_catalog()
+            .components_sorted()
+            .map(|c| c.name.clone())
+            .collect();
+        assert!(
+            builtins.contains("LiveFragment"),
+            "live_projection guidance names non-builtin `LiveFragment`"
+        );
+        let prose = format!(
+            "{} {}",
+            ctx.live_projection.live_fragment, ctx.live_projection.container_contract
+        );
+        assert!(
+            prose.contains("LiveFragment"),
+            "live_projection prose no longer mentions `LiveFragment`"
+        );
+
+        // 2. Data attributes appear in the assembled runtime bundle AND in the prose.
+        for attr in ["data-live-fragment", "data-channel"] {
+            assert!(
+                ferro_json_ui::FERRO_RUNTIME_JS.contains(attr),
+                "runtime bundle missing `{attr}` — live_projection guidance is stale"
+            );
+            assert!(
+                prose.contains(attr),
+                "live_projection prose no longer mentions `{attr}`"
+            );
+        }
+
+        // 3. Macro names mentioned in the guidance exist as framework re-exports (checked structurally).
+        let macro_prose = format!(
+            "{} {} {}",
+            ctx.live_projection.memoize, ctx.live_projection.asset_macro, ctx.live_projection.docs
+        );
+        for name in ["memoize", "asset!"] {
+            assert!(
+                macro_prose.contains(name),
+                "live_projection prose no longer mentions `{name}`"
+            );
+        }
     }
 
     #[test]
