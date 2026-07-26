@@ -957,11 +957,19 @@ input, select, textarea {
     border-bottom: 1px solid var(--color-border);
     display: flex;
     align-items: center;
-    padding-inline: calc(var(--spacing) * 6);
+    /* Mobile: match main content px-3 gutter (calc(--spacing*3) = 12px). */
+    padding-inline: calc(var(--spacing) * 3);
     position: sticky;
     top: 0;
     z-index: 10;
     /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* Desktop: widen header horizontal padding to match md:p-6 content gutter. */
+  @media (min-width: 768px) {
+    .fjui-header {
+      padding-inline: calc(var(--spacing) * 6);
+    }
   }
 
   /* fjui-header__workspace: business name label — left side of header, NOT interactive. */
@@ -2635,54 +2643,8 @@ input, select, textarea {
     margin: 0 0 calc(var(--spacing) * 2) 0;
   }
 
-  /* Compact event row: ~40px min-height, time left (muted tabular) + customer right (primary). */
-  .fjui-agenda__event {
-    display: flex;
-    align-items: center;
-    gap: calc(var(--spacing) * 3);
-    min-height: 40px;
-    padding: 0 calc(var(--spacing) * 2);
-    border-radius: var(--radius-sm);
-    transition: background-color var(--motion-duration-fast) var(--motion-ease);
-
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    &:hover {
-      background-color: var(--color-surface);
-    }
-
-    & a:hover {
-      text-decoration: underline;
-    }
-
-    & a:focus-visible {
-      outline: 2px solid var(--color-ring);
-      outline-offset: 2px;
-    }
-  }
-
-  /* Time column: Meta (13px/400), muted, tabular numerals, fixed width. */
-  .fjui-agenda__time {
-    font-size: var(--text-meta-size);
-    font-weight: var(--text-meta-weight);
-    font-variant-numeric: tabular-nums;
-    color: var(--color-text-muted);
-    flex-shrink: 0;
-    min-width: 3.5rem;
-  }
-
-  /* Customer column: Body (14px/400), primary text. */
-  .fjui-agenda__customer {
-    font-size: var(--text-body-size);
-    font-weight: var(--text-body-weight);
-    color: var(--color-text);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  /* Agenda widget body uses fjui-table / fjui-table__header-cell / fjui-table__row /
+   * fjui-table__cell (see DataTable section above) — no bespoke row classes needed. */
 
   /* Empty state: icon + text centered (RSK-04 / rubric dim-10). */
   .fjui-agenda__empty {
