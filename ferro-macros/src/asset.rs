@@ -29,11 +29,12 @@ pub fn asset_impl(input: TokenStream) -> TokenStream {
         .unwrap_or_default();
 
     // Sanitize the path → bundle name (D-04): keep [a-z0-9-], map the rest to '_'.
+    // Uppercase ASCII letters are lowercased so the name is strictly [a-z0-9_-].
     let bundle_name: String = path_str
         .chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() || c == '-' {
-                c
+                c.to_ascii_lowercase()
             } else {
                 '_'
             }
