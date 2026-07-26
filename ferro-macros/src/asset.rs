@@ -31,7 +31,13 @@ pub fn asset_impl(input: TokenStream) -> TokenStream {
     // Sanitize the path → bundle name (D-04): keep [a-z0-9-], map the rest to '_'.
     let bundle_name: String = path_str
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
 
     let output = quote! {
