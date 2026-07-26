@@ -64,15 +64,32 @@ pub async fn broadcasting_auth(req: Request) -> Response {
         .status(403));
     }
 
+    // Issue the signed subscription token. Presence channels bind the identity
+    // into the signature; private channels sign the socket + channel only. When
+    // no signing secret is configured the broadcaster returns None and we fall
+    // back to the legacy "ok" sentinel (development-only).
+    let channel_type = ChannelType::from_name(&input.channel_name);
+    let signed_user = if channel_type == ChannelType::Presence {
+        Some(user_id.to_string())
+    } else {
+        None
+    };
+    let auth_value = broadcaster
+        .sign_subscription(
+            &input.socket_id,
+            &input.channel_name,
+            signed_user.as_deref(),
+        )
+        .unwrap_or_else(|| "ok".to_string());
+
     // Build response
     let mut response = serde_json::json!({
-        "auth": "ok",
+        "auth": auth_value,
         "socket_id": input.socket_id,
         "channel": input.channel_name,
     });
 
-    // For presence channels, include user info
-    let channel_type = ChannelType::from_name(&input.channel_name);
+    // For presence channels, include user info the client echoes back on subscribe.
     if channel_type == ChannelType::Presence {
         response["channel_data"] = serde_json::json!({
             "user_id": user_id.to_string(),

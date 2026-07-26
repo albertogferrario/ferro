@@ -118,9 +118,31 @@ impl Broadcaster {
             return Err(Error::ChannelFull);
         }
 
-        // Check authorization for private/presence channels
+        // Check authorization for private/presence channels.
         if channel_type.requires_auth() {
-            if let Some(authorizer) = &self.inner.authorizer {
+            if let Some(secret) = config.signing_secret.as_deref() {
+                // Secure path: verify the HMAC signature that `/broadcasting/auth`
+                // issued after session-authenticated policy checks. Presence
+                // subscriptions bind the member's user_id into the signature, so a
+                // client cannot spoof another user's identity.
+                let signed_user = if channel_type == ChannelType::Presence {
+                    member_info.as_ref().map(|m| m.user_id.as_str())
+                } else {
+                    None
+                };
+                let ok = auth.is_some_and(|token| {
+                    crate::sign::verify(secret, socket_id, channel_name, signed_user, token)
+                });
+                if !ok {
+                    warn!(socket_id = %socket_id, channel = %channel_name, "Signature verification failed");
+                    return Err(Error::unauthorized(
+                        "Invalid channel authorization signature",
+                    ));
+                }
+            } else if let Some(authorizer) = &self.inner.authorizer {
+                // Legacy path (no signing secret configured): the app authorizer
+                // runs against the client-supplied token. This trusts the client
+                // and is development-only — set a signing secret in production.
                 let auth_data = AuthData {
                     socket_id: socket_id.to_string(),
                     channel: channel_name.to_string(),
@@ -351,6 +373,24 @@ impl Broadcaster {
         }
     }
 
+    /// Issue a signed subscription token for a channel, if a signing secret is
+    /// configured. Returns `None` when signing is disabled (legacy mode).
+    ///
+    /// The broadcasting auth HTTP endpoint calls this — after policy checks via
+    /// [`check_auth`](Self::check_auth) — to hand the client a token the
+    /// WebSocket subscribe path will verify. Pass the authenticated `user_id`
+    /// for presence channels so the signature binds the member identity; pass
+    /// `None` for private channels.
+    pub fn sign_subscription(
+        &self,
+        socket_id: &str,
+        channel: &str,
+        user_id: Option<&str>,
+    ) -> Option<String> {
+        let secret = self.inner.config.signing_secret.as_deref()?;
+        Some(crate::sign::sign(secret, socket_id, channel, user_id))
+    }
+
     /// Get channel info.
     pub fn get_channel(&self, name: &str) -> Option<ChannelInfo> {
         self.inner.channels.get(name).map(|c| c.clone())
@@ -499,6 +539,61 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_signed_subscribe_accepts_valid_signature_and_rejects_forgery() {
+        let config = BroadcastConfig::new().signing_secret("test-secret");
+        let broadcaster = Broadcaster::with_config(config);
+        let (tx, _rx) = mpsc::channel(32);
+        broadcaster.add_client("socket_1".into(), tx);
+
+        // A valid token issued by the (server-side) signer is accepted.
+        let token = broadcaster
+            .sign_subscription("socket_1", "private-user.7", None)
+            .expect("signing enabled");
+        assert!(broadcaster
+            .subscribe("socket_1", "private-user.7", Some(&token), None)
+            .await
+            .is_ok());
+
+        // A forged/garbage token is rejected.
+        assert!(broadcaster
+            .subscribe("socket_1", "private-user.7", Some("deadbeef"), None)
+            .await
+            .is_err());
+        // Missing token is rejected.
+        assert!(broadcaster
+            .subscribe("socket_1", "private-user.7", None, None)
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn test_signed_subscribe_binds_presence_identity() {
+        let config = BroadcastConfig::new().signing_secret("test-secret");
+        let broadcaster = Broadcaster::with_config(config);
+        let (tx, _rx) = mpsc::channel(32);
+        broadcaster.add_client("socket_1".into(), tx);
+
+        // Token was issued for user 7 on this presence channel.
+        let token = broadcaster
+            .sign_subscription("socket_1", "presence-nearby", Some("7"))
+            .expect("signing enabled");
+
+        // Subscribing while claiming to be user 8 must fail (identity is bound).
+        let spoof = PresenceMember::new("socket_1", "8");
+        assert!(broadcaster
+            .subscribe("socket_1", "presence-nearby", Some(&token), Some(spoof))
+            .await
+            .is_err());
+
+        // Subscribing as the signed user 7 succeeds.
+        let member = PresenceMember::new("socket_1", "7");
+        assert!(broadcaster
+            .subscribe("socket_1", "presence-nearby", Some(&token), Some(member))
+            .await
+            .is_ok());
     }
 
     struct MockAuthorizer {
