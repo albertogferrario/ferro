@@ -586,22 +586,31 @@ All three are LOW-risk; A2 is directly verifiable from `ferro-broadcast/src/mess
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Broadcaster sync send path**
+All three were confirmed against the live code during pattern mapping (see `260-PATTERNS.md`)
+and are reflected in the plans. None remain open.
+
+1. **Broadcaster sync send path** — **RESOLVED: no sync path; use `tokio::spawn`.**
    - What we know: `Broadcaster::send` (internal) is async. `ferro_broadcast::Broadcast::send()` is async.
-   - What's unclear: Is there a `try_send` or sync path on `Broadcaster` that avoids spawning?
-   - Recommendation: check `ferro-broadcast/src/broadcaster.rs` for a `try_broadcast` or sync variant. If absent, use `tokio::spawn` in the hook closure.
+   - Resolution: `ferro-broadcast/src/broadcast.rs` (line ~77) confirms there is **no** `try_broadcast`/sync
+     variant. The hook closure drives the `fragment` broadcast via
+     `tokio::spawn(async move { … .send().await })` (PATTERNS.md §"No sync broadcast path", line ~466).
+     Applied in Plan 01 (builder rustdoc) and Plan 04 (E2E test).
 
-2. **Child template data scope: `spec.data` injection vs. `data` parameter**
-   - What we know: `render_spec_to_html(spec, data)` passes `data` separately; `spec.data` is embedded in the `Spec` itself. `resolve_expressions` mutates `spec.data`-bound props before rendering.
-   - What's unclear: Should the snapshot be injected as the `data` argument to `render_spec_to_html`, or embedded into `child_spec.data` before calling?
-   - Recommendation: pass as the `data` argument — it avoids mutating the `Arc<Spec>` cache. The renderer already routes data-binding through this parameter.
+2. **Child template data scope: `spec.data` injection vs. `data` parameter** — **RESOLVED: pass as the `data` argument.**
+   - What we know: `render_spec_to_html(spec, data)` passes `data` separately; `resolve_expressions`
+     routes data-binding through this parameter.
+   - Resolution: inject the snapshot as the `data` argument to `render_spec_to_html` — avoids mutating
+     the `Arc<Spec>` cache. Applied in Plan 02 (`render_live_fragment` calls
+     `super::render_spec_to_html(&child_spec, data)`).
 
-3. **`render_spec_to_html` outer wrapper**
-   - What we know: `render_spec_to_html` wraps output in `<div class="flex flex-wrap gap-4 [&>*]:w-full ...">...</div>` (render/mod.rs lines 115–119).
-   - What's unclear: Does the `LiveFragment` container need this outer wrapper, or should it strip it?
-   - Recommendation: Accept the wrapper as-is for v17.0 (keeps the render path unchanged). Document that the fragment container includes the flex wrapper. If this causes layout issues, the plan can call `render_element` on the child spec's root instead — but that requires more glue.
+3. **`render_spec_to_html` outer wrapper** — **RESOLVED: accept the wrapper as-is for v17.0.**
+   - What we know: `render_spec_to_html` wraps output in `<div class="flex flex-wrap gap-4 [&>*]:w-full ...">...</div>`
+     (render/mod.rs lines ~115–119).
+   - Resolution: accept the flex wrapper for v17.0 (keeps the render path unchanged; the marked
+     `data-live-fragment` container wraps it). Revisit only if a consumer hits a layout issue. Applied
+     in Plan 02 / Plan 04 (tests assert on `data-live-fragment` + child content, not wrapper absence).
 
 ---
 
