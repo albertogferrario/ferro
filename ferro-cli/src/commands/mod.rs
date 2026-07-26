@@ -1,6 +1,7 @@
 pub mod ai_explain;
 pub mod ai_make;
 pub mod api_check;
+pub mod assets;
 pub mod auth_link;
 pub mod boost_install;
 pub mod ci_init;

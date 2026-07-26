@@ -541,6 +541,11 @@ enum Commands {
         #[arg(long, default_value = "/api/openapi.json")]
         spec_path: String,
     },
+    /// Download and manage project assets (Iconify icons, Fontsource fonts)
+    Assets {
+        #[command(subcommand)]
+        subcommand: commands::assets::AssetsCommand,
+    },
 }
 
 fn main() {
@@ -818,6 +823,9 @@ fn main() {
             spec_path,
         } => {
             commands::api_check::run(url, api_key, spec_path);
+        }
+        Commands::Assets { subcommand } => {
+            commands::assets::run(subcommand);
         }
     }
 }
