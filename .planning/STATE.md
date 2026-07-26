@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v17.0
 milestone_name: Live Projection Surface
-status: executing
-stopped_at: Completed 260-03-PLAN.md (live_fragment client runtime + SC3 test)
-last_updated: "2026-07-26T15:52:58.464Z"
+status: verifying
+stopped_at: Completed 260-04-PLAN.md (catalog lockstep + end-to-end proof)
+last_updated: "2026-07-26T16:06:11.558Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
-  completed_phases: 116
+  completed_phases: 117
   total_plans: 479
-  completed_plans: 477
+  completed_plans: 478
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Phase: 260 (live-reactive-fragment) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-26
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
@@ -251,6 +251,7 @@ Progress: [██████████] 100%
 | Phase 260 P01 | 384 | 3 tasks | 1 files |
 | Phase 260 P02 | 271 | 2 tasks | 2 files |
 | Phase 260 P03 | 153 | 2 tasks | 2 files |
+| Phase 260 P04 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -313,7 +314,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-26T15:52:58.453Z
-Stopped at: Completed 260-03-PLAN.md (live_fragment client runtime + SC3 test)
+Last session: 2026-07-26T16:06:11.548Z
+Stopped at: Completed 260-04-PLAN.md (catalog lockstep + end-to-end proof)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.

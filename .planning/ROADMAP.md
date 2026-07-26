@@ -4113,7 +4113,7 @@ plugin-not-builtin —, non-goals, honest limitations, deferred list-diffing dir
   `#[memoize]` attribute (fan-out dedup + concurrent-call coalescing via a shared future) +
   wiring into the `ServiceDef → IntentGraph` render pass so N intents over one key issue one
   fetch.
-- [ ] **Phase 260: Live reactive fragment** — `LiveFragment` builtin element (projection +
+- [x] **Phase 260: Live reactive fragment** — `LiveFragment` builtin element (projection + (completed 2026-07-26)
   key + child template); `ferro-projection` render hook that re-renders the fragment on
   delta; server-push-HTML transport on the existing channel; a small no-WASM client runtime
   that swaps inner HTML. One binding pattern (per-key snapshot).
@@ -4166,11 +4166,11 @@ transport; the `ferro-json-ui` renderer.
      swaps inner HTML only.
   4. Exactly one binding pattern ships (per-key snapshot); list reconciliation is absent by
      design and documented as a non-goal.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 - [x] 260-01-PLAN.md — ferro-projection fragment_hook seam + with_fragment_renderer() + apply_event step-6.5 fire + integration test (wave 1)
 - [x] 260-02-PLAN.md — LiveFragmentProps + render_live_fragment first-paint/absent-snapshot renderer (wave 1)
 - [x] 260-03-PLAN.md — no-WASM setupLiveFragments client runtime + runtime/mod.rs assembly + enumerating tests (wave 1)
-- [ ] 260-04-PLAN.md — BUILTIN_TYPES/dispatch/BUILTIN_SPECS lockstep (count 52->53) + end-to-end render proof (wave 2)
+- [x] 260-04-PLAN.md — BUILTIN_TYPES/dispatch/BUILTIN_SPECS lockstep (count 52->53) + end-to-end render proof (wave 2)
 
 #### Phase 261: `asset!()` ergonomics
 **Goal:** Collapse the boot-time bundle builder to a one-line `asset!("path")` at the use
