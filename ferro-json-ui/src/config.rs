@@ -47,12 +47,25 @@ pub struct JsonUiConfig {
 
 impl Default for JsonUiConfig {
     fn default() -> Self {
+        // Debug builds append a per-process nonce so browsers that cached the
+        // stylesheet under an earlier long-lived Cache-Control can never serve
+        // a stale copy across dev-server restarts. Release keeps the stable
+        // version-only URL for long-lived immutable caching.
+        let css_version = if cfg!(debug_assertions) {
+            static NONCE: std::sync::OnceLock<u128> = std::sync::OnceLock::new();
+            let nonce = NONCE.get_or_init(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis())
+                    .unwrap_or(0)
+            });
+            format!("{}-dev{}", env!("CARGO_PKG_VERSION"), nonce)
+        } else {
+            env!("CARGO_PKG_VERSION").to_string()
+        };
         Self {
             tailwind_cdn: false,
-            stylesheet_urls: vec![format!(
-                "/_ferro/ferro-base.css?v={}",
-                env!("CARGO_PKG_VERSION")
-            )],
+            stylesheet_urls: vec![format!("/_ferro/ferro-base.css?v={css_version}")],
             custom_head: None,
             body_class: "bg-background text-text font-sans".to_string(),
         }

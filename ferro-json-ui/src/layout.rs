@@ -252,9 +252,11 @@ fn layout_header_html(props: &HeaderProps) -> String {
     // (Finding 3 — full-width separator). The header element itself is
     // full-width; only its inner padding mirrors the content column offset.
     let mut html = String::from("<header class=\"fjui-header z-30 flex items-center md:pl-64\">");
-    // Mobile hamburger button — visible only on small screens.
+    // Mobile hamburger button — visible only on small screens. -ml-2 cancels the
+    // button's own padding so the icon glyph (not the touch target) aligns with
+    // the 12px content gutter below.
     html.push_str(&format!(
-        "<button data-sidebar-toggle class=\"md:hidden p-2 rounded-md text-text-muted \
+        "<button data-sidebar-toggle class=\"md:hidden p-2 -ml-2 rounded-md text-text-muted \
          hover:text-text hover:bg-surface {INTERACTIVE_BASE}\" aria-label=\"Toggle sidebar\">\
          <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
          <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
