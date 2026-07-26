@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v17.0
 milestone_name: Live Projection Surface
-status: verifying
-stopped_at: Phase 261 context gathered
-last_updated: "2026-07-26T17:15:01.240Z"
+status: executing
+stopped_at: Completed 261-01-PLAN.md (ferro-bundle decouple + mime_from_ext)
+last_updated: "2026-07-26T18:04:18.970Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
   completed_phases: 117
-  total_plans: 479
-  completed_plans: 478
-  percent: 100
+  total_plans: 483
+  completed_plans: 479
+  percent: 99
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 260 — live-reactive-fragment
+**Current focus:** Phase 261 — asset!() ergonomics
 
 ## Current Position
 
-Phase: 261
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 261 (asset!() ergonomics) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-26
 
 Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
@@ -253,6 +253,7 @@ Progress: [██████████] 100%
 | Phase 260 P02 | 271 | 2 tasks | 2 files |
 | Phase 260 P03 | 153 | 2 tasks | 2 files |
 | Phase 260 P04 | 15min | 3 tasks | 4 files |
+| Phase 261-asset-ergonomics P01 | 370 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -315,7 +316,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-26T17:15:01.188Z
-Stopped at: Phase 261 context gathered
-Resume file: .planning/phases/261-asset-ergonomics/261-CONTEXT.md
+Last session: 2026-07-26T18:04:18.961Z
+Stopped at: Completed 261-01-PLAN.md (ferro-bundle decouple + mime_from_ext)
+Resume file: None
 Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
