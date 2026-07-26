@@ -231,6 +231,17 @@ async fn handle_request(
                     HttpResponse::text("404 Not Found").status(404).into_hyper()
                 }
             }
+            // Self-hosted Leaflet for the Map plugin (js, css, marker images).
+            p if p.starts_with("/_ferro/leaflet/") => {
+                #[cfg(feature = "json-ui")]
+                {
+                    serve_leaflet_asset(p)
+                }
+                #[cfg(not(feature = "json-ui"))]
+                {
+                    HttpResponse::text("404 Not Found").status(404).into_hyper()
+                }
+            }
             _ => HttpResponse::text("404 Not Found").status(404).into_hyper(),
         };
     }
@@ -387,6 +398,42 @@ fn serve_ferro_base_css() -> hyper::Response<FerroBody> {
         .unwrap()
 }
 
+/// Serve a self-hosted Leaflet asset embedded in ferro-json-ui.
+///
+/// Handles `/_ferro/leaflet/leaflet.js`, `/_ferro/leaflet/leaflet.css`, and
+/// `/_ferro/leaflet/images/<name>.png`. The bytes are embedded at compile time;
+/// no user input reaches a filesystem (the image name only indexes a fixed
+/// table). Lets the Map plugin render with no external CDN.
+#[cfg(feature = "json-ui")]
+fn serve_leaflet_asset(path: &str) -> hyper::Response<FerroBody> {
+    let rest = &path["/_ferro/leaflet/".len()..];
+    let (content_type, body): (&str, Bytes) = match rest {
+        "leaflet.js" => (
+            "application/javascript; charset=utf-8",
+            Bytes::from_static(ferro_json_ui::LEAFLET_JS.as_bytes()),
+        ),
+        "leaflet.css" => (
+            "text/css; charset=utf-8",
+            Bytes::from_static(ferro_json_ui::LEAFLET_CSS.as_bytes()),
+        ),
+        img if img.starts_with("images/") => {
+            match ferro_json_ui::leaflet_image(&img["images/".len()..]) {
+                Some(bytes) => ("image/png", Bytes::from_static(bytes)),
+                None => return HttpResponse::text("404 Not Found").status(404).into_hyper(),
+            }
+        }
+        _ => return HttpResponse::text("404 Not Found").status(404).into_hyper(),
+    };
+
+    hyper::Response::builder()
+        .status(200)
+        .header("Content-Type", content_type)
+        .header("Content-Length", body.len().to_string())
+        .header("Cache-Control", "public, max-age=31536000, immutable")
+        .body(FerroBody::Full(Full::new(body)))
+        .unwrap()
+}
+
 /// Check database health by attempting a simple query
 async fn check_database_health() -> Result<(), String> {
     use crate::database::DB;
@@ -459,5 +506,39 @@ mod ferro_base_css_route_tests {
             ferro_json_ui::FERRO_BASE_CSS.as_bytes()
         );
         assert!(!body_bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn serve_leaflet_js_css_and_image() {
+        // JS
+        let js = serve_leaflet_asset("/_ferro/leaflet/leaflet.js");
+        assert_eq!(js.status(), 200);
+        assert_eq!(
+            js.headers().get("Content-Type").unwrap(),
+            "application/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            js.headers().get("Cache-Control").unwrap(),
+            "public, max-age=31536000, immutable"
+        );
+        let js_body = js.into_body().collect().await.unwrap().to_bytes();
+        assert_eq!(js_body.as_ref(), ferro_json_ui::LEAFLET_JS.as_bytes());
+
+        // CSS
+        let css = serve_leaflet_asset("/_ferro/leaflet/leaflet.css");
+        assert_eq!(css.status(), 200);
+        assert_eq!(
+            css.headers().get("Content-Type").unwrap(),
+            "text/css; charset=utf-8"
+        );
+
+        // Marker image (referenced by leaflet.css → default markers resolve)
+        let png = serve_leaflet_asset("/_ferro/leaflet/images/marker-icon.png");
+        assert_eq!(png.status(), 200);
+        assert_eq!(png.headers().get("Content-Type").unwrap(), "image/png");
+
+        // Unknown asset → 404, never a filesystem read.
+        let missing = serve_leaflet_asset("/_ferro/leaflet/../secrets");
+        assert_eq!(missing.status(), 404);
     }
 }

@@ -72,6 +72,50 @@ pub struct MapMarker {
     pub href: Option<String>,
 }
 
+/// Framework-served, self-hosted Leaflet (see `/_ferro/leaflet/*` in the server).
+const DEFAULT_LEAFLET_BASE: &str = "/_ferro/leaflet";
+
+/// Whether to opt back into the unpkg CDN via `FERRO_LEAFLET_CDN`.
+fn cdn_opt_in() -> bool {
+    matches!(
+        std::env::var("FERRO_LEAFLET_CDN").ok().as_deref(),
+        Some("1") | Some("true") | Some("yes")
+    )
+}
+
+/// Resolve the Leaflet asset base.
+///
+/// - `Some(base)` → self-hosted `{base}/leaflet.{css,js}` (no SRI/crossorigin).
+/// - `None` → the SRI-pinned unpkg CDN.
+///
+/// Precedence: an explicit `FERRO_LEAFLET_BASE` wins; else `FERRO_LEAFLET_CDN=1`
+/// selects the CDN; else the **default** is the framework-served
+/// `/_ferro/leaflet`, so the Map plugin works offline / behind TLS-terminating
+/// proxies with zero configuration.
+fn leaflet_base() -> Option<String> {
+    if let Some(b) = std::env::var("FERRO_LEAFLET_BASE")
+        .ok()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+    {
+        return Some(b);
+    }
+    if cdn_opt_in() {
+        return None;
+    }
+    Some(DEFAULT_LEAFLET_BASE.to_string())
+}
+
+/// Build a Leaflet asset: self-hosted `{base}/{file}` (no SRI) when a base is
+/// configured, else the SRI-pinned CDN URL. Pure so the branch is unit-testable
+/// without mutating the process environment.
+fn leaflet_asset(base: Option<&str>, file: &str, cdn_url: &str, cdn_sri: &str) -> Asset {
+    match base {
+        Some(b) => Asset::new(format!("{b}/{file}")),
+        None => Asset::new(cdn_url).integrity(cdn_sri).crossorigin(""),
+    }
+}
+
 /// Global counter for unique map container IDs.
 static MAP_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -429,30 +473,38 @@ mod tests {
     }
 
     #[test]
-    fn test_map_assets_have_sri() {
+    fn default_assets_are_self_hosted() {
+        // By default the plugin serves Leaflet from the framework (no CDN, no
+        // SRI). Skip on a machine that overrides the base/CDN via env so the
+        // test never flakes.
+        if std::env::var_os("FERRO_LEAFLET_BASE").is_some()
+            || std::env::var_os("FERRO_LEAFLET_CDN").is_some()
+        {
+            return;
+        }
         let plugin = MapPlugin;
 
         let css = plugin.css_assets();
         assert_eq!(css.len(), 1);
+        assert_eq!(css[0].url, "/_ferro/leaflet/leaflet.css");
         assert!(
-            css[0].integrity.is_some(),
-            "CSS asset should have integrity hash"
-        );
-        assert!(
-            css[0].integrity.as_ref().unwrap().starts_with("sha256-"),
-            "integrity should be sha256"
+            css[0].integrity.is_none(),
+            "self-hosted default must not carry an SRI hash"
         );
 
         let js = plugin.js_assets();
         assert_eq!(js.len(), 1);
-        assert!(
-            js[0].integrity.is_some(),
-            "JS asset should have integrity hash"
-        );
-        assert!(
-            js[0].integrity.as_ref().unwrap().starts_with("sha256-"),
-            "integrity should be sha256"
-        );
+        assert_eq!(js[0].url, "/_ferro/leaflet/leaflet.js");
+        assert!(js[0].integrity.is_none());
+    }
+
+    #[test]
+    fn cdn_opt_in_still_available() {
+        // The pure builder still produces the SRI-pinned CDN asset when no base
+        // is supplied — the path taken when FERRO_LEAFLET_CDN=1.
+        let a = leaflet_asset(None, "leaflet.js", LEAFLET_JS_URL, LEAFLET_JS_SRI);
+        assert_eq!(a.url, LEAFLET_JS_URL);
+        assert!(a.integrity.as_deref().unwrap_or("").starts_with("sha256-"));
     }
 
     #[test]
