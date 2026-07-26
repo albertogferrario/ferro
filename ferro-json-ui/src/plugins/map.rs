@@ -264,15 +264,21 @@ impl JsonUiPlugin for MapPlugin {
     }
 
     fn css_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(LEAFLET_CSS_URL)
-            .integrity(LEAFLET_CSS_SRI)
-            .crossorigin("")]
+        vec![leaflet_asset(
+            leaflet_base().as_deref(),
+            "leaflet.css",
+            LEAFLET_CSS_URL,
+            LEAFLET_CSS_SRI,
+        )]
     }
 
     fn js_assets(&self) -> Vec<Asset> {
-        vec![Asset::new(LEAFLET_JS_URL)
-            .integrity(LEAFLET_JS_SRI)
-            .crossorigin("")]
+        vec![leaflet_asset(
+            leaflet_base().as_deref(),
+            "leaflet.js",
+            LEAFLET_JS_URL,
+            LEAFLET_JS_SRI,
+        )]
     }
 
     fn init_script(&self) -> Option<String> {
@@ -540,6 +546,28 @@ mod tests {
     fn test_map_component_type() {
         let plugin = MapPlugin;
         assert_eq!(plugin.component_type(), "Map");
+    }
+
+    #[test]
+    fn leaflet_asset_defaults_to_sri_cdn() {
+        let a = leaflet_asset(None, "leaflet.css", LEAFLET_CSS_URL, LEAFLET_CSS_SRI);
+        assert_eq!(a.url, LEAFLET_CSS_URL);
+        assert_eq!(a.integrity.as_deref(), Some(LEAFLET_CSS_SRI));
+    }
+
+    #[test]
+    fn leaflet_asset_self_hosted_drops_sri() {
+        let a = leaflet_asset(
+            Some("/vendor/leaflet"),
+            "leaflet.js",
+            LEAFLET_JS_URL,
+            LEAFLET_JS_SRI,
+        );
+        assert_eq!(a.url, "/vendor/leaflet/leaflet.js");
+        assert!(
+            a.integrity.is_none(),
+            "self-hosted asset must not carry an SRI hash"
+        );
     }
 
     #[test]
