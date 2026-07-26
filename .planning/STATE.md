@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v17.0
 milestone_name: Live Projection Surface
 status: verifying
-stopped_at: Completed 260-04-PLAN.md (catalog lockstep + end-to-end proof)
-last_updated: "2026-07-26T16:40:49.582Z"
+stopped_at: Phase 261 context gathered
+last_updated: "2026-07-26T17:15:01.240Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
@@ -315,7 +315,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-26T16:06:11.548Z
-Stopped at: Completed 260-04-PLAN.md (catalog lockstep + end-to-end proof)
-Resume file: None
+Last session: 2026-07-26T17:15:01.188Z
+Stopped at: Phase 261 context gathered
+Resume file: .planning/phases/261-asset-ergonomics/261-CONTEXT.md
 Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
