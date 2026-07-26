@@ -104,6 +104,26 @@ pub fn woff2_dest(out_dir: &Path, family: &str, subset: &str, weight: u32) -> Pa
         .join(format!("{subset}-{weight}-normal.woff2"))
 }
 
+/// Return `true` if the SVG body fragment from an Iconify set response is safe
+/// to embed in a reconstructed `<svg>` document.
+///
+/// Rejects bodies that contain patterns that could become stored-XSS when the
+/// generated SVG files are served to browsers: `<script`, `<foreignobject`,
+/// `javascript:` URIs, and HTML event-handler attributes (`on*=`).
+/// Matching is case-insensitive.
+fn is_safe_svg_body(body: &str) -> bool {
+    use regex::Regex;
+    use std::sync::OnceLock;
+    static EVENT_HANDLER_RE: OnceLock<Regex> = OnceLock::new();
+    let re = EVENT_HANDLER_RE
+        .get_or_init(|| Regex::new(r"(?i)\son[a-z]+=").expect("static regex is valid"));
+    let lower = body.to_ascii_lowercase();
+    !lower.contains("<script")
+        && !lower.contains("<foreignobject")
+        && !lower.contains("javascript:")
+        && !re.is_match(body)
+}
+
 fn fetch_iconify(client: &Client, set: &str, out_dir: &Path) -> anyhow::Result<()> {
     // Split into at most 2 segments on '/'
     let parts: Vec<&str> = set.splitn(3, '/').collect();
@@ -137,6 +157,12 @@ fn fetch_iconify(client: &Client, set: &str, out_dir: &Path) -> anyhow::Result<(
                 let icon_body = def["body"]
                     .as_str()
                     .ok_or_else(|| anyhow::anyhow!("icon {name:?} missing 'body' field"))?;
+                if !is_safe_svg_body(icon_body) {
+                    eprintln!(
+                        "warning: skipping icon {name:?} — body contains potentially unsafe content"
+                    );
+                    continue;
+                }
                 let w = def["width"].as_u64().unwrap_or(default_w);
                 let h = def["height"].as_u64().unwrap_or(default_h);
                 let svg = format!(
@@ -261,7 +287,7 @@ fn run_inner(subcommand: AssetsCommand) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_segment, validate_woff2_url, woff2_dest, write_icon};
+    use super::{is_safe_svg_body, validate_segment, validate_woff2_url, woff2_dest, write_icon};
 
     // ── validate_segment ────────────────────────────────────────────────────
 
@@ -373,5 +399,40 @@ mod tests {
         assert!(
             validate_woff2_url("http://169.254.169.254/latest/meta-data/").is_err()
         );
+    }
+
+    // ── is_safe_svg_body ────────────────────────────────────────────────────
+
+    #[test]
+    fn safe_svg_body_accepts_normal_path_data() {
+        assert!(is_safe_svg_body(
+            r#"<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>"#
+        ));
+    }
+
+    #[test]
+    fn safe_svg_body_rejects_script_tag() {
+        assert!(!is_safe_svg_body("<script>alert(1)</script>"));
+        // case-insensitive
+        assert!(!is_safe_svg_body("<SCRIPT>alert(1)</SCRIPT>"));
+    }
+
+    #[test]
+    fn safe_svg_body_rejects_foreign_object() {
+        assert!(!is_safe_svg_body(
+            r#"<foreignObject width="100"><div>hi</div></foreignObject>"#
+        ));
+        assert!(!is_safe_svg_body("<FOREIGNOBJECT/>"));
+    }
+
+    #[test]
+    fn safe_svg_body_rejects_javascript_uri() {
+        assert!(!is_safe_svg_body(r#"<a href="javascript:alert(1)"/>"#));
+    }
+
+    #[test]
+    fn safe_svg_body_rejects_event_handler_attribute() {
+        assert!(!is_safe_svg_body(r#"<circle onclick="evil()"/>"#));
+        assert!(!is_safe_svg_body(r#"<image onload="x"/>"#));
     }
 }
