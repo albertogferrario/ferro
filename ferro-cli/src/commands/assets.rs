@@ -81,10 +81,7 @@ pub fn write_icon(out_dir: &Path, prefix: &str, name: &str, svg: &str) -> anyhow
 fn validate_woff2_url(url: &str) -> anyhow::Result<()> {
     let parsed = Url::parse(url).map_err(|_| anyhow::anyhow!("invalid woff2 URL: {url:?}"))?;
     if parsed.scheme() != "https" {
-        anyhow::bail!(
-            "woff2 URL must use HTTPS; got scheme {:?}",
-            parsed.scheme()
-        );
+        anyhow::bail!("woff2 URL must use HTTPS; got scheme {:?}", parsed.scheme());
     }
     let host = parsed.host_str().unwrap_or("");
     // Fontsource CDN hosts only. This allowlist is the SSRF control: any URL
@@ -358,34 +355,26 @@ mod tests {
 
     #[test]
     fn woff2_url_accepts_allowed_cdn_hosts() {
-        assert!(
-            validate_woff2_url(
-                "https://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2"
-            )
-            .is_ok()
-        );
-        assert!(
-            validate_woff2_url(
-                "https://api.fontsource.org/v1/fonts/inter/latin-400-normal.woff2"
-            )
-            .is_ok()
-        );
+        assert!(validate_woff2_url(
+            "https://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2"
+        )
+        .is_ok());
+        assert!(validate_woff2_url(
+            "https://api.fontsource.org/v1/fonts/inter/latin-400-normal.woff2"
+        )
+        .is_ok());
     }
 
     #[test]
     fn woff2_url_rejects_non_allowlisted_host() {
-        assert!(
-            validate_woff2_url("https://evil.example/fonts/inter.woff2").is_err()
-        );
+        assert!(validate_woff2_url("https://evil.example/fonts/inter.woff2").is_err());
     }
 
     #[test]
     fn woff2_url_rejects_http_scheme() {
         assert!(
-            validate_woff2_url(
-                "http://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2"
-            )
-            .is_err()
+            validate_woff2_url("http://cdn.fontsource.com/fonts/inter/latin-400-normal.woff2")
+                .is_err()
         );
     }
 
@@ -396,9 +385,7 @@ mod tests {
 
     #[test]
     fn woff2_url_rejects_metadata_endpoint() {
-        assert!(
-            validate_woff2_url("http://169.254.169.254/latest/meta-data/").is_err()
-        );
+        assert!(validate_woff2_url("http://169.254.169.254/latest/meta-data/").is_err());
     }
 
     // ── is_safe_svg_body ────────────────────────────────────────────────────
