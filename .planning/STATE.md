@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v17.0
 milestone_name: Live Projection Surface
 status: executing
-stopped_at: Completed 261-01-PLAN.md (ferro-bundle decouple + mime_from_ext)
-last_updated: "2026-07-26T18:04:18.970Z"
+stopped_at: "Completed 261-02-PLAN.md (ferro::bundle re-export + serve adapter)"
+last_updated: "2026-07-26T18:11:16.909Z"
 last_activity: 2026-07-26
 progress:
   total_phases: 135
   completed_phases: 117
   total_plans: 483
-  completed_plans: 479
+  completed_plans: 480
   percent: 99
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 261 (asset!() ergonomics) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-26
 
@@ -254,6 +254,7 @@ Progress: [██████████] 100%
 | Phase 260 P03 | 153 | 2 tasks | 2 files |
 | Phase 260 P04 | 15min | 3 tasks | 4 files |
 | Phase 261-asset-ergonomics P01 | 370 | 2 tasks | 6 files |
+| Phase 261-asset-ergonomics P02 | 227 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -316,7 +317,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-07-26T18:04:18.961Z
-Stopped at: Completed 261-01-PLAN.md (ferro-bundle decouple + mime_from_ext)
+Last session: 2026-07-26T18:11:16.897Z
+Stopped at: Completed 261-02-PLAN.md (ferro::bundle re-export + serve adapter)
 Resume file: None
 Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
