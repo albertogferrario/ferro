@@ -15,7 +15,6 @@ hex = "0.4"
 dashmap = "6"
 bytes = "1"
 thiserror = "2"
-ferro-rs = { path = "../framework", version = "0.2" }
 
 [dev-dependencies]
 # Integration tests construct synthetic registry state and call a private

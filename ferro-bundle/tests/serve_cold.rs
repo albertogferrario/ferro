@@ -1,6 +1,6 @@
 //! BUNDLE-02 cold path integration test.
 //!
-//! Verifies that a registered bundle dispatched via `serve_inner` returns:
+//! Verifies that a registered bundle dispatched via `serve_path` returns:
 //! - status 200
 //! - Content-Type matching the caller-supplied `.content_type(...)`
 //! - Cache-Control: public, max-age=31536000, immutable
@@ -10,8 +10,8 @@
 //! Each integration test file is compiled into its own binary by cargo; OS-level
 //! process isolation prevents registry leakage to other test files.
 
+use ferro_bundle::serve_path;
 use ferro_bundle::Bundle;
-use ferro_bundle::__test_internals::serve_inner;
 
 fn header_value<'a>(headers: &'a [(String, String)], name: &str) -> Option<&'a str> {
     headers
@@ -35,7 +35,7 @@ fn serve_cold_returns_200_with_cache_headers() {
         "expected .js extension; got {hashed}"
     );
 
-    let resp = serve_inner(&hashed, None);
+    let resp = serve_path(&hashed, None);
 
     assert_eq!(resp.status_code(), 200);
 
