@@ -11,6 +11,7 @@ mod filters;
 mod form_guards;
 mod hero_lazy;
 mod kanban;
+mod live_fragment;
 mod modals;
 mod notifications;
 mod numpad;
@@ -46,6 +47,7 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
     s.push_str(kanban::SOURCE);
     s.push_str(scroll_preserve::SOURCE);
     s.push_str(hero_lazy::SOURCE);
+    s.push_str(live_fragment::SOURCE);
     s.push_str(
         "\n    function ferroRuntime() {\n\
          \x20       // Run each setup in isolation: a throw in one concern (e.g. an\n\
@@ -67,7 +69,8 @@ pub static FERRO_RUNTIME_JS: LazyLock<String> = LazyLock::new(|| {
          \x20           setupSelection,\n\
          \x20           setupModals,\n\
          \x20           setupToasts,\n\
-         \x20           setupLazyHeroes\n\
+         \x20           setupLazyHeroes,\n\
+         \x20           setupLiveFragments\n\
          \x20       ];\n\
          \x20       for (var i = 0; i < setups.length; i++) {\n\
          \x20           try { setups[i](); } catch (err) { /* isolated per concern */ }\n\
@@ -212,6 +215,7 @@ mod tests {
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
+            "setupLiveFragments",
         ] {
             assert!(
                 FERRO_RUNTIME_JS.contains(fn_name),
@@ -251,6 +255,7 @@ mod tests {
             "setupKanban",
             "setupScrollPreserve",
             "setupLazyHeroes",
+            "setupLiveFragments",
         ] {
             assert!(
                 dispatcher.contains(name),
