@@ -39,6 +39,11 @@ pub struct ProjectionRuntime<P: Projection> {
     pub(crate) broadcaster: Arc<ferro_broadcast::Broadcaster>,
     pub(crate) projection: P,
     pub(crate) locks: DashMap<String, Arc<tokio::sync::Mutex<()>>>,
+    /// Renderer-agnostic re-render hook fired after each `apply_event` delta
+    /// broadcast (D-01, D-02). Receives `(key, post-apply state as Value)`.
+    /// Type-erased at the `serde_json::Value` boundary so this crate needs no
+    /// dependency on any renderer crate.
+    pub(crate) fragment_hook: Option<Arc<dyn Fn(&str, serde_json::Value) + Send + Sync>>,
 }
 
 impl<P: Projection> ProjectionRuntime<P> {
@@ -55,7 +60,21 @@ impl<P: Projection> ProjectionRuntime<P> {
             broadcaster,
             projection,
             locks: DashMap::new(),
+            fragment_hook: None,
         }
+    }
+
+    /// Register a renderer-agnostic re-render hook fired after each `apply_event`
+    /// step-6 delta broadcast (D-01, D-02). The hook receives the key and the
+    /// newly persisted state serialized as `serde_json::Value`. It is responsible
+    /// for its own async broadcast (typically via `tokio::spawn` — see Phase 260
+    /// research Pitfall 1). One canonical hook per projection name.
+    pub fn with_fragment_renderer(
+        mut self,
+        hook: impl Fn(&str, serde_json::Value) + Send + Sync + 'static,
+    ) -> Self {
+        self.fragment_hook = Some(Arc::new(hook));
+        self
     }
 
     /// Read the persisted snapshot for `key`. Returns `Ok(None)` if no
