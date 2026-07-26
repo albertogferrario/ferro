@@ -271,7 +271,7 @@ pub fn action(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Embed a static asset at compile time and register it as a content-hashed
-/// [`ferro::bundle::Bundle`], returning the hashed URL as `&'static str`.
+/// `ferro::bundle::Bundle`, returning the hashed URL as `&'static str`.
 ///
 /// The path is resolved relative to the source file (call-site-source-relative,
 /// identical to `include_bytes!`). Registration is lazy and happens once per call

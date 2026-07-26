@@ -142,7 +142,7 @@ pub struct LiveProjectionGuidance {
     /// (b) Container + channel contract — the `data-live-fragment` marker and the
     /// `data-channel="projection.{name}.{key}"` value format the server emits.
     pub container_contract: &'static str,
-    /// (c) #[memoize] — when to annotate, request-scoped dedup, coalescing, error caching,
+    /// (c) `#[memoize]` — when to annotate, request-scoped dedup, coalescing, error caching,
     /// graceful no-op outside request scope, complement to eager_loading/BatchLoad.
     pub memoize: &'static str,
     /// (d) asset!() — one-line embed, content-hashed &'static str URL, lazy register-once,

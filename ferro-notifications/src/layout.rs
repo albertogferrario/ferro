@@ -27,7 +27,7 @@ pub struct BrandParams {
     pub brand_name: String,
     /// Logo image URL. `None` → the brand name is rendered as text in the header.
     pub logo_url: Option<String>,
-    /// Accent colour as a CSS hex string (e.g. `#0052cc`). `None` → [`DEFAULT_ACCENT`].
+    /// Accent colour as a CSS hex string (e.g. `#0052cc`). `None` → `DEFAULT_ACCENT` (`#0052cc`).
     pub accent_color: Option<String>,
     /// Footer copy line (e.g. contact/identity). `None` → omit the line.
     pub footer: Option<String>,

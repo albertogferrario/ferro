@@ -1,9 +1,9 @@
 //! Content-hashed static asset bundles.
 //!
 //! Re-exports the leaf `ferro-bundle` crate and adds the framework-aware
-//! [`serve`] adapter that maps a [`crate::Request`] to an [`crate::HttpResponse`].
+//! [`bundle::serve`](crate::bundle::serve) adapter that maps a [`crate::Request`] to an [`crate::HttpResponse`].
 //! Register bundles at boot (or lazily via the `asset!()` macro), then mount
-//! [`serve`] on `/bundles/{filename}` and on each registered alias path.
+//! [`bundle::serve`](crate::bundle::serve) on `/bundles/{filename}` and on each registered alias path.
 //!
 //! # Example
 //!
