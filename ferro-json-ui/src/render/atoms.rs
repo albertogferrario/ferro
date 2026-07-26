@@ -712,7 +712,7 @@ pub(crate) fn render_empty_state(
         Ok(p) => p,
         Err(e) => return decode_diagnostic("EmptyState", e),
     };
-    // Centered placeholder. One pattern only (RSK-04): icon + title + body + one CTA.
+    // Centered placeholder. One pattern only (RSK-04): title + body + one CTA.
     // Layout utilities (flex, items-center, justify-center, min-h-40, py-8, px-6,
     // text-center, max-w-md) stay inline per D-02.
     // Appearance (background, border, radius, typography) is in the skin layer.
@@ -720,11 +720,6 @@ pub(crate) fn render_empty_state(
         "<div class=\"fjui-empty-state flex items-center justify-center min-h-40 py-8 px-6\">\
          <div class=\"text-center max-w-md\">",
     );
-    if let Some(ref icon_svg) = props.icon {
-        html.push_str(&format!(
-            "<div class=\"fjui-empty-state__icon\" aria-hidden=\"true\">{icon_svg}</div>"
-        ));
-    }
     if !props.title.is_empty() {
         html.push_str(&format!(
             "<h3 class=\"fjui-empty-state__title\">{}</h3>",

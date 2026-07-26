@@ -467,6 +467,23 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         .as_deref()
         .unwrap_or_else(|| &lanes[0].id);
 
+    // When every lane is empty, render the empty_label bare on the canvas — no
+    // column card chrome. This keeps the visual frame identical to a standalone
+    // EmptyState component (structural guarantee: same surface everywhere).
+    let all_empty = lanes.iter().all(|l| l.cards_html.is_empty());
+    if all_empty {
+        if let Some(ref label) = props.empty_label {
+            return format!(
+                "<div class=\"fjui-empty-state flex items-center justify-center min-h-40 py-8 px-6\">\
+                 <div class=\"text-center max-w-md\">\
+                 <p class=\"fjui-empty-state__body\">{}</p>\
+                 </div></div>",
+                html_escape(label)
+            );
+        }
+        return String::new();
+    }
+
     let mut html = String::new();
 
     // Desktop view: horizontal scrollable columns. The negative
@@ -519,12 +536,8 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
              style=\"scrollbar-width: none;\">",
         );
         if lane.cards_html.is_empty() {
-            if let Some(ref label) = props.empty_label {
-                html.push_str(&format!(
-                    "<div class=\"flex items-center justify-center h-full min-h-40 fjui-text--meta text-center px-3\">{}</div>",
-                    html_escape(label)
-                ));
-            }
+            // Partial empty lane (some other lanes have cards): keep the column
+            // header visible but leave the body blank.
         } else {
             html.push_str(&lane.cards_html);
         }
@@ -564,14 +577,7 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
              style=\"max-height: calc(100vh - 14rem); scrollbar-width: none;\">",
             html_escape(&lane.id),
         ));
-        if lane.cards_html.is_empty() {
-            if let Some(ref label) = props.empty_label {
-                html.push_str(&format!(
-                    "<div class=\"flex items-center justify-center min-h-40 fjui-text--meta text-center px-3\">{}</div>",
-                    html_escape(label)
-                ));
-            }
-        } else {
+        if !lane.cards_html.is_empty() {
             html.push_str(&lane.cards_html);
         }
         html.push_str("</div>");
@@ -2424,20 +2430,26 @@ mod tests {
 
     #[test]
     fn kanban_honors_mobile_default_column() {
+        // Board must have at least one card so the all-empty fast path is not
+        // taken and column chrome (including mobile tab panels) renders.
         let spec = build_spec(vec![(
             "root",
             Element::new("KanbanBoard")
                 .prop("mobile_default_column", "done")
+                .prop("items_path", "/items")
+                .prop("group_by", "status")
+                .prop("card_title_key", "name")
                 .prop(
                     "columns",
                     json!([
-                        {"id": "todo", "title": "Todo", "count": 0, "children": []},
-                        {"id": "done", "title": "Done", "count": 0, "children": []},
+                        {"id": "todo", "title": "Todo"},
+                        {"id": "done", "title": "Done"},
                     ]),
                 ),
         )]);
         let el = spec.elements.get("root").unwrap();
-        let html = render_kanban_board(el, &spec, &json!({}), 1);
+        let data = json!({"items": [{"id": 1, "name": "Task", "status": "done"}]});
+        let html = render_kanban_board(el, &spec, &data, 1);
         // The "done" mobile panel is the visible one (no " hidden" suffix);
         // "todo" is hidden on mobile. Panels are scrollable so the kanban
         // never grows the page past the viewport.
@@ -2634,18 +2646,28 @@ mod tests {
 
     #[test]
     fn render_kanban_board_static_columns_always_render() {
-        // Columns present but no matching items → lanes still render (not blank).
-        let spec = build_spec(vec![("root", kanban_data_bound(vec![]))]);
+        // When ALL lanes are empty the board skips column chrome and renders
+        // the empty_label bare on the canvas (no fjui-kanban__column wrapper).
+        // Column headers (Open, Done) are absent — the empty path takes over.
+        let spec = build_spec(vec![("root", kanban_data_bound(vec![
+            ("empty_label", json!("Nessun elemento")),
+        ]))]);
         let el = spec.elements.get("root").unwrap();
         let data = json!({"items": []});
         let html = render_kanban_board(el, &spec, &data, 0);
+        // No column chrome when all empty.
         assert!(
-            html.contains(">Open<"),
-            "empty lane Open must render: {html}"
+            !html.contains("fjui-kanban__column"),
+            "all-empty board must not emit column chrome: {html}"
+        );
+        // Empty label renders bare inside fjui-empty-state.
+        assert!(
+            html.contains("fjui-empty-state"),
+            "all-empty board must emit fjui-empty-state: {html}"
         );
         assert!(
-            html.contains(">Done<"),
-            "empty lane Done must render: {html}"
+            html.contains("Nessun elemento"),
+            "empty_label must appear: {html}"
         );
     }
 
@@ -3590,21 +3612,24 @@ mod tests {
         );
     }
 
-    /// Task 1 (RED): KanbanBoard column card emits fjui-kanban-card.
+    /// Task 1 (RED): KanbanBoard column card emits fjui-kanban__column when lanes have cards.
+    /// Uses data-bound items so the lane is non-empty and column chrome renders.
     #[test]
     fn kanban_card_emits_fjui_class() {
         let spec = build_spec(vec![(
             "root",
-            Element::new("KanbanBoard").prop(
-                "columns",
-                json!([{"id": "todo", "title": "Todo", "count": 1, "children": []}]),
-            ),
+            Element::new("KanbanBoard")
+                .prop("columns", json!([{"id": "todo", "title": "Todo"}]))
+                .prop("items_path", "/items")
+                .prop("group_by", "status")
+                .prop("card_title_key", "name"),
         )]);
         let el = spec.elements.get("root").unwrap();
-        let html = render_kanban_board(el, &spec, &json!({}), 1);
+        let data = json!({"items": [{"id": 1, "name": "Task A", "status": "todo"}]});
+        let html = render_kanban_board(el, &spec, &data, 1);
         assert!(
             html.contains("fjui-kanban__column"),
-            "KanbanBoard must emit fjui-kanban__column for each lane; got: {html}"
+            "KanbanBoard must emit fjui-kanban__column for each lane when cards are present; got: {html}"
         );
     }
 

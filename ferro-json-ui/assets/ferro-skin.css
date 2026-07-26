@@ -356,16 +356,6 @@ input, select, textarea {
     padding-block: calc(var(--spacing) * 12);
   }
 
-  .fjui-empty-state__icon {
-    width: 3rem;          /* 48px icon container — allowlisted structural geometry */
-    height: 3rem;
-    color: var(--color-text-muted);
-    margin-bottom: calc(var(--spacing) * 4);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .fjui-empty-state__title {
     font-size: var(--text-section-size);
     font-weight: 600;
