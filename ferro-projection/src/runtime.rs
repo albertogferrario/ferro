@@ -150,7 +150,7 @@ impl<P: Projection> ProjectionRuntime<P> {
         let am = ActiveModel {
             projection_name: ActiveValue::Set(P::NAME.to_string()),
             key: ActiveValue::Set(key.0.clone()),
-            state: ActiveValue::Set(state_json),
+            state: ActiveValue::Set(state_json.clone()),
             version: ActiveValue::Set(new_version),
             updated_at: ActiveValue::Set(now),
         };
@@ -174,6 +174,19 @@ impl<P: Projection> ProjectionRuntime<P> {
             .send()
             .await;
 
+        // Step 6.5: fragment re-render hook (D-01, D-02). Additive and INDEPENDENT of the
+        // delta broadcast: it fires whether or not the delta `send()` above succeeded, so a
+        // delta-broadcast failure never suppresses the live-fragment update. Fires
+        // synchronously inside the per-key Mutex; the hook drives its own async broadcast
+        // (via tokio::spawn) — see Phase 260. Reuses the already-serialized snapshot
+        // (`state_json`) rather than re-serializing, so there is no redundant work and no
+        // silent `Null` fallback.
+        if let Some(ref hook) = self.fragment_hook {
+            hook(key.as_str(), state_json);
+        }
+
+        // Surface a delta-broadcast failure AFTER the hook has fired — the snapshot is
+        // already persisted (D-21: broadcast failure does NOT roll back state).
         if let Err(e) = send_result {
             tracing::warn!(
                 error = %e,
@@ -181,14 +194,6 @@ impl<P: Projection> ProjectionRuntime<P> {
                 "projection broadcast failed; snapshot persisted"
             );
             return Err(ProjectionError::from(e));
-        }
-
-        // Step 6.5: fragment re-render hook (D-01, D-02).
-        // Fires synchronously inside the per-key Mutex, AFTER the delta broadcast.
-        // The hook drives its own async broadcast (via tokio::spawn) — see Phase 260.
-        if let Some(ref hook) = self.fragment_hook {
-            let snapshot_value = serde_json::to_value(&state).unwrap_or(serde_json::Value::Null);
-            hook(key.as_str(), snapshot_value);
         }
 
         // Step 7: Mutex released on drop of `_guard` after this return

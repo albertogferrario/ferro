@@ -1672,6 +1672,9 @@ pub(crate) fn render_live_fragment(
         html_escape(&props.key)
     );
 
+    // `channel` is html-escaped above; `inner_html` is already-escaped trusted HTML
+    // produced by render_spec_to_html (NOT raw data — do not copy this pattern for
+    // untrusted values).
     format!(r#"<div data-live-fragment data-channel="{channel}">{inner_html}</div>"#)
 }
 
