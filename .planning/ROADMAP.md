@@ -4121,7 +4121,7 @@ plugin-not-builtin —, non-goals, honest limitations, deferred list-diffing dir
   inference + `ferro-bundle` registration returning the hashed URL); opt-in
   `ferro assets fetch` subcommand for Iconify sets + Fontsource families through the existing
   pipeline.
-- [ ] **Phase 262: MCP + catalog + docs + publish** — `LiveFragment` through the full
+- [x] **Phase 262: MCP + catalog + docs + publish** — `LiveFragment` through the full (completed 2026-07-26)
   lockstep checklist (BUILTIN_TYPES + dispatch + catalog spec + both count assertions +
   `ferro-mcp` mirror); `generation_context` guidance for the live fragment, `#[memoize]`, and
   `asset!()`; `docs/src` sections; `ferro-base.css` regen if the client runtime adds classes;
@@ -4209,10 +4209,10 @@ operator-gated publish.
      `cargo clippy --all --all-targets -- -D warnings`, `cargo test --all-features`);
      `cargo publish -p ferro-rs` exits 0; the published version exceeds 0.2.89.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 - [x] 262-01-PLAN.md — LiveProjectionGuidance in generation_context (LiveFragment/#[memoize]/asset!()) + drift guard + SC-1 catalog evidence (wave 1)
 - [x] 262-02-PLAN.md — docs/src sections for all three capabilities + mdBook build gate (wave 1)
-- [ ] 262-03-PLAN.md — full CI-exact gate + operator-gated single crates.io publish (wave 2)
+- [x] 262-03-PLAN.md — full CI-exact gate + operator-gated single crates.io publish (wave 2)
 
 ### Requirement → Phase Mapping (v17.0)
 
