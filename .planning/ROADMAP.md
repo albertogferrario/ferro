@@ -4186,7 +4186,7 @@ pipeline); `ferro-cli` (fetch subcommand).
      byte-identical (pipeline passthrough guarantee preserved).
   3. `ferro assets fetch` downloads an Iconify set / Fontsource family into the asset dir on
      the Rust toolchain alone; it is opt-in and absent from a normal `cargo build`.
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
   - Wave 0: [ ] `261-01-PLAN.md` — Decouple ferro-bundle from ferro-rs (leaf crate) + `mime_from_ext` + publish-wave move
   - Wave 1: [ ] `261-02-PLAN.md` — `ferro::bundle` re-export + `Bundle::serve` Request adapter (framework side of D-06)
   - Wave 1: [ ] `261-03-PLAN.md` — `ferro assets fetch` CLI (Iconify/Fontsource, validated, rustls-tls)
