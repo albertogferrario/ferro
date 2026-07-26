@@ -12,6 +12,7 @@ use proc_macro::TokenStream;
 
 mod action;
 mod asset;
+mod authenticatable;
 mod describe;
 mod domain_error;
 mod ferro_test;
@@ -567,6 +568,21 @@ pub fn test(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(FerroModel)]
 pub fn derive_ferro_model(input: TokenStream) -> TokenStream {
     model::ferro_model_impl(input)
+}
+
+/// Derive the `Authenticatable` trait so `Auth::user_as::<T>()` works.
+///
+/// Generates `auth_identifier` (`self.id as i64`), `auth_identifier_name`, and
+/// `as_any` for a struct with an integer `id` field. Override the field with
+/// `#[auth(id = "user_id")]`.
+///
+/// ```rust,ignore
+/// #[derive(Clone, DeriveEntityModel, Authenticatable)]
+/// pub struct Model { #[sea_orm(primary_key)] pub id: i32, /* … */ }
+/// ```
+#[proc_macro_derive(Authenticatable, attributes(auth))]
+pub fn derive_authenticatable(input: TokenStream) -> TokenStream {
+    authenticatable::derive_authenticatable_impl(input)
 }
 
 /// Derive macro for declarative struct validation using Ferro's rules
