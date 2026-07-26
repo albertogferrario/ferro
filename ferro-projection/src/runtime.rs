@@ -179,6 +179,15 @@ impl<P: Projection> ProjectionRuntime<P> {
             return Err(ProjectionError::from(e));
         }
 
+        // Step 6.5: fragment re-render hook (D-01, D-02).
+        // Fires synchronously inside the per-key Mutex, AFTER the delta broadcast.
+        // The hook drives its own async broadcast (via tokio::spawn) — see Phase 260.
+        if let Some(ref hook) = self.fragment_hook {
+            let snapshot_value =
+                serde_json::to_value(&state).unwrap_or(serde_json::Value::Null);
+            hook(key.as_str(), snapshot_value);
+        }
+
         // Step 7: Mutex released on drop of `_guard` after this return
         Ok(())
     }
@@ -600,6 +609,39 @@ mod tests {
 
         assert_eq!(state_a, state_b);
         assert_eq!(state_a.total, 15);
+    }
+
+    #[tokio::test]
+    async fn fragment_hook_fires_after_apply_event() {
+        use std::sync::Mutex;
+        let received: Arc<Mutex<Vec<(String, serde_json::Value)>>> =
+            Arc::new(Mutex::new(Vec::new()));
+        let sink = received.clone();
+
+        let rt = fresh_runtime(CounterProjection)
+            .await
+            .with_fragment_renderer(move |key: &str, snapshot: serde_json::Value| {
+                sink.lock().unwrap().push((key.to_string(), snapshot));
+            });
+
+        rt.apply_event(&CounterEvent { delta: 5 })
+            .await
+            .expect("apply");
+
+        let calls = received.lock().unwrap();
+        assert_eq!(calls.len(), 1, "hook fires exactly once per apply_event");
+        assert_eq!(calls[0].0, "default-key");
+        assert_eq!(calls[0].1["total"], 5);
+    }
+
+    #[tokio::test]
+    async fn apply_event_without_hook_still_broadcasts_delta_unchanged() {
+        // Regression pin (D-02): a runtime with NO fragment_hook behaves identically
+        // to before — apply succeeds and the base delta broadcast path is unchanged.
+        let rt = fresh_runtime(CounterProjection).await;
+        rt.apply_event(&CounterEvent { delta: 3 })
+            .await
+            .expect("apply without hook still succeeds and broadcasts delta");
     }
 
     // D-45 #10: rebuild with empty iterator wipes row and returns Default
