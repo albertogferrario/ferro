@@ -257,12 +257,19 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 .as_deref()
                 .map(|tmpl| template_url(tmpl, row, &row_key_value));
             let (open_tag, close_tag) = if let Some(ref href) = row_href {
+                // Navigate via a div + onclick (mirrors the desktop <tr>), NOT an
+                // <a> wrapper: the row-actions dropdown emits a <button>, and a
+                // <button> nested inside an <a> is invalid HTML. The browser's
+                // parser splits the anchor and re-applies the card classes to each
+                // fragment, shattering the mobile card (empty box + title-in-a-box
+                // + kebab-in-a-box). A div carries the same click-navigation and
+                // legally contains the button.
                 (
                     format!(
-                        "<a href=\"{}\" class=\"block rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\">",
+                        "<div class=\"rounded-lg border border-border bg-card p-4 space-y-2 hover:bg-surface/60 cursor-pointer {INTERACTIVE_BASE}\" onclick=\"if(!event.target.closest('button,a,[popovertarget],[popover]'))window.location.assign(this.dataset.rowHref)\" data-row-href=\"{}\">",
                         html_escape(href)
                     ),
-                    "</a>".to_string(),
+                    "</div>".to_string(),
                 )
             } else if props.row_actions.is_some() {
                 (
@@ -1332,6 +1339,45 @@ mod tests {
         assert!(
             html.contains("/p/row-3/7"),
             "legacy {{row_key}} and {{id}} must still be substituted; got: {html}"
+        );
+    }
+
+    #[test]
+    fn data_table_mobile_card_with_row_href_wraps_in_div_not_anchor() {
+        // A clickable row (row_href) that also carries a row-actions dropdown
+        // must render the mobile card as <div onclick> holding data-row-href,
+        // NOT an <a> wrapper. The kebab emits a <button>, and <button> inside
+        // <a> is invalid HTML the browser splits — re-applying the card
+        // classes to each fragment and shattering the card. Regression guard.
+        let el = mk_element(
+            "DataTable",
+            json!({
+                "data_path": "/items",
+                "row_href": "/items/{id}/detail",
+                "columns": [{"key": "name", "label": "Name"}],
+                "row_actions": [
+                    {"label": "Edit", "action": {"handler": "edit", "url": "/items/{id}/edit", "method": "GET"}}
+                ],
+            }),
+        );
+        let spec = mk_spec("root", el.clone());
+        let data = json!({"items": [{"id": "9", "name": "x"}]});
+        let html = render_data_table(&el, &spec, &data, 1);
+        // Row navigation is carried by data-row-href; the card is never an
+        // anchor wrapping the kebab button.
+        assert!(
+            !html.contains("<a href=\"/items/9/detail\""),
+            "mobile card must not wrap the row in an <a>; got: {html}"
+        );
+        assert!(
+            html.contains("data-row-href=\"/items/9/detail\""),
+            "row navigation must be carried by data-row-href; got: {html}"
+        );
+        // The kebab dropdown button renders — the reason an <a> wrapper would
+        // be invalid in the first place.
+        assert!(
+            html.contains("<button"),
+            "row-actions kebab button must render; got: {html}"
         );
     }
 
