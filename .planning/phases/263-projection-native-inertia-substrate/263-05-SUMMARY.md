@@ -117,7 +117,26 @@ test result: ok. 4 passed; 0 failed
 
 `cargo fmt --all -- --check`: exit 0 (clean after fixing whitespace drift from prior waves 263-01..04)
 
-Full CI-exact gate (clippy --all --all-targets -D warnings + test --all-features): DEFERRED to orchestrator post-clean rebuild (disk-managed).
+Full CI-exact gate — run by orchestrator post-`cargo clean` rebuild (disk-managed, 28Gi freed):
+
+- `cargo fmt --all -- --check`: exit 0 (clean).
+- `cargo clippy --all-targets --all-features -- -D warnings`: exit 0 — GREEN after fixing 2
+  `clone_on_copy` errors flagged only under the full gate (`DataType.clone()` on a `Copy` type in
+  `ferro-projections/src/schema_contract.rs` FieldContract/InputContract `From` impls; fixed in
+  commit `e63b36ed`, `fix(263-01): drop clone on Copy DataType`). The scoped per-crate tests had
+  passed (tests ignore lints); the `-D warnings` gate caught it — the recurring `--all-features`
+  clippy lesson.
+- `cargo test --all-features`: exit 0 — whole-workspace, 0 failures.
+
+Test-profile coverage note: `permitted_actions_parity` and `single_source` use
+`#[cfg(all(test, not(feature = "confirmation")))]` (matching the pre-existing `single_source`
+sibling convention — the `confirmation` feature inserts a distinct write seam, so the
+single-channel parity assertion is valid only in the base profile). They therefore run in the
+DEFAULT-feature test profile (verified green by the executor: parity 2/2, write-parity PASS), and
+are `cfg`-excluded from `--all-features`. `data_tenant_scoping` uses plain `#[cfg(test)]` and ran
+green under `--all-features`. The clone fix does not touch either parity test's code path;
+`schema_contract`'s own tests ran green under `--all-features`, confirming the fix is
+behavior-neutral.
 
 ## Deviations from Plan
 
