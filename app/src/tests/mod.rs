@@ -1,4 +1,4 @@
-pub mod cassa_render;
+pub mod pos_render;
 pub mod computed_total_e2e;
 pub mod crud_e2e;
 pub mod data_tenant_scoping;

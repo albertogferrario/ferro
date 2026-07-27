@@ -1,9 +1,9 @@
-//! Phase 257 SC-2/SC-3: the /cassa register is projection-derived and the
+//! POS register render contracts: the /pos page is projection-derived and the
 //! rendered page carries the fill_viewport class chain.
 
 #[cfg(test)]
 mod tests {
-    use crate::controllers::cassa::{cassa_products, cassa_service_def};
+    use crate::controllers::pos::{pos_products, pos_service_def};
     use ferro::serde_json::json;
     use ferro::{
         derive_intents, register_template, JsonUi, JsonUiRenderer, Renderer, VisualContext,
@@ -11,8 +11,8 @@ mod tests {
     use ferro_json_ui::lint;
 
     #[test]
-    fn cassa_render_is_projection_derived_fill_viewport() {
-        let service = cassa_service_def();
+    fn pos_render_is_projection_derived_fill_viewport() {
+        let service = pos_service_def();
         let intents = derive_intents(&service);
         let ctx = VisualContext {
             templates: Some(register_template()),
@@ -42,11 +42,11 @@ mod tests {
             "register spec must be lint-clean: {hits:#?}"
         );
 
-        let data = json!({ "data": { "cassa": cassa_products() } });
+        let data = json!({ "data": { "pos": pos_products() } });
         let resp = JsonUi::render(&spec, &data).expect("render ok");
         assert_eq!(resp.status_code(), 200);
         let html = resp.body();
-        // SC-3: fill_viewport → `ferro-fill` body class chain on the rendered page.
+        // fill_viewport → `ferro-fill` body class chain on the rendered page.
         assert!(
             html.contains("ferro-fill"),
             "page must carry the ferro-fill class chain"
@@ -61,13 +61,13 @@ mod tests {
             "TileGrid search input must render"
         );
         assert!(
-            html.contains("Conferma ordine"),
+            html.contains("Confirm order"),
             "confirm button label must render"
         );
         // Guard against empty-grid regressions: a real product row must render
-        // from the $each expansion over /data/cassa.
+        // from the $each expansion over /data/pos.
         assert!(
-            html.contains("Caffè"),
+            html.contains("Espresso"),
             "product tiles must render from $each expansion"
         );
         // 257-04: the sale_form carries the fill height-chain marker so the

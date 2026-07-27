@@ -9,12 +9,8 @@ use crate::resources::UserResource;
 /// GET /users - List all users
 #[handler]
 pub async fn index() -> Response {
-    json_response!({
-        "users": [
-            {"id": 1, "name": "John"},
-            {"id": 2, "name": "Jane"}
-        ]
-    })
+    let all_users = users::Model::query().all().await?;
+    json_response!({ "users": all_users })
 }
 
 /// GET /users/create - Show form to create a new user
@@ -28,9 +24,6 @@ pub async fn create() -> Response {
 /// POST /users - Store a new user
 #[handler]
 pub async fn store() -> Response {
-    // ... create user logic would go here ...
-
-    // Redirect to users.index (compile-time validated!)
     redirect!("users.index").into()
 }
 

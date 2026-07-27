@@ -1,6 +1,6 @@
 {
   "$schema": "ferro-json-ui/v2",
-  "title": "Nuovo prodotto",
+  "title": "New product",
   "layout": "dashboard",
   "design": { "intent": "collect" },
   "root": "root",
@@ -13,9 +13,9 @@
     "page_header": {
       "type": "PageHeader",
       "props": {
-        "title": "Nuovo prodotto",
+        "title": "New product",
         "breadcrumb": [
-          { "label": "Prodotti", "url": "/prodotti" }
+          { "label": "Products", "url": "/products" }
         ]
       }
     },
@@ -27,87 +27,87 @@
     "form_card": {
       "type": "Card",
       "props": {
-        "title": "Dati prodotto",
-        "description": "Compila i campi e salva per aggiungere il prodotto al catalogo."
+        "title": "Product details",
+        "description": "Fill in the fields and save to add the product to the catalog."
       },
       "children": ["form"]
     },
     "info_card": {
       "type": "Card",
       "props": {
-        "title": "Suggerimenti",
-        "description": "Come compilare la scheda prodotto."
+        "title": "Tips",
+        "description": "How to fill in the product form."
       },
-      "children": ["tip_nome", "tip_prezzo", "tip_quantita"]
+      "children": ["tip_name", "tip_price", "tip_quantity"]
     },
-    "tip_nome": {
+    "tip_name": {
       "type": "Text",
       "props": {
-        "content": "Il nome appare nel catalogo e nelle ricevute: usa una descrizione breve e riconoscibile.",
+        "content": "The name appears in the catalog and receipts: use a short, recognizable description.",
         "element": "p"
       }
     },
-    "tip_prezzo": {
+    "tip_price": {
       "type": "Text",
       "props": {
-        "content": "Il prezzo è IVA inclusa e usa il punto come separatore decimale (es. 12.50).",
+        "content": "The price is VAT-inclusive and uses a period as the decimal separator (e.g. 12.50).",
         "element": "p"
       }
     },
-    "tip_quantita": {
+    "tip_quantity": {
       "type": "Text",
       "props": {
-        "content": "La quantità indica lo stock iniziale: potrai aggiornarla in qualsiasi momento dalla lista prodotti.",
+        "content": "The quantity indicates initial stock: you can update it at any time from the product list.",
         "element": "p"
       }
     },
     "form": {
       "type": "Form",
       "props": {
-        "action": { "handler": "/prodotti", "method": "POST" },
+        "action": { "handler": "/products", "method": "POST" },
         "method": "POST"
       },
-      "children": ["nome", "categoria", "prezzo", "quantita", "submit"]
+      "children": ["name", "category", "price", "quantity", "submit"]
     },
-    "nome": {
+    "name": {
       "type": "Input",
       "props": {
-        "field": "nome",
-        "label": "Nome",
+        "field": "name",
+        "label": "Name",
         "required": true,
-        "placeholder": "Nome del prodotto"
+        "placeholder": "Product name"
       }
     },
-    "categoria": {
+    "category": {
       "type": "Select",
       "props": {
-        "field": "categoria",
-        "label": "Categoria",
+        "field": "category",
+        "label": "Category",
         "required": true,
-        "default_value": "abbigliamento",
+        "default_value": "clothing",
         "options": [
-          { "value": "abbigliamento", "label": "Abbigliamento" },
-          { "value": "accessori", "label": "Accessori" },
-          { "value": "calzature", "label": "Calzature" }
+          { "value": "clothing", "label": "Clothing" },
+          { "value": "accessories", "label": "Accessories" },
+          { "value": "footwear", "label": "Footwear" }
         ]
       }
     },
-    "prezzo": {
+    "price": {
       "type": "Input",
       "props": {
-        "field": "prezzo",
-        "label": "Prezzo (€)",
+        "field": "price",
+        "label": "Price (€)",
         "input_type": "number",
         "step": "0.01",
         "required": true,
-        "placeholder": "0,00"
+        "placeholder": "0.00"
       }
     },
-    "quantita": {
+    "quantity": {
       "type": "Input",
       "props": {
-        "field": "quantita",
-        "label": "Quantità",
+        "field": "quantity",
+        "label": "Quantity",
         "input_type": "number",
         "required": true,
         "default_value": "1"
@@ -116,7 +116,7 @@
     "submit": {
       "type": "Button",
       "props": {
-        "label": "Salva prodotto",
+        "label": "Save product",
         "button_type": "submit",
         "variant": "primary"
       }

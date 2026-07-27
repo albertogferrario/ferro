@@ -1,6 +1,4 @@
-use ferro::{handler, App, Inertia, InertiaProps, Request, Response};
-
-use crate::actions::example_action::ExampleAction;
+use ferro::{handler, Inertia, InertiaProps, Request, Response};
 
 #[derive(InertiaProps)]
 pub struct User {
@@ -24,18 +22,12 @@ pub struct HomeProps {
 
 #[handler]
 pub async fn index(req: Request) -> Response {
-    // Get the action from the service container using resolve()
-    // This returns a proper error response if not registered
-    let action = App::resolve::<ExampleAction>()?;
-    let message = action.execute();
-
-    // Use the new async-safe Inertia::render API
     Inertia::render(
         &req,
         "Home",
         HomeProps {
             title: "Welcome to Ferro!".to_string(),
-            message,
+            message: "Hello from Ferro!".to_string(),
             user: User {
                 name: "John Doe".to_string(),
                 email: "john@example.com".to_string(),

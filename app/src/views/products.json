@@ -1,0 +1,60 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Products",
+  "layout": "dashboard",
+  "design": { "intent": "browse" },
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1 },
+      "children": ["page_header", "products_table"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": { "title": "Products", "actions": ["new_button"] }
+    },
+    "new_button": {
+      "type": "Button",
+      "props": { "label": "New product", "variant": "primary" },
+      "action": { "handler": "/products/new", "method": "GET" }
+    },
+    "products_table": {
+      "type": "DataTable",
+      "props": {
+        "columns": [
+          { "key": "name", "label": "Name" },
+          { "key": "category", "label": "Category" },
+          { "key": "price", "label": "Price" },
+          { "key": "status", "label": "Status" }
+        ],
+        "data_path": "/products",
+        "row_key": "id",
+        "empty_message": "No products. Click \"New product\" to add one.",
+        "row_actions": [
+          {
+            "label": "View details",
+            "action": { "handler": "/products/{row_key}", "method": "GET" }
+          },
+          {
+            "label": "Edit",
+            "action": { "handler": "/products/{row_key}/edit", "method": "GET" }
+          },
+          {
+            "label": "Delete",
+            "destructive": true,
+            "action": {
+              "handler": "/products/{row_key}/delete",
+              "method": "POST",
+              "confirm": {
+                "title": "Delete product?",
+                "message": "This action cannot be undone.",
+                "tone": "destructive"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

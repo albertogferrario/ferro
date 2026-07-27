@@ -85,33 +85,33 @@ pub async fn register() {
             sidebar: SidebarProps {
                 fixed_top: vec![],
                 groups: vec![SidebarGroup {
-                    label: "Gestione".to_string(),
+                    label: "Management".to_string(),
                     collapsed: false,
                     items: vec![
                         SidebarNavItem {
-                            label: "Cassa".to_string(),
-                            href: "/cassa".to_string(),
+                            label: "POS Register".to_string(),
+                            href: "/pos".to_string(),
                             icon: None,
                             active: false,
                             disabled: None,
                         },
                         SidebarNavItem {
-                            label: "Pagamenti".to_string(),
-                            href: "/pagamenti".to_string(),
+                            label: "Payments".to_string(),
+                            href: "/payments".to_string(),
                             icon: None,
                             active: false,
                             disabled: None,
                         },
                         SidebarNavItem {
-                            label: "Ordini".to_string(),
-                            href: "/ordini".to_string(),
+                            label: "Order Board".to_string(),
+                            href: "/order-board".to_string(),
                             icon: None,
                             active: false,
                             disabled: None,
                         },
                         SidebarNavItem {
-                            label: "Prodotti".to_string(),
-                            href: "/prodotti".to_string(),
+                            label: "Products".to_string(),
+                            href: "/products".to_string(),
                             icon: None,
                             active: false,
                             disabled: None,

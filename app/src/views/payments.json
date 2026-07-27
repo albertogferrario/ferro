@@ -1,6 +1,6 @@
 {
   "$schema": "ferro-json-ui/v2",
-  "title": "Pagamenti",
+  "title": "Payments",
   "layout": "dashboard",
   "design": { "intent": "summarize" },
   "root": "root",
@@ -12,26 +12,26 @@
     },
     "page_header": {
       "type": "PageHeader",
-      "props": { "title": "Pagamenti" }
+      "props": { "title": "Payments" }
     },
     "stats_row": {
       "type": "StatCard",
       "props": {
-        "label": "Totale",
-        "value": { "$data": "/meta/totale_formattato" }
+        "label": "Total",
+        "value": { "$data": "/meta/total_formatted" }
       }
     },
     "payments_table": {
       "type": "DataTable",
       "props": {
         "columns": [
-          { "key": "data", "label": "Data" },
-          { "key": "descrizione", "label": "Descrizione" },
-          { "key": "importo", "label": "Importo" },
-          { "key": "stato", "label": "Stato" }
+          { "key": "date", "label": "Date" },
+          { "key": "description", "label": "Description" },
+          { "key": "amount", "label": "Amount" },
+          { "key": "status", "label": "Status" }
         ],
-        "data_path": "/pagamenti",
-        "empty_message": "Nessun pagamento trovato."
+        "data_path": "/payments",
+        "empty_message": "No payments found."
       }
     }
   }

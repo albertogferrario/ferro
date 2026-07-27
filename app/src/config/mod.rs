@@ -1,7 +1,6 @@
 mod database;
 mod mail;
 
-pub use database::DatabaseConfig;
 pub use mail::MailConfig;
 
 use ferro::{Config, DatabaseConfig as FerroDatabaseConfig};

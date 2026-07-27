@@ -18,16 +18,15 @@ use crate::tenant_resolver::SessionUserTenantResolver;
 routes! {
     get!("/", controllers::home::index).name("home"),
     get!("/redirect-example", controllers::user::redirect_example),
-    get!("/config", controllers::config_example::show).name("config.show"),
-    get!("/pagamenti", controllers::pagamenti::index).name("pagamenti.index"),
-    get!("/cassa", controllers::cassa::index).name("cassa.index"),
-    post!("/cassa/conferma", controllers::cassa::conferma).name("cassa.conferma"),
-    get!("/ordini", controllers::ordini::index).name("ordini.index"),
-    post!("/ordini/:id/elimina", controllers::ordini::elimina).name("ordini.elimina"),
-    get!("/prodotti", controllers::prodotti::index).name("prodotti.index"),
-    get!("/prodotti/nuovo", controllers::prodotti::nuovo).name("prodotti.nuovo"),
-    post!("/prodotti", controllers::prodotti::store).name("prodotti.store"),
-    post!("/prodotti/:id/elimina", controllers::prodotti::elimina).name("prodotti.elimina"),
+    get!("/payments", controllers::payments::index).name("payments.index"),
+    get!("/pos", controllers::pos::index).name("pos.index"),
+    post!("/pos/confirm", controllers::pos::confirm).name("pos.confirm"),
+    get!("/order-board", controllers::order_board::index).name("order_board.index"),
+    post!("/order-board/:id/delete", controllers::order_board::delete).name("order_board.delete"),
+    get!("/products", controllers::products::index).name("products.index"),
+    get!("/products/new", controllers::products::new_form).name("products.new"),
+    post!("/products", controllers::products::store).name("products.store"),
+    post!("/products/:id/delete", controllers::products::delete).name("products.delete"),
 
     // User routes - all 7 RESTful endpoints from a single line
     resource!("/users", controllers::user),
@@ -110,6 +109,21 @@ routes! {
         TenantMiddleware::new()
             .resolver(SessionUserTenantResolver::new())
             .on_failure(TenantFailureMode::Allow),
+    ),
+
+    // Projection-native Inertia page (SUBST-03 dogfood). GET /orders renders the
+    // `order` ServiceDef's field schema + tenant-scoped rows + guard-filtered
+    // permitted actions via `Inertia::from_projection`. Same tenant envelope as
+    // the visual write surface: SessionAuth establishes the session (redirects an
+    // unauthenticated visitor to login), then SessionUserTenantResolver populates
+    // current_tenant() so the read is scoped to the caller's tenant.
+    group!("/", {
+        get!("/orders", controllers::orders_projection::index).name("orders.projection"),
+    }).middleware(SessionAuthMiddleware::new())
+      .middleware(
+        TenantMiddleware::new()
+            .resolver(SessionUserTenantResolver::new())
+            .on_failure(TenantFailureMode::Forbidden),
     ),
 
     // Visual/form transition-write surface (Phase 232, EXEC-05).

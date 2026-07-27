@@ -1,0 +1,53 @@
+{
+  "$schema": "ferro-json-ui/v2",
+  "title": "Orders",
+  "layout": "dashboard",
+  "design": { "intent": "process" },
+  "root": "root",
+  "elements": {
+    "root": {
+      "type": "Grid",
+      "props": { "columns": 1 },
+      "children": ["page_header", "board"]
+    },
+    "page_header": {
+      "type": "PageHeader",
+      "props": { "title": "Orders" }
+    },
+    "board": {
+      "type": "KanbanBoard",
+      "props": {
+        "columns": [
+          { "id": "pending", "title": "Pending" },
+          { "id": "processing", "title": "Processing" },
+          { "id": "shipped", "title": "Shipped" }
+        ],
+        "items_path": "/orders",
+        "group_by": "status",
+        "card_title_key": "title",
+        "card_description_key": "description",
+        "row_key": "id",
+        "empty_label": "No orders",
+        "row_actions": [
+          {
+            "label": "View details",
+            "action": { "handler": "/order-board/{row_key}", "method": "GET" }
+          },
+          {
+            "label": "Delete",
+            "destructive": true,
+            "action": {
+              "handler": "/order-board/{row_key}/delete",
+              "method": "POST",
+              "confirm": {
+                "title": "Delete order?",
+                "message": "This action cannot be undone.",
+                "tone": "destructive"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
