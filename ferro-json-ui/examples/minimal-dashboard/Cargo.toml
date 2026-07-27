@@ -2,6 +2,7 @@
 name = "minimal-dashboard"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 publish = false
 description = "DX-01 pit-of-success proof: zero custom CSS, premium dashboard quality by default"
 
