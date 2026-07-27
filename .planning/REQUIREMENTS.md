@@ -406,7 +406,7 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 
 ### Inertia delivery
 
-- [ ] **SUBST-03**: `Inertia::from_projection(req, service, query) -> InertiaResponse` in
+- [x] **SUBST-03**: `Inertia::from_projection(req, service, query) -> InertiaResponse` in
   `ferro-inertia` loads the tenant-scoped data shaped by the `ServiceDef` field set, attaches
   the `SchemaContract` and per-record `permitted_actions`, and serializes them as Inertia
   props `{ schema, data, permitted_actions }`. The helper lives on the framework-side Inertia
