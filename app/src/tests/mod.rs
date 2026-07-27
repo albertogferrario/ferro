@@ -1,4 +1,3 @@
-pub mod pos_render;
 pub mod computed_total_e2e;
 pub mod crud_e2e;
 pub mod data_tenant_scoping;
@@ -8,5 +7,6 @@ pub mod mcp_tenant_isolation;
 pub mod mcp_write_dispatch;
 pub mod oauth_magic_link_resume_flow;
 pub mod permitted_actions_parity;
+pub mod pos_render;
 pub mod single_source;
 pub mod visual_action;
