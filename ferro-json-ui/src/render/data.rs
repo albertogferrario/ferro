@@ -178,9 +178,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
     // D-08 migration Plan 07: TABLE SHELL uses fjui-table, fjui-table__header,
     // fjui-table__header-cell. Row/cell classes are Plan 08 scope (data.rs body).
     // The outer wrapper is a flat container (fjui-card border-only, LANG-04).
-    html.push_str(
-        "<div class=\"hidden md:block fjui-card overflow-hidden\">",
-    );
+    html.push_str("<div class=\"hidden md:block fjui-card overflow-hidden\">");
 
     {
         if props.bulk_select.unwrap_or(false) {
@@ -207,9 +205,7 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
             html.push_str("</th>");
         }
         if has_actions {
-            html.push_str(
-                "<th class=\"fjui-table__header-cell text-right\">Azioni</th>"
-            );
+            html.push_str("<th class=\"fjui-table__header-cell text-right\">Azioni</th>");
         }
         html.push_str("</tr></thead>");
 
@@ -274,20 +270,19 @@ pub(crate) fn render_data_table(el: &Element, _spec: &Spec, data: &Value, _depth
                 // When peek_entity is set AND the row has a href, wrap the cell content in
                 // an <a> with data-peek-entity + data-peek-id so the peek overlay fires.
                 // Full-literal class name per D-01 (246 lock).
-                let cell_content = if let (Some(ref entity), Some(ref href)) =
-                    (&col.peek_entity, &row_href)
-                {
-                    format!(
-                        "<a href=\"{}\" class=\"fjui-table__link\" \
+                let cell_content =
+                    if let (Some(ref entity), Some(ref href)) = (&col.peek_entity, &row_href) {
+                        format!(
+                            "<a href=\"{}\" class=\"fjui-table__link\" \
                          data-peek-entity=\"{}\" data-peek-id=\"{}\">{}</a>",
-                        html_escape(href),
-                        html_escape(entity),
-                        html_escape(&row_id_str),
+                            html_escape(href),
+                            html_escape(entity),
+                            html_escape(&row_id_str),
+                            render_cell(col, row.get(&col.key))
+                        )
+                    } else {
                         render_cell(col, row.get(&col.key))
-                    )
-                } else {
-                    render_cell(col, row.get(&col.key))
-                };
+                    };
                 html.push_str(&format!(
                     "<td class=\"{} {}\">{}</td>",
                     cell_class,
@@ -787,9 +782,7 @@ pub(crate) fn render_media_card_grid(
             .and_then(|v| serde_json::from_value::<Tone>(v.clone()).ok())
             .unwrap_or_default();
 
-        html.push_str(
-            "<div class=\"fjui-card overflow-hidden flex flex-col\">",
-        );
+        html.push_str("<div class=\"fjui-card overflow-hidden flex flex-col\">");
 
         // Image section. If image_key resolves to null/empty, render a blank
         // placeholder slot with the same aspect ratio so card heights stay
@@ -1994,12 +1987,12 @@ mod tests {
             false_html.contains("fjui-status-dot--false"),
             "false → muted dot; got: {false_html}"
         );
-        assert!(false_html.contains("Non attivo"), "false label; got: {false_html}");
-        // integer boolean
-        let int_true = render_cell(
-            &col,
-            Some(&Value::Number(serde_json::Number::from(1))),
+        assert!(
+            false_html.contains("Non attivo"),
+            "false label; got: {false_html}"
         );
+        // integer boolean
+        let int_true = render_cell(&col, Some(&Value::Number(serde_json::Number::from(1))));
         assert!(
             int_true.contains("fjui-status-dot--true"),
             "Number(1) → true; got: {int_true}"

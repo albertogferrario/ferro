@@ -46,14 +46,12 @@ pub fn ferro_base_css() -> std::borrow::Cow<'static, str> {
 /// Geist Sans Variable woff2. Served at `/_ferro/fonts/Geist-Variable.woff2`.
 ///
 /// Source: vercel/geist-font v1.7.2, OFL-1.1 license.
-pub const GEIST_SANS_WOFF2: &[u8] =
-    include_bytes!("../../assets/fonts/Geist-Variable.woff2");
+pub const GEIST_SANS_WOFF2: &[u8] = include_bytes!("../../assets/fonts/Geist-Variable.woff2");
 
 /// Geist Mono Variable woff2. Served at `/_ferro/fonts/GeistMono-Variable.woff2`.
 ///
 /// Source: vercel/geist-font v1.7.2, OFL-1.1 license.
-pub const GEIST_MONO_WOFF2: &[u8] =
-    include_bytes!("../../assets/fonts/GeistMono-Variable.woff2");
+pub const GEIST_MONO_WOFF2: &[u8] = include_bytes!("../../assets/fonts/GeistMono-Variable.woff2");
 
 /// OFL-1.1 license text for the Geist fonts.
 ///

@@ -618,8 +618,9 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
     // D-08 migration: PageHeader is a flat surface — no border/shadow on the wrapper itself.
     // fjui-page-header carries display-scale title via fjui-text--display on the h2.
     // Layout utilities (flex, flex-wrap, gap-*) remain inline per D-02.
-    let mut html =
-        String::from("<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">");
+    let mut html = String::from(
+        "<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">",
+    );
 
     // Title block — breadcrumb and title fused into one inline flow
     html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
@@ -703,7 +704,9 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
 
     // Header chrome — mirrors render_page_header's migrated fjui-* output so the
     // DetailPage skeleton stays visually identical to manually-composed pages.
-    html.push_str("<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">");
+    html.push_str(
+        "<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">",
+    );
     html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
     if !props.breadcrumb.is_empty() {
         for item in &props.breadcrumb {
@@ -1556,12 +1559,7 @@ pub(crate) fn render_selection_panel(
     let empty_body_html = props
         .empty_body
         .as_deref()
-        .map(|b| {
-            format!(
-                "<p class=\"fjui-empty-state__body\">{}</p>",
-                html_escape(b)
-            )
-        })
+        .map(|b| format!("<p class=\"fjui-empty-state__body\">{}</p>", html_escape(b)))
         .unwrap_or_default();
     let currency_attr = props
         .currency
@@ -1906,10 +1904,7 @@ mod tests {
         )]);
         let el = spec.elements.get("root").unwrap();
         let html = render_card(el, &spec, &json!({}), 1);
-        assert!(
-            html.contains("fjui-card"),
-            "got: {html}"
-        );
+        assert!(html.contains("fjui-card"), "got: {html}");
         assert!(
             html.contains("&lt;b&gt;T&lt;/b&gt;"),
             "title must be escaped; got: {html}"
@@ -2016,7 +2011,10 @@ mod tests {
             html.contains("fjui-card"),
             "expected fjui-card class, got: {html}"
         );
-        assert!(html.contains("p-8"), "expected elevated padding p-8, got: {html}");
+        assert!(
+            html.contains("p-8"),
+            "expected elevated padding p-8, got: {html}"
+        );
     }
 
     #[test]
@@ -2512,9 +2510,7 @@ mod tests {
         assert!(html.contains("Reports"), "got: {html}");
         // Second breadcrumb has no URL → rendered as <span>.
         assert!(
-            html.contains(
-                "<span class=\"fjui-text--meta whitespace-nowrap\">Reports</span>"
-            ),
+            html.contains("<span class=\"fjui-text--meta whitespace-nowrap\">Reports</span>"),
             "urlless breadcrumb should be a span with fjui-text--meta; got: {html}"
         );
     }
@@ -2660,9 +2656,10 @@ mod tests {
         // When ALL lanes are empty the board skips column chrome and renders
         // the empty_label bare on the canvas (no fjui-kanban__column wrapper).
         // Column headers (Open, Done) are absent — the empty path takes over.
-        let spec = build_spec(vec![("root", kanban_data_bound(vec![
-            ("empty_label", json!("Nessun elemento")),
-        ]))]);
+        let spec = build_spec(vec![(
+            "root",
+            kanban_data_bound(vec![("empty_label", json!("Nessun elemento"))]),
+        )]);
         let el = spec.elements.get("root").unwrap();
         let data = json!({"items": []});
         let html = render_kanban_board(el, &spec, &data, 0);

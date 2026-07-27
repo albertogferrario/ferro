@@ -205,7 +205,11 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             // fjui-textarea: skin owns border/bg/padding/min-height/font-family/line-height.
             // DISABLED_BASE + FOCUS_RING are D-02 allowlist behavior utilities (kept inline).
             let val = resolved_value.as_deref().unwrap_or("");
-            let error_class = if has_error { " fjui-textarea--error" } else { "" };
+            let error_class = if has_error {
+                " fjui-textarea--error"
+            } else {
+                ""
+            };
             html.push_str(&format!(
                 "<textarea id=\"{}\" name=\"{}\" class=\"fjui-textarea{error_class} w-full {MOTION_FAST} {DISABLED_BASE} {}\"",
                 html_escape(&props.field),
@@ -288,10 +292,7 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
             // If `showModal` is unsupported the runtime exits early, leaving the native
             // input functional (no-JS fallback, D-08).
             let use_date_picker = props.date_picker == Some(true)
-                && matches!(
-                    props.input_type,
-                    InputType::Date | InputType::Time
-                );
+                && matches!(props.input_type, InputType::Date | InputType::Time);
 
             if use_date_picker {
                 // Wrapper — runtime binds to this attribute.
@@ -338,7 +339,9 @@ pub(crate) fn render_input(el: &Element, _spec: &Spec, data: &Value, _depth: usi
                 ));
 
                 // Dialog shell — JS builds the calendar grid inside on first open.
-                html.push_str("<dialog data-date-picker-dialog class=\"fjui-datepicker__dialog\"></dialog>");
+                html.push_str(
+                    "<dialog data-date-picker-dialog class=\"fjui-datepicker__dialog\"></dialog>",
+                );
 
                 html.push_str("</div>");
             } else {
@@ -524,10 +527,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
         // through html_escape.
 
         let field_esc = html_escape(&props.field);
-        let placeholder = props
-            .placeholder
-            .as_deref()
-            .unwrap_or("Cerca\u{2026}");
+        let placeholder = props.placeholder.as_deref().unwrap_or("Cerca\u{2026}");
         let listbox_id = format!("fjui-combo-listbox-{}", field_esc);
         let controls_id = html_escape(&listbox_id);
 
@@ -547,11 +547,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
         ));
 
         for (i, opt) in props.options.iter().enumerate() {
-            let opt_id = format!(
-                "fjui-combo-opt-{}-{}",
-                html_escape(&props.field),
-                i
-            );
+            let opt_id = format!("fjui-combo-opt-{}-{}", html_escape(&props.field), i);
             html.push_str(&format!(
                 "<li class=\"fjui-combobox__option\" role=\"option\"\
                   id=\"{opt_id}\" data-value=\"{val}\" aria-selected=\"false\">{label}</li>",
@@ -1137,14 +1133,20 @@ mod tests {
         let html = render_input(&el, &spec, &json!({}), 1);
 
         // Wrapper attribute present.
-        assert!(html.contains("data-date-picker"), "wrapper attr missing; got: {html}");
+        assert!(
+            html.contains("data-date-picker"),
+            "wrapper attr missing; got: {html}"
+        );
         // Native input is the value carrier with data-date-picker-native.
         assert!(
             html.contains("data-date-picker-native"),
             "native value-carrier attr missing; got: {html}"
         );
         // Native input carries sr-only (visually hidden, accessible).
-        assert!(html.contains("sr-only"), "sr-only missing on native input; got: {html}");
+        assert!(
+            html.contains("sr-only"),
+            "sr-only missing on native input; got: {html}"
+        );
         // Native input carries the default value.
         assert!(
             html.contains("value=\"2026-07-22\""),
@@ -1182,7 +1184,10 @@ mod tests {
         let spec = mk_spec("root", el.clone());
         let html = render_input(&el, &spec, &json!({}), 1);
 
-        assert!(html.contains("data-date-picker"), "wrapper attr missing; got: {html}");
+        assert!(
+            html.contains("data-date-picker"),
+            "wrapper attr missing; got: {html}"
+        );
         assert!(
             html.contains("Seleziona orario"),
             "time trigger must say 'Seleziona orario'; got: {html}"
@@ -1234,7 +1239,10 @@ mod tests {
         let spec = mk_spec("root", el.clone());
         let html = render_input(&el, &spec, &json!({}), 1);
 
-        assert!(html.contains("aria-invalid=\"true\""), "aria-invalid missing; got: {html}");
+        assert!(
+            html.contains("aria-invalid=\"true\""),
+            "aria-invalid missing; got: {html}"
+        );
         assert!(
             html.contains("aria-describedby=\"err-date\""),
             "aria-describedby missing; got: {html}"
@@ -2253,10 +2261,7 @@ mod tests {
     /// D-08 migration: render_input emits fjui-input class.
     #[test]
     fn input_emits_fjui_input_class() {
-        let el = mk_element(
-            "Input",
-            json!({"field": "email", "label": "Email"}),
-        );
+        let el = mk_element("Input", json!({"field": "email", "label": "Email"}));
         let spec = mk_spec("root", el.clone());
         let html = render_input(&el, &spec, &json!({}), 1);
         assert!(

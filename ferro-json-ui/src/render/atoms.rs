@@ -150,10 +150,10 @@ fn render_button_inner(props: &ButtonProps) -> String {
     // Appearance classes are in ferro-skin.css @layer components. Rust emits
     // only semantic identifiers (D-01 full literals) + D-02 layout utilities.
     let variant_class = match props.variant {
-        Variant::Primary     => "fjui-btn--primary",
-        Variant::Secondary   => "fjui-btn--secondary",
-        Variant::Outline     => "fjui-btn--outline",
-        Variant::Ghost       => "fjui-btn--ghost",
+        Variant::Primary => "fjui-btn--primary",
+        Variant::Secondary => "fjui-btn--secondary",
+        Variant::Outline => "fjui-btn--outline",
+        Variant::Ghost => "fjui-btn--ghost",
         Variant::Destructive => "fjui-btn--destructive",
     };
 
@@ -294,13 +294,16 @@ pub(crate) fn render_badge(el: &Element, _spec: &Spec, _data: &Value, _depth: us
 pub(crate) fn badge_inline_html(tone: Tone, label: &str) -> String {
     // D-01: full string literals — never format!("fjui-badge--{}", tone)
     let tone_class = match tone {
-        Tone::Neutral     => "fjui-badge--neutral",
-        Tone::Success     => "fjui-badge--success",
-        Tone::Warning     => "fjui-badge--warning",
+        Tone::Neutral => "fjui-badge--neutral",
+        Tone::Success => "fjui-badge--success",
+        Tone::Warning => "fjui-badge--warning",
         Tone::Destructive => "fjui-badge--destructive",
     };
     // No inline style — skin rule `.fjui-badge { width: max-content }` handles chip-hug.
-    format!("<span class=\"fjui-badge {tone_class}\">{}</span>", html_escape(label))
+    format!(
+        "<span class=\"fjui-badge {tone_class}\">{}</span>",
+        html_escape(label)
+    )
 }
 
 // ── 4. Alert ─────────────────────────────────────────────────────────────
@@ -313,9 +316,9 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     // D-01: full string literals — appearance owned by skin layer (Plan 05).
     // Neutral is a muted surface tint. Success/Warning/Destructive match Badge vocabulary.
     let tone_class = match props.tone {
-        Tone::Neutral     => "fjui-alert--neutral",
-        Tone::Success     => "fjui-alert--success",
-        Tone::Warning     => "fjui-alert--warning",
+        Tone::Neutral => "fjui-alert--neutral",
+        Tone::Success => "fjui-alert--success",
+        Tone::Warning => "fjui-alert--warning",
         Tone::Destructive => "fjui-alert--destructive",
     };
     let icon = match props.tone {
@@ -325,9 +328,8 @@ pub(crate) fn render_alert(el: &Element, _spec: &Spec, _data: &Value, _depth: us
         Tone::Destructive => ICON_ERROR,
     };
     // Layout utilities (flex, items-start, gap-3) stay inline per D-02.
-    let mut html = format!(
-        "<div role=\"alert\" class=\"fjui-alert {tone_class} flex items-start gap-3\">"
-    );
+    let mut html =
+        format!("<div role=\"alert\" class=\"fjui-alert {tone_class} flex items-start gap-3\">");
     html.push_str(icon);
     html.push_str("<div>");
     if let Some(ref title) = props.title {
@@ -354,7 +356,9 @@ pub(crate) fn render_separator(el: &Element, _spec: &Spec, _data: &Value, _depth
     // Appearance (border-color, background-color) owned by skin layer.
     match orientation {
         Orientation::Horizontal => "<hr class=\"fjui-separator--horizontal my-4\">".to_string(),
-        Orientation::Vertical => "<div class=\"fjui-separator--vertical mx-4 h-full w-px\"></div>".to_string(),
+        Orientation::Vertical => {
+            "<div class=\"fjui-separator--vertical mx-4 h-full w-px\"></div>".to_string()
+        }
     }
 }
 
@@ -515,8 +519,7 @@ pub(crate) fn render_breadcrumb(
     };
     // D-01: fjui-breadcrumb* full literals; layout utilities (flex, items-center,
     // space-x-2) stay inline (D-02). Appearance (text-size, color) owned by skin.
-    let mut html =
-        String::from("<nav class=\"fjui-breadcrumb flex items-center space-x-2\">");
+    let mut html = String::from("<nav class=\"fjui-breadcrumb flex items-center space-x-2\">");
     let len = props.items.len();
     for (i, item) in props.items.iter().enumerate() {
         let is_last = i == len - 1;
@@ -765,18 +768,18 @@ pub(crate) fn render_stat_card(el: &Element, _spec: &Spec, data: &Value, _depth:
     // D-01: full string literals for tone modifier — appearance in skin layer (Plan 05).
     // Neutral maps to --default (border-only, no colour accent per UI-SPEC §StatCard).
     let tone_class = match props.tone {
-        Tone::Neutral     => "fjui-stat-card--default",
-        Tone::Success     => "fjui-stat-card--success",
-        Tone::Warning     => "fjui-stat-card--warning",
+        Tone::Neutral => "fjui-stat-card--default",
+        Tone::Success => "fjui-stat-card--success",
+        Tone::Warning => "fjui-stat-card--warning",
         Tone::Destructive => "fjui-stat-card--destructive",
     };
 
     // Layout utilities (p-4) stay inline per D-02. Icon class stays as a
     // layout/color helper until the icon system migrates in a later plan.
     let icon_color_class = match props.tone {
-        Tone::Neutral     => "",
-        Tone::Success     => " text-success",
-        Tone::Warning     => " text-warning",
+        Tone::Neutral => "",
+        Tone::Success => " text-success",
+        Tone::Warning => " text-warning",
         Tone::Destructive => " text-destructive",
     };
 
@@ -910,9 +913,9 @@ pub(crate) fn render_toast(el: &Element, _spec: &Spec, _data: &Value, _depth: us
     // items-start, gap-3, max-w-sm) stay inline (D-02).
     // The tone class is the semantic identifier; skin owns the actual color.
     let tone_class = match props.tone {
-        Tone::Neutral     => "fjui-toast--neutral",
-        Tone::Success     => "fjui-toast--success",
-        Tone::Warning     => "fjui-toast--warning",
+        Tone::Neutral => "fjui-toast--neutral",
+        Tone::Success => "fjui-toast--success",
+        Tone::Warning => "fjui-toast--warning",
         Tone::Destructive => "fjui-toast--destructive",
     };
     // strum guarantees the wire string (see component.rs strum_tests).
@@ -984,7 +987,9 @@ pub(crate) fn render_notification_dropdown(
     } else {
         html.push_str("<ul class=\"divide-y divide-border\">");
         for item in &props.notifications {
-            html.push_str("<li class=\"fjui-notification-dropdown__item flex items-start gap-3 p-3\">");
+            html.push_str(
+                "<li class=\"fjui-notification-dropdown__item flex items-start gap-3 p-3\">",
+            );
             if let Some(ref icon) = item.icon {
                 html.push_str(&format!(
                     "<span class=\"text-lg shrink-0\">{}</span>",
@@ -1034,8 +1039,7 @@ pub(crate) fn render_sidebar(el: &Element, _spec: &Spec, _data: &Value, _depth: 
     // D-01: fjui-sidebar full literal. Layout utilities (flex, flex-col, h-full,
     // flex-1, overflow-y-auto, space-y-1, p-4) stay inline (D-02).
     // Appearance (bg, border) owned by skin.
-    let mut html =
-        String::from("<aside class=\"fjui-sidebar flex flex-col h-full\">");
+    let mut html = String::from("<aside class=\"fjui-sidebar flex flex-col h-full\">");
     if !props.fixed_top.is_empty() {
         html.push_str("<nav class=\"p-4 space-y-1\">");
         for item in &props.fixed_top {
@@ -1288,8 +1292,16 @@ pub(crate) fn render_calendar_cell(
     // min-h-[5rem], p-2, -mt-px, -ml-px, w-7, h-7, items-center, justify-center,
     // relative, absolute, inset-0, flex, gap-1, mt-auto, pt-1) stay inline (D-02).
     // Appearance (border, bg, text-size, color, radius) owned by skin.
-    let out_of_month = if props.is_current_month { "" } else { " fjui-calendar-cell--other-month" };
-    let closed_mod = if props.closed { " fjui-calendar-cell--closed relative" } else { "" };
+    let out_of_month = if props.is_current_month {
+        ""
+    } else {
+        " fjui-calendar-cell--other-month"
+    };
+    let closed_mod = if props.closed {
+        " fjui-calendar-cell--closed relative"
+    } else {
+        ""
+    };
     let hover_class = if props.is_current_month {
         format!(" {MOTION_FAST} cursor-pointer")
     } else {
@@ -1393,9 +1405,9 @@ pub(crate) fn render_action_card(
     // Layout utilities (flex, items-center, gap-4, p-4, no-underline) stay inline (D-02).
     // Appearance (border, bg, shadow, radius, hover) owned by skin.
     let tone_class = match props.tone {
-        Tone::Neutral     => "fjui-action-card--neutral",
-        Tone::Success     => "fjui-action-card--success",
-        Tone::Warning     => "fjui-action-card--warning",
+        Tone::Neutral => "fjui-action-card--neutral",
+        Tone::Success => "fjui-action-card--success",
+        Tone::Warning => "fjui-action-card--warning",
         Tone::Destructive => "fjui-action-card--destructive",
     };
 
@@ -1481,10 +1493,10 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
     // Appearance (border-color, bg, radius) owned by skin. Layout (touch-action,
     // w-full, flex, flex-col, gap-2, p-3) stays inline (D-02).
     let tone_class = match props.color {
-        None | Some(Tone::Neutral)     => "fjui-tile--neutral",
-        Some(Tone::Success)            => "fjui-tile--success",
-        Some(Tone::Warning)            => "fjui-tile--warning",
-        Some(Tone::Destructive)        => "fjui-tile--destructive",
+        None | Some(Tone::Neutral) => "fjui-tile--neutral",
+        Some(Tone::Success) => "fjui-tile--success",
+        Some(Tone::Warning) => "fjui-tile--warning",
+        Some(Tone::Destructive) => "fjui-tile--destructive",
     };
 
     // Optional image area (D-03): lazy-loaded when image_url is set.
@@ -3386,11 +3398,21 @@ mod tests {
     /// D-01: render_button_inner emits full literal "fjui-btn--primary" for Primary variant.
     #[test]
     fn button_primary_emits_fjui_class() {
-        let spec = spec_with_root(Element::new("Button").prop("label", "Go").prop("variant", "primary"));
+        let spec = spec_with_root(
+            Element::new("Button")
+                .prop("label", "Go")
+                .prop("variant", "primary"),
+        );
         let el = spec.elements.get("root").unwrap();
         let html = render_button(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-btn--primary"), "primary variant must emit fjui-btn--primary; got: {html}");
-        assert!(html.contains("fjui-btn "), "base fjui-btn class must be present; got: {html}");
+        assert!(
+            html.contains("fjui-btn--primary"),
+            "primary variant must emit fjui-btn--primary; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-btn "),
+            "base fjui-btn class must be present; got: {html}"
+        );
     }
 
     /// D-01: all 5 variants emit full literal fjui-btn-- classes.
@@ -3403,10 +3425,17 @@ mod tests {
             ("ghost", "fjui-btn--ghost"),
             ("destructive", "fjui-btn--destructive"),
         ] {
-            let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("variant", variant));
+            let spec = spec_with_root(
+                Element::new("Button")
+                    .prop("label", "X")
+                    .prop("variant", variant),
+            );
             let el = spec.elements.get("root").unwrap();
             let html = render_button(el, &spec, &json!({}), 1);
-            assert!(html.contains(expected), "variant {variant} must emit {expected}; got: {html}");
+            assert!(
+                html.contains(expected),
+                "variant {variant} must emit {expected}; got: {html}"
+            );
         }
     }
 
@@ -3421,29 +3450,57 @@ mod tests {
             let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("size", size));
             let el = spec.elements.get("root").unwrap();
             let html = render_button(el, &spec, &json!({}), 1);
-            assert!(html.contains(expected), "size {size} must emit {expected}; got: {html}");
+            assert!(
+                html.contains(expected),
+                "size {size} must emit {expected}; got: {html}"
+            );
         }
     }
 
     /// D-01: no format!-assembled class names — no appearance Tailwind utilities from old btn code.
     #[test]
     fn button_emits_no_old_appearance_utilities() {
-        let spec = spec_with_root(Element::new("Button").prop("label", "Go").prop("variant", "primary"));
+        let spec = spec_with_root(
+            Element::new("Button")
+                .prop("label", "Go")
+                .prop("variant", "primary"),
+        );
         let el = spec.elements.get("root").unwrap();
         let html = render_button(el, &spec, &json!({}), 1);
-        assert!(!html.contains("bg-primary text-primary"), "old bg-primary appearance class must be gone; got: {html}");
-        assert!(!html.contains("rounded-md font-medium"), "old rounded-md font-medium must be gone; got: {html}");
-        assert!(!html.contains("px-3 py-"), "old padding utilities must be gone; got: {html}");
+        assert!(
+            !html.contains("bg-primary text-primary"),
+            "old bg-primary appearance class must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("rounded-md font-medium"),
+            "old rounded-md font-medium must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("px-3 py-"),
+            "old padding utilities must be gone; got: {html}"
+        );
     }
 
     /// Badge emits fjui-badge base class + tone modifier.
     #[test]
     fn badge_emits_fjui_class_and_no_inline_style() {
         let html = badge_inline_html(Tone::Success, "OK");
-        assert!(html.contains("fjui-badge"), "badge must emit fjui-badge; got: {html}");
-        assert!(html.contains("fjui-badge--success"), "success tone must emit fjui-badge--success; got: {html}");
-        assert!(!html.contains("justify-self: start"), "inline justify-self must be gone; got: {html}");
-        assert!(!html.contains("style="), "no inline style attr on badge; got: {html}");
+        assert!(
+            html.contains("fjui-badge"),
+            "badge must emit fjui-badge; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-badge--success"),
+            "success tone must emit fjui-badge--success; got: {html}"
+        );
+        assert!(
+            !html.contains("justify-self: start"),
+            "inline justify-self must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("style="),
+            "no inline style attr on badge; got: {html}"
+        );
     }
 
     /// All 4 badge tones emit correct fjui modifier literals.
@@ -3456,7 +3513,10 @@ mod tests {
             (Tone::Destructive, "fjui-badge--destructive"),
         ] {
             let html = badge_inline_html(tone, "label");
-            assert!(html.contains(expected), "tone must emit {expected}; got: {html}");
+            assert!(
+                html.contains(expected),
+                "tone must emit {expected}; got: {html}"
+            );
         }
     }
 
@@ -3464,8 +3524,14 @@ mod tests {
     #[test]
     fn badge_escapes_label_xss() {
         let html = badge_inline_html(Tone::Neutral, "<script>bad</script>");
-        assert!(html.contains("&lt;script&gt;"), "badge must escape label; got: {html}");
-        assert!(!html.contains("<script>"), "raw script must not appear in badge; got: {html}");
+        assert!(
+            html.contains("&lt;script&gt;"),
+            "badge must escape label; got: {html}"
+        );
+        assert!(
+            !html.contains("<script>"),
+            "raw script must not appear in badge; got: {html}"
+        );
     }
 
     /// Alert emits fjui-alert base + tone modifier for all 4 tones.
@@ -3484,8 +3550,14 @@ mod tests {
             );
             let el = spec.elements.get("root").unwrap();
             let html = render_alert(el, &spec, &json!({}), 1);
-            assert!(html.contains("fjui-alert"), "alert must emit fjui-alert base; got: {html}");
-            assert!(html.contains(expected), "tone {tone} must emit {expected}; got: {html}");
+            assert!(
+                html.contains("fjui-alert"),
+                "alert must emit fjui-alert base; got: {html}"
+            );
+            assert!(
+                html.contains(expected),
+                "tone {tone} must emit {expected}; got: {html}"
+            );
         }
     }
 
@@ -3500,8 +3572,14 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_alert(el, &spec, &json!({}), 1);
-        assert!(html.contains("&lt;script&gt;"), "title must be escaped; got: {html}");
-        assert!(html.contains("&lt;b&gt;"), "message must be escaped; got: {html}");
+        assert!(
+            html.contains("&lt;script&gt;"),
+            "title must be escaped; got: {html}"
+        );
+        assert!(
+            html.contains("&lt;b&gt;"),
+            "message must be escaped; got: {html}"
+        );
     }
 
     /// D-07 guard: no old appearance utilities remain in the migrated Button/Badge/Alert
@@ -3511,33 +3589,88 @@ mod tests {
     fn migrated_atoms_no_raw_appearance_utilities_in_output() {
         // Button: old variant utilities must not appear in button output
         for variant in ["primary", "secondary", "outline", "ghost", "destructive"] {
-            let spec = spec_with_root(Element::new("Button").prop("label", "X").prop("variant", variant));
+            let spec = spec_with_root(
+                Element::new("Button")
+                    .prop("label", "X")
+                    .prop("variant", variant),
+            );
             let el = spec.elements.get("root").unwrap();
             let html = render_button(el, &spec, &json!({}), 1);
-            assert!(!html.contains("bg-primary text-primary-foreground hover:"), "old btn-primary utility in output; got: {html}");
-            assert!(!html.contains("bg-secondary text-secondary-foreground"), "old btn-secondary utility in output; got: {html}");
-            assert!(!html.contains("rounded-md font-medium"), "old rounded-md font-medium in btn output; got: {html}");
-            assert!(!html.contains("px-3 py-1.5"), "old sm padding in btn output; got: {html}");
-            assert!(!html.contains("px-4 py-2 text-sm"), "old md padding in btn output; got: {html}");
-            assert!(!html.contains("px-6 py-3"), "old lg padding in btn output; got: {html}");
+            assert!(
+                !html.contains("bg-primary text-primary-foreground hover:"),
+                "old btn-primary utility in output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-secondary text-secondary-foreground"),
+                "old btn-secondary utility in output; got: {html}"
+            );
+            assert!(
+                !html.contains("rounded-md font-medium"),
+                "old rounded-md font-medium in btn output; got: {html}"
+            );
+            assert!(
+                !html.contains("px-3 py-1.5"),
+                "old sm padding in btn output; got: {html}"
+            );
+            assert!(
+                !html.contains("px-4 py-2 text-sm"),
+                "old md padding in btn output; got: {html}"
+            );
+            assert!(
+                !html.contains("px-6 py-3"),
+                "old lg padding in btn output; got: {html}"
+            );
         }
         // Badge: old base + tone utilities must not appear
-        for tone in [Tone::Neutral, Tone::Success, Tone::Warning, Tone::Destructive] {
+        for tone in [
+            Tone::Neutral,
+            Tone::Success,
+            Tone::Warning,
+            Tone::Destructive,
+        ] {
             let html = badge_inline_html(tone, "x");
-            assert!(!html.contains("rounded-full px-2.5 py-0.5 text-xs font-medium"), "old badge base in output; got: {html}");
-            assert!(!html.contains("bg-success/10"), "old success tint in badge output; got: {html}");
-            assert!(!html.contains("bg-warning/10"), "old warning tint in badge output; got: {html}");
-            assert!(!html.contains("bg-destructive/10"), "old destructive tint in badge output; got: {html}");
+            assert!(
+                !html.contains("rounded-full px-2.5 py-0.5 text-xs font-medium"),
+                "old badge base in output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-success/10"),
+                "old success tint in badge output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-warning/10"),
+                "old warning tint in badge output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-destructive/10"),
+                "old destructive tint in badge output; got: {html}"
+            );
         }
         // Alert: old tone utilities must not appear
         for tone in ["neutral", "success", "warning", "destructive"] {
-            let spec = spec_with_root(Element::new("Alert").prop("tone", tone).prop("message", "m"));
+            let spec = spec_with_root(
+                Element::new("Alert")
+                    .prop("tone", tone)
+                    .prop("message", "m"),
+            );
             let el = spec.elements.get("root").unwrap();
             let html = render_alert(el, &spec, &json!({}), 1);
-            assert!(!html.contains("bg-surface border-border text-text\">"), "old neutral alert utility in output; got: {html}");
-            assert!(!html.contains("bg-success/10"), "old success tint in alert output; got: {html}");
-            assert!(!html.contains("bg-warning/10"), "old warning tint in alert output; got: {html}");
-            assert!(!html.contains("bg-destructive/10"), "old destructive tint in alert output; got: {html}");
+            assert!(
+                !html.contains("bg-surface border-border text-text\">"),
+                "old neutral alert utility in output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-success/10"),
+                "old success tint in alert output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-warning/10"),
+                "old warning tint in alert output; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-destructive/10"),
+                "old destructive tint in alert output; got: {html}"
+            );
         }
     }
 
@@ -3546,12 +3679,10 @@ mod tests {
     /// render_sidebar_nav_item with active=true emits fjui-sidebar__nav-item--active.
     #[test]
     fn sidebar_nav_item_active_emits_fjui_active_class() {
-        let spec = spec_with_root(
-            Element::new("Sidebar").prop(
-                "fixed_top",
-                json!([{"label": "Dashboard", "href": "/dashboard", "active": true}]),
-            ),
-        );
+        let spec = spec_with_root(Element::new("Sidebar").prop(
+            "fixed_top",
+            json!([{"label": "Dashboard", "href": "/dashboard", "active": true}]),
+        ));
         let el = spec.elements.get("root").unwrap();
         let html = render_sidebar(el, &spec, &json!({}), 1);
         assert!(
@@ -3567,12 +3698,10 @@ mod tests {
     /// render_sidebar_nav_item with active=false emits only fjui-sidebar__nav-item (no --active).
     #[test]
     fn sidebar_nav_item_inactive_emits_only_base_class() {
-        let spec = spec_with_root(
-            Element::new("Sidebar").prop(
-                "fixed_top",
-                json!([{"label": "Settings", "href": "/settings", "active": false}]),
-            ),
-        );
+        let spec = spec_with_root(Element::new("Sidebar").prop(
+            "fixed_top",
+            json!([{"label": "Settings", "href": "/settings", "active": false}]),
+        ));
         let el = spec.elements.get("root").unwrap();
         let html = render_sidebar(el, &spec, &json!({}), 1);
         assert!(
@@ -3643,9 +3772,20 @@ mod tests {
             destructive: false,
             visible_if: None,
         };
-        let html = render_menu_item(&normal, "fjui-menu-item", "fjui-menu-item fjui-menu-item--destructive", "");
-        assert!(html.contains("fjui-menu-item"), "normal item must carry fjui-menu-item; got: {html}");
-        assert!(!html.contains("fjui-menu-item--destructive"), "normal must NOT carry --destructive; got: {html}");
+        let html = render_menu_item(
+            &normal,
+            "fjui-menu-item",
+            "fjui-menu-item fjui-menu-item--destructive",
+            "",
+        );
+        assert!(
+            html.contains("fjui-menu-item"),
+            "normal item must carry fjui-menu-item; got: {html}"
+        );
+        assert!(
+            !html.contains("fjui-menu-item--destructive"),
+            "normal must NOT carry --destructive; got: {html}"
+        );
 
         let destructive = DropdownMenuAction {
             label: "Delete".into(),
@@ -3661,8 +3801,16 @@ mod tests {
             destructive: true,
             visible_if: None,
         };
-        let html = render_menu_item(&destructive, "fjui-menu-item", "fjui-menu-item fjui-menu-item--destructive", "");
-        assert!(html.contains("fjui-menu-item--destructive"), "destructive item must carry --destructive; got: {html}");
+        let html = render_menu_item(
+            &destructive,
+            "fjui-menu-item",
+            "fjui-menu-item fjui-menu-item--destructive",
+            "",
+        );
+        assert!(
+            html.contains("fjui-menu-item--destructive"),
+            "destructive item must carry --destructive; got: {html}"
+        );
     }
 
     // ── Plan 06 migration tests (Task 1: non-interactive atoms — RED) ─────────
@@ -3702,9 +3850,18 @@ mod tests {
             );
             let el = spec.elements.get("root").unwrap();
             let html = render_text(el, &spec, &json!({}), 1);
-            assert!(!html.contains("text-base leading-relaxed"), "element={element}: old text-base leading-relaxed in output; got: {html}");
-            assert!(!html.contains("text-3xl font-bold"), "element={element}: old text-3xl in output; got: {html}");
-            assert!(!html.contains("text-2xl font-semibold"), "element={element}: old text-2xl in output; got: {html}");
+            assert!(
+                !html.contains("text-base leading-relaxed"),
+                "element={element}: old text-base leading-relaxed in output; got: {html}"
+            );
+            assert!(
+                !html.contains("text-3xl font-bold"),
+                "element={element}: old text-3xl in output; got: {html}"
+            );
+            assert!(
+                !html.contains("text-2xl font-semibold"),
+                "element={element}: old text-2xl in output; got: {html}"
+            );
         }
     }
 
@@ -3724,8 +3881,14 @@ mod tests {
             );
             let el = spec.elements.get("root").unwrap();
             let html = render_toast(el, &spec, &json!({}), 1);
-            assert!(html.contains("fjui-toast "), "toast must emit fjui-toast base; got: {html}");
-            assert!(html.contains(expected), "tone={tone} must emit {expected}; got: {html}");
+            assert!(
+                html.contains("fjui-toast "),
+                "toast must emit fjui-toast base; got: {html}"
+            );
+            assert!(
+                html.contains(expected),
+                "tone={tone} must emit {expected}; got: {html}"
+            );
         }
     }
 
@@ -3740,10 +3903,22 @@ mod tests {
             );
             let el = spec.elements.get("root").unwrap();
             let html = render_toast(el, &spec, &json!({}), 1);
-            assert!(!html.contains("bg-primary/70"), "old neutral tone class must be gone; got: {html}");
-            assert!(!html.contains("bg-success/70"), "old success tone class must be gone; got: {html}");
-            assert!(!html.contains("bg-warning/70"), "old warning tone class must be gone; got: {html}");
-            assert!(!html.contains("bg-destructive/70"), "old destructive tone class must be gone; got: {html}");
+            assert!(
+                !html.contains("bg-primary/70"),
+                "old neutral tone class must be gone; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-success/70"),
+                "old success tone class must be gone; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-warning/70"),
+                "old warning tone class must be gone; got: {html}"
+            );
+            assert!(
+                !html.contains("bg-destructive/70"),
+                "old destructive tone class must be gone; got: {html}"
+            );
         }
     }
 
@@ -3753,9 +3928,15 @@ mod tests {
         let spec = spec_with_root(Element::new("Skeleton"));
         let el = spec.elements.get("root").unwrap();
         let html = render_skeleton(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-skeleton"), "skeleton must emit fjui-skeleton; got: {html}");
+        assert!(
+            html.contains("fjui-skeleton"),
+            "skeleton must emit fjui-skeleton; got: {html}"
+        );
         // SHIMMER animation is retained (behavioral, not appearance)
-        assert!(html.contains("ferro-shimmer"), "shimmer animation must be retained; got: {html}");
+        assert!(
+            html.contains("ferro-shimmer"),
+            "shimmer animation must be retained; got: {html}"
+        );
     }
 
     /// render_checklist emits fjui-checklist (no old shadow-sm / rounded-lg).
@@ -3768,9 +3949,18 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_checklist(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-checklist"), "checklist must emit fjui-checklist; got: {html}");
-        assert!(!html.contains("shadow-sm"), "old shadow-sm must be gone; got: {html}");
-        assert!(!html.contains("rounded-lg shadow"), "old rounded-lg shadow combo must be gone; got: {html}");
+        assert!(
+            html.contains("fjui-checklist"),
+            "checklist must emit fjui-checklist; got: {html}"
+        );
+        assert!(
+            !html.contains("shadow-sm"),
+            "old shadow-sm must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("rounded-lg shadow"),
+            "old rounded-lg shadow combo must be gone; got: {html}"
+        );
     }
 
     // ── Plan 05 migration tests (Task 2: StatCard / EmptyState) ─────────────
@@ -3785,9 +3975,18 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_stat_card(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-stat-card"), "must emit fjui-stat-card; got: {html}");
-        assert!(html.contains("fjui-stat-card--default"), "default tone must emit fjui-stat-card--default; got: {html}");
-        assert!(html.contains("fjui-stat-card__value"), "value element must carry fjui-stat-card__value; got: {html}");
+        assert!(
+            html.contains("fjui-stat-card"),
+            "must emit fjui-stat-card; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-stat-card--default"),
+            "default tone must emit fjui-stat-card--default; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-stat-card__value"),
+            "value element must carry fjui-stat-card__value; got: {html}"
+        );
     }
 
     /// All 4 StatCard tones emit correct fjui modifier literals.
@@ -3807,7 +4006,10 @@ mod tests {
             );
             let el = spec.elements.get("root").unwrap();
             let html = render_stat_card(el, &spec, &json!({}), 1);
-            assert!(html.contains(expected), "tone {tone} must emit {expected}; got: {html}");
+            assert!(
+                html.contains(expected),
+                "tone {tone} must emit {expected}; got: {html}"
+            );
         }
     }
 
@@ -3821,9 +4023,18 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_stat_card(el, &spec, &json!({}), 1);
-        assert!(!html.contains("shadow-sm"), "old shadow-sm must be gone; got: {html}");
-        assert!(!html.contains("rounded-lg"), "old rounded-lg must be gone; got: {html}");
-        assert!(!html.contains("text-2xl font-bold"), "old value typography must be gone; got: {html}");
+        assert!(
+            !html.contains("shadow-sm"),
+            "old shadow-sm must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("rounded-lg"),
+            "old rounded-lg must be gone; got: {html}"
+        );
+        assert!(
+            !html.contains("text-2xl font-bold"),
+            "old value typography must be gone; got: {html}"
+        );
     }
 
     /// EmptyState emits fjui-empty-state class and uses fjui-btn for CTA.
@@ -3836,7 +4047,10 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_empty_state(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-empty-state"), "must emit fjui-empty-state; got: {html}");
+        assert!(
+            html.contains("fjui-empty-state"),
+            "must emit fjui-empty-state; got: {html}"
+        );
     }
 
     /// EmptyState CTA uses fjui-btn classes (not old Tailwind btn utilities).
@@ -3855,10 +4069,22 @@ mod tests {
         );
         let el = spec.elements.get("root").unwrap();
         let html = render_empty_state(el, &spec, &json!({}), 1);
-        assert!(html.contains("fjui-btn"), "CTA must use fjui-btn; got: {html}");
-        assert!(html.contains("fjui-btn--primary"), "CTA must use fjui-btn--primary; got: {html}");
-        assert!(html.contains("fjui-btn--md"), "CTA must use fjui-btn--md; got: {html}");
-        assert!(html.contains("Aggiungi"), "CTA label must appear; got: {html}");
+        assert!(
+            html.contains("fjui-btn"),
+            "CTA must use fjui-btn; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-btn--primary"),
+            "CTA must use fjui-btn--primary; got: {html}"
+        );
+        assert!(
+            html.contains("fjui-btn--md"),
+            "CTA must use fjui-btn--md; got: {html}"
+        );
+        assert!(
+            html.contains("Aggiungi"),
+            "CTA label must appear; got: {html}"
+        );
     }
 
     // ── 247-02: DescriptionList responsive columns (RSK-03) ──────────────
@@ -3866,11 +4092,10 @@ mod tests {
     /// DescriptionList columns=2 emits responsive md:grid-cols-2 (RSK-03).
     #[test]
     fn description_list_two_column_responsive() {
-        let spec = spec_with_root(
-            Element::new("DescriptionList")
-                .prop("columns", 2)
-                .prop("items", json!([{"label": "A", "value": "1"}, {"label": "B", "value": "2"}])),
-        );
+        let spec = spec_with_root(Element::new("DescriptionList").prop("columns", 2).prop(
+            "items",
+            json!([{"label": "A", "value": "1"}, {"label": "B", "value": "2"}]),
+        ));
         let el = spec.elements.get("root").unwrap();
         let html = render_description_list(el, &spec, &json!({}), 1);
         assert!(
@@ -3909,16 +4134,16 @@ mod tests {
     /// DescriptionItem with inline_edit_field emits enhanced <dd> with data attrs + pencil button.
     #[test]
     fn description_item_with_inline_edit_emits_data_attrs_and_pencil() {
-        let spec = spec_with_root(
-            Element::new("DescriptionList")
-                .prop("items", json!([{
-                    "label": "Nome",
-                    "value": "Alice",
-                    "inline_edit_field": "name",
-                    "inline_edit_endpoint": "/dashboard/clienti/42/field",
-                    "inline_edit_kind": "text"
-                }])),
-        );
+        let spec = spec_with_root(Element::new("DescriptionList").prop(
+            "items",
+            json!([{
+                "label": "Nome",
+                "value": "Alice",
+                "inline_edit_field": "name",
+                "inline_edit_endpoint": "/dashboard/clienti/42/field",
+                "inline_edit_kind": "text"
+            }]),
+        ));
         let el = spec.elements.get("root").unwrap();
         let html = render_description_list(el, &spec, &json!({}), 1);
         assert!(
@@ -3950,13 +4175,13 @@ mod tests {
     /// DescriptionItem WITHOUT inline_edit_field emits plain <dd> (existing behavior unchanged).
     #[test]
     fn description_item_without_inline_edit_emits_plain_dd() {
-        let spec = spec_with_root(
-            Element::new("DescriptionList")
-                .prop("items", json!([{
-                    "label": "Nome",
-                    "value": "Alice"
-                }])),
-        );
+        let spec = spec_with_root(Element::new("DescriptionList").prop(
+            "items",
+            json!([{
+                "label": "Nome",
+                "value": "Alice"
+            }]),
+        ));
         let el = spec.elements.get("root").unwrap();
         let html = render_description_list(el, &spec, &json!({}), 1);
         assert!(

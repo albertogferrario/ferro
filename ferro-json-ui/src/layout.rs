@@ -154,7 +154,8 @@ fn layout_sidebar_nav_item(item: &SidebarNavItem) -> String {
     } else if item.active {
         (
             "a",
-            "fjui-sidebar__nav-item fjui-sidebar__nav-item--active flex items-center gap-2".to_string(),
+            "fjui-sidebar__nav-item fjui-sidebar__nav-item--active flex items-center gap-2"
+                .to_string(),
         )
     } else {
         (
@@ -1395,15 +1396,25 @@ mod tests {
     #[test]
     fn layout_sidebar_html_emits_fjui_sidebar_class() {
         use crate::component::SidebarProps;
-        let props = SidebarProps { fixed_top: vec![], groups: vec![], fixed_bottom: vec![] };
+        let props = SidebarProps {
+            fixed_top: vec![],
+            groups: vec![],
+            fixed_bottom: vec![],
+        };
         let html = layout_sidebar_html(&props);
         assert!(
             html.contains("fjui-sidebar"),
             "layout_sidebar_html must emit fjui-sidebar class; found: {html}"
         );
         // Structural attributes must be preserved (T-246-19).
-        assert!(html.contains("data-sidebar"), "data-sidebar attribute must be preserved");
-        assert!(html.contains("data-sidebar-backdrop"), "data-sidebar-backdrop must be preserved");
+        assert!(
+            html.contains("data-sidebar"),
+            "data-sidebar attribute must be preserved"
+        );
+        assert!(
+            html.contains("data-sidebar-backdrop"),
+            "data-sidebar-backdrop must be preserved"
+        );
     }
 
     /// Header shell emits fjui-header.
@@ -1480,15 +1491,36 @@ mod tests {
     fn dashboard_layout_shell_emits_fjui_chrome_classes() {
         let ctx = test_ctx();
         let html = dashboard_layout().render(&ctx);
-        assert!(html.contains("fjui-sidebar"), "DashboardLayout must emit fjui-sidebar");
-        assert!(html.contains("fjui-header"), "DashboardLayout must emit fjui-header");
+        assert!(
+            html.contains("fjui-sidebar"),
+            "DashboardLayout must emit fjui-sidebar"
+        );
+        assert!(
+            html.contains("fjui-header"),
+            "DashboardLayout must emit fjui-header"
+        );
         // Structural swap-target preserved (T-246-19).
-        assert!(html.contains("id=\"ferro-json-ui\""), "ferro-json-ui swap-target must be preserved");
-        assert!(html.contains("data-sidebar"), "data-sidebar must be preserved");
-        assert!(html.contains("data-toast-container"), "data-toast-container must be preserved");
+        assert!(
+            html.contains("id=\"ferro-json-ui\""),
+            "ferro-json-ui swap-target must be preserved"
+        );
+        assert!(
+            html.contains("data-sidebar"),
+            "data-sidebar must be preserved"
+        );
+        assert!(
+            html.contains("data-toast-container"),
+            "data-toast-container must be preserved"
+        );
         // Grid layout utilities preserved (D-02).
-        assert!(html.contains("md:pl-64"), "DashboardLayout grid utility md:pl-64 must be preserved");
-        assert!(html.contains("max-w-7xl"), "DashboardLayout grid utility max-w-7xl must be preserved");
+        assert!(
+            html.contains("md:pl-64"),
+            "DashboardLayout grid utility md:pl-64 must be preserved"
+        );
+        assert!(
+            html.contains("max-w-7xl"),
+            "DashboardLayout grid utility max-w-7xl must be preserved"
+        );
     }
 
     // ── Plan 03 (247): Avatar menu + search affordance tests ────────────────
@@ -1506,7 +1538,10 @@ mod tests {
             profile_url: None,
         };
         let html = layout_header_html(&props);
-        assert!(html.contains("fjui-avatar"), "avatar button must be present; got: {html}");
+        assert!(
+            html.contains("fjui-avatar"),
+            "avatar button must be present; got: {html}"
+        );
         assert!(
             html.contains("popovertarget=\"fjui-avatar-menu\""),
             "avatar button must wire to fjui-avatar-menu popover; got: {html}"

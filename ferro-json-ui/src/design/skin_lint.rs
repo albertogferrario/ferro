@@ -179,8 +179,17 @@ fn extract_fjui_rules(layer_content: &str) -> Vec<RuleBlock> {
 /// Whole-word matching is used to avoid false positives on identifiers containing
 /// these strings (e.g. `--color-background`, `blacklist`, var names, comments).
 const NAMED_COLORS: &[&str] = &[
-    "black", "white", "red", "green", "blue", "yellow", "orange", "purple",
-    "gray", "grey", "transparent",
+    "black",
+    "white",
+    "red",
+    "green",
+    "blue",
+    "yellow",
+    "orange",
+    "purple",
+    "gray",
+    "grey",
+    "transparent",
     // extend per CSS Color Level 4 named colors as needed
 ];
 
@@ -346,7 +355,9 @@ const REQUIRED_STATES: &[&str] = &[":hover", ":focus-visible", ":active", ":disa
 
 /// Returns true if `selector` starts with one of the INTERACTIVE_PREFIXES.
 fn is_interactive(selector: &str) -> bool {
-    INTERACTIVE_PREFIXES.iter().any(|&p| selector.starts_with(p))
+    INTERACTIVE_PREFIXES
+        .iter()
+        .any(|&p| selector.starts_with(p))
 }
 
 /// Returns true if `selector` is a modifier/variant of an interactive prefix
@@ -436,12 +447,8 @@ pub fn check_skin_interaction_states(css: &str) -> Vec<Finding> {
                     rule: "skin-interaction-states",
                     element_id: None,
                     severity: Severity::Warning,
-                    message: format!(
-                        "Rule `.{sel}` is missing interaction state `{state}`."
-                    ),
-                    suggestion: format!(
-                        "Add `&{state} {{ ... }}` inside the `.{sel}` rule body."
-                    ),
+                    message: format!("Rule `.{sel}` is missing interaction state `{state}`."),
+                    suggestion: format!("Add `&{state} {{ ... }}` inside the `.{sel}` rule body."),
                 });
             }
         }
@@ -575,7 +582,9 @@ fn rule_has_visible_border(_selector: &str, body: &str) -> bool {
         if segment.is_empty() || segment.contains('{') || segment.starts_with('}') {
             continue;
         }
-        let Some(colon) = segment.find(':') else { continue };
+        let Some(colon) = segment.find(':') else {
+            continue;
+        };
         let prop = segment[..colon].trim().trim_start_matches('&').trim();
         // Strip pseudo-class prefix (e.g. ":hover color" → "color")
         let prop = prop.trim_start_matches(':').trim();
@@ -624,7 +633,9 @@ fn rule_has_non_none_box_shadow(body: &str) -> bool {
         if segment.is_empty() || segment.contains('{') || segment.starts_with('}') {
             continue;
         }
-        let Some(colon) = segment.find(':') else { continue };
+        let Some(colon) = segment.find(':') else {
+            continue;
+        };
         let prop = segment[..colon].trim().trim_start_matches('&').trim();
         let prop = prop.trim_start_matches(':').trim();
         let value = segment[colon + 1..].trim();
@@ -696,10 +707,7 @@ mod tests {
     fn raw_rgb_in_fjui_rule_returns_warning() {
         let css = "@layer components { .fjui-btn { background-color: rgb(255, 0, 0); } }";
         let findings = check_skin_raw_literals(css);
-        assert!(
-            !findings.is_empty(),
-            "rgb() literal must be flagged"
-        );
+        assert!(!findings.is_empty(), "rgb() literal must be flagged");
     }
 
     /// rgba() as a color value must be flagged.
@@ -707,10 +715,7 @@ mod tests {
     fn raw_rgba_in_fjui_rule_returns_warning() {
         let css = "@layer components { .fjui-btn { background: rgba(0,0,0,0.5); } }";
         let findings = check_skin_raw_literals(css);
-        assert!(
-            !findings.is_empty(),
-            "rgba() literal must be flagged"
-        );
+        assert!(!findings.is_empty(), "rgba() literal must be flagged");
     }
 
     /// oklch() used directly (not in var()) must be flagged.
@@ -854,9 +859,13 @@ mod tests {
         // Locate the numeric-cell rule block and verify tabular-nums is inside it.
         // Strategy: find the rule selector, then scan forward until the closing brace.
         let marker = "fjui-table__cell--numeric";
-        let start = css.find(marker).expect("fjui-table__cell--numeric selector not found");
+        let start = css
+            .find(marker)
+            .expect("fjui-table__cell--numeric selector not found");
         // Find the opening brace after the selector
-        let brace = css[start..].find('{').expect("opening brace for fjui-table__cell--numeric not found");
+        let brace = css[start..]
+            .find('{')
+            .expect("opening brace for fjui-table__cell--numeric not found");
         let body_start = start + brace;
         // Find the matching closing brace (depth-tracked)
         let mut depth = 0usize;
@@ -894,8 +903,12 @@ mod tests {
             "ferro-skin.css must contain the .fjui-stat-card__value rule (LANG-03)"
         );
         let marker = "fjui-stat-card__value";
-        let start = css.find(marker).expect("fjui-stat-card__value selector not found");
-        let brace = css[start..].find('{').expect("opening brace for fjui-stat-card__value not found");
+        let start = css
+            .find(marker)
+            .expect("fjui-stat-card__value selector not found");
+        let brace = css[start..]
+            .find('{')
+            .expect("opening brace for fjui-stat-card__value not found");
         let body_start = start + brace;
         let mut depth = 0usize;
         let mut body_end = body_start;
@@ -1098,11 +1111,9 @@ mod tests {
     fn all_tokens_slots_covered_in_tokens_md() {
         use ferro_theme::token::ALL_TOKENS;
 
-        let tokens_md = std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/docs/tokens.md"
-        ))
-        .expect("docs/tokens.md must exist and be readable (DX-02)");
+        let tokens_md =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/tokens.md"))
+                .expect("docs/tokens.md must exist and be readable (DX-02)");
 
         let mut missing: Vec<&str> = Vec::new();
         for slot in ALL_TOKENS {

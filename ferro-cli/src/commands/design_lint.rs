@@ -18,10 +18,10 @@ use walkdir::WalkDir;
 // Path-traversal guard: canonicalize `path` and reject if it resolves outside
 // the current working directory tree (T-246-06).
 fn safe_canonicalize(path: &str) -> Result<PathBuf, String> {
-    let cwd = std::env::current_dir()
-        .map_err(|e| format!("Cannot determine current directory: {e}"))?;
-    let canonical = std::fs::canonicalize(path)
-        .map_err(|e| format!("Cannot resolve path `{path}`: {e}"))?;
+    let cwd =
+        std::env::current_dir().map_err(|e| format!("Cannot determine current directory: {e}"))?;
+    let canonical =
+        std::fs::canonicalize(path).map_err(|e| format!("Cannot resolve path `{path}`: {e}"))?;
     if !canonical.starts_with(&cwd) {
         return Err(format!(
             "Path `{path}` resolves to `{}` which is outside the current working directory `{}` — rejected for safety.",
@@ -123,7 +123,12 @@ pub fn run_skin(skin_path: String, json: bool, deny: bool) {
             serde_json::to_string_pretty(&findings).unwrap_or_else(|_| "[]".into())
         );
     } else if findings.is_empty() {
-        println!("{}", style("No skin lint findings — skin is clean.").green().bold());
+        println!(
+            "{}",
+            style("No skin lint findings — skin is clean.")
+                .green()
+                .bold()
+        );
     } else {
         print_human(&findings);
     }
@@ -153,14 +158,13 @@ pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
             std::process::exit(1);
         }
     };
-    let findings: Vec<FileFinding> =
-        ferro_json_ui::design::check_token_contrast(&content)
-            .into_iter()
-            .map(|f| FileFinding {
-                file: tokens_path.clone(),
-                finding: f,
-            })
-            .collect();
+    let findings: Vec<FileFinding> = ferro_json_ui::design::check_token_contrast(&content)
+        .into_iter()
+        .map(|f| FileFinding {
+            file: tokens_path.clone(),
+            finding: f,
+        })
+        .collect();
 
     if json {
         println!(
@@ -170,7 +174,9 @@ pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
     } else if findings.is_empty() {
         println!(
             "{}",
-            style("No contrast violations — tokens pass WCAG gates.").green().bold()
+            style("No contrast violations — tokens pass WCAG gates.")
+                .green()
+                .bold()
         );
     } else {
         print_human(&findings);
@@ -194,7 +200,13 @@ pub fn run_tokens(tokens_path: String, json: bool, deny: bool) {
 /// `--json` emits a flat JSON array of [`FileFinding`] suitable for programmatic
 /// consumption. `--deny` causes a non-zero exit when any warning-level finding
 /// exists (info findings never fail).
-pub fn run(path: Option<String>, json: bool, deny: bool, skin: Option<String>, tokens: Option<String>) {
+pub fn run(
+    path: Option<String>,
+    json: bool,
+    deny: bool,
+    skin: Option<String>,
+    tokens: Option<String>,
+) {
     // If --skin or --tokens are present, delegate to the dedicated helpers.
     // Both may be combined; the spec-walk runs only when neither flag is given.
     if skin.is_some() || tokens.is_some() {

@@ -125,14 +125,32 @@ mod tests {
         // the migrated render functions listed in the doc comment above.
         let banned: &[(&str, &str)] = &[
             // Toast: moved to fjui-toast / fjui-toast--{tone}
-            ("bg-primary/70", "toast tone bg — use fjui-toast--neutral skin rule"),
-            ("bg-success/70", "toast tone bg — use fjui-toast--success skin rule"),
-            ("bg-warning/70", "toast tone bg — use fjui-toast--warning skin rule"),
-            ("bg-destructive/70", "toast tone bg — use fjui-toast--destructive skin rule"),
+            (
+                "bg-primary/70",
+                "toast tone bg — use fjui-toast--neutral skin rule",
+            ),
+            (
+                "bg-success/70",
+                "toast tone bg — use fjui-toast--success skin rule",
+            ),
+            (
+                "bg-warning/70",
+                "toast tone bg — use fjui-toast--warning skin rule",
+            ),
+            (
+                "bg-destructive/70",
+                "toast tone bg — use fjui-toast--destructive skin rule",
+            ),
             // Action card: moved to fjui-action-card / fjui-action-card--{tone}
-            ("fjui-action-card\" class=\"", "action card must not carry appearance utilities after fjui-action-card"),
+            (
+                "fjui-action-card\" class=\"",
+                "action card must not carry appearance utilities after fjui-action-card",
+            ),
             // Pagination: moved to fjui-pagination__btn / fjui-pagination__btn--active
-            ("bg-primary text-primary-foreground\">", "pagination active page — use fjui-pagination__btn--active"),
+            (
+                "bg-primary text-primary-foreground\">",
+                "pagination active page — use fjui-pagination__btn--active",
+            ),
         ];
 
         for (lit, reason) in banned {
@@ -156,8 +174,7 @@ mod tests {
     #[test]
     fn containers_render_fns_contain_no_migrated_appearance_utilities() {
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
-        let containers_path =
-            std::path::Path::new(&manifest_dir).join("src/render/containers.rs");
+        let containers_path = std::path::Path::new(&manifest_dir).join("src/render/containers.rs");
         let source = std::fs::read_to_string(&containers_path).expect("containers.rs readable");
 
         // Scan only the production source (before #[cfg(test)]).
@@ -169,23 +186,53 @@ mod tests {
         // migrated render functions listed above.
         let banned: &[(&str, &str)] = &[
             // Card: moved to fjui-card
-            ("rounded-lg border border-border bg-card", "card outer — use fjui-card skin rule"),
-            ("shadow-sm rounded-lg", "card bordered shadow — use fjui-card skin rule"),
-            ("shadow-md rounded-lg", "card elevated shadow — use fjui-card skin rule"),
+            (
+                "rounded-lg border border-border bg-card",
+                "card outer — use fjui-card skin rule",
+            ),
+            (
+                "shadow-sm rounded-lg",
+                "card bordered shadow — use fjui-card skin rule",
+            ),
+            (
+                "shadow-md rounded-lg",
+                "card elevated shadow — use fjui-card skin rule",
+            ),
             // Tabs: moved to fjui-tabs / fjui-tab / fjui-tab--active
             // Note: bare "border-b border-border" is NOT banned — it appears on structural
             // row separators (e.g. render_selection_panel line dividers) which are out of
             // scope. Only the tabs-specific wrapper div pattern is banned.
-            ("<div class=\"border-b border-border\">", "tabs wrapper div — use fjui-tabs nav (no wrapper div needed)"),
-            ("border-b-2 border-primary", "active tab underline — use fjui-tab--active skin rule"),
-            ("text-text-muted hover:text-text", "tab inactive text — use fjui-tab skin rule"),
+            (
+                "<div class=\"border-b border-border\">",
+                "tabs wrapper div — use fjui-tabs nav (no wrapper div needed)",
+            ),
+            (
+                "border-b-2 border-primary",
+                "active tab underline — use fjui-tab--active skin rule",
+            ),
+            (
+                "text-text-muted hover:text-text",
+                "tab inactive text — use fjui-tab skin rule",
+            ),
             // Modal: moved to fjui-modal
-            ("bg-card rounded-lg shadow-lg", "modal dialog — use fjui-modal skin rule"),
+            (
+                "bg-card rounded-lg shadow-lg",
+                "modal dialog — use fjui-modal skin rule",
+            ),
             // Kanban: moved to fjui-kanban__* skin rules
-            ("bg-secondary/10 rounded-lg", "kanban column bg — use fjui-kanban__column skin rule"),
-            ("bg-primary text-primary-foreground", "kanban active count badge — use fjui-badge--neutral skin rule"),
+            (
+                "bg-secondary/10 rounded-lg",
+                "kanban column bg — use fjui-kanban__column skin rule",
+            ),
+            (
+                "bg-primary text-primary-foreground",
+                "kanban active count badge — use fjui-badge--neutral skin rule",
+            ),
             // PageHeader: moved to fjui-page-header
-            ("border-b border-border bg-background", "page header bar — use fjui-page-header skin rule"),
+            (
+                "border-b border-border bg-background",
+                "page header bar — use fjui-page-header skin rule",
+            ),
         ];
 
         for (lit, reason) in banned {
@@ -217,8 +264,14 @@ mod tests {
         let banned: &[(&str, &str)] = &[
             // DataTable row zebra striping: removed (RSK-01) — hover surface via skin rule.
             // Note: render_table (simple Table, non-DataTable) is out of Plan 08 scope.
-            ("even:bg-surface", "DataTable row zebra — removed by RSK-01; skin hover replaces it"),
-            ("odd:bg-surface", "DataTable row zebra — removed by RSK-01; skin hover replaces it"),
+            (
+                "even:bg-surface",
+                "DataTable row zebra — removed by RSK-01; skin hover replaces it",
+            ),
+            (
+                "odd:bg-surface",
+                "DataTable row zebra — removed by RSK-01; skin hover replaces it",
+            ),
         ];
 
         for (lit, reason) in banned {
@@ -250,10 +303,19 @@ mod tests {
 
         let banned: &[(&str, &str)] = &[
             // Input/Textarea old appearance: moved to fjui-input/fjui-textarea skin rule
-            ("rounded-md border border-border px-3 py-2", "Input/Textarea border+padding — use fjui-input skin rule"),
-            ("rounded-md border border-destructive px-3 py-2", "Input error border — use fjui-input--error skin rule"),
+            (
+                "rounded-md border border-border px-3 py-2",
+                "Input/Textarea border+padding — use fjui-input skin rule",
+            ),
+            (
+                "rounded-md border border-destructive px-3 py-2",
+                "Input error border — use fjui-input--error skin rule",
+            ),
             // Select old appearance: moved to fjui-select skin rule
-            ("appearance-none bg-background rounded-md border", "Select appearance — use fjui-select skin rule"),
+            (
+                "appearance-none bg-background rounded-md border",
+                "Select appearance — use fjui-select skin rule",
+            ),
         ];
 
         for (lit, reason) in banned {

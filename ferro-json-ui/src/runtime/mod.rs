@@ -6,10 +6,8 @@
 //! HTTP requests.
 
 mod bulk_bar;
-mod command_palette;
-mod peek;
-mod toast_undo;
 mod combobox;
+mod command_palette;
 mod date_picker;
 mod dismissibles;
 mod dropdowns;
@@ -25,12 +23,14 @@ mod modals;
 mod nav;
 mod notifications;
 mod numpad;
+mod peek;
 mod scroll_preserve;
 mod selection;
 mod sidebar;
 mod sse;
 mod tabs;
 mod tiles;
+mod toast_undo;
 mod toasts;
 
 use std::sync::LazyLock;
@@ -280,7 +280,10 @@ mod tests {
     fn runtime_contains_nav_setup() {
         // Explicit function-name checks (also covered by bundle_contains_all_setup_functions,
         // but duplicated here so this test is self-contained and readable as a spec).
-        assert!(FERRO_RUNTIME_JS.contains("setupNav"), "bundle missing setupNav");
+        assert!(
+            FERRO_RUNTIME_JS.contains("setupNav"),
+            "bundle missing setupNav"
+        );
         assert!(
             FERRO_RUNTIME_JS.contains("setupProgressHairline"),
             "bundle missing setupProgressHairline"
