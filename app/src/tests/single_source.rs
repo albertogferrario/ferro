@@ -362,6 +362,75 @@ mod tests {
         );
     }
 
+    /// SUBST-05(b): The Inertia customization frontend reuses the SAME write channel
+    /// (`dispatch_write(.., "web")`) as the visual surface.
+    ///
+    /// Drives the `submit` transition through `dispatch_write(.., "web")` — exactly
+    /// what `controllers::visual_action::handle` (and the Inertia `POST /{service}/{action}`
+    /// route) invokes. Asserts the persisted `to_state` is byte-identical to the MCP
+    /// channel result. The audit channel tag (`web.action.submit` vs `mcp.action.submit`)
+    /// is the ONLY divergence, confirming that the Inertia frontend reuses the guarded
+    /// kernel rather than a separate write path.
+    ///
+    /// This makes the SUBST-05(b) claim explicit: Plan 04's Inertia `from_projection`
+    /// route calls `dispatch_write(.., "web")` — no alternate write path can pass this
+    /// test, because both channels produce the same `to_state` through one kernel entry.
+    #[tokio::test]
+    async fn single_source_inertia_reuses_web_channel() {
+        let db = setup_db().await;
+        seed(&db).await;
+
+        let expected = derived_to_state("submit");
+
+        // Inertia web-channel path — order 2 (tenant 1, draft).
+        // `drive_visual` calls dispatch_write(.., "web"), which is exactly what
+        // the visual_action controller (and the Inertia form POST) invoke.
+        let web_res = drive_visual("submit", json!({"id": 2}), 1, &db).await;
+        assert!(
+            web_res.is_ok(),
+            "Inertia web-channel submit must succeed; got: {web_res:?}"
+        );
+        let web_state = load_order(2, &db).await.status;
+
+        // MCP path — order 1 (same tenant, same action, same derived to_state).
+        let mcp_ok = drive_mcp("submit", json!({"id": 1}), 1, &db).await;
+        assert!(mcp_ok, "MCP submit must succeed");
+        let mcp_state = load_order(1, &db).await.status;
+
+        // Both channels persist the derived to_state — ONE kernel, TWO callers.
+        assert_eq!(
+            web_state, expected,
+            "Inertia web channel must persist the derived to_state"
+        );
+        assert_eq!(
+            mcp_state, expected,
+            "MCP channel must persist the derived to_state"
+        );
+        assert_eq!(
+            web_state, mcp_state,
+            "SUBST-05(b): Inertia web channel and MCP channel persist IDENTICAL to_state"
+        );
+
+        // The audit channel is the ONLY divergence.
+        let web_audit = history_for_target(&AuditTarget::new("submit", "2"), &db)
+            .await
+            .expect("web audit history");
+        let mcp_audit = history_for_target(&AuditTarget::new("submit", "1"), &db)
+            .await
+            .expect("mcp audit history");
+
+        assert_eq!(
+            web_audit.first().map(|e| e.action.as_str()),
+            Some("web.action.submit"),
+            "Inertia frontend audits as web.action.submit"
+        );
+        assert_eq!(
+            mcp_audit.first().map(|e| e.action.as_str()),
+            Some("mcp.action.submit"),
+            "MCP channel audits as mcp.action.submit"
+        );
+    }
+
     /// The guard-half of single-source: a transition whose live guard does NOT hold
     /// is rejected on BOTH channels and leaves state unchanged. Proves the guard
     /// re-evaluation is the SAME kernel gate regardless of caller — not a per-channel

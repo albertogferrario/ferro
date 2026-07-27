@@ -3,9 +3,7 @@
 //! Three tests covering field access modes, action preconditions + guards,
 //! and serde round-trip losslessness.
 
-use ferro_projections::{
-    schema_contract, ActionDef, DataType, FieldMeaning, GuardDef, ServiceDef,
-};
+use ferro_projections::{schema_contract, ActionDef, DataType, FieldMeaning, GuardDef, ServiceDef};
 
 #[test]
 fn schema_contract_field_names_and_access() {

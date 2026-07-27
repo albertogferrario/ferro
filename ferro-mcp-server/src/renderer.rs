@@ -1049,7 +1049,10 @@ mod tests {
         assert!(
             !tools_deny.iter().any(|t| t.name.as_ref() == "approve"),
             "approve must be absent when is_manager=false; got: {:?}",
-            tools_deny.iter().map(|t| t.name.as_ref()).collect::<Vec<_>>()
+            tools_deny
+                .iter()
+                .map(|t| t.name.as_ref())
+                .collect::<Vec<_>>()
         );
         assert!(
             tools_deny.iter().any(|t| t.name.as_ref() == "submit"),

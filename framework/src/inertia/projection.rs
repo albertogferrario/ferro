@@ -195,7 +195,14 @@ mod tests {
         let value = serde_json::to_value(&props).expect("serialize ok");
         let obj = value.as_object().expect("is object");
 
-        for key in &["schema", "data", "permitted_actions", "total", "limit", "offset"] {
+        for key in &[
+            "schema",
+            "data",
+            "permitted_actions",
+            "total",
+            "limit",
+            "offset",
+        ] {
             assert!(obj.contains_key(*key), "missing key: {key}");
         }
         assert_eq!(obj.len(), 6, "exactly six keys");

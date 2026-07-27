@@ -14,7 +14,6 @@ mod state;
 
 pub use action::{ActionDef, GuardDef, InputDef};
 pub use derive::derive_intents;
-pub use schema_contract::{schema_contract, ActionContract, FieldContract, InputContract, SchemaContract};
 pub use error::Error;
 pub use executor::{
     derive_crud_plan, derive_transition_plan, CrudPlan, CrudVerb, TenantColumn, TransitionPlan,
@@ -24,6 +23,9 @@ pub use intent::{Intent, IntentHint, IntentScore};
 pub use relationship::{Cardinality, NavigationHint, RelationshipDef};
 pub use render::template::TemplateRenderer;
 pub use render::{BaseContext, Renderer, Verbosity};
+pub use schema_contract::{
+    schema_contract, ActionContract, FieldContract, InputContract, SchemaContract,
+};
 
 pub use service::{FieldMetadata, ModelMetadata, ServiceDef};
 pub use state::{StateDef, StateMachine, Transition, Warning};

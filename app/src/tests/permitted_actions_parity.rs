@@ -48,7 +48,8 @@ mod tests {
             evaluated_guards: guards,
             ..Default::default()
         };
-        let tools = render_exposed_tools(&[service.clone()], &ctx).expect("render_exposed_tools ok");
+        let tools =
+            render_exposed_tools(&[service.clone()], &ctx).expect("render_exposed_tools ok");
         let mut names: Vec<String> = tools
             .into_iter()
             .filter(|t| !t.name.starts_with("list_"))

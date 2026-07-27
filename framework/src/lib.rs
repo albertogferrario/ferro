@@ -36,6 +36,10 @@ pub mod lang;
 pub mod memo;
 pub mod metrics;
 pub mod middleware;
+/// Guard-visibility filter: which actions are permitted for a pre-computed
+/// guard map. Shared by MCP tools/list and the Inertia substrate.
+#[cfg(feature = "projections")]
+pub mod permitted_actions;
 /// Route definition and registration.
 pub mod routing;
 pub mod schedule;
@@ -57,10 +61,6 @@ mod websocket;
 /// confirm seam, persist, audit, override). Shared by every write channel.
 #[cfg(feature = "projections")]
 pub mod write;
-/// Guard-visibility filter: which actions are permitted for a pre-computed
-/// guard map. Shared by MCP tools/list and the Inertia substrate.
-#[cfg(feature = "projections")]
-pub mod permitted_actions;
 #[cfg(feature = "projections")]
 pub use permitted_actions::permitted_actions;
 /// Tenant-scoped projection read: parameterized data query with filter allowlisting,
@@ -140,10 +140,10 @@ pub use http::{
     PaginationLinks, PaginationMeta, Redirect, Request, Resource, ResourceCollection, ResourceMap,
     Response, ResponseExt, SameSite, SseEvent, SseStream, UploadedFile,
 };
-#[cfg(feature = "inertia")]
-pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 #[cfg(all(feature = "inertia", feature = "projections"))]
 pub use inertia::ProjectionQuery;
+#[cfg(feature = "inertia")]
+pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
 #[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
 pub use lang::{lang_choice, lang_init, locale, set_locale, t, trans, LangMiddleware};

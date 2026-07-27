@@ -161,8 +161,11 @@ mod tests {
 
     #[test]
     fn read_only_field_has_correct_access_flags() {
-        let service = ServiceDef::new("order")
-            .read_only_field("id", DataType::Integer, FieldMeaning::Identifier);
+        let service = ServiceDef::new("order").read_only_field(
+            "id",
+            DataType::Integer,
+            FieldMeaning::Identifier,
+        );
         let contract = schema_contract(&service);
         let id = &contract.fields[0];
         assert!(!id.writable, "read-only field must not be writable");
@@ -190,8 +193,8 @@ mod tests {
 
     #[test]
     fn schema_contract_serde_round_trip() {
-        let service = ServiceDef::new("order")
-            .field("id", DataType::Integer, FieldMeaning::Identifier);
+        let service =
+            ServiceDef::new("order").field("id", DataType::Integer, FieldMeaning::Identifier);
         let contract = schema_contract(&service);
         let json = serde_json::to_string(&contract).unwrap();
         let parsed: SchemaContract = serde_json::from_str(&json).unwrap();

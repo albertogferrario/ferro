@@ -1,4 +1,4 @@
-use ferro_projections::{FieldMeaning, FieldDef, DataType, ServiceDef};
+use ferro_projections::{DataType, FieldDef, FieldMeaning, ServiceDef};
 use sea_orm::{ConnectionTrait, DatabaseBackend, Statement};
 use serde::Serialize;
 
