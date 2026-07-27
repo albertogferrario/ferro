@@ -489,27 +489,36 @@ Phases execute in order: 115 → 116 → 117 → 117.1 → 118 (parallel with 11
 
 ## v1.0 Criteria
 
-Ferro v1.0 is the first release where the framework is considered feature-complete for its target domain. No target date.
+Ferro v1.0 is the point where the **core abstraction is committed to semantic-versioning stability** — not the point where every surface is feature-complete. Cutting 1.0 fixes the APIs applications structurally depend on; surfaces explicitly marked as evolving continue to gain capability across the 1.x line without breaking that commitment. No target date.
 
-**Modality:**
-- Visual modality complete (HTML + Tailwind, server-rendered).
-- Additional rendering modalities (audio, physical) are out of scope for v1.0.
+**Versioning note.** The `vN.0` labels in this roadmap are *development milestone* headings and are independent of the crates.io release version (currently `0.x`). "v1.0" in this section means the product **1.0.0** release — the first stability-committed version — not a milestone heading.
 
-**Projection / intent validation:**
-- Validated through real-world applications and a synthetic catalog of canonical app classes covering the seven intents.
+**Stable core (committed at 1.0):**
+- Projection / intent — `ServiceDef`, the seven structural intents, `derive_intents()`, and the `Renderer` trait boundary.
+- Agent-operability — the per-tenant MCP surface, `ActionDef`-derived tools, and server-side guard re-evaluation.
+- Write / data / validation — the channel-agnostic write kernel, guard and precondition evaluation, audit, and CRUD derivation.
 
-**Quality bars:**
-- Conceptual coherence pass complete across all 20 crates.
-- Beauty across four dimensions: aesthetic, conceptual, operational, compressive.
+**Explicitly evolving (NOT frozen at 1.0; additive across 1.x):**
+- The rendering / frontend layer. JSON-UI is the 1.0 visual renderer; additional frontend paths — e.g. a headless data / schema / permitted-actions contract that any frontend can consume (see [`docs/superpowers/specs/2026-07-27-headless-projection-substrate-design.md`](../docs/superpowers/specs/2026-07-27-headless-projection-substrate-design.md)) — may be added additively in 1.x without breaking the core.
+- Additional non-visual rendering modalities (audio, physical) remain v2.0+ directions.
+
+**Quality bars (all four must hold for the stable core):**
+- Beauty across four dimensions: compressive, operational, conceptual, aesthetic.
+- Conceptual coherence pass complete across all crates.
+
+**Validation:**
+- Projection / intent validated through real-world applications and a synthetic catalog of canonical app classes covering the seven intents.
 
 ---
 
 ## Pre-v1.0 Work Items
 
-Concrete items that contribute to v1.0 readiness. Not assigned to specific phases yet.
+Under the core-stability framing above, the remaining gate to 1.0 is **operational polish + validation completeness**, not new capability — the stable core (projection/intent, operability, write/data/validation) is already shipped across milestones through v17.0. Feature evolution of the *rendering/frontend* layer (the headless substrate, additional frontend paths) and other post-1.0 work are tracked in "Post-1.0 / Evolving (1.x)" below and do not block the 1.0 cut. Not assigned to specific phases yet.
 
 | Item | Notes |
 |------|-------|
+| **Synthetic canonical-class catalog (seven intents)** | One canonical example per intent — Browse, Focus, Collect, Process, Summarize, Analyze, Track — exercising the projection/intent pipeline end-to-end. Closes the projection/intent validation criterion. |
+| **Conceptual coherence pass across all crates** | Verify the surface holds as one small, coherent mental model before the stability commitment; part of the 1.0 quality bar. |
 | **MCP integration documentation for common AI development environments** | Document how to wire `ferro-mcp` into Claude Code, Cursor, and other agent runtimes that follow the MCP standard. |
 | **Audit projection MCP tool descriptions for completeness** | Verify `list_projections`, `inspect_projection`, `render_projection`, `validate_projection`, and `projection_coverage` tool descriptions are complete and accurate enough to author projections without out-of-band guidance. |
 | **Improve projection authoring guide via MCP introspection** | Identify gaps in tool descriptions, examples, and field-level documentation that an agent would need to compose a projection cleanly. |
@@ -517,6 +526,24 @@ Concrete items that contribute to v1.0 readiness. Not assigned to specific phase
 | **Projection-driven starter template for `ferro new`** | Add an option to scaffold a project that exercises the projection / intent system end-to-end as the default example, alongside the current scaffold. |
 | **Iteration loop ergonomics for projection-driven development** | Investigate the change → rebuild cycle for projection-driven apps. Identify whether incremental compilation, hot reload, or runtime spec swapping reduces friction. |
 | **`ferro doctor` multi-bin support** | `db_connection` and `migrations_pending` checks should automatically pass `--bin <pkg>` for workspaces without `default-run`. Tracked in `.planning/phases/122.2-deploy-simplification/122.2-VERIFICATION.md`. |
+
+---
+
+## Post-1.0 / Evolving (1.x)
+
+Work that is designed or in-progress but is **not a 1.0 blocker** — either it extends an explicitly-evolving surface, or it is additive capability that can land across the 1.x line. Kept here so pending specs and backlog are accounted for against the roadmap.
+
+**Rendering / frontend evolution (the evolving edge):**
+- **Headless projection substrate** — a frontend-agnostic data / schema / permitted-actions contract derived from the projection, so any frontend consumes the same declaration that drives the visual and MCP renderers. Design: [`2026-07-27-headless-projection-substrate-design.md`](../docs/superpowers/specs/2026-07-27-headless-projection-substrate-design.md). Foundation for additional frontend paths; independently valuable.
+- **Projection-native frontend derivation** — deriving typed props / data / action / permission bindings for a bespoke (e.g. React/Inertia) frontend from the same `ServiceDef`, with the design-system discipline applied to the generated output. Exploratory; gated on a coherence-at-scale validation before it is specced.
+
+**Additive capability (candidate for 1.x point releases):**
+- **`#[offload]` work distribution** — fire-and-forward async job derivation from a `#[service]` method over the existing queue/projection/broadcast crates. Design: [`2026-06-24-offload-work-distribution-design.md`](../docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md); phases reserved (244–249), not started.
+- **Computed / derived field recompute orchestration** — the post-persist recompute pass; the write-exclusion half shipped in the CRUD surface (Phase 243.1). Design: [`2026-06-24-projection-computed-derived-fields-design.md`](../docs/superpowers/specs/2026-06-24-projection-computed-derived-fields-design.md).
+- **ferro-a2ui renderer** — experimental crate built; MCP wiring + publish gated on the upstream A2UI v1.0 stable release. Design: [`2026-07-04-ferro-a2ui-design.md`](../docs/superpowers/specs/2026-07-04-ferro-a2ui-design.md).
+- **Architectural backlog** (field-sourced, unscheduled): `ferro-broadcast` replay + per-subscriber backlog, MCP transport extraction, host-based tenancy, `ferro-ai` LLMClient vision/streaming. See `.planning/backlog/`.
+
+**Operator housekeeping (non-blocking):** milestones v16.0–v16.6 are shipped but not yet archived (`/gsd-complete-milestone`).
 
 ---
 
