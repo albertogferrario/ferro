@@ -127,7 +127,10 @@ Everything in the anchor spec is a locked decision.
   data derivation formalizes.
 
 ### Delivery target
-- `ferro-inertia/src/lib.rs` — where `Inertia::from_projection` lives (output-crate delivery).
+- `framework/src/inertia/projection.rs` — where `Inertia::from_projection` lives, on the
+  framework-side Inertia facade that wraps `ferro_inertia::Inertia::render` (see the corrected
+  placement decision above; `ferro-inertia`-crate placement is a Cargo cycle). Read
+  `framework/src/inertia/` (esp. `context.rs`, the `Request`-aware `Inertia` struct) as the analog.
 
 ### Existing single-source test to mirror
 - The `single_source_both_channels` test pattern (v16.0 / Phase 232) — the permitted-actions
@@ -161,7 +164,9 @@ agent ──/mcp─────────────────────�
   `permitted_actions` into `framework`).
 - One guard-evaluation site after the refactor (grep-verifiable).
 - Renderer-location rule: derivation cores in `ferro-projections`/`framework`; delivery helper
-  in the output crate (`ferro-inertia`).
+  in the framework Inertia module (`framework/src/inertia/projection.rs`) — NOT the pure
+  `ferro-projections` crate. (Framework-side rather than the `ferro-inertia` crate because
+  `framework` already depends on `ferro-inertia`; see the corrected placement decision above.)
 </specifics>
 
 <deferred>
