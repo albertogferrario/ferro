@@ -111,6 +111,19 @@ static RULE_COMPONENTS: &[(&str, &[&str])] = &[
     // Grid is the required root element in register/fill_viewport compositions; surfaces the
     // app|dashboard-only layout constraint to authors (D-02).
     ("fill-viewport-layout-unknown", &["Grid"]),
+    // CSS-file skin lint (Phase 246-07 / LANG-04): flat surfaces (Card, PageHeader,
+    // KanbanBoard) must not mix border + shadow; overlays (Modal, Tabs) shadow only.
+    (
+        "skin-border-or-shadow",
+        &["Card", "PageHeader", "KanbanBoard", "Modal", "Tabs"],
+    ),
+    // CSS-file skin lint: fjui-* rules must reference var(--token) not raw literals.
+    // Applies to all themed components — Card representative (the most common pattern).
+    ("skin-raw-literals", &["Card"]),
+    // CSS-file skin lint: interactive components must define hover/focus/active/disabled states.
+    ("skin-interaction-states", &["Button", "Input"]),
+    // Token contrast lint (--contrast CLI flag): token pairs must meet WCAG floors.
+    ("contrast-lint", &["Card"]),
 ];
 
 /// A single component in the catalog.

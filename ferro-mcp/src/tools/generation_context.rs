@@ -277,6 +277,47 @@ static DESIGN_TOKEN_DESCRIPTIONS: &[TokenInfo] = &[
         name: "--font-display",
         purpose: "Display/heading font (defaults to --font-sans)",
     },
+    // Type-scale tokens (v2 — Phase 246)
+    TokenInfo {
+        name: "--text-display-size",
+        purpose: "Font size for display/hero headings",
+    },
+    TokenInfo {
+        name: "--text-display-weight",
+        purpose: "Font weight for display/hero headings",
+    },
+    TokenInfo {
+        name: "--text-section-size",
+        purpose: "Font size for section headings (h2-level)",
+    },
+    TokenInfo {
+        name: "--text-section-weight",
+        purpose: "Font weight for section headings",
+    },
+    TokenInfo {
+        name: "--text-body-size",
+        purpose: "Font size for body / paragraph text",
+    },
+    TokenInfo {
+        name: "--text-body-weight",
+        purpose: "Font weight for body text",
+    },
+    TokenInfo {
+        name: "--text-meta-size",
+        purpose: "Font size for meta / caption text",
+    },
+    TokenInfo {
+        name: "--text-meta-weight",
+        purpose: "Font weight for meta / caption text",
+    },
+    TokenInfo {
+        name: "--text-micro-size",
+        purpose: "Font size for micro / legal text",
+    },
+    TokenInfo {
+        name: "--text-micro-weight",
+        purpose: "Font weight for micro / legal text",
+    },
 ];
 
 /// Runtime data attributes for the register composition (filter, tile-qty, numpad, form-guard).
@@ -594,7 +635,8 @@ mod tests {
         assert!(!context.imports.json_ui_view.is_empty());
 
         // Verify design system summary populated (D-06)
-        assert_eq!(context.design_system.tokens.len(), 30);
+        // 30 base tokens + 10 type-scale tokens (Phase 246) = 40 total
+        assert_eq!(context.design_system.tokens.len(), 40);
         assert!(!context.design_system.intent_patterns.is_empty());
         assert!(!context.design_system.canonical_variants.variant.is_empty());
         assert!(!context.design_system.docs.is_empty());
