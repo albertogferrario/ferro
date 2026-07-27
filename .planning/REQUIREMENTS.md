@@ -459,8 +459,8 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SUBST-01 | Phase 263 | Planned |
-| SUBST-02 | Phase 263 | Planned |
-| SUBST-03 | Phase 263 | Planned |
-| SUBST-04 | Phase 263 | Planned |
-| SUBST-05 | Phase 263 | Planned |
+| SUBST-01 | Phase 263 | Complete |
+| SUBST-02 | Phase 263 | Complete |
+| SUBST-03 | Phase 263 | Complete |
+| SUBST-04 | Phase 263 | Complete |
+| SUBST-05 | Phase 263 | Complete |
