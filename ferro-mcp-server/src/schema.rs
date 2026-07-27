@@ -1,72 +1,9 @@
-use ferro_projections::{ActionDef, DataType, FieldDef, FieldMeaning, ServiceDef};
+use ferro_projections::{ActionDef, DataType, FieldMeaning, ServiceDef};
 
-/// Returns `true` if this field should appear as an equality filter in the
-/// MCP tool `inputSchema`.
-///
-/// Gate order (load-bearing — do not reorder):
-/// 1. Must be readable — excludes write-only (e.g., passwords) regardless of meaning.
-/// 2. Must not be a list — equality filters on list columns are not useful.
-/// 3. Must not carry `Sensitive` meaning — guards fields that ARE readable but still private.
-/// 4. `DataType` must not be `Json` or `Binary` — equality filters are not useful there.
-/// 5. Meaning must be in the conservative allowlist: Identifier, ForeignKey, Status,
-///    Category, Boolean, Custom(_). All other meanings (EntityName, Email, Money, …) are
-///    intentionally excluded.
-pub fn is_filter_field(field: &FieldDef) -> bool {
-    if !field.readable {
-        return false;
-    } // gate 1
-    if field.is_list {
-        return false;
-    } // gate 2
-    if matches!(field.meaning, FieldMeaning::Sensitive) {
-        return false;
-    } // gate 3
-      // gate 4: equality filter on JSON/Binary columns is not useful
-    if matches!(field.data_type, DataType::Json | DataType::Binary) {
-        return false;
-    }
-    // gate 5: conservative meaning allowlist
-    matches!(
-        field.meaning,
-        FieldMeaning::Identifier
-            | FieldMeaning::ForeignKey
-            | FieldMeaning::Status
-            | FieldMeaning::Category
-            | FieldMeaning::Boolean
-            | FieldMeaning::Custom(_)
-    )
-}
-
-/// Returns `true` if this field should receive `__gt/__gte/__lt/__lte` range params.
-///
-/// Gate order:
-/// 1. Must be readable.
-/// 2. Must not be a list.
-/// 3. Must not carry `Sensitive` meaning.
-/// 4. DataType must not be `Json` or `Binary`.
-/// 5. DataType must be ordered/comparable: Integer, Float, DateTime, or Date.
-///
-/// Gate 5 is DataType-based (Integer/Float/DateTime/Date), NOT meaning-based, so
-/// Money/Quantity/Percentage fields — excluded by `is_filter_field`'s meaning gate —
-/// still get range params.
-pub fn is_range_filter_field(field: &FieldDef) -> bool {
-    if !field.readable {
-        return false;
-    } // gate 1
-    if field.is_list {
-        return false;
-    } // gate 2
-    if matches!(field.meaning, FieldMeaning::Sensitive) {
-        return false;
-    } // gate 3
-    if matches!(field.data_type, DataType::Json | DataType::Binary) {
-        return false;
-    } // gate 4
-    matches!(
-        field.data_type,
-        DataType::Integer | DataType::Float | DataType::DateTime | DataType::Date
-    )
-}
+// Re-export the two filter-field predicates from their canonical home in
+// `ferro_rs::projection_read`. They are now the single definition shared by
+// the MCP schema builder (this file) and the data query (ferro_rs::projection_read::dispatch).
+pub use ferro_rs::projection_read::{is_filter_field, is_range_filter_field};
 
 /// Maps a `DataType` to its JSON Schema type fragment.
 ///
