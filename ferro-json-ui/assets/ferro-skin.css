@@ -1022,9 +1022,11 @@ input, select, textarea {
 
     /* Fill-page frame: bottom padding matches the 12px mobile side gutter so
      * the floating cart card sits at a consistent inset on all three sides.
+     * On notched devices the safe area wins — the card lifts above the home
+     * indicator and the extra space reads as system chrome, not card gap.
      * !important beats the py-4 utility on <main>. */
     body.ferro-fill main {
-      padding-bottom: calc(var(--spacing) * 3) !important;
+      padding-bottom: max(calc(var(--spacing) * 3), env(safe-area-inset-bottom, 0px)) !important;
     }
 
     /* Convert the panes_grid (direct .grid child of the POS form) from a
@@ -1090,9 +1092,10 @@ input, select, textarea {
       height: auto !important;
       max-height: none;
       padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-      padding-bottom: max(calc(var(--spacing) * 2), env(safe-area-inset-bottom, 0px));
       background-color: var(--color-card);
-      /* Floating card: rounded, borderless, shadow-elevated (LANG-04). */
+      /* Floating card: rounded, borderless, shadow-elevated (LANG-04).
+       * Safe-area allowance lives on the FRAME (main padding below), not
+       * inside the card — internal env() padding read as a broken gap. */
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-card), 0 -4px 12px rgb(0 0 0 / 0.08);
     }
