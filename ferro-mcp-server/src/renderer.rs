@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ferro_projections::render::Renderer;
 use ferro_projections::{ActionDef, Error as ProjError, IntentScore, ServiceDef};
+use ferro_rs::permitted_actions;
 use rmcp::model::{Tool, ToolAnnotations};
 
 /// Per-request MCP context — tenant identity and evaluated permission guards.
@@ -226,10 +227,9 @@ fn render_action_tool(
     action: &ActionDef,
     ctx: &McpContext,
 ) -> std::result::Result<Option<Tool>, ProjError> {
-    for precondition in &action.preconditions {
-        if ctx.evaluated_guards.get(precondition) == Some(&false) {
-            return Ok(None);
-        }
+    let allowed = permitted_actions(service, &ctx.evaluated_guards);
+    if !allowed.contains(&action.name) {
+        return Ok(None);
     }
 
     let name = action.name.clone(); // D-01: verbatim, never starts with "list_"
@@ -355,18 +355,17 @@ fn render_request_confirm_tool(
     service_name: &str,
     ctx: &McpContext,
 ) -> std::result::Result<Option<Tool>, ProjError> {
-    // Apply the same guard-visibility filter as the bare action tool.
-    for precondition in &action.preconditions {
-        if ctx.evaluated_guards.get(precondition) == Some(&false) {
-            return Ok(None);
-        }
-    }
-
     // Find the owning service to build the full action schema (includes identifier field).
     let service = services
         .iter()
         .find(|s| s.name == service_name && s.mcp_exposed)
         .ok_or_else(|| ProjError::Render(format!("service '{service_name}' not found")))?;
+
+    // Apply the same guard-visibility filter as the bare action tool (single evaluation site).
+    let allowed = permitted_actions(service, &ctx.evaluated_guards);
+    if !allowed.contains(&action.name) {
+        return Ok(None);
+    }
 
     let name = format!("request_confirm_{base_name}");
     let description = format!(
@@ -405,15 +404,18 @@ fn render_request_confirm_tool(
 fn render_confirm_tool(
     base_name: &str,
     action: &ferro_projections::ActionDef,
-    _services: &[ferro_projections::ServiceDef],
-    _service_name: &str,
+    services: &[ferro_projections::ServiceDef],
+    service_name: &str,
     ctx: &McpContext,
 ) -> std::result::Result<Option<Tool>, ProjError> {
-    // Apply the same guard-visibility filter.
-    for precondition in &action.preconditions {
-        if ctx.evaluated_guards.get(precondition) == Some(&false) {
-            return Ok(None);
-        }
+    // Apply the same guard-visibility filter (single evaluation site).
+    let service = services
+        .iter()
+        .find(|s| s.name == service_name && s.mcp_exposed)
+        .ok_or_else(|| ProjError::Render(format!("service '{service_name}' not found")))?;
+    let allowed = permitted_actions(service, &ctx.evaluated_guards);
+    if !allowed.contains(&action.name) {
+        return Ok(None);
     }
 
     let name = format!("confirm_{base_name}");
@@ -527,7 +529,7 @@ fn render_crud_delete_confirm_tool(
 mod tests {
     use super::*;
     use ferro_projections::{
-        derive_intents, ActionDef, DataType, FieldMeaning, InputDef, ServiceDef,
+        derive_intents, ActionDef, DataType, FieldMeaning, GuardDef, InputDef, ServiceDef,
     };
 
     fn order_service() -> ServiceDef {
@@ -1019,6 +1021,51 @@ mod tests {
             2,
             "intra-service duplicates must remain unrenamed (both keep bare 'submit'); got: {:?}",
             tools.iter().map(|t| t.name.as_ref()).collect::<Vec<_>>()
+        );
+    }
+
+    /// SUBST-02 regression: guard-visibility filter lifted to framework::permitted_actions
+    /// must produce the identical tool set as the former inline loop.
+    ///
+    /// A service with one guarded action ("approve", precondition "is_manager") and one
+    /// unguarded action ("submit"). With is_manager=false, approve must be absent; submit
+    /// must be present. With is_manager absent (default-open), both must be present.
+    #[test]
+    fn guard_visibility_unchanged_after_lift() {
+        let service = ServiceDef::new("order")
+            .mcp_exposed(true)
+            .field("id", DataType::Integer, FieldMeaning::Identifier)
+            .guard(GuardDef::new("is_manager"))
+            .action(ActionDef::new("approve").precondition("is_manager"))
+            .action(ActionDef::new("submit"));
+
+        // Guard denied: approve must be hidden, submit must be visible.
+        let mut ctx_deny = McpContext::default();
+        ctx_deny
+            .evaluated_guards
+            .insert("is_manager".to_string(), false);
+        let tools_deny =
+            render_exposed_tools(&[service.clone()], &ctx_deny).expect("render ok (deny)");
+        assert!(
+            !tools_deny.iter().any(|t| t.name.as_ref() == "approve"),
+            "approve must be absent when is_manager=false; got: {:?}",
+            tools_deny.iter().map(|t| t.name.as_ref()).collect::<Vec<_>>()
+        );
+        assert!(
+            tools_deny.iter().any(|t| t.name.as_ref() == "submit"),
+            "submit (no guard) must be present when is_manager=false"
+        );
+
+        // Guard absent (default-open): both must be visible.
+        let tools_allow =
+            render_exposed_tools(&[service], &McpContext::default()).expect("render ok (allow)");
+        assert!(
+            tools_allow.iter().any(|t| t.name.as_ref() == "approve"),
+            "approve must be present when guard key is absent"
+        );
+        assert!(
+            tools_allow.iter().any(|t| t.name.as_ref() == "submit"),
+            "submit must be present when guard key is absent"
         );
     }
 }
