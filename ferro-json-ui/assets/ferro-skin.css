@@ -898,7 +898,7 @@ input, select, textarea {
    * fixed-height (100dvh minus header, via `input.css` ferro-fill chain).
    * Mobile: the single-column panes_grid is converted to a flex column;
    * TileGrid wrapper fills the remaining space (flex-1, overflow-y:auto)
-   * and SelectionPanel is a pinned bottom slab (flex-shrink:0, max 48dvh).
+   * and SelectionPanel is a pinned bottom slab (flex-shrink:0, max 45dvh).
    * Desktop: panes_grid is already a 3-col fill grid; we only seal the
    * SelectionPanel wrapper so its outer overflow-y:auto doesn't shadow the
    * panel's own internal lines scroll.
@@ -941,12 +941,74 @@ input, select, textarea {
    *                       div[data-selection-panel].fjui-selection-panel
    *
    * Mobile strategy: panes_grid → flex column; TileGrid wrapper → flex-1;
-   * SelectionPanel wrapper → flex-shrink:0, max 48dvh.
+   * SelectionPanel wrapper → flex-shrink:0, content-driven height with cap
+   * at 45dvh (grows with cart lines, empty = compact strip ~150-170px).
    * The fill-wrapper divs already carry h-full/min-h-0 from render_grid;
    * we override just what needs to change for the flex layout.
    */
 
   @media (max-width: 767px) {
+    /* Compact the PageHeader chrome on fill_viewport pages.
+     * Normal pages use pb-4 (16px) from the inline style on fjui-page-header;
+     * on POS fill pages the header block must stay ≤70px so the tile grid
+     * gets the majority of the viewport. Reduce bottom padding and clamp the
+     * display title to a single line at smaller size. */
+    body.ferro-fill .fjui-page-header {
+      padding-bottom: calc(var(--spacing) * 1.5);
+    }
+
+    body.ferro-fill .fjui-text--display {
+      font-size: var(--text-section-size);
+      line-height: 1.2;
+    }
+
+    /* Root fill-grid → flex column on mobile so the page_header row is
+     * content-driven (no wasted 2fr allocation) and the form row fills all
+     * remaining height.
+     *
+     * DOM path (from render_spec_to_html + render_grid fill):
+     *   #ferro-json-ui
+     *     div.flex.flex-wrap.gap-4  ← render_spec_to_html root wrapper
+     *       div.grid.grid-cols-1.h-full.auto-rows-fr  ← root Grid
+     *         div[fill-wrapper]  (page_header — 2fr)
+     *         div[fill-wrapper]  (sale_form — 15fr)
+     *         div[fill-wrapper]  (qr_dialog — auto)
+     *
+     * Selector targets the root Grid via the intermediate wrapper div.
+     * !important overrides the inline grid display from render_grid fill mode. */
+    body.ferro-fill #ferro-json-ui > div > .grid {
+      display: flex !important;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* page_header fill-wrapper (first child of root grid): content-driven.
+     * height:auto !important overrides Tailwind's h-full (height:100%) which
+     * in a flex-col container would make this item take the full 764px height.
+     * overflow:visible so the breadcrumb/title don't create a scroll well. */
+    body.ferro-fill #ferro-json-ui > div > .grid > :first-child {
+      flex: 0 0 auto !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    /* form fill-wrapper (second child of root grid): grow to fill all remaining
+     * height. height:auto lets flex determine the size via flex: 1 1 0%. */
+    body.ferro-fill #ferro-json-ui > div > .grid > :nth-child(2) {
+      flex: 1 1 0% !important;
+      height: auto !important;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* qr_dialog fill-wrapper (third child): zero-size, it's a dialog overlay.
+     * height:auto so it doesn't consume 764px in the column. */
+    body.ferro-fill #ferro-json-ui > div > .grid > :nth-child(3) {
+      flex: 0 0 auto !important;
+      height: auto !important;
+      overflow: visible;
+    }
+
     /* Convert the panes_grid (direct .grid child of the POS form) from a
      * css-grid to a flex column. The form is always a direct child of the
      * fill-wrapper inside the root grid, so "form > .grid" is unambiguous
@@ -957,41 +1019,110 @@ input, select, textarea {
       overflow: hidden;
     }
 
-    /* TileGrid fill-wrapper (first child): grow to fill remaining height. */
+    /* TileGrid fill-wrapper (first child): grow to fill remaining height.
+     * height:auto !important overrides Tailwind's h-full (render_grid fill). */
     body.ferro-fill form > .grid > :first-child {
-      flex: 1 1 0%;
+      flex: 1 1 0% !important;
+      height: auto !important;
       min-height: 0;
       overflow: hidden;
     }
 
-    /* SelectionPanel fill-wrapper (last child): shrink to content, cap at 48dvh. */
+    /* SelectionPanel fill-wrapper (last child): content-driven height, cap at
+     * 45dvh. height:auto !important overrides h-full from render_grid fill. */
     body.ferro-fill form > .grid > :last-child {
-      flex: 0 0 auto;
+      flex: 0 0 auto !important;
+      height: auto !important;
       min-height: 0;
-      max-height: 48dvh;
+      max-height: 45dvh;
       overflow: hidden;
     }
 
-    /* SelectionPanel root: fill its capped wrapper, not sticky. */
+    /* SelectionPanel root: content-driven height inside the capped wrapper.
+     * !important on height overrides Tailwind's h-full utility (flex flex-col
+     * h-full min-h-0 on the panel root). When the cart is empty the panel
+     * shrinks to its content (~150px compact strip); when items are added it
+     * grows until the wrapper's max-height:45dvh cap kicks in, then the
+     * data-selection-lines list scrolls internally. */
     body.ferro-fill .fjui-selection-panel {
       position: static;
-      height: 100%;
+      height: auto !important;
       max-height: none;
-      padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
-      padding-bottom: max(calc(var(--spacing) * 3), env(safe-area-inset-bottom, 0px));
+      padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+      padding-bottom: max(calc(var(--spacing) * 2), env(safe-area-inset-bottom, 0px));
       background-color: var(--color-card);
       border-top: 1px solid var(--color-border);
       box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+    }
+
+    /* POS empty-state: suppress the generous vertical padding of the global
+     * fjui-empty-state rule. The panel empty state must be a compact one-liner.
+     * !important needed: data-selection-empty carries Tailwind's flex-1 utility
+     * which would otherwise override the flex shorthand at layer specificity. */
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] {
+      flex: 0 0 auto !important;
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state {
+      padding-block: calc(var(--spacing) * 2);
+      text-align: left;
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state__title {
+      font-size: var(--text-meta-size);
+      font-weight: 400;
+      color: var(--color-text-muted);
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state__body {
+      display: none;
+    }
+
+    /* data-selection-lines: when items exist, it expands. Ensure it can scroll. */
+    body.ferro-fill .fjui-selection-panel [data-selection-lines] {
+      max-height: calc(45dvh - 9rem);
     }
   }
 
   /* Desktop POS (≥768px): the panes_grid is a 3-col fill grid; both panes
    * receive h-full fill wrappers. Seal the SelectionPanel wrapper so its
    * outer overflow-y:auto (from render_grid fill) does not duplicate the
-   * panel's own internal lines scroll. */
+   * panel's own internal lines scroll.
+   * Add a border-left on the right panel to visually distinguish it as a
+   * separate pane surface (distinct from the tile grid). */
   @media (min-width: 768px) {
     body.ferro-fill form > .grid > :last-child {
       overflow: hidden;
+      border-left: 1px solid var(--color-border);
+    }
+
+    /* Desktop POS selection panel: compact the empty state near the top.
+     * !important needed to override Tailwind's flex-1 utility on data-selection-empty. */
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] {
+      flex: 0 0 auto !important;
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state {
+      padding-block: calc(var(--spacing) * 4);
+      text-align: left;
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state__title {
+      font-size: var(--text-meta-size);
+      font-weight: 400;
+      color: var(--color-text-muted);
+    }
+
+    body.ferro-fill .fjui-selection-panel [data-selection-empty] .fjui-empty-state__body {
+      margin-bottom: 0;
+      font-size: var(--text-meta-size);
+    }
+
+    /* Desktop TileGrid scroll container: add bottom padding so the last tile
+     * row is not clipped at the frame edge. The wrapper carries overflow-y:auto;
+     * padding-bottom inside it creates the buffer inside the scroll area. */
+    body.ferro-fill form > .grid > :first-child {
+      padding-bottom: calc(var(--spacing) * 3);
     }
   }
 
