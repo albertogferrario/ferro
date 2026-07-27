@@ -4335,7 +4335,10 @@ substrate evaluate guards in exactly one place.
      `single_source_both_channels`).
   4. `Inertia::from_projection(req, service, query)` loads tenant-scoped data, attaches the
      `SchemaContract` and per-record `permitted_actions`, and serializes them as Inertia
-     props; the helper lives in `ferro-inertia` (not `ferro-projections`).
+     props; the helper lives on the framework-side Inertia facade
+     (`framework/src/inertia/projection.rs`), not in the pure `ferro-projections` crate.
+     (Corrected 2026-07-27: `framework` already depends on `ferro-inertia`, so the spec's literal
+     `ferro-inertia` placement is a Cargo cycle — same class as Phase 261's `ferro-bundle`.)
   5. Data reads are tenant-scoped (cross-tenant ids are not found) and filter/limit shaping
      matches the `ServiceDef` field set.
   6. Write parity: an Inertia `POST /{service}/{action}` reaches the same

@@ -409,8 +409,12 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 - [ ] **SUBST-03**: `Inertia::from_projection(req, service, query) -> InertiaResponse` in
   `ferro-inertia` loads the tenant-scoped data shaped by the `ServiceDef` field set, attaches
   the `SchemaContract` and per-record `permitted_actions`, and serializes them as Inertia
-  props `{ schema, data, permitted_actions }`. Per the renderer-location rule the helper lives
-  in the output crate (`ferro-inertia`), not `ferro-projections`. Data reads are tenant-scoped
+  props `{ schema, data, permitted_actions }`. The helper lives on the framework-side Inertia
+  facade (`framework/src/inertia/projection.rs`), not in the pure `ferro-projections` crate.
+  (Corrected 2026-07-27, operator-approved: `framework` already depends on `ferro-inertia`, so the
+  spec's literal `ferro-inertia` placement is a hard Cargo cycle — same class as Phase 261's
+  `ferro-bundle`; the renderer-location intent is preserved since the helper is in the framework's
+  Inertia delivery layer, not the pure projection crate.) Data reads are tenant-scoped
   (cross-tenant ids are not found) with filter/limit shaping matching the field set.
 
 ### Writes

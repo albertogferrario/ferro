@@ -4,6 +4,18 @@
 **Files analyzed:** 9 (new or modified)
 **Analogs found:** 9 / 9
 
+> **⚠ CORRECTION (2026-07-27, operator-approved): `Inertia::from_projection` placement.**
+> This map was authored under RESEARCH assumption A1 (`ferro-inertia` could depend on
+> `framework`). A1 is **false** — `framework` already depends on `ferro-inertia` (optional
+> `inertia` feature), so `ferro-inertia → framework` is a hard Cargo cycle. **`from_projection`
+> therefore lives on the framework-side Inertia facade: `framework/src/inertia/projection.rs`**
+> (the `Request`-aware `Inertia` delivery module that already wraps `ferro_inertia::Inertia::render`),
+> NOT the `ferro-inertia` crate. There is **no** `ferro-inertia/Cargo.toml` change (ferro-inertia
+> gains no new deps). Wherever the tables/excerpts below say `ferro-inertia/src/projection.rs` or add
+> deps to `ferro-inertia/Cargo.toml`, read `framework/src/inertia/projection.rs` and "no ferro-inertia
+> Cargo change". The analog code excerpts (mirroring `Inertia::render`) still apply — only the crate
+> home moves. See 263-04-PLAN.md Task 0. Cycle class matches Phase 261's `ferro-bundle`.
+
 ---
 
 ## File Classification

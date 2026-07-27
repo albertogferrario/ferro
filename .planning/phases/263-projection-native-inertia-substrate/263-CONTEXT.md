@@ -60,8 +60,15 @@ Everything in the anchor spec is a locked decision.
 - `Inertia::from_projection(req, service, query) -> InertiaResponse` loads tenant-scoped data,
   attaches the `SchemaContract`, attaches `permitted_actions` per record, serializes as Inertia
   props. Component receives typed props of a known shape and renders freely.
-- Per the renderer-location rule, this delivery helper lives in its output crate
-  (`ferro-inertia`), not in `ferro-projections`.
+- **Placement (corrected 2026-07-27, operator-approved):** the delivery helper lives on the
+  **framework-side Inertia facade — `framework/src/inertia/projection.rs`** — the `Request`-aware
+  `Inertia` delivery module that already wraps `ferro_inertia::Inertia::render`. The spec's literal
+  "`in ferro-inertia`" is a hard Cargo cycle: `framework` already depends on `ferro-inertia`
+  (optional `inertia` feature), so `ferro-inertia → framework` is forbidden, and `from_projection`
+  is inherently framework-coupled (needs the `Request`, DB handle, `permitted_actions`, and
+  `projection_read`). The renderer-location rule's intent is still honored — the helper is NOT in the
+  pure `ferro-projections` crate; it is in the framework's Inertia delivery layer. Cycle class matches
+  Phase 261's `ferro-bundle`.
 
 ### Writes: reuse, do not rebuild
 - Inertia forms `POST /{service}/{action}` → the existing `dispatch_write(.., channel = "web")`
