@@ -393,7 +393,7 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 
 ### Derivation core
 
-- [ ] **SUBST-01**: A pure `schema_contract(&ServiceDef) -> SchemaContract` derivation in
+- [x] **SUBST-01**: A pure `schema_contract(&ServiceDef) -> SchemaContract` derivation in
   `ferro-projections` returns the service's field set, meanings, validations, and action
   definitions. It is schema-level and dependency-free (renders nothing — a sibling of
   `derive_intents()`) and snapshot-tested against the declaration.
