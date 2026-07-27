@@ -255,6 +255,13 @@ pub(super) const SOURCE: &str = r#"
                         target.replaceChildren.apply(target, children);
                     }
 
+                    // Sync body class from destination page (NAV-05: fill_viewport
+                    // toggling — ferro-fill must be added/removed so the CSS chain
+                    // activates on POS pages and deactivates on standard pages).
+                    if (doc.body) {
+                        document.body.className = doc.body.className;
+                    }
+
                     // Update document title.
                     var titleEl = doc.querySelector('title');
                     if (titleEl) document.title = titleEl.textContent;
