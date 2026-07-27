@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v17.0
-milestone_name: Live Projection Surface
-status: executing
-stopped_at: Completed 262-02-PLAN.md
+milestone: v18.0
+milestone_name: Projection-Native Frontend Substrate
+status: planning
+stopped_at: Planning phase 263
 last_updated: "2026-07-26T23:16:12.502Z"
 last_activity: 2026-07-26
 progress:
@@ -20,7 +20,7 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 262 — mcp-catalog-docs-publish
+**Current focus:** Phase 263 — projection-native-inertia-substrate (v18.0)
 
 ## Current Position
 
