@@ -8,11 +8,13 @@ mod field;
 mod intent;
 mod relationship;
 pub mod render;
+mod schema_contract;
 mod service;
 mod state;
 
 pub use action::{ActionDef, GuardDef, InputDef};
 pub use derive::derive_intents;
+pub use schema_contract::{schema_contract, ActionContract, FieldContract, InputContract, SchemaContract};
 pub use error::Error;
 pub use executor::{
     derive_crud_plan, derive_transition_plan, CrudPlan, CrudVerb, TenantColumn, TransitionPlan,
