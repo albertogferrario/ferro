@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 lol_html = "2.6"
-lightningcss = "=1.0.0-alpha.71"
+lightningcss = "=1.0.0-alpha.72"
 swc = "66"
 swc_common = "23"
 image = "0.25"
