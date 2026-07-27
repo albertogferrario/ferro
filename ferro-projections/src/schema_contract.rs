@@ -53,7 +53,7 @@ impl From<&FieldDef> for FieldContract {
     fn from(f: &FieldDef) -> Self {
         FieldContract {
             name: f.name.clone(),
-            data_type: f.data_type.clone(),
+            data_type: f.data_type,
             meaning: f.meaning.clone(),
             required: f.required,
             readable: f.readable,
@@ -107,7 +107,7 @@ impl From<&InputDef> for InputContract {
     fn from(i: &InputDef) -> Self {
         InputContract {
             name: i.name.clone(),
-            data_type: i.data_type.clone(),
+            data_type: i.data_type,
             meaning: i.meaning.clone(),
             required: i.required,
         }
