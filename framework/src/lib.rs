@@ -63,6 +63,13 @@ pub mod write;
 pub mod permitted_actions;
 #[cfg(feature = "projections")]
 pub use permitted_actions::permitted_actions;
+/// Tenant-scoped projection read: parameterized data query with filter allowlisting,
+/// offset pagination, soft-delete, and tenant predicate injection.
+/// Shared by the MCP and Inertia delivery surfaces.
+#[cfg(feature = "projections")]
+pub mod projection_read;
+#[cfg(feature = "projections")]
+pub use projection_read::{DispatchResult, ProjectionReadError, ProjectionReadResult};
 
 pub use api::api_key::{
     generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
