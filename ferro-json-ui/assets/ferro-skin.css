@@ -1009,6 +1009,24 @@ input, select, textarea {
       overflow: visible;
     }
 
+    /* When the trailing slot holds only an EMPTY RawHtml div (no QR pending),
+     * remove it from layout entirely — a zero-height flex item still consumes
+     * one column gap, leaving a phantom 16px band under the cart panel. */
+    body.ferro-fill
+      #ferro-json-ui
+      > div
+      > .grid
+      > :nth-child(3):has(> [data-ferro-raw-html]:empty:only-child) {
+      display: none;
+    }
+
+    /* Fill-page frame: bottom padding matches the 12px mobile side gutter so
+     * the floating cart card sits at a consistent inset on all three sides.
+     * !important beats the py-4 utility on <main>. */
+    body.ferro-fill main {
+      padding-bottom: calc(var(--spacing) * 3) !important;
+    }
+
     /* Convert the panes_grid (direct .grid child of the POS form) from a
      * css-grid to a flex column. The form is always a direct child of the
      * fill-wrapper inside the root grid, so "form > .grid" is unambiguous
@@ -1074,8 +1092,9 @@ input, select, textarea {
       padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
       padding-bottom: max(calc(var(--spacing) * 2), env(safe-area-inset-bottom, 0px));
       background-color: var(--color-card);
-      border-top: 1px solid var(--color-border);
-      box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+      /* Floating card: rounded, borderless, shadow-elevated (LANG-04). */
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card), 0 -4px 12px rgb(0 0 0 / 0.08);
     }
 
     /* POS empty-state: suppress the generous vertical padding of the global
@@ -1114,9 +1133,27 @@ input, select, textarea {
    * Add a border-left on the right panel to visually distinguish it as a
    * separate pane surface (distinct from the tile grid). */
   @media (min-width: 768px) {
+    /* Same phantom-slot removal as mobile: an empty trailing RawHtml wrapper
+     * must not consume a column gap under the panes. */
+    body.ferro-fill
+      #ferro-json-ui
+      > div
+      > .grid
+      > :nth-child(3):has(> [data-ferro-raw-html]:empty:only-child) {
+      display: none;
+    }
+
+    /* Right pane wrapper: no pane border — the panel inside is a floating
+     * card (rounded + shadow), consistent with the mobile treatment. */
     body.ferro-fill form > .grid > :last-child {
       overflow: hidden;
-      border-left: 1px solid var(--color-border);
+    }
+
+    body.ferro-fill .fjui-selection-panel {
+      background-color: var(--color-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     }
 
     /* Desktop POS selection panel: compact the empty state near the top.
