@@ -1020,12 +1020,35 @@ input, select, textarea {
     }
 
     /* TileGrid fill-wrapper (first child): grow to fill remaining height.
-     * height:auto !important overrides Tailwind's h-full (render_grid fill). */
+     * height:auto !important overrides Tailwind's h-full (render_grid fill).
+     * overflow:hidden !important beats the wrapper's own overflow-y-auto
+     * utility — the wrapper must NOT scroll: search + chip strip stay pinned
+     * and only the tile grid below them scrolls (see stack rules). */
     body.ferro-fill form > .grid > :first-child {
       flex: 1 1 0% !important;
       height: auto !important;
       min-height: 0;
+      overflow: hidden !important;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Left-pane stack (search + chip strip + tile grid): fill the wrapper,
+     * no scrolling of its own. */
+    body.ferro-fill form > .grid > :first-child > div {
+      flex: 1 1 0%;
+      min-height: 0;
       overflow: hidden;
+    }
+
+    /* Only the tile grid scrolls. align-content:start keeps rows top-packed;
+     * bottom padding buffers the last row from the frame edge. */
+    body.ferro-fill form > .grid > :first-child > div > .grid {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto;
+      align-content: start;
+      padding-bottom: calc(var(--spacing) * 3);
     }
 
     /* SelectionPanel fill-wrapper (last child): content-driven height, cap at
@@ -1118,10 +1141,28 @@ input, select, textarea {
       font-size: var(--text-meta-size);
     }
 
-    /* Desktop TileGrid scroll container: add bottom padding so the last tile
-     * row is not clipped at the frame edge. The wrapper carries overflow-y:auto;
-     * padding-bottom inside it creates the buffer inside the scroll area. */
+    /* Desktop left pane: same pinning as mobile — the wrapper must not scroll
+     * (overflow-y-auto utility beaten with !important); search + chip strip
+     * stay fixed and only the tile grid scrolls, last row buffered by inner
+     * bottom padding. */
     body.ferro-fill form > .grid > :first-child {
+      overflow: hidden !important;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    body.ferro-fill form > .grid > :first-child > div {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    body.ferro-fill form > .grid > :first-child > div > .grid {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto;
+      align-content: start;
       padding-bottom: calc(var(--spacing) * 3);
     }
   }
