@@ -1555,8 +1555,10 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
 /// exactly what `updateFilterTabClasses` in `runtime/filters.rs` toggles,
 /// creating the D-12 lockstep contract.
 pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> String {
+    // `shrink-0` prevents Flexbox from collapsing tab buttons when the strip
+    // overflows horizontally on narrow viewports (mobile category overlap fix).
     let tab_base = format!(
-        "{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} px-4 text-sm font-medium border-b-2"
+        "{HIT_TARGET_MIN} {TOUCH_ACTION} {INTERACTIVE_BASE} shrink-0 px-4 text-sm font-medium border-b-2"
     );
     // `type="button"` is required: a filter-tab strip often lives inside a
     // <form> (e.g. a POS TileGrid). Without it the button defaults to `submit`,
@@ -1580,7 +1582,7 @@ pub(crate) fn render_filter_tab_strip(items: &[String], all_label: &str) -> Stri
             )
         })
         .collect();
-    format!("<div class=\"flex overflow-x-auto\" role=\"tablist\">{all_tab}{item_tabs}</div>")
+    format!("<div class=\"flex overflow-x-auto whitespace-nowrap [-webkit-overflow-scrolling:touch] scrollbar-none\" role=\"tablist\">{all_tab}{item_tabs}</div>")
 }
 
 // ── FilterTabs — standalone touch filter-tab strip ───────────────────────

@@ -191,6 +191,7 @@ pub(super) const SOURCE: &str = r#"
                 if (!response.ok || contentType.indexOf('text/html') === -1) {
                     if (timer) clearTimeout(timer);
                     if (hairline) hairline.reset();
+                    clearBusy();
                     window.location.assign(url);
                     return;
                 }
@@ -201,12 +202,14 @@ pub(super) const SOURCE: &str = r#"
                     if (responseUrl.origin !== window.location.origin) {
                         if (timer) clearTimeout(timer);
                         if (hairline) hairline.reset();
+                        clearBusy();
                         window.location.assign(url);
                         return;
                     }
                 } catch (_) {
                     if (timer) clearTimeout(timer);
                     if (hairline) hairline.reset();
+                    clearBusy();
                     window.location.assign(url);
                     return;
                 }
@@ -216,6 +219,7 @@ pub(super) const SOURCE: &str = r#"
                     if (!isPopstate && url !== intendedUrl) {
                         if (timer) clearTimeout(timer);
                         if (hairline) hairline.reset();
+                        clearBusy();
                         return;
                     }
 
@@ -224,6 +228,7 @@ pub(super) const SOURCE: &str = r#"
                     if (!newEl) {
                         if (timer) clearTimeout(timer);
                         if (hairline) hairline.reset();
+                        clearBusy();
                         window.location.assign(url);
                         return;
                     }
@@ -287,9 +292,10 @@ pub(super) const SOURCE: &str = r#"
                         // Caller passes the state value as the third arg via closure.
                     }
 
-                    // Hairline done.
+                    // Hairline done + clear busy state on the initiating link.
                     if (timer) clearTimeout(timer);
                     if (hairline) hairline.done();
+                    clearBusy();
 
                     // Script re-execution (D-12, B-02): scripts set via innerHTML/
                     // replaceChildren are inert; clone into fresh <script> nodes.
@@ -379,12 +385,14 @@ pub(super) const SOURCE: &str = r#"
                 }).catch(function() {
                     if (timer) clearTimeout(timer);
                     if (hairline) hairline.reset();
+                    clearBusy();
                     window.location.assign(url);
                 });
 
             }).catch(function() {
                 if (timer) clearTimeout(timer);
                 if (hairline) hairline.reset();
+                clearBusy();
                 window.location.assign(url);
             });
         }
@@ -422,6 +430,26 @@ pub(super) const SOURCE: &str = r#"
             hoverUrl = null;
         });
 
+        // Track the link currently showing a busy state so it can be cleared
+        // after the swap completes or on failure. Only one link is ever busy
+        // at a time (the most recent intercepted click).
+        var busyAnchor = null;
+
+        function setBusy(a) {
+            if (busyAnchor && busyAnchor !== a) {
+                try { busyAnchor.removeAttribute('aria-busy'); } catch (_) {}
+            }
+            busyAnchor = a;
+            try { a.setAttribute('aria-busy', 'true'); } catch (_) {}
+        }
+
+        function clearBusy() {
+            if (busyAnchor) {
+                try { busyAnchor.removeAttribute('aria-busy'); } catch (_) {}
+                busyAnchor = null;
+            }
+        }
+
         // click: intercept same-origin GET <a> clicks (D-14).
         document.addEventListener('click', function(event) {
             // D-12 / T-249-04-04: never intercept clicks while an inline editor is active.
@@ -434,6 +462,7 @@ pub(super) const SOURCE: &str = r#"
             if (!shouldIntercept(a, event)) return;
             event.preventDefault();
             intendedUrl = a.href;
+            setBusy(a);
             navigate(intendedUrl, false);
         }, true);
 

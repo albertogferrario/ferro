@@ -948,11 +948,13 @@ pub(crate) fn render_tile_grid(el: &Element, spec: &Spec, data: &Value, depth: u
     };
 
     // Column class: exhaustive full-literal match. NEVER `format!("grid-cols-{n}")`.
+    // On mobile (base viewport), 3- and 4-column grids drop to 2 columns so
+    // tile names are not truncated on narrow screens (390 px finding B-2).
     let col_class = match props.columns {
         Some(1) => "grid-cols-1",
         Some(2) | None => "grid-cols-2",
-        Some(3) => "grid-cols-3",
-        Some(4) => "grid-cols-4",
+        Some(3) => "grid-cols-2 md:grid-cols-3",
+        Some(4) => "grid-cols-2 md:grid-cols-4",
         _ => "grid-cols-2",
     };
 
@@ -1582,7 +1584,7 @@ pub(crate) fn render_selection_panel(
 
     format!(
         "<div data-selection-panel data-selection-form=\"{form_id}\" \
-         class=\"flex flex-col h-full min-h-0 {OVERSCROLL_CONTAIN}\">\
+         class=\"fjui-selection-panel flex flex-col h-full min-h-0 {OVERSCROLL_CONTAIN}\">\
          <template data-selection-line-template>\
          <div data-selection-line \
          class=\"flex flex-col gap-1 py-2 border-b border-border\">\

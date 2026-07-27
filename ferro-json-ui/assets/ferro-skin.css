@@ -885,6 +885,37 @@ input, select, textarea {
     font-variant-numeric: tabular-nums;
   }
 
+  /* ── SelectionPanel — mobile sticky checkout bar ─────────────────────────
+   *
+   * On desktop (md+) the SelectionPanel lives in a fill-height grid column
+   * alongside the TileGrid — no special positioning needed.
+   *
+   * On mobile (single-column layout) the panel stacks below the tile grid.
+   * We make it sticky at the bottom so the total + actions remain visible
+   * while the operator scrolls the product tiles. The panel keeps an internal
+   * scroll region for line items (data-selection-lines); the total row and
+   * confirm buttons pin below it. A capped max-height (40dvh) limits how
+   * much screen the expanded cart list can take before it scrolls internally.
+   * Safe-area padding prevents overlap with iPhone home indicator.
+   */
+
+  @media (max-width: 767px) {
+    .fjui-selection-panel {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      background-color: var(--color-card);
+      border-top: 1px solid var(--color-border);
+      max-height: 40dvh;
+      padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+      padding-bottom: max(calc(var(--spacing) * 3), env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+      /* Override fill-height h-full/min-h-0 from utility classes — on mobile
+       * sticky panels must size to their content, not fill the grid row. */
+      height: auto !important;
+    }
+  }
+
   /* ── Sidebar shell ─────────────────────────────────────────────────────── */
 
   /* Sidebar is a flat surface — border-right only, NO shadow (LANG-04). */
@@ -1423,6 +1454,16 @@ input, select, textarea {
 
   @media (prefers-reduced-motion: reduce) {
     .fjui-nav-progress { display: none; }
+  }
+
+  /* ── Nav link busy state ──────────────────────────────────────────────────
+   * Applied by the instant-nav runtime on the clicked <a> while a page fetch
+   * is in flight (setBusy / clearBusy in nav.rs). Subtle opacity drop signals
+   * that the tap registered without moving the user away from the element. */
+
+  a[aria-busy] {
+    opacity: 0.6;
+    cursor: wait;
   }
 
   /* ── Command palette ─────────────────────────────────────────────────────── */
