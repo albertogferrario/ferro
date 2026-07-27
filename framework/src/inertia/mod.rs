@@ -23,11 +23,15 @@
 mod config;
 mod context;
 pub(crate) mod global;
+#[cfg(feature = "projections")]
+mod projection;
 mod response;
 
 pub use config::InertiaConfig;
 pub use context::{Inertia, InertiaShared, SavedInertiaContext};
 pub use global::{get_inertia_config, set_inertia_config};
+#[cfg(feature = "projections")]
+pub use projection::ProjectionQuery;
 pub use response::InertiaResponse;
 
 // Re-export core types from ferro-inertia for advanced usage
