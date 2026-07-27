@@ -142,6 +142,8 @@ pub use http::{
 };
 #[cfg(feature = "inertia")]
 pub use inertia::{Inertia, InertiaConfig, InertiaResponse, InertiaShared, SavedInertiaContext};
+#[cfg(all(feature = "inertia", feature = "projections"))]
+pub use inertia::ProjectionQuery;
 #[cfg(feature = "json-ui")]
 pub use json_ui::JsonUi;
 pub use lang::{lang_choice, lang_init, locale, set_locale, t, trans, LangMiddleware};
