@@ -57,6 +57,12 @@ mod websocket;
 /// confirm seam, persist, audit, override). Shared by every write channel.
 #[cfg(feature = "projections")]
 pub mod write;
+/// Guard-visibility filter: which actions are permitted for a pre-computed
+/// guard map. Shared by MCP tools/list and the Inertia substrate.
+#[cfg(feature = "projections")]
+pub mod permitted_actions;
+#[cfg(feature = "projections")]
+pub use permitted_actions::permitted_actions;
 
 pub use api::api_key::{
     generate_api_key, hash_api_key, verify_api_key_hash, ApiKeyInfo, ApiKeyMiddleware,
