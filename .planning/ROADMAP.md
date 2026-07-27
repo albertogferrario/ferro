@@ -4345,9 +4345,9 @@ substrate evaluate guards in exactly one place.
      `dispatch_write(channel="web")` kernel (guard re-eval + audit) MCP reaches — no new
      write path, no new failure semantics.
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 - [x] 263-01-PLAN.md — schema_contract(&ServiceDef) pure derivation in ferro-projections (SUBST-01)
-- [ ] 263-02-PLAN.md — lift permitted_actions into framework; refactor MCP tools/list to call it (SUBST-02)
+- [x] 263-02-PLAN.md — lift permitted_actions into framework; refactor MCP tools/list to call it (SUBST-02)
 - [ ] 263-03-PLAN.md — relocate the tenant-scoped data query into framework::projection_read (SUBST-03 data core)
 - [ ] 263-04-PLAN.md — Inertia::from_projection delivery helper + write reuse via dispatch_write(channel="web") (SUBST-03/04)
 - [ ] 263-05-PLAN.md — single-source parity + tenant-scoping + write-parity tests (SUBST-05)

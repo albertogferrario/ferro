@@ -397,7 +397,7 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
   `ferro-projections` returns the service's field set, meanings, validations, and action
   definitions. It is schema-level and dependency-free (renders nothing — a sibling of
   `derive_intents()`) and snapshot-tested against the declaration.
-- [ ] **SUBST-02**: The "which actions are permitted for a record" logic is lifted out of
+- [x] **SUBST-02**: The "which actions are permitted for a record" logic is lifted out of
   `ferro-mcp-server` (`tools/list` filter) into `framework` as
   `permitted_actions(service, record, tenant, ctx) -> Vec<ActionName>`, evaluated by the
   same `GuardEvaluatorFn` the write path uses. After the refactor `ferro-mcp-server` **and**
