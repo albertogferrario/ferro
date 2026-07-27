@@ -419,7 +419,7 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 
 ### Writes
 
-- [ ] **SUBST-04**: An Inertia form `POST /{service}/{action}` routes through the existing
+- [x] **SUBST-04**: An Inertia form `POST /{service}/{action}` routes through the existing
   `dispatch_write(.., channel = "web")` kernel (guard re-eval + persist + audit). No new write
   path, no new failure semantics — the substrate adds read derivation only. Errors reuse the
   framework JSON error envelope and `WriteError` mapping across channels.
