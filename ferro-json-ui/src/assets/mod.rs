@@ -77,6 +77,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::const_is_empty)]
     fn geist_sans_woff2_non_empty() {
         assert!(
             !GEIST_SANS_WOFF2.is_empty(),
@@ -85,6 +86,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::const_is_empty)]
     fn geist_mono_woff2_non_empty() {
         assert!(
             !GEIST_MONO_WOFF2.is_empty(),

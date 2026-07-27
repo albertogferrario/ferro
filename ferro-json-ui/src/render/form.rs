@@ -528,7 +528,7 @@ pub(crate) fn render_select(el: &Element, _spec: &Spec, data: &Value, _depth: us
 
         let field_esc = html_escape(&props.field);
         let placeholder = props.placeholder.as_deref().unwrap_or("Cerca\u{2026}");
-        let listbox_id = format!("fjui-combo-listbox-{}", field_esc);
+        let listbox_id = format!("fjui-combo-listbox-{field_esc}");
         let controls_id = html_escape(&listbox_id);
 
         html.push_str(&format!(

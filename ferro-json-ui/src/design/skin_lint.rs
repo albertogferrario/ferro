@@ -217,8 +217,7 @@ fn contains_raw_color_literal(value: &str) -> bool {
     }
 
     // Allow color-mix() — inspect its arguments for raw literals (named colors included)
-    if v.starts_with("color-mix(") {
-        let inner = &v["color-mix(".len()..];
+    if let Some(inner) = v.strip_prefix("color-mix(") {
         // Flag raw hex or functional notations directly
         if inner.contains('#')
             || inner.contains("rgb(")
@@ -330,7 +329,7 @@ fn check_rule_for_raw_literals(selector: &str, body: &str) -> Vec<Finding> {
             let prop = prop.trim_start_matches(':').trim();
             let value = segment[colon_pos + 1..].trim();
 
-            let is_color_prop = COLOR_PROPERTIES.iter().any(|&cp| cp == prop);
+            let is_color_prop = COLOR_PROPERTIES.contains(&prop);
             if is_color_prop && contains_raw_color_literal(value) {
                 findings.push(Finding {
                     rule: "skin-raw-literals",

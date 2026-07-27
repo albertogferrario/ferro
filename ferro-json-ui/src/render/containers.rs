@@ -520,12 +520,8 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
             "<h3 class=\"fjui-text--section\">{}</h3>",
             html_escape(&lane.title),
         ));
-        // Count badge: primary tone when non-zero, neutral when zero.
-        let badge_tone = if lane.count > 0 {
-            "fjui-badge fjui-badge--neutral"
-        } else {
-            "fjui-badge fjui-badge--neutral"
-        };
+        // Count badge.
+        let badge_tone = "fjui-badge fjui-badge--neutral";
         html.push_str(&format!(
             "<span class=\"{}\">{}</span>",
             badge_tone, lane.count,
