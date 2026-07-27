@@ -836,13 +836,13 @@ mod tests {
 
         assert!(
             body.contains(
-                r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#
+                r#"<p id="err-name" class="fjui-form-message--error">Name is required</p>"#
             ),
             "error <p> must appear below name input; got: {body}"
         );
         assert!(
             body.contains(
-                r#"<p id="err-email" class="text-sm text-destructive">Email is invalid</p>"#
+                r#"<p id="err-email" class="fjui-form-message--error">Email is invalid</p>"#
             ),
             "error <p> must appear below email input; got: {body}"
         );
@@ -908,13 +908,13 @@ mod tests {
         let body = html_body(ok_response(result));
         assert!(
             body.contains(
-                r#"<p id="err-name" class="text-sm text-destructive">Name is required</p>"#
+                r#"<p id="err-name" class="fjui-form-message--error">Name is required</p>"#
             ),
             "error <p> must appear below name input; got: {body}"
         );
         assert!(
             body.contains(
-                r#"<p id="err-email" class="text-sm text-destructive">Email must be valid</p>"#
+                r#"<p id="err-email" class="fjui-form-message--error">Email must be valid</p>"#
             ),
             "error <p> must appear below email input; got: {body}"
         );
@@ -944,7 +944,7 @@ mod tests {
 
         assert!(
             body.contains(
-                r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#
+                r#"<p id="err-email" class="fjui-form-message--error">must be valid</p>"#
             ),
             "error paragraph must appear below the input; got: {body}"
         );
@@ -976,7 +976,7 @@ mod tests {
 
         assert!(
             body.contains(
-                r#"<p id="err-email" class="text-sm text-destructive">must be valid</p>"#
+                r#"<p id="err-email" class="fjui-form-message--error">must be valid</p>"#
             ),
             "error paragraph must appear below the input; got: {body}"
         );
