@@ -885,22 +885,28 @@ input, select, textarea {
     font-variant-numeric: tabular-nums;
   }
 
-  /* ── SelectionPanel — mobile sticky checkout bar ─────────────────────────
+  /* ── SelectionPanel — checkout bar layout ───────────────────────────────
    *
-   * On desktop (md+) the SelectionPanel lives in a fill-height grid column
-   * alongside the TileGrid — no special positioning needed.
+   * Two layout modes depending on whether the page uses fill_viewport.
    *
-   * On mobile (single-column layout) the panel stacks below the tile grid.
-   * We make it sticky at the bottom so the total + actions remain visible
-   * while the operator scrolls the product tiles. The panel keeps an internal
-   * scroll region for line items (data-selection-lines); the total row and
-   * confirm buttons pin below it. A capped max-height (40dvh) limits how
-   * much screen the expanded cart list can take before it scrolls internally.
-   * Safe-area padding prevents overlap with iPhone home indicator.
+   * NON-fill pages (standard scroll): sticky at bottom of the scrolling
+   * column so the total row and checkout buttons stay on screen while the
+   * operator scrolls product tiles. A capped max-height (40dvh) limits how
+   * much the cart list expands before it scrolls internally.
+   *
+   * FILL pages (body.ferro-fill — POS registratore): the page frame is
+   * fixed-height (100dvh minus header, via `input.css` ferro-fill chain).
+   * Mobile: the single-column panes_grid is converted to a flex column;
+   * TileGrid wrapper fills the remaining space (flex-1, overflow-y:auto)
+   * and SelectionPanel is a pinned bottom slab (flex-shrink:0, max 48dvh).
+   * Desktop: panes_grid is already a 3-col fill grid; we only seal the
+   * SelectionPanel wrapper so its outer overflow-y:auto doesn't shadow the
+   * panel's own internal lines scroll.
    */
 
+  /* Non-fill mobile: classic sticky bar (pre-v7.3 behavior unchanged). */
   @media (max-width: 767px) {
-    .fjui-selection-panel {
+    body:not(.ferro-fill) .fjui-selection-panel {
       position: sticky;
       bottom: 0;
       z-index: 20;
@@ -910,9 +916,82 @@ input, select, textarea {
       padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
       padding-bottom: max(calc(var(--spacing) * 3), env(safe-area-inset-bottom, 0px));
       box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
-      /* Override fill-height h-full/min-h-0 from utility classes — on mobile
-       * sticky panels must size to their content, not fill the grid row. */
       height: auto !important;
+    }
+  }
+
+  /* ── POS fixed-frame layout (body.ferro-fill) ────────────────────────────
+   *
+   * HTML structure produced by registratore.json (fill_viewport:true):
+   *
+   *   body.ferro-fill
+   *     div.flex.flex-col  (DashboardLayout column)
+   *       header.fjui-header  (48px)
+   *       main  (flex:1, overflow:hidden via HIDE_SCROLLBARS_CSS override below)
+   *         div.mx-auto.max-w-7xl
+   *           #ferro-json-ui  (flex:1 min-h-0 flex-col via ferro-fill chain)
+   *             div.grid[row_weights=2,15]  (root Grid fill:true)
+   *               div[fill-wrapper]  (2fr — page_header)
+   *               div[fill-wrapper]  (15fr — form fill-wrapper)
+   *                 form#form_register
+   *                   div.grid.grid-cols-1.md:grid-cols-3.h-full  (panes_grid)
+   *                     div[fill-wrapper]  (TileGrid wrapper)
+   *                       div[data-filter-scope]  (TileGrid root)
+   *                     div[fill-wrapper]  (SelectionPanel wrapper)
+   *                       div[data-selection-panel].fjui-selection-panel
+   *
+   * Mobile strategy: panes_grid → flex column; TileGrid wrapper → flex-1;
+   * SelectionPanel wrapper → flex-shrink:0, max 48dvh.
+   * The fill-wrapper divs already carry h-full/min-h-0 from render_grid;
+   * we override just what needs to change for the flex layout.
+   */
+
+  @media (max-width: 767px) {
+    /* Convert the panes_grid (direct .grid child of the POS form) from a
+     * css-grid to a flex column. The form is always a direct child of the
+     * fill-wrapper inside the root grid, so "form > .grid" is unambiguous
+     * on fill pages (only one form on the registratore page). */
+    body.ferro-fill form > .grid {
+      display: flex !important;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* TileGrid fill-wrapper (first child): grow to fill remaining height. */
+    body.ferro-fill form > .grid > :first-child {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* SelectionPanel fill-wrapper (last child): shrink to content, cap at 48dvh. */
+    body.ferro-fill form > .grid > :last-child {
+      flex: 0 0 auto;
+      min-height: 0;
+      max-height: 48dvh;
+      overflow: hidden;
+    }
+
+    /* SelectionPanel root: fill its capped wrapper, not sticky. */
+    body.ferro-fill .fjui-selection-panel {
+      position: static;
+      height: 100%;
+      max-height: none;
+      padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+      padding-bottom: max(calc(var(--spacing) * 3), env(safe-area-inset-bottom, 0px));
+      background-color: var(--color-card);
+      border-top: 1px solid var(--color-border);
+      box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+    }
+  }
+
+  /* Desktop POS (≥768px): the panes_grid is a 3-col fill grid; both panes
+   * receive h-full fill wrappers. Seal the SelectionPanel wrapper so its
+   * outer overflow-y:auto (from render_grid fill) does not duplicate the
+   * panel's own internal lines scroll. */
+  @media (min-width: 768px) {
+    body.ferro-fill form > .grid > :last-child {
+      overflow: hidden;
     }
   }
 
