@@ -4302,7 +4302,7 @@ coupling: the operability layer is already renderer-independent.
 
 ### Phases
 
-- [ ] **Phase 263: Projection-native Inertia substrate** — `schema_contract(&ServiceDef)`
+- [x] **Phase 263: Projection-native Inertia substrate** — `schema_contract(&ServiceDef)` (completed 2026-07-27)
   derivation (pure, in `ferro-projections`); the `permitted_actions` lift from
   `ferro-mcp-server` into `framework` (shared by MCP `tools/list` and Inertia);
   `Inertia::from_projection` delivering `{ schema, data, permitted_actions }` props,
@@ -4345,12 +4345,12 @@ substrate evaluate guards in exactly one place.
      `dispatch_write(channel="web")` kernel (guard re-eval + audit) MCP reaches — no new
      write path, no new failure semantics.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 - [x] 263-01-PLAN.md — schema_contract(&ServiceDef) pure derivation in ferro-projections (SUBST-01)
 - [x] 263-02-PLAN.md — lift permitted_actions into framework; refactor MCP tools/list to call it (SUBST-02)
 - [x] 263-03-PLAN.md — relocate the tenant-scoped data query into framework::projection_read (SUBST-03 data core)
 - [x] 263-04-PLAN.md — Inertia::from_projection delivery helper + write reuse via dispatch_write(channel="web") (SUBST-03/04)
-- [ ] 263-05-PLAN.md — single-source parity + tenant-scoping + write-parity tests (SUBST-05)
+- [x] 263-05-PLAN.md — single-source parity + tenant-scoping + write-parity tests (SUBST-05)
 
 ### Requirement → Phase Mapping (v18.0)
 

@@ -426,7 +426,7 @@ target); the `ferro-json-ui` `GET /data/{service}` read convention.
 
 ### Single source (tests)
 
-- [ ] **SUBST-05**: Parity is proven by test: (a) permitted-actions parity — for a record in
+- [x] **SUBST-05**: Parity is proven by test: (a) permitted-actions parity — for a record in
   a given state the set from `permitted_actions(...)` equals the guard-filtered set MCP
   `tools/list` returns for the same record and tenant, and changing state changes both
   identically (mirrors `single_source_both_channels`); (b) write parity — an Inertia
