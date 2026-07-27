@@ -178,7 +178,9 @@ pub(super) const SOURCE: &str = r#"
     // Italian decimal convention: comma separator (€1.234,56), not period.
     function formatMoney(cents, symbol) {
         var n = parseInt(cents, 10) || 0;
-        var s = (n / 100).toFixed(2).replace('.', ',');
+        var parts = (n / 100).toFixed(2).split('.');
+        var whole = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        var s = whole + ',' + parts[1];
         return symbol ? symbol + s : s;
     }
 "#;
