@@ -31,10 +31,11 @@ ferro-projections = { path = "../ferro-projections", version = "0.3" }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 
-# pgvector 0.4 supports sqlx >= 0.8, < 0.10 (docs.rs/pgvector/0.4.2).
+# pgvector 0.4.1 uses sqlx 0.8.x; 0.4.2 hard-depends on sqlx 0.9 which requires
+# rustc 1.94 (workspace toolchain: 1.88). Pin to =0.4.1 until toolchain is upgraded.
 # Workspace Cargo.lock pins sqlx 0.8.6 via sea-orm; "0.8" matches that pin and
-# avoids a second sqlx compilation. Do NOT bump to "0.9".
-pgvector = { version = "0.4", features = ["sqlx"], optional = true }
+# avoids a second sqlx compilation.
+pgvector = { version = "=0.4.1", features = ["sqlx"], optional = true }
 sqlx     = { version = "0.8", features = ["postgres", "runtime-tokio"], optional = true }
 
 [dev-dependencies]
