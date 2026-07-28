@@ -801,7 +801,10 @@ mod render_subtree_tests {
     fn simple_spec() -> Spec {
         Spec::builder()
             .title("Test")
-            .element("root", crate::spec::Element::new("Text").prop("content", "hello"))
+            .element(
+                "root",
+                crate::spec::Element::new("Text").prop("content", "hello"),
+            )
             .build()
             .expect("spec valid")
     }
@@ -810,10 +813,16 @@ mod render_subtree_tests {
     fn render_subtree_root_target_wraps_in_ferro_json_ui_div() {
         let spec = simple_spec();
         let html = render_subtree("ferro-json-ui", &spec, &json!({}));
-        assert!(html.starts_with(r#"<div id="ferro-json-ui">"#), "got: {html}");
+        assert!(
+            html.starts_with(r#"<div id="ferro-json-ui">"#),
+            "got: {html}"
+        );
         assert!(html.contains("hello"), "got: {html}");
         // Must NOT contain layout chrome (sidebar, header, nav)
-        assert!(!html.contains("<html"), "must not contain html tag; got: {html}");
+        assert!(
+            !html.contains("<html"),
+            "must not contain html tag; got: {html}"
+        );
         assert!(!html.contains("<nav"), "must not contain nav; got: {html}");
     }
 
@@ -832,6 +841,9 @@ mod render_subtree_tests {
         let html = render_spec_to_html(&spec, &json!({}));
         assert!(html.contains("hello"), "got: {html}");
         // Full render wraps in flex container, not the nav-target div
-        assert!(!html.starts_with(r#"<div id="ferro-json-ui">"#), "got: {html}");
+        assert!(
+            !html.starts_with(r#"<div id="ferro-json-ui">"#),
+            "got: {html}"
+        );
     }
 }

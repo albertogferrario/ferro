@@ -285,9 +285,8 @@ async fn handle_request(
     let response = match router.match_route(&method, &routing_path) {
         Some((handler, params, route_pattern)) => {
             // Extract X-FJUI-Target before ferro_request is consumed by with_params.
-            let fjui_nav_target: Option<String> = ferro_request
-                .header("x-fjui-target")
-                .map(|s| s.to_string());
+            let fjui_nav_target: Option<String> =
+                ferro_request.header("x-fjui-target").map(|s| s.to_string());
 
             let request = ferro_request
                 .with_params(params)
