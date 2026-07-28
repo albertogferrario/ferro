@@ -14,7 +14,7 @@ updated: 2026-06-17
 
 ### 1. is_transient error classification — business sign-off
 expected: In the webhook handlers, `is_transient(e)` treats `PaymentError::Db | PaymentError::Stripe` as transient (propagate → Stripe retries the webhook) and all other variants (`StatusPrecondition`, `Loader`, `NotFound`, `AutoRefundTriggered`) as terminal (absorb → return Ok, or trigger auto-refund for the capture-not-honorable cases). This is the money-safety boundary introduced by code-review fix WR-02/WR-03: a transient DB error inside a consumer's `on_paid` must NOT cause an irreversible refund. Confirm the classification matches your intended policy for the real consumer (gestiscilo) callbacks.
-result: [pending]
+result: PASS — 2026-07-28. Alberto confirmed: classification matches gestiscilo policy.
 
 ### 2. Live Stripe refund-by-payment_intent (`create_refund_for_payment_intent`)
 expected: The auto-refund path calls Stripe's refund API with `payment_intent` (not `charge`), because `checkout.session.completed` carries no charge_id. Unit-tested offline via MockStripeGateway; live exercise is deferred to the phase-236 workspace integration bin against ferro-stripe test mode.
@@ -27,9 +27,9 @@ result: DEFERRED-CLOSED — 2026-07-28. Phase 236 shipped and verified. Reconcil
 ## Summary
 
 total: 3
-passed: 2
+passed: 3
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
