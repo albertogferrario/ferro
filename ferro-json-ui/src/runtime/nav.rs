@@ -97,7 +97,7 @@ pub(super) const SOURCE: &str = r#"
             var entry = {
                 promise: fetch(url, {
                     credentials: 'same-origin',
-                    headers: { 'X-FJUI-Nav': '1' },
+                    headers: { 'X-FJUI-Nav': '1', 'X-FJUI-Target': 'ferro-json-ui' },
                     signal: controller.signal
                 }).then(function(r) {
                     inflight--;
@@ -180,12 +180,16 @@ pub(super) const SOURCE: &str = r#"
                 var controller = new AbortController();
                 responsePromise = fetch(url, {
                     credentials: 'same-origin',
-                    headers: { 'X-FJUI-Nav': '1' },
+                    headers: { 'X-FJUI-Nav': '1', 'X-FJUI-Target': 'ferro-json-ui' },
                     signal: controller.signal
                 });
             }
 
             responsePromise.then(function(response) {
+                var isFragment = response.headers.get('X-FJUI-Fragment') === '1';
+                var fragTitle = isFragment ? response.headers.get('X-FJUI-Title') : null;
+                var fragBodyClass = isFragment ? response.headers.get('X-FJUI-Body-Class') : null;
+
                 // Swappable check (D-03).
                 var contentType = response.headers.get('content-type') || '';
                 if (!response.ok || contentType.indexOf('text/html') === -1) {
@@ -258,13 +262,19 @@ pub(super) const SOURCE: &str = r#"
                     // Sync body class from destination page (NAV-05: fill_viewport
                     // toggling — ferro-fill must be added/removed so the CSS chain
                     // activates on POS pages and deactivates on standard pages).
-                    if (doc.body) {
+                    if (fragBodyClass !== null) {
+                        document.body.className = fragBodyClass;
+                    } else if (doc.body) {
                         document.body.className = doc.body.className;
                     }
 
                     // Update document title.
-                    var titleEl = doc.querySelector('title');
-                    if (titleEl) document.title = titleEl.textContent;
+                    if (fragTitle !== null) {
+                        document.title = fragTitle;
+                    } else {
+                        var titleEl = doc.querySelector('title');
+                        if (titleEl) document.title = titleEl.textContent;
+                    }
 
                     // Sidebar active-item update (D-03, Pitfall 6).
                     var oldActive = document.querySelector('.fjui-sidebar__nav-item--active');
@@ -492,3 +502,41 @@ pub(super) const SOURCE: &str = r#"
         });
     }
 "#;
+
+#[cfg(test)]
+mod nav_source_tests {
+    use super::SOURCE;
+
+    #[test]
+    fn nav_sends_fjui_target_header() {
+        assert!(
+            SOURCE.contains("'X-FJUI-Target': 'ferro-json-ui'"),
+            "nav.js must send X-FJUI-Target header"
+        );
+    }
+
+    #[test]
+    fn nav_reads_fragment_headers() {
+        assert!(
+            SOURCE.contains("X-FJUI-Fragment"),
+            "nav.js must read X-FJUI-Fragment response header"
+        );
+        assert!(
+            SOURCE.contains("X-FJUI-Title"),
+            "nav.js must read X-FJUI-Title response header"
+        );
+        assert!(
+            SOURCE.contains("X-FJUI-Body-Class"),
+            "nav.js must read X-FJUI-Body-Class response header"
+        );
+    }
+
+    #[test]
+    fn nav_still_sends_fjui_nav_header() {
+        // Backward compat: both headers sent.
+        assert!(
+            SOURCE.contains("'X-FJUI-Nav': '1'"),
+            "nav.js must still send X-FJUI-Nav for backward compat"
+        );
+    }
+}
