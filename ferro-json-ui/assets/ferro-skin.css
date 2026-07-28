@@ -1427,15 +1427,41 @@ input, select, textarea {
 
   /* ── PageHeader ─────────────────────────────────────────────────────────── */
 
-  /* PageHeader is a flat surface — border-bottom only (LANG-04), no shadow. */
+  /* PageHeader is a flat surface — border-bottom only (LANG-04), no shadow.
+   * Sticks flush under the top nav. main has top padding (py-4 mobile /
+   * p-6 desktop); a matching negative margin-top cancels it so the header
+   * sits directly below the nav with no transparent gap, and `top` matches
+   * so it stays flush when stuck — no jump between rest and sticky states.
+   * Negative horizontal margins cancel main's px so the border-bottom spans
+   * the full content width. pt equals the inline pb-4 → symmetric spacing. */
 
   .fjui-page-header {
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-background);
     /* NO box-shadow — flat surface (LANG-04) */
     position: sticky;
-    top: 3rem;   /* clear the 48px nav header */
-    z-index: 9;  /* below header z-10, above page content */
+    /* Cancel main's mobile top padding (py-4 = 1rem): flush under nav, no gap */
+    margin-top: -1rem;
+    top: -1rem;
+    z-index: 9;    /* below header z-10, above page content */
+    padding-top: 1rem;      /* matches inline pb-4 for equal vertical spacing */
+    /* Cancel main's mobile horizontal padding (px-3 = 0.75rem) */
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .fjui-page-header {
+      /* Cancel main's desktop padding (p-6 = 1.5rem): top + both sides */
+      margin-top: -1.5rem;
+      top: -1.5rem;
+      margin-left: -1.5rem;
+      margin-right: -1.5rem;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
   }
 
   /* ── Modal ──────────────────────────────────────────────────────────────── */
