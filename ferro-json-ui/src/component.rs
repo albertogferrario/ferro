@@ -190,7 +190,7 @@ pub struct Column {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label_false: Option<String>,
     /// When set, opts the link column into peek-cards by emitting
-    /// data-peek-entity and data-peek-id attributes on the rendered <a>.
+    /// data-peek-entity and data-peek-id attributes on the rendered `<a>`.
     /// Value is the entity kind, e.g. "clienti", "prodotti".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub peek_entity: Option<String>,
@@ -439,7 +439,7 @@ pub struct SelectProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_path: Option<String>,
     /// When true, renders a progressive-enhancement combobox overlay over the
-    /// native <select>. The native select remains the form value carrier (D-06).
+    /// native `<select>`. The native select remains the form value carrier (D-06).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub searchable: Option<bool>,
 }
@@ -867,7 +867,7 @@ pub struct StatCardProps {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_path: Option<String>,
     /// Pre-rendered inline SVG sparkline string from the consumer handler.
-    /// Emitted as a sibling <div> of the value element — NOT inside the
+    /// Emitted as a sibling `<div>` of the value element — NOT inside the
     /// data-sse-target element (Pitfall 5: SSE updates replace the value element's
     /// textContent and must not erase the sparkline).
     #[serde(default, skip_serializing_if = "Option::is_none")]
