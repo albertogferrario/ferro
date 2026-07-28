@@ -28,11 +28,12 @@
 //! ```
 
 #[allow(unused_imports)]
+use ferro::serde_json;
 use ferro::{
-    bind, global_middleware, register_layout, singleton, ApiKeyProvider, App, AuthResponse,
-    DashboardLayout, DashboardLayoutConfig, Gate, HeaderProps, LangMiddleware, Limit, RateLimiter,
-    SessionConfig, SessionMiddleware, SidebarGroup, SidebarNavItem, SidebarProps, Theme,
-    ThemeMiddleware, UserProvider, DB,
+    bind, global_middleware, register_layout, ApiKeyProvider, App, AuthResponse,
+    Broadcast, BroadcastConfig, Broadcaster, DashboardLayout, DashboardLayoutConfig, Gate,
+    HeaderProps, LangMiddleware, Limit, RateLimiter, SessionConfig, SessionMiddleware,
+    SidebarGroup, SidebarNavItem, SidebarProps, Theme, ThemeMiddleware, UserProvider, DB,
 };
 
 use crate::middleware;
@@ -181,8 +182,37 @@ pub async fn register() {
     // Example: Register a trait binding with runtime config
     // bind!(dyn Database, PostgresDB::new());
 
-    // Example: Register a concrete singleton
-    // singleton!(CacheService::new());
+    // Register broadcaster so /_ferro/ws WebSocket and projection hooks share the same instance.
+    let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env());
+    App::singleton(broadcaster.clone());
+
+    // Wire LiveTestProjection runtime for Phase 260 LiveFragment UAT.
+    let bc_arc = std::sync::Arc::new(broadcaster);
+    let bc_for_hook = bc_arc.clone();
+    let db = DB::connection()
+        .expect("DB not initialized before ProjectionRuntime setup")
+        .inner()
+        .clone();
+    let runtime = ferro_projection::ProjectionRuntime::new(
+        db,
+        bc_arc,
+        crate::projections::live_test::LiveTestProjection,
+    )
+    .with_fragment_renderer(move |key: &str, snapshot: serde_json::Value| {
+        let count = snapshot["count"].as_i64().unwrap_or(0);
+        let html = format!("<span style=\"font-size:2rem;font-weight:bold\">{count}</span>");
+        let ch = format!("projection.live.test.{key}");
+        let bc = bc_for_hook.clone();
+        tokio::spawn(async move {
+            let _ = Broadcast::new(bc)
+                .channel(ch)
+                .event("fragment")
+                .data(serde_json::json!({ "html": html }))
+                .send()
+                .await;
+        });
+    });
+    std::sync::Arc::new(runtime).register();
 }
 
 /// Insert dogfood fixture data when the tenants table is empty.

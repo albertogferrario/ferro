@@ -17,6 +17,8 @@ use crate::tenant_resolver::SessionUserTenantResolver;
 
 routes! {
     get!("/", controllers::home::index).name("home"),
+    get!("/live-test", controllers::live_test::index).name("live_test.index"),
+    post!("/live-test/trigger", controllers::live_test::trigger).name("live_test.trigger"),
     get!("/redirect-example", controllers::user::redirect_example),
     get!("/payments", controllers::payments::index).name("payments.index"),
     get!("/pos", controllers::pos::index).name("pos.index"),

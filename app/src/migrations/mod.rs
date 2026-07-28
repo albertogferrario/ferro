@@ -14,6 +14,7 @@ mod m20260614_create_audit_log_table;
 mod m20260614_create_mcp_idempotency_keys_table;
 mod m20260623_add_deleted_at_to_orders;
 mod m20260624_create_line_items_table;
+mod m20260728_create_projection_snapshots_table;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260614_create_audit_log_table::Migration),
             Box::new(m20260623_add_deleted_at_to_orders::Migration),
             Box::new(m20260624_create_line_items_table::Migration),
+            Box::new(m20260728_create_projection_snapshots_table::Migration),
         ]
     }
 }
