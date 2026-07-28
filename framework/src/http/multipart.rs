@@ -621,6 +621,88 @@ mod tests {
         assert!(msg.contains("max 5"));
     }
 
+    // UAT-158: multipart POST through a real hyper Incoming body (the HTTP layer)
+
+    #[tokio::test]
+    async fn multipart_incoming_body_round_trip() {
+        // Proves parse_multipart_body (the Incoming path) works end-to-end through
+        // a real TCP connection — the path exercised by req.multipart() in a handler.
+        use std::sync::{Arc, Mutex};
+        use hyper_util::rt::TokioIo;
+        use http_body_util::Empty;
+        use tokio::sync::oneshot;
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let (tx, rx) = oneshot::channel::<MultipartForm>();
+        let tx_holder = Arc::new(Mutex::new(Some(tx)));
+
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let io = TokioIo::new(stream);
+            let tx_holder = tx_holder.clone();
+
+            let service = hyper::service::service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
+                let tx_holder = tx_holder.clone();
+                async move {
+                    let (parts, body) = req.into_parts();
+                    let ct = parts
+                        .headers
+                        .get("content-type")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("")
+                        .to_string();
+                    let form = parse_multipart_body(body, &ct, max_file_bytes(), max_fields())
+                        .await
+                        .expect("parse succeeds");
+                    if let Some(tx) = tx_holder.lock().unwrap().take() {
+                        let _ = tx.send(form);
+                    }
+                    Ok::<_, hyper::Error>(hyper::Response::new(Empty::<Bytes>::new()))
+                }
+            });
+
+            hyper::server::conn::http1::Builder::new()
+                .serve_connection(io, service)
+                .await
+                .ok();
+        });
+
+        // Send a real multipart POST over TCP
+        let (raw, ct) = make_multipart_body(
+            "TESTBND",
+            &[("avatar", b"\x89PNG\r\n\x1a\n", Some("photo.png"))],
+        );
+        let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+        let io = TokioIo::new(stream);
+        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
+        tokio::spawn(async move { conn.await.ok(); });
+
+        let req = hyper::Request::builder()
+            .method("POST")
+            .uri("/upload")
+            .header("content-type", &ct)
+            .body(http_body_util::Full::new(raw))
+            .unwrap();
+        let _ = sender.send_request(req).await;
+
+        // Verify the file arrived intact through the Incoming body path
+        let form = rx.await.expect("form received");
+        let file = form.file("avatar").expect("avatar present");
+        assert_eq!(file.file_name.as_deref(), Some("photo.png"));
+        assert_eq!(file.bytes.as_ref(), b"\x89PNG\r\n\x1a\n");
+
+        // Store to a memory disk — completes the req.multipart() → file.store() chain
+        let storage = ferro_storage::Storage::with_config("mem", vec![
+            ("mem", ferro_storage::DiskConfig::memory()),
+        ]);
+        let disk = storage.disk("mem").expect("disk");
+        file.store(&disk, "uploads/avatar.png").await.expect("store succeeds");
+        assert!(disk.exists("uploads/avatar.png").await.unwrap());
+        let stored = disk.get("uploads/avatar.png").await.expect("readable");
+        assert_eq!(stored.as_ref(), b"\x89PNG\r\n\x1a\n");
+    }
+
     // Killer-feature integration: UploadedFile::store() wires to ferro-storage
 
     #[tokio::test]

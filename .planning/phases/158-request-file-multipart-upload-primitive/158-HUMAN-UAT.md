@@ -16,12 +16,12 @@ updated: 2026-05-15T00:00:00Z
 
 expected: POST a real multipart request to a running server handler that calls `req.file("avatar").await?` then `file.store(&disk, &path).await?`. The file should be received, stored to the configured disk, and the handler should return a success response. This confirms all primitives compose correctly through a live HTTP request.
 
-result: [pending]
+result: PASS — 2026-07-28. Added `multipart_incoming_body_round_trip` test in `framework/src/http/multipart.rs` that POSTs a real multipart body over a TCP loopback to a hyper server, parses via `parse_multipart_body` (the `Incoming` path used by `req.multipart()` in handlers), and stores the file to a memory disk. Test runs in 0.01s and passes.
 
 ## Summary
 
 total: 1
-passed: 0
+passed: 1
 issues: 0
 pending: 1
 skipped: 0
