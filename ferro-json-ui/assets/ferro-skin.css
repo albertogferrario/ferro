@@ -1434,7 +1434,7 @@ input, select, textarea {
     background-color: var(--color-background);
     /* NO box-shadow — flat surface (LANG-04) */
     position: sticky;
-    top: 0;      /* content area starts below nav; stick at top of scroll container */
+    top: 3rem;   /* clear the 48px nav header */
     z-index: 9;  /* below header z-10, above page content */
   }
 
