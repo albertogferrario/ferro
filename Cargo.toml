@@ -47,7 +47,7 @@ members = [
 [workspace.package]
 version = "0.3.5"
 edition = "2021"
-rust-version = "1.88.0"
+rust-version = "1.94.1"
 license = "MIT"
 
 # Keep the full `cargo test --all-features` build within the CI runner disk.
