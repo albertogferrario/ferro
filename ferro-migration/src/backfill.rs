@@ -35,7 +35,7 @@ pub(crate) fn sql_for_random_hex(
     column: &str,
     hex_len: u32,
 ) -> Result<String, Error> {
-    if hex_len % 2 != 0 {
+    if !hex_len.is_multiple_of(2) {
         return Err(Error::UnsupportedBackend(format!(
             "hex_len must be even, got {hex_len}"
         )));
