@@ -22,7 +22,7 @@ resolution: deferred_to_163.1
 
 ### 1. Codemod multi-root handler behavior (WR-01)
 expected: Either (a) root wraps page-title and login-form in a Group/Fragment container, or (b) multi-root handlers are rejected as Unsupported with a TODO marker. Currently root is 'page-title' and login-form/email/password/submit are orphaned (unreachable from root).
-result: [pending — design decision required]
+result: PASS — 2026-07-28. Phase 163.1 already implemented Option B: multi-root handlers emit a TODO marker and produce no spec file. 7/7 codemod tests pass including `codemod_one_handler_emits_spec_and_rewrites_controller`.
 file: ferro-cli/src/commands/json_ui_migrate_v1.rs:253-286
 fixture_demonstrating_bug: ferro-cli/tests/fixtures/migrate_v1/out_auth_login_form.json
 related: integration test `codemod_one_handler_emits_spec_and_rewrites_controller` passes only because the fixture encodes the same bug
