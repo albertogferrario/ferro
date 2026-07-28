@@ -86,7 +86,11 @@ fn validate_woff2_url(url: &str) -> anyhow::Result<()> {
     let host = parsed.host_str().unwrap_or("");
     // Fontsource CDN hosts only. This allowlist is the SSRF control: any URL
     // returned by the API that points elsewhere is rejected.
-    if !matches!(host, "cdn.fontsource.com" | "api.fontsource.org") {
+    // cdn.jsdelivr.net is Fontsource's primary delivery CDN as of 2026.
+    if !matches!(
+        host,
+        "cdn.fontsource.com" | "api.fontsource.org" | "cdn.jsdelivr.net"
+    ) {
         anyhow::bail!("woff2 URL host {host:?} is not an allowed Fontsource host");
     }
     Ok(())
@@ -361,6 +365,11 @@ mod tests {
         .is_ok());
         assert!(validate_woff2_url(
             "https://api.fontsource.org/v1/fonts/inter/latin-400-normal.woff2"
+        )
+        .is_ok());
+        // Fontsource's primary delivery CDN as of 2026
+        assert!(validate_woff2_url(
+            "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff2"
         )
         .is_ok());
     }
