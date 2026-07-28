@@ -1044,8 +1044,8 @@ mod tests {
         ctx_deny
             .evaluated_guards
             .insert("is_manager".to_string(), false);
-        let tools_deny =
-            render_exposed_tools(std::slice::from_ref(&service), &ctx_deny).expect("render ok (deny)");
+        let tools_deny = render_exposed_tools(std::slice::from_ref(&service), &ctx_deny)
+            .expect("render ok (deny)");
         assert!(
             !tools_deny.iter().any(|t| t.name.as_ref() == "approve"),
             "approve must be absent when is_manager=false; got: {:?}",
