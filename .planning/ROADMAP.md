@@ -4362,4 +4362,23 @@ substrate evaluate guards in exactly one place.
 | SUBST-04 (write reuse through `dispatch_write(channel="web")`; no new write path) | Phase 263 |
 | SUBST-05 (single-source parity + tenant-scoping test contracts) | Phase 263 |
 
+---
+
+## Backlog
+
+### Phase 999.1: Upgrade rmcp to 3.0 stable — MCP RC spec (BACKLOG)
+
+**Goal:** Upgrade `rmcp` from `0.12` to `3.0` stable once released. The 3.0 release implements the MCP 2026-07-28 release candidate (stateless protocol: no `initialize`/`initialized` handshake, no `Mcp-Session-Id`, no SSE streams). Our stdio transport insulates us from most HTTP-layer changes, but expect API churn on the handler/macro side (`tool`, `tool_handler`, `tool_router`, `ServerHandler`). Tool implementations themselves should be unaffected.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Context:
+- Do not upgrade to `rmcp 3.0.0-beta.*` — wait for stable release
+- Both `ferro-mcp` and `ferro-api-mcp` pin `rmcp = "0.12"` and need updating
+- Session removal, handshake removal, SSE removal are HTTP transport concerns — our stdio path is unaffected at the protocol level
+- The 30+ tool implementations in `ferro-mcp/src/tools/` are logic-only and should compile unchanged
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ✓ 5/5 requirements mapped, no orphans, no duplicates.
