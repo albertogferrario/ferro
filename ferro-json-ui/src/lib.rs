@@ -83,7 +83,7 @@ pub use plugin::{
     with_plugin, Asset, CollectedAssets, JsonUiPlugin, PluginRegistry,
 };
 pub use plugins::{register_built_in_plugins, MapPlugin, RichTextEditorPlugin};
-pub use render::{render_spec_to_html, render_spec_to_html_with_plugins, RenderResult};
+pub use render::{render_spec_to_html, render_spec_to_html_with_plugins, render_subtree, RenderResult};
 pub use resolve::{
     expand_directives, resolve_actions, resolve_actions_strict, resolve_errors, resolve_errors_all,
 };

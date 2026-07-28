@@ -284,6 +284,11 @@ async fn handle_request(
 
     let response = match router.match_route(&method, &routing_path) {
         Some((handler, params, route_pattern)) => {
+            // Extract X-FJUI-Target before ferro_request is consumed by with_params.
+            let fjui_nav_target: Option<String> = ferro_request
+                .header("x-fjui-target")
+                .map(|s| s.to_string());
+
             let request = ferro_request
                 .with_params(params)
                 .with_route_pattern(route_pattern.clone());
@@ -300,10 +305,14 @@ async fn handle_request(
 
             // 3. Execute chain with handler inside request host + memo-store context
             let __memo_store = Arc::new(crate::memo::MemoStore::new());
-            let response = crate::http::request_context::REQUEST_HOST
+            let response = crate::http::request_context::FJUI_NAV_TARGET
                 .scope(
-                    request_host,
-                    crate::memo::MEMO_STORE.scope(__memo_store, chain.execute(request, handler)),
+                    fjui_nav_target,
+                    crate::http::request_context::REQUEST_HOST.scope(
+                        request_host,
+                        crate::memo::MEMO_STORE
+                            .scope(__memo_store, chain.execute(request, handler)),
+                    ),
                 )
                 .await;
 

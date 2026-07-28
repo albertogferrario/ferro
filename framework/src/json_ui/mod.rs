@@ -171,6 +171,18 @@ impl JsonUi {
             config.body_class.clone()
         };
 
+        // Fragment path: X-FJUI-Target present → skip layout, return only the target div.
+        if let Some(target) = crate::http::request_context::fjui_nav_target() {
+            use ferro_json_ui::render_subtree;
+            let fragment_html = render_subtree(&target, spec, data);
+            return Ok(HttpResponse::text(fragment_html)
+                .status(200)
+                .header("Content-Type", "text/html; charset=utf-8")
+                .header("X-FJUI-Fragment", "1")
+                .header("X-FJUI-Title", title)
+                .header("X-FJUI-Body-Class", &body_class));
+        }
+
         let ctx = LayoutContext {
             title,
             content: &result.html,
