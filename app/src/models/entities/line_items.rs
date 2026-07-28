@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use ferro::FerroModel;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
