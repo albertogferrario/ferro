@@ -212,6 +212,7 @@ impl CheckoutBuilder {
             .map(|li| {
                 let currency: stripe::Currency = li
                     .currency
+                    .to_lowercase()
                     .parse()
                     .map_err(|_| Error::Stripe(format!("invalid currency: {}", li.currency)))?;
                 Ok::<_, Error>(CreateCheckoutSessionLineItems {
