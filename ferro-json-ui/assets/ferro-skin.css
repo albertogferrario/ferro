@@ -517,6 +517,8 @@ input, select, textarea {
   .fjui-breadcrumb {
     font-size: var(--text-meta-size);
     color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .fjui-breadcrumb__item {
@@ -1432,7 +1434,7 @@ input, select, textarea {
     background-color: var(--color-background);
     /* NO box-shadow — flat surface (LANG-04) */
     position: sticky;
-    top: 3rem;   /* fjui-header height */
+    top: 0;      /* content area starts below nav; stick at top of scroll container */
     z-index: 9;  /* below header z-10, above page content */
   }
 
