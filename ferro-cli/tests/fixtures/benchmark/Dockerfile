@@ -11,13 +11,11 @@
 # reference (FROM debian:bookworm-slim@sha256:<digest>) for reproducible baselines.
 FROM debian:bookworm-slim
 
-# libssl-dev + pkg-config are required: ferro-cli depends (via native-tls) on
-# openssl-sys, whose build script needs the system OpenSSL headers and pkg-config
-# to locate them. A clean debian:bookworm-slim has neither, so `cargo install
-# ferro-cli` aborts with "Could not find directory of OpenSSL installation".
-# This is a discovered cold-cache / first-time-experience requirement (see RESULTS.md).
+# No libssl-dev or pkg-config needed: ferro-cli uses rustls (pure Rust TLS),
+# so there is no openssl-sys build dependency. Verified clean on debian:bookworm-slim
+# without those packages (UAT-225, 0.2.90).
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates build-essential git libssl-dev pkg-config \
+    curl ca-certificates build-essential git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain via rustup.
@@ -31,7 +29,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # FERRO_VERSION is injected at build time by CI (post-publish-scaffold-smoke job)
 # so the smoke image always tests the version that was just published.
 # Locally you can override: docker build --build-arg FERRO_VERSION=0.2.55 .
-ARG FERRO_VERSION=0.2.55
+ARG FERRO_VERSION=0.2.90
 
 # Install the ferro CLI from crates.io in a Docker layer (cached after first build).
 # This step is NOT part of the timed benchmark sequence — the benchmark measures
