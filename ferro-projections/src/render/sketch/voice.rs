@@ -9,6 +9,7 @@ use crate::service::ServiceDef;
 use super::super::{BaseContext, Renderer};
 
 // Research sketch — not stable API
+#[allow(dead_code)]
 pub(crate) struct VoiceRenderer;
 
 impl Renderer for VoiceRenderer {

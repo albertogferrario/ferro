@@ -9,6 +9,7 @@ use crate::service::ServiceDef;
 use super::super::{field_display_name, is_system_field, BaseContext, Renderer};
 
 // Research sketch — not stable API
+#[allow(dead_code)]
 pub(crate) struct CliSummaryRenderer;
 
 impl Renderer for CliSummaryRenderer {
