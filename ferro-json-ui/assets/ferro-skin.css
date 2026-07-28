@@ -954,6 +954,7 @@ input, select, textarea {
      * gets the majority of the viewport. Reduce bottom padding and clamp the
      * display title to a single line at smaller size. */
     body.ferro-fill .fjui-page-header {
+      position: static;
       padding-bottom: calc(var(--spacing) * 1.5);
     }
 
@@ -1430,6 +1431,9 @@ input, select, textarea {
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-background);
     /* NO box-shadow — flat surface (LANG-04) */
+    position: sticky;
+    top: 3rem;   /* fjui-header height */
+    z-index: 9;  /* below header z-10, above page content */
   }
 
   /* ── Modal ──────────────────────────────────────────────────────────────── */
