@@ -67,6 +67,27 @@ pub(super) const SOURCE: &str = r#"
         // D-10: delegated click for per-line controls (post-load cloned lines, no per-element binding)
         panel.addEventListener('click', function(e) {
             var field, input;
+            // Optional secondary stepper: clamp to the tile's [min,max], then reconcile.
+            var sIncBtn = e.target.closest('[data-selection-secondary-inc]');
+            var sDecBtn = e.target.closest('[data-selection-secondary-dec]');
+            if (sIncBtn || sDecBtn) {
+                var sf = (sIncBtn || sDecBtn).getAttribute(sIncBtn ? 'data-selection-secondary-inc' : 'data-selection-secondary-dec');
+                if (sf) sf = sf.replace(/["\\\]]/g, '');
+                var sInp = form.querySelector('[data-secondary-input="' + sf + '"]');
+                var tileEl = sInp ? sInp.closest('[data-secondary-field]') : null;
+                if (sInp && tileEl) {
+                    var smn = parseInt(tileEl.getAttribute('data-secondary-min'), 10) || 0;
+                    var smx = parseInt(tileEl.getAttribute('data-secondary-max'), 10) || 0;
+                    var scur = parseInt(sInp.value, 10);
+                    if (isNaN(scur)) scur = smn;
+                    var snext = scur + (sIncBtn ? 1 : -1);
+                    if (snext < smn) snext = smn;
+                    if (smx > 0 && snext > smx) snext = smx;
+                    sInp.value = snext;
+                    reconcile();
+                }
+                return;
+            }
             var incBtn = e.target.closest('[data-selection-inc]');
             var decBtn = e.target.closest('[data-selection-dec]');
             var remBtn = e.target.closest('[data-selection-remove]');
@@ -108,6 +129,7 @@ pub(super) const SOURCE: &str = r#"
             var hasLines = false;
             var i, input, field, qty, tile, name, unit, lineCents, lineEl, qtyEl, lineTotalEl;
             var clone, newLine, incEl, decEl, remEl, nameEl;
+            var sField, secEl, sLabelEl, sIncEl, sDecEl, sInput, sCountEl;
 
             for (i = 0; i < inputs.length; i++) {
                 input = inputs[i];
@@ -144,6 +166,19 @@ pub(super) const SOURCE: &str = r#"
                             nameEl = clone.querySelector('[data-selection-line-name]');
                             // T-256-13: textContent only, never innerHTML
                             if (nameEl) nameEl.textContent = name || '';
+                            // Optional secondary stepper: reveal + wire only when the
+                            // line's tile declares data-secondary-* (opt-in per line).
+                            sField = tile ? tile.getAttribute('data-secondary-field') : null;
+                            secEl = clone.querySelector('[data-selection-secondary]');
+                            if (sField && secEl) {
+                                secEl.style.display = '';
+                                sLabelEl = clone.querySelector('[data-selection-secondary-label]');
+                                if (sLabelEl) sLabelEl.textContent = tile.getAttribute('data-secondary-label') || '';
+                                sIncEl = clone.querySelector('[data-selection-secondary-inc]');
+                                sDecEl = clone.querySelector('[data-selection-secondary-dec]');
+                                if (sIncEl) sIncEl.setAttribute('data-selection-secondary-inc', sField);
+                                if (sDecEl) sDecEl.setAttribute('data-selection-secondary-dec', sField);
+                            }
                         }
                         linesEl.appendChild(clone);
                         // Re-query after append (fragment was moved into linesEl)
@@ -155,6 +190,13 @@ pub(super) const SOURCE: &str = r#"
                         // T-256-13: textContent only
                         if (qtyEl) qtyEl.textContent = qty;
                         if (lineTotalEl) lineTotalEl.textContent = formatMoney(lineCents, currency);
+                        // Refresh the secondary count display from its hidden input.
+                        sField = tile ? tile.getAttribute('data-secondary-field') : null;
+                        if (sField) {
+                            sInput = form.querySelector('[data-secondary-input="' + sField.replace(/["\\\]]/g, '') + '"]');
+                            sCountEl = lineEl.querySelector('[data-selection-secondary-count]');
+                            if (sInput && sCountEl) sCountEl.textContent = parseInt(sInput.value, 10) || 0;
+                        }
                     }
                 } else {
                     // qty === 0: remove the line if it exists
@@ -184,3 +226,30 @@ pub(super) const SOURCE: &str = r#"
         return symbol ? symbol + s : s;
     }
 "#;
+
+#[cfg(test)]
+mod tests {
+    /// The reconcile + delegated-click runtime must read the tile's
+    /// `data-secondary-*`, drive `data-selection-secondary-inc/dec`, and write the
+    /// `data-secondary-input` hidden field — the optional per-line secondary stepper.
+    #[test]
+    fn runtime_handles_secondary_stepper() {
+        let js = super::SOURCE;
+        assert!(
+            js.contains("data-secondary-field"),
+            "reconcile must read tile secondary metadata"
+        );
+        assert!(
+            js.contains("data-selection-secondary-inc"),
+            "must handle secondary inc"
+        );
+        assert!(
+            js.contains("data-selection-secondary-dec"),
+            "must handle secondary dec"
+        );
+        assert!(
+            js.contains("data-secondary-input"),
+            "must write the secondary hidden input"
+        );
+    }
+}

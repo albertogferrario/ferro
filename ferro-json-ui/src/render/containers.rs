@@ -1609,6 +1609,16 @@ pub(crate) fn render_selection_panel(
          text-text-muted hover:text-destructive {INTERACTIVE_BASE}\" \
          aria-label=\"Remove\">\u{00D7}</button>\
          </div>\
+         <div data-selection-secondary \
+         class=\"flex items-center gap-2 mt-1\" style=\"display:none\">\
+         <span data-selection-secondary-label class=\"text-sm text-text-muted\"></span>\
+         <button type=\"button\" data-selection-secondary-dec \
+         class=\"{stepper_btn_classes}\" aria-label=\"Decrease\">\u{2212}</button>\
+         <span data-selection-secondary-count \
+         class=\"min-w-[3ch] text-center text-sm font-semibold text-text tabular-nums\"></span>\
+         <button type=\"button\" data-selection-secondary-inc \
+         class=\"{stepper_btn_classes}\" aria-label=\"Increase\">+</button>\
+         </div>\
          </div>\
          </template>\
          <div data-selection-lines \
@@ -3433,6 +3443,31 @@ mod tests {
         assert!(
             html.contains("data-selection-total"),
             "total element; got: {html}"
+        );
+    }
+
+    /// The line template carries an optional secondary stepper block, hidden by
+    /// default. The runtime shows it per-line only when that line's tile declares
+    /// `data-secondary-*` (opt-in); register lines never show it.
+    #[test]
+    fn selection_panel_template_carries_secondary_block_hidden() {
+        let spec = build_spec(vec![(
+            "root",
+            Element::new("SelectionPanel").prop("form_id", "order_form"),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let html = render_selection_panel(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-selection-secondary"),
+            "secondary block present in template: {html}"
+        );
+        assert!(html.contains("data-selection-secondary-inc"), "{html}");
+        assert!(html.contains("data-selection-secondary-dec"), "{html}");
+        assert!(html.contains("data-selection-secondary-count"), "{html}");
+        assert!(html.contains("data-selection-secondary-label"), "{html}");
+        assert!(
+            html.contains("display:none"),
+            "secondary block hidden by default: {html}"
         );
     }
 
