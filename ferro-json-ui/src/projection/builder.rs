@@ -503,6 +503,7 @@ fn emit_kanban_root(service: &ServiceDef, ctx: &VisualContext) -> ElementBuilder
         row_key,
         mobile_default_column,
         empty_label: None,
+        column_empty_label: None,
     })
     .expect("KanbanBoardProps serialization cannot fail");
     element_with_props("KanbanBoard", props)

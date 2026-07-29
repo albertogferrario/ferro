@@ -39,6 +39,30 @@ pub(super) const SOURCE: &str = r#"
             positionUnderTrigger(panel, trigger);
         }
 
+        // Position BEFORE the browser paints the panel. `beforetoggle` fires
+        // synchronously while the panel is still hidden, so anchoring here means
+        // the first open never flashes at the UA default (centered) position —
+        // the blink that otherwise only showed on the first click, before a
+        // prior inline left/top existed. The panel is display:none at this point
+        // so its width can't be measured; anchor by the RIGHT edge to the
+        // trigger (exact without a width) and drop below. `toggle` then refines
+        // vertical flip + edge clamping with real measured dimensions.
+        panel.addEventListener('beforetoggle', function(e) {
+            if (e.newState !== 'open' || panel._kanbanFixed) return;
+            var rect = trigger.getBoundingClientRect();
+            panel.style.position = 'fixed';
+            panel.style.inset = 'auto';
+            panel.style.margin = '0';
+            panel.style.setProperty('min-width', '12rem', 'important');
+            panel.style.setProperty('width', 'fit-content', 'important');
+            // clientWidth (not innerWidth) excludes the scrollbar, matching the
+            // coordinate system of getBoundingClientRect / position:fixed so the
+            // right edge lands exactly on the trigger (no first-open nudge).
+            var vw = document.documentElement.clientWidth;
+            panel.style.left = 'auto';
+            panel.style.right = Math.max(8, vw - rect.right) + 'px';
+            panel.style.top = (rect.bottom + 4) + 'px';
+        });
         panel.addEventListener('toggle', function(e) {
             if (e.newState === 'open' && !panel._kanbanFixed) {
                 positionUnderTrigger(panel, trigger);

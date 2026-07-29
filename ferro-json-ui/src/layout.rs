@@ -332,7 +332,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
          popovertarget=\"fjui-avatar-menu\" aria-label=\"Menu utente\" aria-haspopup=\"true\">{}</button>",
         html_escape(&initials)
     ));
-    // Avatar menu popover panel: Profilo / Tema toggle (only when `theme_url`
+    // Avatar menu popover panel: Impostazioni / Tema toggle (only when `theme_url`
     // is configured) / separator / Esci POST form.
     // Esci is a plain <form method="post"> with no CSRF token — matching how
     // consumer apps handle their other POST forms. The operative cross-site
@@ -359,7 +359,7 @@ fn layout_header_html(props: &HeaderProps) -> String {
     };
     let profile_item = match props.profile_url.as_deref() {
         Some(url) => format!(
-            "<a href=\"{}\" class=\"fjui-avatar-menu__item\">Profilo</a>",
+            "<a href=\"{}\" class=\"fjui-avatar-menu__item\">Impostazioni</a>",
             html_escape(url)
         ),
         None => String::new(),

@@ -1379,13 +1379,19 @@ input, select, textarea {
     transform: translateY(-50%) rotate(-45deg);
   }
 
-  /* SegmentedControl active segment — filled primary. Appearance lives in the
-   * skin (not inline utilities) per the migrated-appearance rule; the render
-   * emits only the semantic fjui-segmented-active class. */
-  .fjui-segmented-active {
+  /* SegmentedControl (inverted highlight, operator pref): the current selection
+   * recedes; the other tappable option is filled/prominent like a button so the
+   * actionable choice reads white in dark mode (matching primary buttons). */
+  .fjui-segmented-cta {
     background-color: var(--color-primary);
     color: var(--color-primary-foreground);
     font-weight: 600;
+  }
+  .fjui-segmented-cta:hover { opacity: 0.9; }
+
+  .fjui-segmented-current {
+    color: var(--color-text-muted);
+    font-weight: 500;
   }
 
   /* fjui-header__search-btn IS interactive — all four states required (SKIN-05). */
@@ -1567,6 +1573,16 @@ input, select, textarea {
   .fjui-kanban__column-header {
     border-bottom: 1px solid var(--color-border);
     background-color: var(--color-card);
+  }
+
+  /* Placeholder shown inside a partially-empty lane (other lanes still have
+   * cards). Muted, centered — a quiet "nothing here" without the full
+   * EmptyState chrome. Board-level all-empty uses fjui-empty-state instead. */
+  .fjui-kanban__empty-lane {
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 3);
+    text-align: center;
+    font-size: var(--text-meta-size);
+    color: var(--color-text-muted);
   }
 
   /* KanbanCard is interactive — all four states required (SKIN-05). */

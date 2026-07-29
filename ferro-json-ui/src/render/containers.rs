@@ -13,10 +13,10 @@ use serde_json::Value;
 
 use crate::action::HttpMethod;
 use crate::component::{
-    ActionGroupProps, ActionItem, ButtonGroupProps, CardAppearance, CardProps, CollapsibleProps,
-    DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout, FormSectionProps,
-    GapSize, GridProps, KanbanBoardProps, LiveFragmentProps, ModalProps, PageHeaderProps,
-    SegmentedControlProps, SegmentedItem, SelectionPanelProps, SidebarLayoutItem,
+    ActionGroupProps, ActionItem, BreadcrumbItem, ButtonGroupProps, CardAppearance, CardProps,
+    CollapsibleProps, DetailPageProps, DropdownMenuAction, FormMaxWidth, FormSectionLayout,
+    FormSectionProps, GapSize, GridProps, KanbanBoardProps, LiveFragmentProps, ModalProps,
+    PageHeaderProps, SegmentedControlProps, SegmentedItem, SelectionPanelProps, SidebarLayoutItem,
     SidebarLayoutProps, Size, TabsProps, TileGridProps, Variant,
 };
 use crate::data::resolve_path;
@@ -533,7 +533,14 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         );
         if lane.cards_html.is_empty() {
             // Partial empty lane (some other lanes have cards): keep the column
-            // header visible but leave the body blank.
+            // header visible and show a muted centered placeholder when a label
+            // is set; otherwise leave the body blank (back-compat).
+            if let Some(ref label) = props.column_empty_label {
+                html.push_str(&format!(
+                    "<div class=\"fjui-kanban__empty-lane\">{}</div>",
+                    html_escape(label)
+                ));
+            }
         } else {
             html.push_str(&lane.cards_html);
         }
@@ -575,12 +582,87 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
         ));
         if !lane.cards_html.is_empty() {
             html.push_str(&lane.cards_html);
+        } else if let Some(ref label) = props.column_empty_label {
+            html.push_str(&format!(
+                "<div class=\"fjui-kanban__empty-lane\">{}</div>",
+                html_escape(label)
+            ));
         }
         html.push_str("</div>");
     }
 
     html.push_str("</div>");
 
+    html
+}
+
+/// Emits the shared PageHeader / DetailPage chrome: breadcrumb + title + optional
+/// actions inside the sticky `fjui-page-header` bar. Breadcrumb and title stack
+/// vertically on mobile (the title leads its own line) and flow inline
+/// (`breadcrumb › title`) on `md+`, so a long breadcrumb no longer shoves the
+/// title off the right edge on narrow screens. `actions_html` is the
+/// already-rendered actions markup (empty string when there are none).
+fn render_page_header_chrome(
+    title: &str,
+    breadcrumb: &[BreadcrumbItem],
+    actions_html: &str,
+) -> String {
+    // D-08 migration: PageHeader is a flat surface — no border/shadow on the wrapper itself.
+    // fjui-page-header carries display-scale title via fjui-text--display on the h2.
+    // Layout utilities (flex, flex-wrap, gap-*) remain inline per D-02.
+    let mut html = String::from(
+        "<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">",
+    );
+
+    // Title block — breadcrumb stacked above the title on mobile, inline on md+.
+    html.push_str(
+        "<div class=\"flex flex-col md:flex-row md:items-center gap-1 md:gap-2 min-w-0\">",
+    );
+
+    if !breadcrumb.is_empty() {
+        // Breadcrumb stays a single inline row; the whole group moves above the
+        // title when stacked.
+        html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
+        let last = breadcrumb.len().saturating_sub(1);
+        for (i, item) in breadcrumb.iter().enumerate() {
+            if let Some(ref url) = item.url {
+                html.push_str(&format!(
+                    "<a href=\"{}\" class=\"fjui-text--meta hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
+                    html_escape(url),
+                    html_escape(&item.label)
+                ));
+            } else {
+                html.push_str(&format!(
+                    "<span class=\"fjui-text--meta whitespace-nowrap\">{}</span>",
+                    html_escape(&item.label)
+                ));
+            }
+            // Chevron: shown between crumbs always; after the last crumb it is
+            // the breadcrumb→title separator, visible only inline (md+).
+            let sep_vis = if i == last { "hidden md:flex" } else { "flex" };
+            html.push_str(&format!(
+                "<span aria-hidden=\"true\" class=\"{sep_vis} flex-shrink-0\">\
+                 <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
+                 <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
+                 </svg></span>"
+            ));
+        }
+        html.push_str("</div>");
+    }
+
+    html.push_str(&format!(
+        "<h2 class=\"fjui-text--display truncate\">{}</h2>",
+        html_escape(title)
+    ));
+    html.push_str("</div>");
+
+    if !actions_html.is_empty() {
+        html.push_str("<div class=\"flex flex-wrap items-center gap-2\">");
+        html.push_str(actions_html);
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div>");
     html
 }
 
@@ -611,54 +693,7 @@ pub(crate) fn render_page_header(el: &Element, spec: &Spec, data: &Value, depth:
         .map(|cid| render_element(cid, spec, data, depth + 1))
         .collect();
 
-    // D-08 migration: PageHeader is a flat surface — no border/shadow on the wrapper itself.
-    // fjui-page-header carries display-scale title via fjui-text--display on the h2.
-    // Layout utilities (flex, flex-wrap, gap-*) remain inline per D-02.
-    let mut html = String::from(
-        "<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">",
-    );
-
-    // Title block — breadcrumb and title fused into one inline flow
-    html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
-
-    if !props.breadcrumb.is_empty() {
-        for item in &props.breadcrumb {
-            if let Some(ref url) = item.url {
-                html.push_str(&format!(
-                    "<a href=\"{}\" class=\"fjui-text--meta hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
-                    html_escape(url),
-                    html_escape(&item.label)
-                ));
-            } else {
-                html.push_str(&format!(
-                    "<span class=\"fjui-text--meta whitespace-nowrap\">{}</span>",
-                    html_escape(&item.label)
-                ));
-            }
-            // Chevron separator between breadcrumb and title
-            html.push_str(
-                "<span aria-hidden=\"true\" class=\"flex-shrink-0\">\
-                 <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
-                 <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
-                 </svg></span>"
-            );
-        }
-    }
-
-    html.push_str(&format!(
-        "<h2 class=\"fjui-text--display truncate\">{}</h2>",
-        html_escape(&props.title)
-    ));
-    html.push_str("</div>");
-
-    // Actions (optional)
-    if !props.actions.is_empty() {
-        html.push_str("<div class=\"flex flex-wrap items-center gap-2\">");
-        html.push_str(&actions_html);
-        html.push_str("</div>");
-    }
-
-    html.push_str("</div>");
+    let mut html = render_page_header_chrome(&props.title, &props.breadcrumb, &actions_html);
 
     // F11: render Element.children as page body sections below the chrome.
     // The chrome's `pb-4` provides visual separation; children stack as
@@ -696,53 +731,15 @@ pub(crate) fn render_detail_page(el: &Element, spec: &Spec, data: &Value, depth:
         }
     };
 
-    let mut html = String::new();
-
-    // Header chrome — mirrors render_page_header's migrated fjui-* output so the
-    // DetailPage skeleton stays visually identical to manually-composed pages.
-    html.push_str(
-        "<div class=\"fjui-page-header flex flex-wrap items-center justify-between gap-3 pb-4\">",
-    );
-    html.push_str("<div class=\"flex items-center gap-2 min-w-0\">");
-    if !props.breadcrumb.is_empty() {
-        for item in &props.breadcrumb {
-            if let Some(ref url) = item.url {
-                html.push_str(&format!(
-                    "<a href=\"{}\" class=\"fjui-text--meta hover:text-text whitespace-nowrap {INTERACTIVE_BASE}\">{}</a>",
-                    html_escape(url),
-                    html_escape(&item.label)
-                ));
-            } else {
-                html.push_str(&format!(
-                    "<span class=\"fjui-text--meta whitespace-nowrap\">{}</span>",
-                    html_escape(&item.label)
-                ));
-            }
-            html.push_str(
-                "<span aria-hidden=\"true\" class=\"flex-shrink-0\">\
-                 <svg class=\"h-4 w-4\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\" fill=\"currentColor\">\
-                 <path fill-rule=\"evenodd\" d=\"M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z\" clip-rule=\"evenodd\"/>\
-                 </svg></span>"
-            );
-        }
-    }
-    html.push_str(&format!(
-        "<h2 class=\"fjui-text--display truncate\">{}</h2>",
-        html_escape(&props.title)
-    ));
-    html.push_str("</div>");
-
-    if !props.actions.is_empty() {
-        let actions_html: String = props
-            .actions
-            .iter()
-            .map(|cid| render_element(cid, spec, data, depth + 1))
-            .collect();
-        html.push_str("<div class=\"flex flex-wrap items-center gap-2\">");
-        html.push_str(&actions_html);
-        html.push_str("</div>");
-    }
-    html.push_str("</div>");
+    // Header chrome — shared with render_page_header (breadcrumb stacks above the
+    // title on mobile, inline on md+) so the DetailPage skeleton stays visually
+    // identical to manually-composed pages.
+    let actions_html: String = props
+        .actions
+        .iter()
+        .map(|cid| render_element(cid, spec, data, depth + 1))
+        .collect();
+    let mut html = render_page_header_chrome(&props.title, &props.breadcrumb, &actions_html);
 
     // Body: info Card + children sections, stacked vertically with gap-4.
     let has_body = !props.info.is_empty() || !el.children.is_empty();
@@ -1357,16 +1354,19 @@ pub(crate) fn render_segmented_control(
         return String::new();
     }
 
-    // Size-driven padding/text classes. Keep typography compact across sizes —
-    // segmented controls are nav chrome, not primary CTAs.
+    // Size-driven padding/text classes. Typography stays compact (tighter inline
+    // padding + smaller font than a CTA), but the vertical padding matches the
+    // same-size fjui-btn's padding-block so a segmented control lines up flush
+    // with an adjacent button (sm 6px / md 8px / lg 10px). inline-flex centers
+    // the label after the wrapper's align-items: stretch equalizes segments.
     let segment_pad = match props.size {
-        Size::Sm => "px-2.5 py-1 text-xs",
-        Size::Md => "px-3 py-1.5 text-sm",
-        Size::Lg => "px-4 py-2 text-base",
+        Size::Sm => "px-2.5 py-1.5 text-xs inline-flex items-center justify-center",
+        Size::Md => "px-3 py-2 text-sm inline-flex items-center justify-center",
+        Size::Lg => "px-4 py-2.5 text-base inline-flex items-center justify-center",
     };
 
     let mut group = String::from(
-        "<div class=\"inline-flex rounded-md border border-input bg-background overflow-hidden\"",
+        "<div class=\"inline-flex rounded-sm border border-input bg-background overflow-hidden\"",
     );
     if let Some(label) = props.aria_label.as_deref() {
         group.push_str(" role=\"tablist\" aria-label=\"");
@@ -1382,10 +1382,12 @@ pub(crate) fn render_segmented_control(
         } else {
             ""
         };
+        // Inverted highlight (operator pref): the current selection recedes;
+        // the other (tappable) option is filled/prominent like a button.
         let state_cls = if item.active {
-            "fjui-segmented-active"
+            "fjui-segmented-current"
         } else {
-            "text-text-muted hover:bg-surface hover:text-text font-medium"
+            "fjui-segmented-cta"
         };
         let aria_label_attr = item
             .aria_label
@@ -2511,6 +2513,18 @@ mod tests {
             html.contains("<span class=\"fjui-text--meta whitespace-nowrap\">Reports</span>"),
             "urlless breadcrumb should be a span with fjui-text--meta; got: {html}"
         );
+        // Responsive title block: breadcrumb stacks above the title on mobile,
+        // inline on md+.
+        assert!(
+            html.contains("flex flex-col md:flex-row md:items-center"),
+            "title block should stack on mobile, inline on md+; got: {html}"
+        );
+        // The final breadcrumb→title chevron is hidden on mobile so the stacked
+        // breadcrumb line has no dangling separator.
+        assert!(
+            html.contains("hidden md:flex flex-shrink-0"),
+            "trailing chevron should be desktop-only; got: {html}"
+        );
     }
 
     #[test]
@@ -2678,6 +2692,37 @@ mod tests {
     }
 
     #[test]
+    fn render_kanban_board_partial_empty_lane_shows_placeholder() {
+        // One lane has cards, the other is empty. Column chrome stays, and the
+        // empty lane shows the muted centered placeholder (desktop + mobile).
+        let spec = build_spec(vec![(
+            "root",
+            kanban_data_bound(vec![("column_empty_label", json!("Nessuna scheda"))]),
+        )]);
+        let el = spec.elements.get("root").unwrap();
+        let data = json!({"items": [
+            {"id": 1, "name": "Alpha", "status": "open"}
+        ]});
+        let html = render_kanban_board(el, &spec, &data, 0);
+        // Column chrome present (not the all-empty bare path).
+        assert!(
+            html.contains("fjui-kanban__column"),
+            "partial-empty board must keep column chrome: {html}"
+        );
+        assert!(html.contains("Alpha"), "populated lane card missing: {html}");
+        // Placeholder renders in the empty lane, desktop + mobile = 2 occurrences.
+        assert_eq!(
+            html.matches("fjui-kanban__empty-lane").count(),
+            2,
+            "empty lane placeholder should appear on desktop + mobile: {html}"
+        );
+        assert!(
+            html.contains("Nessuna scheda"),
+            "empty lane label must appear: {html}"
+        );
+    }
+
+    #[test]
     fn render_kanban_board_empty_columns_renders_empty() {
         let spec = build_spec(vec![(
             "root",
@@ -2732,12 +2777,12 @@ mod tests {
         assert!(html.contains("Mese"), "second label missing: {html}");
         assert!(html.contains("?view=day"), "href missing: {html}");
         assert!(
-            html.contains("inline-flex rounded-md border"),
+            html.contains("inline-flex rounded-sm border"),
             "outer container missing: {html}"
         );
         assert!(
-            html.contains("fjui-segmented-active"),
-            "active styling missing: {html}"
+            html.contains("fjui-segmented-current") && html.contains("fjui-segmented-cta"),
+            "inverted segmented styling missing: {html}"
         );
     }
 

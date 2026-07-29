@@ -948,8 +948,8 @@ pub struct HeaderProps {
     /// menu item entirely.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme_url: Option<String>,
-    /// Destination of the avatar-menu "Profilo" item. The settings route is
-    /// app-specific, so consumers must provide it; `None` omits the item.
+    /// Destination of the avatar-menu "Impostazioni" (settings) item. The route
+    /// is app-specific, so consumers must provide it; `None` omits the item.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub profile_url: Option<String>,
 }
@@ -1390,11 +1390,18 @@ pub struct KanbanBoardProps {
     pub row_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mobile_default_column: Option<String>,
-    /// Placeholder text shown inside empty lanes. When `None`, empty lanes
-    /// render no placeholder (back-compat). Provide a short, neutral message —
-    /// e.g. "Nessun ordine", "Nothing here".
+    /// Board-level empty message: shown bare on the canvas (EmptyState chrome)
+    /// when *every* lane is empty. When `None`, an all-empty board renders
+    /// nothing. Provide a short, neutral message — e.g. "Nessun ordine".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_label: Option<String>,
+    /// Per-lane placeholder: shown inside an individual empty lane when other
+    /// lanes still have cards. Muted, centered — a quiet "nothing in this
+    /// column". When `None`, partial-empty lanes stay blank (back-compat).
+    /// Distinct from `empty_label` so board-level and per-column copy can
+    /// differ — e.g. "Nessun ordine" vs "Nessuna scheda".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column_empty_label: Option<String>,
 }
 
 /// Props for a calendar day cell.
@@ -2466,6 +2473,7 @@ mod kanban_board_props_tests {
             row_key: None,
             mobile_default_column: None,
             empty_label: None,
+            column_empty_label: None,
         };
         let j = serde_json::to_value(&p).unwrap();
         assert!(
