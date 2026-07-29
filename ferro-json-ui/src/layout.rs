@@ -202,10 +202,14 @@ fn layout_sidebar_group(group: &SidebarGroup) -> String {
 
 /// Render the sidebar shell from SidebarProps for DashboardLayout.
 fn layout_sidebar_html(props: &SidebarProps) -> String {
-    // fjui-sidebar: appearance (bg, border-right, width, position:fixed) handled by skin rule (SKIN-01).
-    // Layout utilities (inset-y-0 left-0 z-40 flex flex-col hidden md:flex) stay inline (D-02).
+    // fjui-sidebar: appearance (bg, border-right, width, position:fixed, top) handled by skin rule (SKIN-01).
+    // `inset-y-0` is intentionally omitted: the skin owns `top` so the mobile drawer can open
+    // BELOW the sticky header (top: 3rem) instead of covering it, while desktop stays full-height
+    // (top: 0). A Tailwind `inset-y-0` utility would set top:0 in @layer utilities and win over the
+    // skin's @layer components rule, re-covering the header. Layout utilities (left-0 z-40 flex
+    // flex-col hidden md:flex) stay inline (D-02).
     let mut html = String::from(
-        "<aside data-sidebar class=\"fjui-sidebar inset-y-0 left-0 z-40 flex flex-col hidden md:flex\">",
+        "<aside data-sidebar class=\"fjui-sidebar left-0 z-40 flex flex-col hidden md:flex\">",
     );
     if !props.fixed_top.is_empty() {
         html.push_str("<nav class=\"px-4 pt-4 pb-1 space-y-1\">");
@@ -255,13 +259,16 @@ fn layout_header_html(props: &HeaderProps) -> String {
     let mut html = String::from("<header class=\"fjui-header z-30 flex items-center md:pl-64\">");
     // Mobile hamburger button — visible only on small screens. -ml-2 cancels the
     // button's own padding so the icon glyph (not the touch target) aligns with
-    // the 12px content gutter below.
+    // the 12px content gutter below. The three fjui-hamburger__line spans morph
+    // into an X when the drawer is open: the runtime toggles aria-expanded, and
+    // the fjui-hamburger skin rule animates the lines on that attribute (SKIN-01).
     html.push_str(&format!(
-        "<button data-sidebar-toggle class=\"md:hidden p-2 -ml-2 rounded-md text-text-muted \
-         hover:text-text hover:bg-surface {INTERACTIVE_BASE}\" aria-label=\"Toggle sidebar\">\
-         <svg class=\"h-6 w-6\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\
-         <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" \
-         d=\"M4 6h16M4 12h16M4 18h16\"/></svg></button>"
+        "<button data-sidebar-toggle class=\"fjui-hamburger md:hidden p-2 -ml-2 mr-2 rounded-md text-text-muted \
+         hover:text-text hover:bg-surface {INTERACTIVE_BASE}\" aria-label=\"Apri menu\" aria-expanded=\"false\">\
+         <span class=\"fjui-hamburger__box\" aria-hidden=\"true\">\
+         <span class=\"fjui-hamburger__line\"></span>\
+         <span class=\"fjui-hamburger__line\"></span>\
+         <span class=\"fjui-hamburger__line\"></span></span></button>"
     ));
     // Business name — left-aligned workspace label (CHR-01).
     html.push_str(&format!(

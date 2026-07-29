@@ -758,7 +758,9 @@ input, select, textarea {
   }
 
   .fjui-calendar-cell__day--today {
-    color: var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-radius: var(--radius-full);
     font-weight: 600;
   }
 
@@ -767,10 +769,21 @@ input, select, textarea {
     height: 0.375rem;
     border-radius: var(--radius-full);
     display: inline-block;
+    background-color: var(--color-primary);
+  }
+
+  /* Event indicators (1–3 dots) and the ">3" overflow label share one height +
+   * vertical centering so both sit on the same baseline across the grid. */
+  .fjui-calendar-cell__dots,
+  .fjui-calendar-cell__overflow {
+    display: flex;
+    align-items: center;
+    min-height: 1.125rem;
   }
 
   .fjui-calendar-cell__overflow {
     font-size: var(--text-micro-size);
+    line-height: 1;
     color: var(--color-text-muted);
   }
 
@@ -1221,7 +1234,19 @@ input, select, textarea {
     height: 100vh;           /* fallback for browsers without dvh */
     height: 100dvh;          /* dynamic viewport height: excludes browser chrome (URL bar, toolbars) */
     position: fixed;
+    top: 0;                  /* skin owns top (inset-y-0 removed from markup) so the mobile
+                                drawer can sit below the header without a utility overriding it */
     /* NO box-shadow — flat surface (LANG-04) */
+  }
+
+  /* Mobile drawer: open BELOW the 3rem sticky header instead of covering it.
+   * The header stays visible above the drawer and its hamburger becomes the
+   * close affordance. Desktop keeps the full-height top:0 sidebar. */
+  @media (max-width: 767px) {
+    .fjui-sidebar {
+      top: 3rem;
+      height: calc(100dvh - 3rem);
+    }
   }
 
   /* Bottom nav group: safe-area padding so Impostazioni and other last items
@@ -1308,6 +1333,59 @@ input, select, textarea {
     font-weight: 500;
     color: var(--color-text);
     letter-spacing: -0.01em;
+  }
+
+  /* ── Mobile hamburger → X morph ──────────────────────────────────────────
+   * Three lines that animate into a close (X) icon when the drawer is open.
+   * aria-expanded (toggled by the sidebar runtime) drives the transition. */
+  .fjui-hamburger {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .fjui-hamburger__box {
+    position: relative;
+    display: inline-block;
+    width: 1.25rem;
+    height: 0.875rem;
+    vertical-align: middle;
+  }
+
+  /* Instant morph — no transition (operator preference). The lines snap between
+   * the hamburger and X states. */
+  .fjui-hamburger__line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px;
+    background-color: currentColor;
+  }
+
+  .fjui-hamburger__line:nth-child(1) { top: 0; }
+  .fjui-hamburger__line:nth-child(2) { top: 50%; transform: translateY(-50%); }
+  .fjui-hamburger__line:nth-child(3) { top: 100%; transform: translateY(-100%); }
+
+  .fjui-hamburger[aria-expanded="true"] .fjui-hamburger__line:nth-child(1) {
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+  }
+  .fjui-hamburger[aria-expanded="true"] .fjui-hamburger__line:nth-child(2) {
+    opacity: 0;
+  }
+  .fjui-hamburger[aria-expanded="true"] .fjui-hamburger__line:nth-child(3) {
+    top: 50%;
+    transform: translateY(-50%) rotate(-45deg);
+  }
+
+  /* SegmentedControl active segment — filled primary. Appearance lives in the
+   * skin (not inline utilities) per the migrated-appearance rule; the render
+   * emits only the semantic fjui-segmented-active class. */
+  .fjui-segmented-active {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    font-weight: 600;
   }
 
   /* fjui-header__search-btn IS interactive — all four states required (SKIN-05). */

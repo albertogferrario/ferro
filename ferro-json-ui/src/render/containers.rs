@@ -1383,7 +1383,7 @@ pub(crate) fn render_segmented_control(
             ""
         };
         let state_cls = if item.active {
-            "bg-surface text-text font-semibold"
+            "fjui-segmented-active"
         } else {
             "text-text-muted hover:bg-surface hover:text-text font-medium"
         };
@@ -2736,7 +2736,7 @@ mod tests {
             "outer container missing: {html}"
         );
         assert!(
-            html.contains("bg-surface text-text font-semibold"),
+            html.contains("fjui-segmented-active"),
             "active styling missing: {html}"
         );
     }

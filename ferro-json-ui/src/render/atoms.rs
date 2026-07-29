@@ -1330,7 +1330,7 @@ pub(crate) fn render_calendar_cell(
         props.event_count
     };
     if total > 0 && total <= 3 {
-        html.push_str("<div class=\"flex gap-1 mt-auto pt-1\">");
+        html.push_str("<div class=\"fjui-calendar-cell__dots flex items-center gap-1 mt-auto pt-1\">");
         if props.dot_colors.is_empty() {
             for _ in 0..total {
                 html.push_str("<span class=\"fjui-calendar-cell__dot w-1.5 h-1.5\"></span>");

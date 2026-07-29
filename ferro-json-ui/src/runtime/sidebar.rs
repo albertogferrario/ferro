@@ -18,11 +18,16 @@ pub(super) const SOURCE: &str = r#"
         function openSidebar() {
             sidebarEl.classList.remove('hidden');
             if (backdropEl) backdropEl.classList.remove('hidden');
+            // aria-expanded drives the hamburger→X morph (fjui-hamburger skin rule).
+            toggleBtn.setAttribute('aria-expanded', 'true');
+            toggleBtn.setAttribute('aria-label', 'Chiudi menu');
         }
 
         function closeSidebar() {
             sidebarEl.classList.add('hidden');
             if (backdropEl) backdropEl.classList.add('hidden');
+            toggleBtn.setAttribute('aria-expanded', 'false');
+            toggleBtn.setAttribute('aria-label', 'Apri menu');
         }
 
         toggleBtn.addEventListener('click', function() {
