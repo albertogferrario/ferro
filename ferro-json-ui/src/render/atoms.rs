@@ -1489,6 +1489,31 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
         None => String::new(),
     };
 
+    // Optional secondary per-line count (Tile.secondary): data attrs on the tile
+    // root + a hidden {field} input that the paired SelectionPanel secondary
+    // stepper reads/writes. Absent → both empty (register/Ordini tiles unchanged).
+    let (secondary_attrs, secondary_input) = match &props.secondary {
+        Some(s) => {
+            let default = s.default.clamp(s.min, s.max);
+            (
+                format!(
+                    " data-secondary-field=\"{f}\" data-secondary-label=\"{l}\" \
+                     data-secondary-min=\"{mn}\" data-secondary-max=\"{mx}\"",
+                    f = html_escape(&s.field),
+                    l = html_escape(s.label.as_deref().unwrap_or("")),
+                    mn = s.min,
+                    mx = s.max,
+                ),
+                format!(
+                    "<input type=\"hidden\" name=\"{f}\" data-secondary-input=\"{f}\" value=\"{v}\">",
+                    f = html_escape(&s.field),
+                    v = default,
+                ),
+            )
+        }
+        None => (String::new(), String::new()),
+    };
+
     // D-01: fjui-tile + fjui-tile--{tone} full literals for tone modifier.
     // Appearance (border-color, bg, radius) owned by skin. Layout (touch-action,
     // w-full, flex, flex-col, gap-2, p-3) stays inline (D-02).
@@ -1527,7 +1552,7 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
     //   invalid HTML — D-01 note).
     format!(
         "<div class=\"fjui-tile {tone_class} {TOUCH_ACTION}\" \
-         data-filter-text=\"{name}\"{categories_attr}{unit_price_attr}>\
+         data-filter-text=\"{name}\"{categories_attr}{unit_price_attr}{secondary_attrs}>\
          <button type=\"button\" data-qty-inc=\"{field}\" \
          class=\"{HIT_TARGET_MIN} {TOUCH_ACTION} {PRESS_ACTIVE} {TAP_HIGHLIGHT} {INTERACTIVE_BASE} \
          w-full flex flex-col gap-2 p-3 text-left\" \
@@ -1538,6 +1563,7 @@ pub(crate) fn render_tile(el: &Element, _spec: &Spec, _data: &Value, _depth: usi
          {badge_html}\
          </button>\
          <input type=\"hidden\" name=\"{field}\" data-qty-input=\"{field}\" value=\"{qty}\">\
+         {secondary_input}\
          </div>"
     )
 }
@@ -2981,6 +3007,63 @@ mod tests {
         assert!(
             input_pos > btn_end,
             "hidden input must be a sibling of <button>, not inside it; got: {html}"
+        );
+    }
+
+    /// Optional secondary per-line count: when `secondary` is set the tile root
+    /// carries `data-secondary-*` and emits a hidden `{field}` input (default
+    /// clamped to [min,max]). Consumed by the SelectionPanel secondary stepper.
+    #[test]
+    fn tile_secondary_emits_attrs_and_hidden_input() {
+        use crate::spec::Element as SpecElement;
+        let spec = spec_with_root(
+            SpecElement::new("Tile")
+                .prop("item_id", "7")
+                .prop("name", "Jet A")
+                .prop("price", "€10")
+                .prop("field", "qty_7")
+                .prop("price_cents", 1000)
+                .prop(
+                    "secondary",
+                    json!({"field":"people_7","label":"Persone","min":1,"max":2,"default":1}),
+                ),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile(el, &spec, &json!({}), 1);
+        assert!(
+            html.contains("data-secondary-field=\"people_7\""),
+            "got: {html}"
+        );
+        assert!(html.contains("data-secondary-min=\"1\""), "got: {html}");
+        assert!(html.contains("data-secondary-max=\"2\""), "got: {html}");
+        assert!(
+            html.contains("data-secondary-label=\"Persone\""),
+            "got: {html}"
+        );
+        assert!(html.contains("name=\"people_7\""), "got: {html}");
+        assert!(
+            html.contains("data-secondary-input=\"people_7\""),
+            "got: {html}"
+        );
+    }
+
+    /// A tile with no `secondary` (the register/Ordini case) must emit zero
+    /// `data-secondary-*` markup — the enhancement is strictly opt-in.
+    #[test]
+    fn tile_without_secondary_emits_no_secondary_markup() {
+        use crate::spec::Element as SpecElement;
+        let spec = spec_with_root(
+            SpecElement::new("Tile")
+                .prop("item_id", "7")
+                .prop("name", "Jet A")
+                .prop("price", "€10")
+                .prop("field", "qty_7"),
+        );
+        let el = spec.elements.get("root").unwrap();
+        let html = render_tile(el, &spec, &json!({}), 1);
+        assert!(
+            !html.contains("data-secondary"),
+            "register tiles must stay clean: {html}"
         );
     }
 

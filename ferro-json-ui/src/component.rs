@@ -1445,6 +1445,26 @@ pub struct ActionCardProps {
     pub href: Option<String>,
 }
 
+/// Optional per-line secondary count for a [`Tile`] — a domain-neutral second
+/// stepper (e.g. people/party size, seats, portions). When present, the tile
+/// emits `data-secondary-*` attributes + a hidden `{field}` input, and the
+/// paired [`SelectionPanel`] renders a second stepper on that line, clamped to
+/// `[min, max]`. Absent → the tile is unchanged (opt-in; register tiles omit it).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct TileSecondary {
+    /// Hidden input name the stepper writes (e.g. `people_7`). POSTed with the form.
+    pub field: String,
+    /// Display label shown next to the stepper (e.g. "Persone").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// Inclusive lower bound.
+    pub min: u32,
+    /// Inclusive upper bound.
+    pub max: u32,
+    /// Initial value (clamped to `[min, max]` at render).
+    pub default: u32,
+}
+
 /// Props for a touch-friendly product tile with quantity controls.
 ///
 /// Renders item name, price, and +/- buttons that drive a hidden input
@@ -1490,6 +1510,11 @@ pub struct TileProps {
     /// never float (see PITFALLS.md).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub price_cents: Option<u64>,
+    /// Optional per-line secondary count (people / seats / portions …). When set,
+    /// the tile emits `data-secondary-*` + a hidden `{field}` input and the paired
+    /// SelectionPanel shows a second stepper on that line. See [`TileSecondary`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub secondary: Option<TileSecondary>,
 }
 
 /// Props for the TileGrid builtin — a touch-first, responsive tile grid
@@ -2598,6 +2623,7 @@ mod tile_contract_tests {
             color: None,
             stock_badge: None,
             price_cents: None,
+            secondary: None,
         };
         let serialized = serde_json::to_string(&tile).expect("must serialize");
         assert!(

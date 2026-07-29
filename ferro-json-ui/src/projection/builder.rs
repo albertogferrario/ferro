@@ -694,6 +694,7 @@ fn emit_register_root(
             color: None,
             stock_badge: None,
             price_cents: None,
+            secondary: None,
         })
         .expect("TileProps serialization cannot fail"),
     )
