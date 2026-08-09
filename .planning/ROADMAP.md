@@ -4382,3 +4382,34 @@ Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ✓ 5/5 requirements mapped, no orphans, no duplicates.
+
+### Phase 999.2: Shopify integration — `ferro-shopify` crate + gestiscilo connector (BACKLOG)
+
+**Goal:** Design and build a Shopify integration in two layers: (1) a new `ferro-shopify` crate in the ferro sibling clone (`../ferro`), a sibling to `ferro-stripe` / `ferro-whatsapp` / `ferro-payments`; (2) wire it into gestiscilo as a connector following the existing GitHub connector pattern, alongside the WhatsApp and Stripe-Connect connectors. Start with brainstorming to nail scope before any code.
+**Requirements:** TBD (scope is the first open question — see below)
+**Plans:** 0 plans
+
+Scope to resolve in brainstorming (do NOT assume):
+- OAuth connect only, or product/order sync, or webhooks — how far does v1 reach?
+- What does "connector" mean for gestiscilo specifically vs. the reusable crate boundary?
+- Related to but distinct from SEED-001 (`ferro-shopify` as a *publishable Shopify app* — App Bridge / Billing / App Store). This backlog item is the *connector* framing (gestiscilo consumes Shopify); reconcile the two when planning.
+
+gestiscilo connector pattern to mirror (GitHub connector as the template):
+- `src/controllers/github_connect.rs` — connect/authorize/callback controller
+- `src/models/github_connection.rs` — per-account connection model
+- migration `158` — connection table
+- `src/api/github_webhook.rs` — inbound webhook handler
+- routes wiring
+- Sits alongside the existing WhatsApp and Stripe-Connect connectors.
+
+Tooling:
+- `shopify-dev-mcp` (Shopify API docs/schema/validation)
+- `shopify-admin` MCP (Admin API operations)
+
+⚠️ Working-tree guardrails (as of capture):
+- gestiscilo booking rebuild is **uncommitted on master** — do not disturb it.
+- ferro is on branch **`feat/selection-secondary-count`** — do not disturb it.
+- Sequence: brainstorm → spec → plan → build. Do not jump to build.
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
