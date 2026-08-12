@@ -87,13 +87,61 @@ awaiting a worker holds connections and does not scale. Returning immediately
 and streaming the result when ready does. The handle is the projection key the
 client subscribes to.
 
+### Prerequisite: multi-replica broadcast
+
+The result path above assumes a delta published by a worker reaches a client
+regardless of which process holds that client's socket. `ferro-broadcast` is
+currently an in-process hub (its only transport dependencies are `tokio` and
+`tokio-tungstenite`), so a delta published in one process is not observed by
+subscribers attached to another. At a single replica this is invisible; at N web
+replicas a client subscribed on replica B never receives a result written by a
+worker and published on replica A.
+
+The offload result path therefore depends on `ferro-broadcast` gaining a shared
+fan-out transport (a Redis pub/sub channel, Postgres `LISTEN`/`NOTIFY`, or an
+equivalent bus), selected by configuration with the in-process hub retained as
+the default for single-node and development use. This work must land before the
+delta-streaming step; without it the fire-and-forward promise holds only at one
+replica.
+
 ### Scaling model
 
 Capacity scales by running more workers. The worker is a deployable consumer
-process — the same application binary under a `worker` subcommand with a
-job-class selector — run at N replicas against the shared queue. N is managed
-externally (an operator, a platform, or a cluster scheduler); the framework does
-not decide it.
+process: **the application's own binary under a `worker` subcommand**, run at N
+replicas against the shared queue. N is managed externally (an operator, a
+platform, or a cluster scheduler); the framework does not decide it.
+
+The worker cannot be a subcommand of the `ferro` CLI binary. Offloaded methods
+and their job handlers are defined in the application crate and registered
+through `WorkerLoop::from_registry`; a framework binary does not link them and
+so cannot execute them. The application binary is already a subcommand
+dispatcher (`serve`, `db:migrate`, `schedule:work`), so `worker` follows an
+established pattern rather than introducing a second process model. The
+framework supplies the runtime — an entrypoint equivalent to the `serve` boot
+path without the HTTP listener, establishing the database, projection, and
+broadcast context the result path requires — and the scaffolded `main.rs` gains
+a `worker` arm that calls it.
+
+A **worker class is its set of queues**, selected by `--queue`, which populates
+`WorkerConfig.queues`. No separate class concept is introduced. Each class is an
+independent fault domain: a saturated `media` class does not starve `default`.
+
+`serve` retains its in-process `WorkerLoop`, enabled by default, so a single
+binary continues to drain its own queue for development and single-node
+deployments. A new `serve --no-worker` flag disables it. The documented split:
+one process (`serve`) for development and single-node; for scale-out, web
+replicas running `serve --no-worker` alongside worker replicas running
+`worker --queue <class>`, so the web tier does not also consume the queue.
+
+Deployment scaffolding follows from this. The current `.do/app.yaml` generator
+derives its `workers:` block from separately declared `[[bin]]` targets, a shape
+the single-binary model does not produce, so offload workers would never be
+emitted. Worker components are instead declared through deploy metadata (a
+`worker_queues` / `workers` key under `[package.metadata.ferro.deploy]`): the
+scaffolder emits one worker component per class, each sharing the web image and
+differing only in its run command (`<bin> worker --queue <class>`), with the web
+service running `serve --no-worker`. Detection of genuinely separate binaries
+remains for applications that declare them.
 
 This is the distinction that matters for serving many users: the *capability* to
 absorb growing background load comes from the ability to run more workers, not
@@ -131,6 +179,10 @@ in-process contract, the wire payload schema, and the agent-readable spec.
 
 ## Phase decomposition
 
+The numbered items below map 1:1 to phases 244–249. The multi-replica broadcast
+prerequisite described above is additional work that must be scheduled before
+item 4 (delta streaming); it is not covered by any of the six.
+
 1. **`#[offload]` macro → Job + payload generation.** Mark a service-trait method
    offloadable; generate the `ferro-queue` Job and its serializable payload from
    the method signature.
@@ -142,11 +194,14 @@ in-process contract, the wire payload schema, and the agent-readable spec.
 4. **Read-model delta → broadcast streaming.** Stream the snapshot delta to the
    subscribed client over `ferro-broadcast`; document the subscribe/await
    client pattern.
-5. **Deployable `ferro worker` runtime.** A consumer process (the same app binary
-   under a `worker` subcommand with a job-class selector) runnable at N replicas
-   against the shared queue — horizontally scalable background work, managed by
-   any external scheduler. No autoscaler; capacity scales by running more workers.
-   Independent fault domain per worker class.
+5. **Deployable worker runtime.** A framework-provided worker entrypoint (the
+   `serve` boot path without the HTTP listener) plus a scaffolded `worker`
+   subcommand on the application binary, invoked as `<bin> worker --queue <class>`
+   and runnable at N replicas against the shared queue. `serve` keeps its
+   in-process worker by default and gains `--no-worker` for scale-out
+   deployments. Deploy scaffolding emits one worker component per class from
+   deploy metadata. No autoscaler; capacity scales by running more workers.
+   Independent fault domain per class.
 6. **`ferro-mcp` introspection + docs.** Surface offloadable methods through
    `list_services`; document the authoring surface, the result path, and the
    non-goals.
@@ -158,7 +213,16 @@ in-process contract, the wire payload schema, and the agent-readable spec.
   message.
 - Round-trip: offloaded method runs on a worker, writes the projection snapshot,
   and the delta is observed on the broadcast channel for the handle key.
-- Fault isolation: saturating one fleet does not block another fleet's jobs.
+- Fault isolation: a worker started with `--queue media` drains `media` and
+  leaves `default` untouched; saturating one class does not block another.
+- Run modes: `serve` starts an in-process worker, `serve --no-worker` starts
+  none.
+- Cross-process delta: a snapshot written in one process is observed by a
+  subscriber attached to a second process (the multi-replica broadcast
+  prerequisite); with the in-process transport this test is single-process only.
+- Deploy scaffolding: deploy metadata declaring two worker classes produces a
+  web component running `serve --no-worker` and one worker component per class
+  with the expected run command.
 
 ## Honest limitations
 
