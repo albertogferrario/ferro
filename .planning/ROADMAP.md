@@ -3641,6 +3641,9 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   compile time with a clear diagnostic (this enforcement is the isolation boundary).
 - [ ] **Phase 246: Result → read-model snapshot** — The worker persists the method's return
   value as a `ferro-projection` snapshot keyed by the handle, retrievable after completion.
+- [ ] **Phase 246.1 (INSERTED): Shared-transport broadcast fan-out** — `ferro-broadcast`
+  gains a configurable shared transport so a delta published in one process reaches
+  subscribers in another; prerequisite for Phase 247 at more than one replica.
 - [ ] **Phase 247: Read-model delta → broadcast streaming** — A client subscribed to a
   handle receives the result as a `ferro-broadcast` delta on completion; the originating
   request never blocks awaiting it.
@@ -3689,11 +3692,29 @@ completion without the request having waited on it.
   3. A failed/panicking offloaded method records a terminal error state on the handle (not a
      silent drop).
 
+#### Phase 246.1: Shared-transport broadcast fan-out for multi-replica delta delivery (INSERTED)
+**Goal:** Give `ferro-broadcast` a shared fan-out transport so a delta published in one
+process reaches subscribers attached to another. Today its only transport dependencies are
+`tokio` and `tokio-tungstenite`, making it an in-process hub: at N web replicas a client
+subscribed on one replica never receives a result published by a worker on another. The
+transport is selected by configuration, with the in-process hub retained as the default for
+single-node and development use.
+**Depends on:** Phase 246.
+**Requirements:** OFFLOAD-04 (prerequisite).
+**Success Criteria** (what must be TRUE):
+  1. A delta published by one process is observed by a subscriber attached to a second
+     process, over the configured shared transport.
+  2. With no shared transport configured, behaviour is unchanged from the current in-process
+     hub — single-node and development deployments need no configuration.
+  3. Transport selection is configuration-only; publishers and subscribers use one API
+     regardless of which transport is active.
+
 #### Phase 247: Read-model delta → broadcast streaming
 **Goal:** Deliver results live — stream the snapshot delta to a client subscribed to the handle
 over `ferro-broadcast`, completing the fire-and-forward loop so the originating request returns
 immediately and the answer arrives when ready.
-**Depends on:** Phase 246.
+**Depends on:** Phases 246 and 246.1 (the shared transport; without it the loop closes only
+at a single replica).
 **Requirements:** OFFLOAD-04.
 **Success Criteria** (what must be TRUE):
   1. A client subscribed to a handle receives a broadcast delta carrying the result on completion.
@@ -3734,7 +3755,7 @@ and document the authoring surface, result path, scaling model, and non-goals.
 | OFFLOAD-01 (`#[offload]` macro → Job + payload) | Phase 244 |
 | OFFLOAD-02 (typed result handle + serializable enforcement) | Phase 245 |
 | OFFLOAD-03 (result → read-model snapshot) | Phase 246 |
-| OFFLOAD-04 (read-model delta → broadcast streaming) | Phase 247 |
+| OFFLOAD-04 (read-model delta → broadcast streaming) | Phases 246.1 (prerequisite), 247 |
 | OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248 |
 | OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 |
 
