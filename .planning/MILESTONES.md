@@ -1,5 +1,27 @@
 # Project Milestones: Ferro Framework
 
+## v16.6 POS Component Suite (Shipped: 2026-07-06)
+
+**Delivered:** Touch-first sale-screen components in the ferro-json-ui builtin catalog — TileGrid (integrated search + filter strip), SelectionPanel, FilterTabs, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` via the Collect/Register projection layer and agent-authorable through the v16.5 MCP + design-lint boundary. Published 0.2.89. Consumer-paired with gestiscilo register/counter mode.
+
+**Phases completed:** 5 phases (254-258), 20 plans · **Milestone audit:** PASSED 2026-07-07
+
+**Key accomplishments:**
+
+- Five touch-first builtins (TileGrid, SelectionPanel, FilterTabs, QuantityStepper, Numpad) with a shared touch foundation (`touch-action`, `:active` press, ≥44/56px hit targets) and double-submit protection
+- Live client-side SelectionPanel over form state — tiles tap-to-add-only, per-line QuantityStepper + remove, integer-cents running total, single confirm POST (Shopify POS model)
+- `Register` layout template under the **Collect** intent (`emit_register_root` + `ElementBuilder.each()` + `fill_viewport`) — the seven-intent vocabulary stays frozen
+- Domain-neutral catalog vocabulary (`ProductTile`→`Tile`, etc.) — structural nouns only in `ferro-*` crates; commerce naming confined to `/cassa` sample + docs
+- POS design-lint rules (`register-*`) + MCP catalog/generation-context extensions — agent-authorable through the design boundary
+
+**Requirements:** 13/13 complete (POS-01..13). Milestone audit PASSED (3-source cross-reference); 255/256 human-UAT items resolved live on `/cassa` 2026-07-07.
+
+**Stats:** 5 phases, 20 plans. No new crate; zero new dependencies; single publish at Phase 258.
+
+**Archive:** [milestones/v16.6-ROADMAP.md](milestones/v16.6-ROADMAP.md) · [milestones/v16.6-REQUIREMENTS.md](milestones/v16.6-REQUIREMENTS.md) · [milestones/v16.6-MILESTONE-AUDIT.md](milestones/v16.6-MILESTONE-AUDIT.md)
+
+---
+
 ## v16.5 JSON-UI Design System (Shipped: 2026-07-04)
 
 **Delivered:** The design system above the token layer — density/motion/focus-ring tokens with opinionated defaults, a canonical `variant`/`tone`/`size` vocabulary across all 47 builtin components, and composition patterns codified as machine-readable, intent-keyed lint rules enforced at the agent-authoring boundary. Published 0.2.86. Consumer-paired with gestiscilo Phase 232.
