@@ -1445,10 +1445,10 @@ pub struct ActionCardProps {
     pub href: Option<String>,
 }
 
-/// Optional per-line secondary count for a [`Tile`] — a domain-neutral second
+/// Optional per-line secondary count for a `Tile` — a domain-neutral second
 /// stepper (e.g. people/party size, seats, portions). When present, the tile
 /// emits `data-secondary-*` attributes + a hidden `{field}` input, and the
-/// paired [`SelectionPanel`] renders a second stepper on that line, clamped to
+/// paired `SelectionPanel` renders a second stepper on that line, clamped to
 /// `[min, max]`. Absent → the tile is unchanged (opt-in; register tiles omit it).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TileSecondary {

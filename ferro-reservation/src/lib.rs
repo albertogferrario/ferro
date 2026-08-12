@@ -10,8 +10,8 @@
 //! audit entry on every transition, and emits typed domain events for
 //! downstream live read-models or broadcast fanout.
 //!
-//! ferro-reservation is the *capacity* primitive. [`ferro-events`] says
-//! *something happened*. [`ferro-audit`] says *here is the evidence
+//! ferro-reservation is the *capacity* primitive. `ferro-events` says
+//! *something happened*. `ferro-audit` says *here is the evidence
 //! forever*. [`ferro_orm::GuardedUpdate`] says *only one writer wins*.
 //! ferro-reservation composes the three: the resource is reserved, with a
 //! deadline, race-free, with audit and broadcast — pick a side from the

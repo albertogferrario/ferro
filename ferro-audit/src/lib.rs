@@ -4,7 +4,7 @@
 //!
 //! Audit entries record *what happened* — for forensic investigation,
 //! regulatory evidence, and state replay. They are the historical twin
-//! of [`ferro-events`]: events are "something happened, react now";
+//! of `ferro-events`: events are "something happened, react now";
 //! audit entries are "something happened, here is the evidence forever".
 //!
 //! ## Example
