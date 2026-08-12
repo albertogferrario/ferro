@@ -1,6 +1,6 @@
 pub mod auth_controller;
-pub mod live_test;
 pub mod home;
+pub mod live_test;
 pub mod mcp;
 pub mod mcp_chat;
 pub mod order_board;

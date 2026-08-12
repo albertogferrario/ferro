@@ -2719,7 +2719,10 @@ mod tests {
             html.contains("fjui-kanban__column"),
             "partial-empty board must keep column chrome: {html}"
         );
-        assert!(html.contains("Alpha"), "populated lane card missing: {html}");
+        assert!(
+            html.contains("Alpha"),
+            "populated lane card missing: {html}"
+        );
         // Placeholder renders in the empty lane, desktop + mobile = 2 occurrences.
         assert_eq!(
             html.matches("fjui-kanban__empty-lane").count(),

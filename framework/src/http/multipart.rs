@@ -627,9 +627,9 @@ mod tests {
     async fn multipart_incoming_body_round_trip() {
         // Proves parse_multipart_body (the Incoming path) works end-to-end through
         // a real TCP connection — the path exercised by req.multipart() in a handler.
-        use std::sync::{Arc, Mutex};
-        use hyper_util::rt::TokioIo;
         use http_body_util::Empty;
+        use hyper_util::rt::TokioIo;
+        use std::sync::{Arc, Mutex};
         use tokio::sync::oneshot;
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -642,25 +642,26 @@ mod tests {
             let io = TokioIo::new(stream);
             let tx_holder = tx_holder.clone();
 
-            let service = hyper::service::service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
-                let tx_holder = tx_holder.clone();
-                async move {
-                    let (parts, body) = req.into_parts();
-                    let ct = parts
-                        .headers
-                        .get("content-type")
-                        .and_then(|v| v.to_str().ok())
-                        .unwrap_or("")
-                        .to_string();
-                    let form = parse_multipart_body(body, &ct, max_file_bytes(), max_fields())
-                        .await
-                        .expect("parse succeeds");
-                    if let Some(tx) = tx_holder.lock().unwrap().take() {
-                        let _ = tx.send(form);
+            let service =
+                hyper::service::service_fn(move |req: hyper::Request<hyper::body::Incoming>| {
+                    let tx_holder = tx_holder.clone();
+                    async move {
+                        let (parts, body) = req.into_parts();
+                        let ct = parts
+                            .headers
+                            .get("content-type")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("")
+                            .to_string();
+                        let form = parse_multipart_body(body, &ct, max_file_bytes(), max_fields())
+                            .await
+                            .expect("parse succeeds");
+                        if let Some(tx) = tx_holder.lock().unwrap().take() {
+                            let _ = tx.send(form);
+                        }
+                        Ok::<_, hyper::Error>(hyper::Response::new(Empty::<Bytes>::new()))
                     }
-                    Ok::<_, hyper::Error>(hyper::Response::new(Empty::<Bytes>::new()))
-                }
-            });
+                });
 
             hyper::server::conn::http1::Builder::new()
                 .serve_connection(io, service)
@@ -676,7 +677,9 @@ mod tests {
         let stream = tokio::net::TcpStream::connect(addr).await.unwrap();
         let io = TokioIo::new(stream);
         let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await.unwrap();
-        tokio::spawn(async move { conn.await.ok(); });
+        tokio::spawn(async move {
+            conn.await.ok();
+        });
 
         let req = hyper::Request::builder()
             .method("POST")
@@ -693,11 +696,14 @@ mod tests {
         assert_eq!(file.bytes.as_ref(), b"\x89PNG\r\n\x1a\n");
 
         // Store to a memory disk — completes the req.multipart() → file.store() chain
-        let storage = ferro_storage::Storage::with_config("mem", vec![
-            ("mem", ferro_storage::DiskConfig::memory()),
-        ]);
+        let storage = ferro_storage::Storage::with_config(
+            "mem",
+            vec![("mem", ferro_storage::DiskConfig::memory())],
+        );
         let disk = storage.disk("mem").expect("disk");
-        file.store(&disk, "uploads/avatar.png").await.expect("store succeeds");
+        file.store(&disk, "uploads/avatar.png")
+            .await
+            .expect("store succeeds");
         assert!(disk.exists("uploads/avatar.png").await.unwrap());
         let stored = disk.get("uploads/avatar.png").await.expect("readable");
         assert_eq!(stored.as_ref(), b"\x89PNG\r\n\x1a\n");

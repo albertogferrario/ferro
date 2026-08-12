@@ -37,6 +37,8 @@ impl Projection for LiveTestProjection {
 
     fn apply(&self, state: &mut Self::State, event: &Self::Event) -> Self::Delta {
         state.count += event.increment as i64;
-        LiveTestDelta { new_count: state.count }
+        LiveTestDelta {
+            new_count: state.count,
+        }
     }
 }
