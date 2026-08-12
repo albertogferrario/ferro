@@ -1,5 +1,26 @@
 # Project Milestones: Ferro Framework
 
+## v16.2 ferro-inertia First-Load HTML Shell (Shipped: 2026-06-21)
+
+**Delivered:** `ferro-inertia` now emits a complete server-rendered first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, so a Ferro + Inertia app opens cold in a browser and hydrates. Wiring + surfacing over pre-existing `response.rs` substrate; `ferro-inertia` stays a zero-ferro-dep leaf crate.
+
+**Phases completed:** 1 phase (238), 4 plans
+
+**Key accomplishments:**
+
+- Single-handler content negotiation: full HTML for non-`X-Inertia` GETs, JSON for `X-Inertia`
+- Dev/prod asset modes off `vite_dev_server` (Vite client + entry module tags vs hashed `manifest.json` tags)
+- `App::set_inertia_config` + `InertiaConfig::from_env` + configurable root template (title/head_extras/mount_id) with a working default
+- Same-origin + Vite `server.proxy` docs so the session cookie flows in the split-port dev flow
+
+**Requirements:** 5/5 success criteria met. Closeout: verification 5/5, code review (4 warnings fixed), threat-secure 7/7, UAT 5/5 (live dev hydration + prod manifest).
+
+**Stats:** wiring/surfacing on the existing `ferro-inertia` crate (~1,377 LOC total; predates this milestone). 1 phase, 4 plans.
+
+**Archive:** [milestones/v16.2-ROADMAP.md](milestones/v16.2-ROADMAP.md) · [milestones/v16.2-REQUIREMENTS.md](milestones/v16.2-REQUIREMENTS.md)
+
+---
+
 ## v16.1 ferro-payments — Polymorphic Billable Layer (Shipped: 2026-06-21)
 
 **Delivered:** A new project-agnostic workspace crate `ferro-payments` — a polymorphic `PaymentIntent` entity and `Billable` trait letting consumer apps take Stripe payments for any first-class entity, reusing the existing `ferro-stripe` surface. Published as `ferro-payments 0.1.0`.

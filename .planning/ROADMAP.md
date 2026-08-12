@@ -69,7 +69,7 @@
 - ✅ [**v15.0 Agent-Operable App (Consumer MCP)**](milestones/v15.0-ROADMAP.md) — Phases 217-221 (shipped 2026-06-14). Extends the projection/intent abstraction to a write-and-act MCP surface: per-tenant API-key auth, `ActionDef`-derived write tools (guard-filtered), server-side guard re-enforcement at execution, `ferro-ai` confirmation gating for destructive actions, and an inbound natural-language intent loop with a replay/smoke CI path (CI-testable without live-LLM spend). Validated against gestiscilo via synthetic fixtures; consumer adoption is a separate follow-up.
 - ✅ [**v16.0 Write-Boundary AX**](milestones/v16.0-ROADMAP.md) — Phases 231-232 (shipped 2026-06-16). The projection write path now derives transitions from the `StateMachine` the framework owns — `TransitionPlan` + `derive_transition_plan` (no hand-written `match`), server-side guard re-eval, post-persist override hook, registration-time drift gate, and one `framework::write` kernel backing both the MCP and the new visual `POST /{service}/{action}` write surfaces (single-source, no per-channel executor).
 - ✅ [**v16.1 ferro-payments — Polymorphic Billable Layer**](milestones/v16.1-ROADMAP.md) — Phases 233-236 (shipped 2026-06-21). New project-agnostic `ferro-payments` crate: polymorphic `PaymentIntent` + `Billable`/`BillableLoader` traits, webhook `SyncDispatcher` integration with idempotent auto-refund, and `ReleaseExpiredPaymentIntents`/`ReconcileRefundsInFlight` reapers; published `ferro-payments 0.1.0` (independently versioned). Reuses the existing `ferro-stripe` surface — no new ferro-stripe API. [CONSUMER-PAIRED with gestiscilo 218-223]
-- ✅ **v16.2 ferro-inertia First-Load HTML Shell** — Phase 238 (completed 2026-06-21). `ferro-inertia` emits a complete first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env` plumbing, a configurable root template (title/head_extras/mount_id), and same-origin + Vite `server.proxy` docs. Verified live (dev hydration + prod manifest tags). Promoted from the downstream `u` app's deferred first-load shell.
+- ✅ [**v16.2 ferro-inertia First-Load HTML Shell**](milestones/v16.2-ROADMAP.md) — Phase 238 (completed 2026-06-21). `ferro-inertia` emits a complete first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env` plumbing, a configurable root template (title/head_extras/mount_id), and same-origin + Vite `server.proxy` docs. Verified live (dev hydration + prod manifest tags). Promoted from the downstream `u` app's deferred first-load shell.
 - ✅ **v16.3 MCP CRUD Data Surface (Track A)** — Phases 239-243 + 243.1 (completed 2026-06-24, shipped in 0.2.80; not yet archived). A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface (`create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>`) as MCP tools with zero hand-written tool code. CRUD verbs dispatch through a new `derive_crud_plan` that **extends** the shipped `framework::write` kernel (231/232) — reusing the override-hook registry, idempotency, channel-parameterized audit, and confirmation; it does not rebuild the dispatcher. Soft-delete (`deleted_at`) + confirmation gating; `read_write` scope + `.mcp_write_ability` Gate + server-side tenant injection (non-disclosure). Declaration surface + `validate()` write-ability rule already shipped (`5cb17d60`). Anchor spec: `docs/superpowers/specs/2026-06-23-projection-crud-data-surface-design.md` (Track A of the four-track MCP capability program).
 - ✅ **v16.5 JSON-UI Design System** — Phases 250-253 (shipped 2026-07-04, 0.2.86; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). Single publish at Phase 253. Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
 - ✅ **v16.6 POS Component Suite** — Phases 254-258 (started 2026-07-04; consumer-paired with gestiscilo's register/counter mode). Touch-first sale-screen components in the ferro-json-ui builtin catalog — ProductGrid, CartPanel, CategoryNav, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` through the Collect/Register projection layer, agent-authorable through the v16.5 MCP + design-lint boundary. Single publish at Phase 258. Independent of v16.4 (reserved 244–249).
@@ -3246,45 +3246,9 @@ once internal usages migrate, no consumer-authored `DropdownMenu` spec remains.
 
 ## ✅ v16.2 ferro-inertia First-Load HTML Shell (Phase 238) — Completed 2026-06-21
 
-`ferro-inertia` owns the `X-Inertia` JSON contract (part 2 of Inertia) but had no
-server-rendered first-load HTML document (part 1). This phase added the missing
-shell so a Ferro+Inertia app can be opened cold in a browser and hydrated from the
-backend. Promoted [backlog/2026-06-21-inertia-first-load-shell.md](backlog/2026-06-21-inertia-first-load-shell.md);
-field-reported by downstream consumer app `u` (Phase 5 OQ-4 deferral).
+Phase 238 (INERTIA first-load shell, 5/5 SC) — full details archived in [milestones/v16.2-ROADMAP.md](milestones/v16.2-ROADMAP.md).
 
-### Phase 238: Inertia first-load HTML shell — server-rendered initial document ✅
-
-**Goal:** `ferro-inertia` emits a complete first-load HTML document — embedded
-`data-page` page object plus resolved Vite asset tags — when a request is not
-`X-Inertia`, while continuing to emit the JSON contract when it is. Asset
-resolution runs in two modes off the existing `vite_dev_server` config: **dev** →
-Vite client + entry module tags against the dev-server URL; **prod** → hashed
-`<script>`/`<link>` tags read from the Vite `manifest.json`. A configurable
-root-template (title, `<head>` extras, `#app` mount node) ships with a sane
-default. Docs cover the same-origin story and a Vite `server.proxy` recipe for the
-split-port dev flow (so the session cookie flows).
-
-**Reconcile finding:** the HTML-shell substrate already existed in
-`ferro-inertia/src/response.rs` (content negotiation + dev/prod asset modes). The
-real work was wiring + surfacing: the documented-but-missing `App::set_inertia_config`
-+ `InertiaConfig::from_env`, structured root-template fields (title/head_extras/mount_id),
-the same-origin/Vite-proxy docs, and end-to-end tests. `ferro-inertia` stayed a
-zero-ferro-dep leaf crate.
-
-**Success Criteria** (all met):
-  1. ✅ A non-`X-Inertia` GET returns a full HTML document with `<div id="app" data-page="{…}">` matching the JSON-path page object.
-  2. ✅ The same handler with `X-Inertia` headers still returns the JSON contract (content negotiation, single handler).
-  3. ✅ Dev mode emits Vite client + entry module tags against `vite_dev_server`; prod mode emits hashed tags from the Vite `manifest.json`.
-  4. ✅ The root template (title, `<head>` extras, mount node) is configurable with a working default.
-  5. ✅ Docs include the same-origin convention and a Vite `server.proxy` recipe.
-
-**Plans:** 4 plans, all complete.
-- [x] 238-01-PLAN.md — `InertiaConfig::from_env()` + title/head_extras/mount_id fields & builders (Wave 1)
-- [x] 238-02-PLAN.md — Extend HTML templates for new fields + content-negotiation/SC-1/SC-2/SC-3 tests (Wave 2)
-- [x] 238-03-PLAN.md — Process-global `InertiaConfig` + `App::set_inertia_config` + render-path wiring (Wave 2)
-- [x] 238-04-PLAN.md — Docs: fix drift + First-Load HTML Shell (same-origin + Vite proxy) section (Wave 3)
-
-**Closeout:** verified (5/5 SC), code-reviewed (4 warnings fixed), threat-secure (7/7 closed), UAT 5/5 (live dev hydration + prod manifest). See `238-VERIFICATION.md`, `238-REVIEW-FIX.md`, `238-SECURITY.md`, `238-UAT.md`.
+Delivered: `ferro-inertia` emits a complete server-rendered first-load HTML document (embedded `data-page` + resolved Vite asset tags) via single-handler content negotiation, with `App::set_inertia_config`/`InertiaConfig::from_env`, dev/prod Vite asset modes, and a configurable root template. Wiring + surfacing over the pre-existing `response.rs` substrate; zero-ferro-dep leaf crate.
 
 ---
 

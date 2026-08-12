@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v18.0
 milestone_name: Projection-Native Frontend Substrate
 status: complete
-stopped_at: v16.1 ferro-payments archived 2026-08-12 (tag v16.1; 235/236 live-Stripe items resolved first). Remaining backlog oldest-first: v16.2/16.3/16.5/16.6/17.0, then current+complete v18.0.
-last_updated: "2026-08-12T13:00:00.000Z"
+stopped_at: v16.2 ferro-inertia archived 2026-08-12 (tag v16.2). v16.1 + v16.2 done. Remaining backlog oldest-first: v16.3/16.5/16.6/17.0, then current+complete v18.0. Note: v16.3 is the milestone the working REQUIREMENTS.md actually holds — archive that file (not reconstruct) when closing v16.3.
+last_updated: "2026-08-12T14:00:00.000Z"
 last_activity: 2026-08-12
 progress:
   total_phases: 140
@@ -42,17 +42,17 @@ Single source of truth for what is archived vs shipped-but-unarchived. Supersede
 inline "not yet archived" note elsewhere in this file.
 
 **Archived** (both `milestones/v*-ROADMAP.md`/`-REQUIREMENTS.md` files *and* a `MILESTONES.md`
-entry): everything **through v16.0**, plus **v16.1 ferro-payments** (archived 2026-08-12,
-tag `v16.1`; 235/236 live-Stripe items resolved first). (The earlier claim that v16.0 was a
-backlog item was stale and is corrected here.)
+entry): everything **through v16.0**, plus **v16.1 ferro-payments** (tag `v16.1`; 235/236
+live-Stripe items resolved first) and **v16.2 ferro-inertia First-Load Shell** (tag `v16.2`),
+both archived 2026-08-12. (The earlier claim that v16.0 was a backlog item was stale and is
+corrected here.)
 
 **Shipped but NOT archived** (marked ✅ in ROADMAP, no `milestones/` files, no `MILESTONES.md`
 entry) — the true `/gsd-complete-milestone` backlog, oldest first:
 
 | Milestone | Phases | Notes |
 |-----------|--------|-------|
-| v16.2 ferro-inertia First-Load Shell | 238 | shipped in 0.2.x — **next to archive** |
-| v16.3 MCP CRUD Data Surface (Track A) | 239–243 + 243.1 | shipped 0.2.80; **`REQUIREMENTS.md` currently holds this milestone** |
+| v16.3 MCP CRUD Data Surface (Track A) | 239–243 + 243.1 | shipped 0.2.80; **next to archive**; **`REQUIREMENTS.md` currently holds this milestone** |
 | v16.5 JSON-UI Design System | 250–253 | shipped 0.2.86 |
 | v16.6 POS Component Suite | 254–258 | shipped 0.2.89; **has a PASSED `v16.6-MILESTONE-AUDIT.md` (2026-07-07)** |
 | v17.0 Live Projection Surface | 259–262 | phases complete 2026-07-26; publish operator-gated; **verify Phase 260 LiveFragment Chrome-MCP swap is closed before archiving** |
@@ -361,7 +361,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-12 (v16.1 milestone close)
-Stopped at: v16.1 ferro-payments archived (tag v16.1). 235/236 live-Stripe UAT/verification resolved first (236 e2e re-confirmed live via Stripe CLI test mode; 235 webhook items deferred-closed). Continuing the backlog oldest-first.
+Last session: 2026-08-12 (v16.1 + v16.2 milestone closes)
+Stopped at: v16.1 ferro-payments (tag v16.1) and v16.2 ferro-inertia First-Load Shell (tag v16.2) archived. v16.2 had no open items (verification passed, UAT 5/5). Continuing the backlog oldest-first.
 Resume file: None
-Next action: `/gsd-complete-milestone v16.2` (next in backlog). Remaining after v16.1: v16.2, v16.3, v16.5, v16.6, v17.0, then current+complete v18.0 — see "## Archival Backlog" above for the authoritative list and the REQUIREMENTS.md drift note (working REQUIREMENTS.md still holds v16.3). Before closing v17.0, verify Phase 260 LiveFragment Chrome-MCP swap is closed. gestiscilo register phase unblocked on ferro-rs 0.2.89.
+Next action: `/gsd-complete-milestone v16.3` (next in backlog). Remaining: v16.3, v16.5, v16.6, v17.0, then current+complete v18.0 — see "## Archival Backlog" above. **v16.3 is special: the working REQUIREMENTS.md actually holds v16.3, so archive that file to milestones/v16.3-REQUIREMENTS.md (do not reconstruct), then decide whether to delete/rotate it.** Before closing v17.0, verify Phase 260 LiveFragment Chrome-MCP swap is closed. Local commits/tags v16.1+v16.2 not yet pushed. gestiscilo register phase unblocked on ferro-rs 0.2.89.
