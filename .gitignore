@@ -35,3 +35,9 @@ node_modules/
 
 # Generated cargo doc output (root doc/)
 /doc/
+
+# Local scratch — UAT screenshots and other throwaway artifacts
+app/tmp/
+
+# Codex CLI local config (per-machine, not shared)
+.codex/
