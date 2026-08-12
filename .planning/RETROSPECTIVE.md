@@ -225,6 +225,36 @@ The projection/intent killer feature's WRITE path closed itself from the StateMa
 - Notable: each phase's one plan-checker revision cycle was cheap insurance against an execution-time cross-crate compile break.
 
 
+## Milestone Sweep: v16.1–v18.0 Archival (2026-08-12)
+
+**Archived:** v16.1, v16.2, v16.3, v16.5, v16.6, v17.0, v18.0 (7 milestones) in one session | **Tags:** `v16.1`..`v18.0`
+
+### What Was Built
+- Seven milestone archives (`milestones/vX.Y-ROADMAP.md` + `-REQUIREMENTS.md`), MILESTONES.md entries, collapsed ROADMAP pointers + linked top-list bullets, annotated git tags, one docs-only commit each.
+- Current-milestone pointer moved to v16.4 (STATE `milestone:` + ROADMAP `🚧` marker verified in agreement).
+
+### What Worked
+- **Fact-gathering before each close** surfaced real state discrepancies instead of trusting notes: STATE.md claimed v16.0 unarchived (it wasn't); the "REQUIREMENTS.md holds v16.3" reconciliation was disproven (it was an accreted multi-milestone file); a "260 UAT pending" memory was stale (Chrome-MCP-verified 2026-07-28).
+- **Not skipping UAT** where it was genuinely open: re-ran the 236 Stripe test-mode e2e (via Stripe CLI) and the 252 `design:lint` formatting check (built ferro-cli) first-hand; confirmed 260's LiveFragment swap was already verified.
+- **Extract-vs-reconstruct discipline** on REQUIREMENTS.md: extracted the section for milestones present in the file (v16.3/v16.5/v16.6/v18.0), reconstructed from ROADMAP for those absent (v16.1/v16.2/v17.0) — never `git rm`'d the shared file.
+- A head/tail reassembly with a before/after line-count assertion made 100+-line ROADMAP collapses safe on a 4.4k-line file.
+
+### What Was Inefficient
+- The accreted-REQUIREMENTS.md structure was discovered mid-sweep (at v16.3), forcing a correction of an earlier reconciliation and its banner/STATE notes. An upfront `grep` of the file's section headers would have caught it before the first close.
+- A disk detour: at 99% (~4.9 GiB free) the ferro-cli build for the 252 UAT needed space; `cargo clean` on the gestiscilo app freed ~29 GiB but it was held by macOS APFS local snapshots (df unchanged) — the build succeeded on real free space + auto-purge headroom regardless.
+
+### Patterns Established
+- Milestone close is now: gather facts → resolve/verify open UAT → extract-or-reconstruct requirements → archive + collapse + tag → verify STATE/ROADMAP pointer agreement.
+- Planning tags `vX.Y` are docs-only and do not trigger the crates.io publish (which is a separate version-bump + push).
+
+### Key Lessons
+- Reconciliation claims are hypotheses — verify the file's actual structure (`grep '^# Requirements'`) before acting on "which milestone this file holds".
+- On macOS, `cargo clean` space can be snapshot-held; `df` won't move, but the OS auto-purges under build pressure — a full build usually still fits.
+
+### Cost Observations
+- Model: single opus main-loop session, no subagents; ~inline file surgery. The dominant cost was reading/writing planning docs, not compute.
+
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
