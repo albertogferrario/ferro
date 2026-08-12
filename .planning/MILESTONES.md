@@ -1,5 +1,27 @@
 # Project Milestones: Ferro Framework
 
+## v16.3 MCP CRUD Data Surface (Track A) (Shipped: 2026-06-24)
+
+**Delivered:** A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface — `create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>` — as MCP tools with zero hand-written tool code. Shipped in 0.2.80. Track A of the four-track MCP capability program.
+
+**Phases completed:** 6 phases (239-243 + 243.1), 18 plans
+
+**Key accomplishments:**
+
+- `derive_crud_plan` (the CRUD analog of `derive_transition_plan`) dispatches CRUD verbs through the single shipped `framework::write` kernel — no second dispatcher; reuses override registry / idempotency / audit / confirmation; single-source across MCP and visual surfaces
+- Write input schemas auto-derived from existing `field()` declarations (Identifier/CreatedAt/tenant/Sensitive excluded; Status server-set to the SM initial state)
+- `list_<svc>` query polish: range/comparison filters (`__gt/gte/lt/lte/ne/in`), sort, `limit`/`offset`
+- Soft-delete (`deleted_at`) enforced at the data layer; confirmation-gated delete; cross-tenant / soft-deleted targets non-disclosing; `tenant_id` server-injected
+- Phase 243.1: computed/derived fields — `writable` flag honored, server-side recompute via the override hook (`order.total = SUM(line_items.amount)`)
+
+**Requirements:** 7/7 complete (CRUD-01..07). No open items (audit-open clean for 239-243).
+
+**Stats:** 6 phases, 18 plans. Extends the v16.0 write kernel; no new crate.
+
+**Archive:** [milestones/v16.3-ROADMAP.md](milestones/v16.3-ROADMAP.md) · [milestones/v16.3-REQUIREMENTS.md](milestones/v16.3-REQUIREMENTS.md)
+
+---
+
 ## v16.2 ferro-inertia First-Load HTML Shell (Shipped: 2026-06-21)
 
 **Delivered:** `ferro-inertia` now emits a complete server-rendered first-load HTML document (embedded `data-page` + resolved Vite asset tags) via content negotiation, so a Ferro + Inertia app opens cold in a browser and hydrates. Wiring + surfacing over pre-existing `response.rs` substrate; `ferro-inertia` stays a zero-ferro-dep leaf crate.

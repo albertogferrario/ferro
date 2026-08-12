@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v18.0
 milestone_name: Projection-Native Frontend Substrate
 status: complete
-stopped_at: v16.2 ferro-inertia archived 2026-08-12 (tag v16.2). v16.1 + v16.2 done. Remaining backlog oldest-first: v16.3/16.5/16.6/17.0, then current+complete v18.0. Note: v16.3 is the milestone the working REQUIREMENTS.md actually holds — archive that file (not reconstruct) when closing v16.3.
-last_updated: "2026-08-12T14:00:00.000Z"
+stopped_at: v16.3 MCP CRUD archived 2026-08-12 (tag v16.3). v16.1+v16.2+v16.3 done. Discovered the working REQUIREMENTS.md is an accreted multi-milestone file (v16.4/16.5/16.6/18.0 sections) — extracted the v16.3 section, corrected the earlier drift note. Remaining backlog: v16.5/16.6/17.0, then current+complete v18.0.
+last_updated: "2026-08-12T15:00:00.000Z"
 last_activity: 2026-08-12
 progress:
   total_phases: 140
@@ -43,29 +43,32 @@ inline "not yet archived" note elsewhere in this file.
 
 **Archived** (both `milestones/v*-ROADMAP.md`/`-REQUIREMENTS.md` files *and* a `MILESTONES.md`
 entry): everything **through v16.0**, plus **v16.1 ferro-payments** (tag `v16.1`; 235/236
-live-Stripe items resolved first) and **v16.2 ferro-inertia First-Load Shell** (tag `v16.2`),
-both archived 2026-08-12. (The earlier claim that v16.0 was a backlog item was stale and is
-corrected here.)
+live-Stripe items resolved first), **v16.2 ferro-inertia First-Load Shell** (tag `v16.2`), and
+**v16.3 MCP CRUD Data Surface** (tag `v16.3`; requirements section extracted from the accreted
+REQUIREMENTS.md) — all archived 2026-08-12. (The earlier claim that v16.0 was a backlog item
+was stale and is corrected here.)
 
 **Shipped but NOT archived** (marked ✅ in ROADMAP, no `milestones/` files, no `MILESTONES.md`
 entry) — the true `/gsd-complete-milestone` backlog, oldest first:
 
 | Milestone | Phases | Notes |
 |-----------|--------|-------|
-| v16.3 MCP CRUD Data Surface (Track A) | 239–243 + 243.1 | shipped 0.2.80; **next to archive**; **`REQUIREMENTS.md` currently holds this milestone** |
-| v16.5 JSON-UI Design System | 250–253 | shipped 0.2.86 |
-| v16.6 POS Component Suite | 254–258 | shipped 0.2.89; **has a PASSED `v16.6-MILESTONE-AUDIT.md` (2026-07-07)** |
+| v16.5 JSON-UI Design System | 250–253 | shipped 0.2.86; **next to archive**; requirements section IS in the working `REQUIREMENTS.md` (extract, don't reconstruct) |
+| v16.6 POS Component Suite | 254–258 | shipped 0.2.89; **has a PASSED `v16.6-MILESTONE-AUDIT.md` (2026-07-07)**; requirements section IS in the working `REQUIREMENTS.md` |
 | v17.0 Live Projection Surface | 259–262 | phases complete 2026-07-26; publish operator-gated; **verify Phase 260 LiveFragment Chrome-MCP swap is closed before archiving** |
 | **v18.0 Projection-Native Frontend Substrate** (current) | 263 | complete in-tree; no milestone audit yet; unpublished |
 
 **Queued, NOT shipped:** v16.4 Work Distribution (244–249) — activates only after v18.0.
 
-**REQUIREMENTS.md rotation drift:** the working `.planning/REQUIREMENTS.md` still holds **v16.3**
-requirements. v16.5 / v16.6 / v17.0 / v18.0 roadmaps were brainstorm-created (not
-`/gsd-new-milestone`), so their requirements live inline in ROADMAP and the working file was
-never rotated. On the eventual close, archive v16.3's requirements to
-`milestones/v16.3-REQUIREMENTS.md`; there is no separate REQUIREMENTS.md to archive for the
-later milestones. The file carries a self-describing banner reflecting this.
+**REQUIREMENTS.md rotation (corrected 2026-08-12):** the working `.planning/REQUIREMENTS.md`
+is an **accreted multi-milestone file** — one `# Requirements — vX.Y` section per milestone,
+never rotated. It currently holds **v16.4** (queued), **v16.5** (complete), **v16.6**
+(complete), and **v18.0** (current). v16.3's section was extracted to
+`milestones/v16.3-REQUIREMENTS.md` and removed (2026-08-12). **v17.0 is the only shipped
+milestone NOT in this file** — its requirements are inline in ROADMAP (reconstruct at its
+close, as was done for v16.1/v16.2). For v16.5 / v16.6 / v18.0, **extract** the matching
+section into `milestones/vX.Y-REQUIREMENTS.md` and remove it — do NOT reconstruct, and do NOT
+delete the whole file. The file's top banner reflects this.
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.
@@ -361,7 +364,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-12 (v16.1 + v16.2 milestone closes)
-Stopped at: v16.1 ferro-payments (tag v16.1) and v16.2 ferro-inertia First-Load Shell (tag v16.2) archived. v16.2 had no open items (verification passed, UAT 5/5). Continuing the backlog oldest-first.
+Last session: 2026-08-12 (v16.1 + v16.2 + v16.3 milestone closes)
+Stopped at: v16.1 (tag v16.1), v16.2 (tag v16.2), v16.3 (tag v16.3) archived. Key discovery during v16.3: the working REQUIREMENTS.md is an accreted multi-milestone file (sections for v16.4/v16.5/v16.6/v18.0) — extracted v16.3's section, corrected the earlier (wrong) drift note. Continuing the backlog oldest-first.
 Resume file: None
-Next action: `/gsd-complete-milestone v16.3` (next in backlog). Remaining: v16.3, v16.5, v16.6, v17.0, then current+complete v18.0 — see "## Archival Backlog" above. **v16.3 is special: the working REQUIREMENTS.md actually holds v16.3, so archive that file to milestones/v16.3-REQUIREMENTS.md (do not reconstruct), then decide whether to delete/rotate it.** Before closing v17.0, verify Phase 260 LiveFragment Chrome-MCP swap is closed. Local commits/tags v16.1+v16.2 not yet pushed. gestiscilo register phase unblocked on ferro-rs 0.2.89.
+Next action: `/gsd-complete-milestone v16.5` (next in backlog). Remaining: v16.5, v16.6, v17.0, then current+complete v18.0. **For v16.5/v16.6/v18.0: extract their section from the working REQUIREMENTS.md (do NOT reconstruct, do NOT delete the file).** v17.0 has no section in REQUIREMENTS.md — reconstruct from ROADMAP; also verify Phase 260 LiveFragment Chrome-MCP swap is closed before archiving v17.0. Local commits/tags v16.1+v16.2+v16.3 not yet pushed. gestiscilo register phase unblocked on ferro-rs 0.2.89.
