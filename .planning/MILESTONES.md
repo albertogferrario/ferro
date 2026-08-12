@@ -1,5 +1,27 @@
 # Project Milestones: Ferro Framework
 
+## v18.0 Projection-Native Frontend Substrate (Shipped in-tree: 2026-07-27)
+
+**Delivered:** Derive a custom (Inertia) frontend's data, field schema, and permitted-actions from the same `ServiceDef`/`ActionDef` declaration that drives the visual and MCP surfaces, delivered Inertia-first in one `Inertia::from_projection` call; the frontend's writes reuse the channel-agnostic `dispatch_write` kernel. The one structural change lifts guard-visibility (`permitted_actions`) out of `ferro-mcp-server` into `framework` so guards are evaluated in exactly one place. Shipped in-tree (publish operator-gated).
+
+**Phases completed:** 1 phase (263), 5 plans · **Verification:** 15/15; UAT complete
+
+**Key accomplishments:**
+
+- Pure `schema_contract(&ServiceDef)` derivation in `ferro-projections` (field set / meanings / validations / actions; snapshot-tested; a dependency-free sibling of `derive_intents()`)
+- `permitted_actions(...)` lifted from `ferro-mcp-server` into `framework` — MCP `tools/list` and Inertia now share ONE guard-evaluation site (no duplicate control surface)
+- `Inertia::from_projection` delivers `{ schema, data, permitted_actions }` props, tenant-scoped, on the framework-side Inertia facade (cycle-safe placement)
+- Writes route through the existing `dispatch_write(channel="web")` kernel — no new write path
+- Single-source parity proven by test: Inertia↔MCP permitted-actions parity, write parity, schema snapshot, data tenant-scoping
+
+**Requirements:** 5/5 complete (SUBST-01..05). No open items; dogfood `/orders` page (`OrderList.tsx`) tracked in git.
+
+**Stats:** 1 phase, 5 plans. No new crate; the operability layer was already renderer-independent — these are missing derivations, not new coupling.
+
+**Archive:** [milestones/v18.0-ROADMAP.md](milestones/v18.0-ROADMAP.md) · [milestones/v18.0-REQUIREMENTS.md](milestones/v18.0-REQUIREMENTS.md)
+
+---
+
 ## v17.0 Live Projection Surface (Shipped: 2026-07-26)
 
 **Delivered:** A declarative `LiveFragment` element binds a rendered fragment to a `ferro-projection` per-key snapshot and re-renders in place on delta — server-authoritative, no WASM — making the singular projection runtime a first-class, agent-composable, MCP-introspectable JSON-UI rendering target. Plus request-scoped `#[memoize]` (render-path fetch dedup) and a one-line `asset!()`. Phases complete 2026-07-26; single operator-gated publish.

@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v18.0
-milestone_name: Projection-Native Frontend Substrate
-status: complete
-stopped_at: v17.0 Live Projection Surface archived 2026-08-12 (tag v17.0). v16.1..v17.0 done. Phase 260 LiveFragment browser-swap confirmed already Chrome-MCP-verified (2026-07-28) — stale memory corrected. ONLY v18.0 (current) remains in the backlog.
-last_updated: "2026-08-12T18:00:00.000Z"
+milestone: v16.4
+milestone_name: Work Distribution
+status: planned
+stopped_at: v18.0 archived 2026-08-12 (tag v18.0). The entire shipped backlog (v16.1..v18.0) is now archived (6 milestones this session). Current-milestone pointer moved to v16.4 Work Distribution (244–249, not yet planned/executed) per operator. Next: /gsd-plan-phase 244. Local tags v16.1..v18.0 not yet pushed.
+last_updated: "2026-08-12T19:00:00.000Z"
 last_activity: 2026-08-12
 progress:
   total_phases: 140
@@ -20,18 +20,18 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** v18.0 complete (Phase 263 verified 15/15) — milestone-close scope pending; archival backlog reconciled below.
+**Current focus:** v16.4 Work Distribution (Phases 244–249) — current milestone as of 2026-08-12; not yet planned. Next: `/gsd-plan-phase 244`. The entire shipped v16.x / v17.0 / v18.0 backlog is archived.
 
 ## Current Position
 
-Phase: 263 (v18.0, final phase)
-Plan: All complete
-Status: v18.0 complete — Phase 262 UAT 3/3, Phase 263 verified 15/15. Not archived; milestone-close scope pending.
+Phase: 244 (v16.4, first phase — not started)
+Plan: Not started
+Status: v16.4 Work Distribution is the current milestone (pointer moved here 2026-08-12 after the v16.1..v18.0 shipped backlog was fully archived). Not yet planned or executed.
 Last activity: 2026-08-12
 
-Current milestone v18.0 Projection-Native Frontend Substrate (Phase 263): derives an Inertia frontend's data, field schema, and permitted-actions from the same `ServiceDef` that drives the visual and MCP renderers; guard-visibility (`permitted_actions`) lifted out of `ferro-mcp-server` into `framework` so MCP `tools/list` and the Inertia substrate evaluate guards in one place. Shipped in-tree, not published (operator-gated publish at milestone close). Out of scope: generic JSON delivery (decoupled SPA / native), projection-derived JSX components (later, separate work).
+Current milestone v16.4 Work Distribution (Phases 244–249): mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). OFFLOAD-01..06. Note the inserted Phase 246.1 (shared-transport broadcast fan-out) prerequisite for multi-replica delta delivery. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Next: `/gsd-plan-phase 244`.
 
-Latest shipped: v18.0 Projection-Native Frontend Substrate (Phase 263), in-tree, unpublished. Prior published: v16.6 POS Component Suite (0.2.89 + ferro-payments 0.1.6, 2026-07-06, tag v0.2.89 + GitHub Release).
+Latest shipped: v18.0 Projection-Native Frontend Substrate (Phase 263), in-tree, unpublished, archived 2026-08-12 (tag v18.0). Prior published: v16.6 POS Component Suite (0.2.89 + ferro-payments 0.1.6, 2026-07-06, tag v0.2.89 + GitHub Release).
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
 Workspace version: 0.2.89 (master; ferro-payments independently versioned at 0.1.6). v17.0/v18.0 shipped in-tree; not yet published.
@@ -42,33 +42,28 @@ Single source of truth for what is archived vs shipped-but-unarchived. Supersede
 inline "not yet archived" note elsewhere in this file.
 
 **Archived** (both `milestones/v*-ROADMAP.md`/`-REQUIREMENTS.md` files *and* a `MILESTONES.md`
-entry): everything **through v16.0**, plus **v16.1 ferro-payments** (tag `v16.1`; 235/236
-live-Stripe items resolved first), **v16.2 ferro-inertia Shell** (tag `v16.2`), **v16.3 MCP CRUD**
-(tag `v16.3`), **v16.5 JSON-UI Design System** (tag `v16.5`; Phase 252 CLI-formatting UAT
-re-confirmed live), **v16.6 POS Component Suite** (tag `v16.6`; PASSED audit moved to milestones/),
-and **v17.0 Live Projection Surface** (tag `v17.0`; Phase 260 LiveFragment swap Chrome-MCP-verified)
-— requirements extracted from the accreted REQUIREMENTS.md (v16.3/v16.5/v16.6) or reconstructed from
-ROADMAP (v16.1/v16.2/v17.0); all archived 2026-08-12. (The earlier claim that v16.0 was a backlog
-item was stale and is corrected here.)
+entry): everything **through v18.0**. This session (2026-08-12) archived the entire shipped
+backlog — **v16.1 ferro-payments** (tag `v16.1`; 235/236 live-Stripe items resolved first),
+**v16.2 ferro-inertia Shell** (`v16.2`), **v16.3 MCP CRUD** (`v16.3`), **v16.5 JSON-UI Design
+System** (`v16.5`; Phase 252 CLI UAT re-confirmed live), **v16.6 POS Component Suite** (`v16.6`;
+PASSED audit moved to milestones/), **v17.0 Live Projection Surface** (`v17.0`; Phase 260 swap
+Chrome-MCP-verified), and **v18.0 Projection-Native Frontend Substrate** (`v18.0`; SUBST section
+extracted). Requirements were extracted from the accreted REQUIREMENTS.md
+(v16.3/v16.5/v16.6/v18.0) or reconstructed from ROADMAP (v16.1/v16.2/v17.0).
 
-**Shipped but NOT archived** (marked ✅ in ROADMAP, no `milestones/` files, no `MILESTONES.md`
-entry) — the true `/gsd-complete-milestone` backlog, oldest first:
+**Shipped backlog: fully cleared** — no shipped milestone remains unarchived. (Local tags
+`v16.1`..`v18.0` are not yet pushed; operator-gated publish of the in-tree v17.0/v18.0 work is
+still pending.)
 
-| Milestone | Phases | Notes |
-|-----------|--------|-------|
-| **v18.0 Projection-Native Frontend Substrate** (current — LAST) | 263 | **next to archive** (final backlog item); complete in-tree; requirements section IS in REQUIREMENTS.md (extract); no milestone audit yet; unpublished |
+**Current milestone:** **v16.4 Work Distribution** (Phases 244–249) — the pointer moved here after
+v18.0 archived (operator decision 2026-08-12). Not yet planned or executed; numbering was reserved
+244–249. Next: `/gsd-plan-phase 244`.
 
-**Queued, NOT shipped:** v16.4 Work Distribution (244–249) — activates only after v18.0.
-
-**REQUIREMENTS.md rotation (corrected 2026-08-12):** the working `.planning/REQUIREMENTS.md`
-is an **accreted multi-milestone file** — one `# Requirements — vX.Y` section per milestone,
-never rotated. It currently holds **v16.4** (queued), **v16.5** (complete), **v16.6**
-(complete), and **v18.0** (current). v16.3's section was extracted to
-`milestones/v16.3-REQUIREMENTS.md` and removed (2026-08-12). **v17.0 is the only shipped
-milestone NOT in this file** — its requirements are inline in ROADMAP (reconstruct at its
-close, as was done for v16.1/v16.2). For v16.5 / v16.6 / v18.0, **extract** the matching
-section into `milestones/vX.Y-REQUIREMENTS.md` and remove it — do NOT reconstruct, and do NOT
-delete the whole file. The file's top banner reflects this.
+**REQUIREMENTS.md (as of 2026-08-12):** every shipped milestone's section has been extracted to
+`milestones/vX.Y-REQUIREMENTS.md`. The working `.planning/REQUIREMENTS.md` now holds ONLY **v16.4
+Work Distribution** (OFFLOAD-01..06), the current milestone — when v16.4 is planned, that is its
+requirements file. (Historically it was an accreted multi-milestone file; that accretion is now
+resolved.)
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.
@@ -364,7 +359,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-12 (v16.1 + v16.2 + v16.3 + v16.5 + v16.6 + v17.0 milestone closes)
-Stopped at: v16.1/v16.2/v16.3/v16.5/v16.6/v17.0 archived (tags v16.1..v16.3, v16.5, v16.6, v17.0). REQUIREMENTS.md is an accreted multi-milestone file — only v16.4 (QUEUED) + v18.0 (CURRENT) remain in it. v17.0 requirements reconstructed from ROADMAP; Phase 260 LiveFragment browser-swap confirmed Chrome-MCP-verified 2026-07-28 (stale memory corrected). Continuing oldest-first.
+Last session: 2026-08-12 (v16.1 + v16.2 + v16.3 + v16.5 + v16.6 + v17.0 + v18.0 milestone closes)
+Stopped at: entire shipped backlog archived (tags v16.1, v16.2, v16.3, v16.5, v16.6, v17.0, v18.0). Current-milestone pointer moved to **v16.4 Work Distribution** (STATE `milestone: v16.4` + `🚧` ROADMAP marker agree). REQUIREMENTS.md now holds only v16.4 (OFFLOAD-01..06). All shipped verifications/UAT confirmed (252 CLI-lint re-run live; 260 LiveFragment already Chrome-MCP-verified; 235/236 live-Stripe resolved).
 Resume file: None
-Next action: `/gsd-complete-milestone v18.0` — the LAST backlog item (current milestone, Phase 263). **v18.0's requirements section IS in REQUIREMENTS.md (SUBST-01..05) — extract it (leaving only v16.4 QUEUED). No v18.0 milestone audit exists** (step-0 would suggest `/gsd-audit-milestone`, though it shipped in-tree and verified 15/15). After v18.0, the whole shipped backlog is archived; remaining is v16.4 (queued, activates later) and the operator-gated publish decision + the unpushed commits/tags (v16.1..v17.0). ferro-cli debug binary built. gestiscilo register phase unblocked on ferro-rs 0.2.89.
+Next action: two things pending. (1) **Push** — 7 local archive commits + tags v16.1..v18.0 are unpushed (docs-only; a `v16.x` planning tag does NOT trigger crates.io publish). (2) **Operator-gated publish** — v17.0/v18.0 shipped in-tree, unpublished; a version bump + push triggers the GH-Actions crates.io publish. Then start v16.4: `/gsd-plan-phase 244` (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). ferro-cli debug binary built. gestiscilo register phase unblocked on ferro-rs 0.2.89. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).

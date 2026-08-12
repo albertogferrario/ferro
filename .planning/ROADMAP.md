@@ -74,7 +74,8 @@
 - ✅ [**v16.5 JSON-UI Design System**](milestones/v16.5-ROADMAP.md) — Phases 250-253 (shipped 2026-07-04, 0.2.86; consumer-paired with gestiscilo Phase 232). Completes the design system above the token layer: density/motion/focus-ring tokens with opinionated defaults (23 → 30 slots), canonical `variant`/`tone`/`size` enums across all 47 components, and composition patterns codified as machine-readable intent-keyed lint rules (`design::lint`, `ferro design:lint`, `design_lint` MCP tool). Single publish at Phase 253. Anchor spec: `docs/superpowers/specs/2026-07-03-json-ui-design-system-design.md`.
 - ✅ [**v16.6 POS Component Suite**](milestones/v16.6-ROADMAP.md) — Phases 254-258 (shipped 2026-07-06, 0.2.89; consumer-paired with gestiscilo's register/counter mode). Touch-first sale-screen components in the ferro-json-ui builtin catalog — TileGrid, SelectionPanel, FilterTabs, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` through the Collect/Register projection layer, agent-authorable through the v16.5 MCP + design-lint boundary. Domain-neutral catalog vocabulary; no new crate. Milestone audit PASSED. Independent of v16.4 (reserved 244–249).
 - ✅ [**v17.0 Live Projection Surface**](milestones/v17.0-ROADMAP.md) — Phases 259-262 (shipped 2026-07-26; single operator-gated publish per Phase 262). A declarative `LiveFragment` element binds a rendered fragment to a `ferro-projection` per-key snapshot and re-renders in place on delta — server-authoritative, no WASM — making the singular projection runtime a first-class, agent-composable, MCP-introspectable JSON-UI rendering target. Supporting ergonomics: request-scoped `#[memoize]` (render-path fetch dedup) and a one-line `asset!()` over the existing bundle/pipeline crates. Single publish at Phase 262. Anchor spec: `docs/superpowers/specs/2026-07-21-live-projection-surface-design.md`.
-- 🚧 **v18.0 Projection-Native Frontend Substrate** — Phase 263 (planned 2026-07-27). Derive a custom (Inertia) frontend's data, field schema, and permitted-actions from the same `ServiceDef` that already drives the visual and MCP renderers, so an Inertia page binds to one declaration; reuse the channel-agnostic `dispatch_write` kernel for that frontend's writes. The one structural change lifts guard-visibility (`permitted_actions`) out of `ferro-mcp-server` into `framework` so MCP `tools/list` and the Inertia substrate evaluate guards in exactly one place. Generic JSON delivery (decoupled SPA / native) and projection-derived JSX components are sequenced as later, separate work. Single publish at milestone end. Anchor spec: `docs/superpowers/specs/2026-07-27-headless-projection-substrate-design.md`.
+- ✅ [**v18.0 Projection-Native Frontend Substrate**](milestones/v18.0-ROADMAP.md) — Phase 263 (shipped in-tree 2026-07-27; publish operator-gated). Derive a custom (Inertia) frontend's data, field schema, and permitted-actions from the same `ServiceDef` that already drives the visual and MCP renderers, so an Inertia page binds to one declaration; reuse the channel-agnostic `dispatch_write` kernel for that frontend's writes. The one structural change lifts guard-visibility (`permitted_actions`) out of `ferro-mcp-server` into `framework` so MCP `tools/list` and the Inertia substrate evaluate guards in exactly one place. Generic JSON delivery (decoupled SPA / native) and projection-derived JSX components are sequenced as later, separate work.
+- 🚧 **v16.4 Work Distribution — `#[offload]` Service Methods** — Phases 244-249 (CURRENT milestone as of 2026-08-12; not yet planned/executed). Mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). Numbering reserved 244–249; activates now that the shipped v16.x / v17.0 / v18.0 backlog is archived. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`.
 
 ---
 
@@ -3259,7 +3260,7 @@ CRUD-01..07 — full details archived in [milestones/v16.3-ROADMAP.md](milestone
 Delivered: an opted-in projection derives `create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>` MCP tools with zero hand-written tool code, dispatched through the single `framework::write` kernel via `derive_crud_plan` (no second dispatcher). Soft-delete + confirmation gating + server-injected tenant + non-disclosure; Phase 243.1 added computed/derived fields.
 
 
-## v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249)
+## 🚧 v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249) — CURRENT (as of 2026-08-12)
 
 **Status:** Queued behind v16.3 Phase 243 (v16.3 stays the current milestone until 243
 closes; these phases continue the numbering and are planned/executed after it).
@@ -3440,112 +3441,11 @@ Delivered: a declarative `LiveFragment` element binds a rendered fragment to a `
 
 ---
 
-## v18.0 Projection-Native Frontend Substrate (Phase 263)
+## ✅ v18.0 Projection-Native Frontend Substrate (Phase 263) — Shipped in-tree 2026-07-27 (publish operator-gated)
 
-**Status:** Planned (created 2026-07-27 from committed anchor spec). Phase numbering continues
-at 263, following v17.0 Live Projection Surface (259–262). Steps 2 (generic JSON delivery mode)
-and 3 (projection-native JSX component derivation) from the spec's sequencing are deferred to
-later, separate work and are not yet phases.
+SUBST-01..05 — full details archived in [milestones/v18.0-ROADMAP.md](milestones/v18.0-ROADMAP.md).
 
-**Goal:** `ferro-inertia` is projection-blind today — an Inertia page hand-authors its props,
-so it does not receive the projection's data, its field schema/meanings/validations, or the
-set of actions currently permitted for a record (all of which the visual and MCP surfaces
-already compute from the same `ServiceDef`/`ActionDef` declaration and guards). Close those
-three missing derivations once and deliver them Inertia-first: a pure `schema_contract`
-derivation, a tenant-scoped data query shaped by the field set, and a `permitted_actions`
-evaluation — attached to an Inertia page in one `Inertia::from_projection` call. Writes reuse
-the existing `dispatch_write` kernel unchanged. These are missing derivations, not new
-coupling: the operability layer is already renderer-independent.
-
-**Anchor spec:** `docs/superpowers/specs/2026-07-27-headless-projection-substrate-design.md`
-(design, non-goals, open questions for planning, sequencing).
-
-**Builds on shipped work:**
-- `framework::write::dispatch_write` (`framework/src/write/mod.rs`) — the channel-agnostic
-  transition kernel (Phase 231/232); the Inertia write surface reuses it at `channel = "web"`.
-- `ferro-mcp-server` `tools/list` guard filter — the current home of "which actions are
-  permitted"; this milestone lifts that logic into `framework` (the one refactor).
-- `ferro-projections` — `ServiceDef`, `ActionDef`, `derive_intents()`; `schema_contract` is a
-  pure sibling that renders nothing.
-- `ferro-inertia` — the delivery target; `Inertia::from_projection` lives here per the
-  renderer-location rule (output-crate delivery, not `ferro-projections`).
-- `ferro-json-ui` `GET /data/{service}` convention (`projection/builder.rs`) — the read shape
-  the data derivation formalizes.
-
-**Architectural constraints (encoded in the phase goal):**
-- One structural change only: after the refactor, guards are evaluated in exactly ONE place;
-  `ferro-mcp-server` and `ferro-inertia` both call `framework`'s `permitted_actions(...)`. No
-  new duplicate control surface.
-- No new write path — Inertia forms route through the existing `dispatch_write(channel="web")`.
-- `SchemaContract` is schema-level and dependency-free (leaning `ferro-projections`); the
-  Inertia delivery helper stays in `ferro-inertia`.
-- No new auth model — Inertia reuses same-origin session/cookie + CSRF; the generic JSON
-  mode's token/CORS story is deferred with that mode.
-- JSON-UI's role is unchanged (the velocity path); this substrate is the customization path.
-- Generic JSON delivery mode and projection-native JSX component derivation are out of scope
-  (later, separate specs).
-
-### Phases
-
-- [x] **Phase 263: Projection-native Inertia substrate** — `schema_contract(&ServiceDef)` (completed 2026-07-27)
-  derivation (pure, in `ferro-projections`); the `permitted_actions` lift from
-  `ferro-mcp-server` into `framework` (shared by MCP `tools/list` and Inertia);
-  `Inertia::from_projection` delivering `{ schema, data, permitted_actions }` props,
-  tenant-scoped; write reuse through `dispatch_write(channel="web")`; single-source parity
-  tests (permitted-actions Inertia↔MCP, write parity, schema snapshot, data tenant-scoping).
-
-### Phase Details
-
-#### Phase 263: Projection-native Inertia substrate
-**Goal:** From one `ServiceDef`, derive a custom (Inertia) frontend's
-props = `{ schema, data, permitted_actions }` and deliver them to an Inertia page in one
-`Inertia::from_projection` call; route that frontend's writes through the existing
-channel-agnostic `dispatch_write` kernel; and lift guard-visibility (`permitted_actions`) out
-of `ferro-mcp-server` into `framework` so the MCP `tools/list` filter and the Inertia
-substrate evaluate guards in exactly one place.
-**Depends on:** `framework::write::dispatch_write` + `GuardEvaluatorFn` (Phase 231/232);
-`ferro-mcp-server` `tools/list` guard filter (the extraction source); `ferro-projections`
-(`ServiceDef`/`ActionDef`, `derive_intents` sibling); `ferro-inertia` (delivery target).
-**Requirements:** SUBST-01, SUBST-02, SUBST-03, SUBST-04, SUBST-05.
-**Success Criteria** (what must be TRUE):
-  1. `schema_contract(&ServiceDef) -> SchemaContract` returns the field set, meanings,
-     validations, and action definitions; a snapshot test matches the declaration. The
-     derivation is pure and dependency-free (renders nothing) and lives in `ferro-projections`.
-  2. `permitted_actions(service, record, tenant, ctx)` lives in `framework` and is called by
-     BOTH `ferro-mcp-server` (`tools/list`) and `ferro-inertia`; no guard-visibility logic
-     remains duplicated in `ferro-mcp-server` (one guard-evaluation site).
-  3. Permitted-actions parity (single source): for a record in a given state, the set from
-     `permitted_actions(...)` equals the guard-filtered set MCP `tools/list` returns for the
-     same record and tenant; changing state changes both identically (mirrors
-     `single_source_both_channels`).
-  4. `Inertia::from_projection(req, service, query)` loads tenant-scoped data, attaches the
-     `SchemaContract` and per-record `permitted_actions`, and serializes them as Inertia
-     props; the helper lives on the framework-side Inertia facade
-     (`framework/src/inertia/projection.rs`), not in the pure `ferro-projections` crate.
-     (Corrected 2026-07-27: `framework` already depends on `ferro-inertia`, so the spec's literal
-     `ferro-inertia` placement is a Cargo cycle — same class as Phase 261's `ferro-bundle`.)
-  5. Data reads are tenant-scoped (cross-tenant ids are not found) and filter/limit shaping
-     matches the `ServiceDef` field set.
-  6. Write parity: an Inertia `POST /{service}/{action}` reaches the same
-     `dispatch_write(channel="web")` kernel (guard re-eval + audit) MCP reaches — no new
-     write path, no new failure semantics.
-
-**Plans:** 5/5 plans complete
-- [x] 263-01-PLAN.md — schema_contract(&ServiceDef) pure derivation in ferro-projections (SUBST-01)
-- [x] 263-02-PLAN.md — lift permitted_actions into framework; refactor MCP tools/list to call it (SUBST-02)
-- [x] 263-03-PLAN.md — relocate the tenant-scoped data query into framework::projection_read (SUBST-03 data core)
-- [x] 263-04-PLAN.md — Inertia::from_projection delivery helper + write reuse via dispatch_write(channel="web") (SUBST-03/04)
-- [x] 263-05-PLAN.md — single-source parity + tenant-scoping + write-parity tests (SUBST-05)
-
-### Requirement → Phase Mapping (v18.0)
-
-| Requirement | Phase |
-|-------------|-------|
-| SUBST-01 (`schema_contract(&ServiceDef)` pure derivation in `ferro-projections`) | Phase 263 |
-| SUBST-02 (`permitted_actions` lifted into `framework`, shared by MCP `tools/list` + Inertia) | Phase 263 |
-| SUBST-03 (`Inertia::from_projection` delivering schema+data+permitted-actions props, tenant-scoped) | Phase 263 |
-| SUBST-04 (write reuse through `dispatch_write(channel="web")`; no new write path) | Phase 263 |
-| SUBST-05 (single-source parity + tenant-scoping test contracts) | Phase 263 |
+Delivered: derive a custom (Inertia) frontend's data, field schema, and permitted-actions from the same `ServiceDef`/`ActionDef` that drives the visual and MCP surfaces, delivered in one `Inertia::from_projection` call; writes reuse `dispatch_write(channel="web")`. The one structural change lifts `permitted_actions` from `ferro-mcp-server` into `framework` — guards evaluated in exactly one place. Phase 263 verified 15/15; dogfood `/orders` page tracked.
 
 ---
 
