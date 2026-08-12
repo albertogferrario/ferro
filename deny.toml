@@ -44,23 +44,22 @@ ignore = [
     # the Boring backend is not enabled. Not applicable in our build.
     "RUSTSEC-2026-0141",
 
-    # proc-macro-error2 2.0.1 — unmaintained (INFO). Compile-time proc-macro helper,
-    # runs only at build, zero runtime surface. No patched version exists. Transitive
-    # via sea-bae -> sea-orm-macros -> sea-orm; removable only when sea-orm migrates
-    # off it. Same class as the paste/instant ignores above.
-    "RUSTSEC-2026-0173",
-
     # http-types 2.12.0 — unmaintained (INFO). Notice that Authorization::value /
     # WwwAuthenticate::value can violate documented ASCII invariants via safe code;
     # unconfirmed UB, no patched version. Transitive via async-stripe 0.41 ->
     # ferro-stripe. Tracked debt: revisit when async-stripe drops http-types.
     "RUSTSEC-2026-0174",
 
-    # crossbeam-epoch 0.9.18 — invalid pointer dereference in the fmt::Pointer impl for
-    # Atomic/Shared (RUSTSEC-2026-0204). Only manifests when Display-formatting a pointer
-    # created via Atomic::null/Shared::null — a path ferro never exercises. Transitive via
-    # swc -> ferro-json-ui. Patched in >=0.9.20; remove this ignore when swc bumps the dep.
-    "RUSTSEC-2026-0204",
+    # rkyv 0.7.46 — insufficient shared-pointer validation allows out-of-bounds reads
+    # when validating an untrusted archive containing multiple Rc/Arc/weak pointers that
+    # share a data address but carry different metadata (RUSTSEC-2026-0235). Reachable
+    # only through the checked APIs (rkyv::from_bytes / rkyv::access) on untrusted input.
+    # Transitive via parcel_sourcemap -> lightningcss -> ferro-assets, where rkyv only
+    # serializes CSS source maps the asset pipeline generates itself; ferro never calls
+    # rkyv directly and never validates a third-party archive. The 0.7 series has no
+    # patched release (fixed only in >=0.8.17); remove this ignore when lightningcss
+    # bumps parcel_sourcemap onto rkyv 0.8.17+.
+    "RUSTSEC-2026-0235",
 ]
 
 [licenses]
