@@ -60,6 +60,12 @@ ignore = [
     # patched release (fixed only in >=0.8.17); remove this ignore when lightningcss
     # bumps parcel_sourcemap onto rkyv 0.8.17+.
     "RUSTSEC-2026-0235",
+
+    # smartstring 1.0.1 — unmaintained (INFO, RUSTSEC-2026-0249). Small-string helper
+    # used inside the swc parser; runs only at asset-build time, no runtime surface.
+    # Transitive via swc_ecma_parser -> swc -> ferro-assets. Same class as the
+    # instant/paste ignores above; revisit when swc drops the dependency.
+    "RUSTSEC-2026-0249",
 ]
 
 [licenses]
