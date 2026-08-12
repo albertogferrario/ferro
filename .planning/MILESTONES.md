@@ -1,5 +1,26 @@
 # Project Milestones: Ferro Framework
 
+## v17.0 Live Projection Surface (Shipped: 2026-07-26)
+
+**Delivered:** A declarative `LiveFragment` element binds a rendered fragment to a `ferro-projection` per-key snapshot and re-renders in place on delta — server-authoritative, no WASM — making the singular projection runtime a first-class, agent-composable, MCP-introspectable JSON-UI rendering target. Plus request-scoped `#[memoize]` (render-path fetch dedup) and a one-line `asset!()`. Phases complete 2026-07-26; single operator-gated publish.
+
+**Phases completed:** 4 phases (259-262), 14 plans
+
+**Key accomplishments:**
+
+- **`LiveFragment`** (killer feature) — binds a child template to a projection key, renders the snapshot on first paint, re-renders in place on each delta; a no-WASM client runtime opens the `ferro-broadcast` socket and swaps inner HTML only. Live DOM swap verified first-hand via Chrome MCP (2026-07-28)
+- Request-scoped `#[memoize]` — `MemoStore` in request extensions, fan-out dedup + concurrent coalescing, wired into the `ServiceDef → IntentGraph` render pass (N intents over one key → one fetch)
+- `asset!("path")` macro — embed + content-type inference + content-hashed `ferro-bundle` URL; opt-in `ferro assets fetch` for Iconify/Fontsource on the Rust toolchain alone
+- `ferro-mcp` catalog + `generation_context` guidance for all three; `docs/src` sections; single operator-gated publish
+
+**Requirements:** 4/4 complete (LIVE-01..04). No open items — all verifications passed; Phase 260 LiveFragment browser-swap confirmed live via Chrome MCP.
+
+**Stats:** 4 phases, 14 plans. No new crate — authoring primitives over already-shipped substrate (projection delta broadcast, bundle content-hashing, Request extensions).
+
+**Archive:** [milestones/v17.0-ROADMAP.md](milestones/v17.0-ROADMAP.md) · [milestones/v17.0-REQUIREMENTS.md](milestones/v17.0-REQUIREMENTS.md)
+
+---
+
 ## v16.6 POS Component Suite (Shipped: 2026-07-06)
 
 **Delivered:** Touch-first sale-screen components in the ferro-json-ui builtin catalog — TileGrid (integrated search + filter strip), SelectionPanel, FilterTabs, QuantityStepper, Numpad — at a tablet interaction quality bar, derivable from a `ServiceDef` via the Collect/Register projection layer and agent-authorable through the v16.5 MCP + design-lint boundary. Published 0.2.89. Consumer-paired with gestiscilo register/counter mode.
