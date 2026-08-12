@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v16.4
-milestone_name: Work Distribution
-status: planned
-stopped_at: v18.0 archived 2026-08-12 (tag v18.0). The entire shipped backlog (v16.1..v18.0) is now archived (6 milestones this session). Current-milestone pointer moved to v16.4 Work Distribution (244–249, not yet planned/executed) per operator. Next: /gsd-plan-phase 244. Tags v16.1..v18.0 + docs pushed 2026-08-12 (merged the remote 0.3.9 bump); crates.io ferro-rs already at 0.3.9 (v17.0/v18.0 code published — nothing to publish).
-last_updated: "2026-08-12T19:00:00.000Z"
+milestone_name: "Work Distribution — `#[offload]` Service Methods"
+status: v16.4 Work Distribution is the current milestone (pointer moved here 2026-08-12 after the v16.1..v18.0 shipped backlog was fully archived). Not yet planned or executed.
+stopped_at: Phase 244 context gathered
+last_updated: "2026-08-12T23:52:16.389Z"
 last_activity: 2026-08-12
 progress:
-  total_phases: 140
-  completed_phases: 120
-  total_plans: 491
-  completed_plans: 490
+  total_phases: 114
+  completed_phases: 96
+  total_plans: 395
+  completed_plans: 394
   percent: 100
 ---
 
@@ -359,7 +359,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-12 (v16.1 + v16.2 + v16.3 + v16.5 + v16.6 + v17.0 + v18.0 milestone closes)
-Stopped at: entire shipped backlog archived (tags v16.1, v16.2, v16.3, v16.5, v16.6, v17.0, v18.0). Current-milestone pointer moved to **v16.4 Work Distribution** (STATE `milestone: v16.4` + `🚧` ROADMAP marker agree). REQUIREMENTS.md now holds only v16.4 (OFFLOAD-01..06). All shipped verifications/UAT confirmed (252 CLI-lint re-run live; 260 LiveFragment already Chrome-MCP-verified; 235/236 live-Stripe resolved).
-Resume file: None
+Last session: 2026-08-12T23:52:16.350Z
+Stopped at: Phase 244 context gathered
+Resume file: .planning/phases/244-offload-macro-job-payload-derivation/244-CONTEXT.md
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
