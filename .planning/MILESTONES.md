@@ -1,5 +1,26 @@
 # Project Milestones: Ferro Framework
 
+## v16.5 JSON-UI Design System (Shipped: 2026-07-04)
+
+**Delivered:** The design system above the token layer — density/motion/focus-ring tokens with opinionated defaults, a canonical `variant`/`tone`/`size` vocabulary across all 47 builtin components, and composition patterns codified as machine-readable, intent-keyed lint rules enforced at the agent-authoring boundary. Published 0.2.86. Consumer-paired with gestiscilo Phase 232.
+
+**Phases completed:** 4 phases (250-253), 18 plans
+
+**Key accomplishments:**
+
+- Token vocabulary v2: 23 → 30 slots (density, motion ×4, focus ring, display font), every new slot with a default so **every valid v1 theme stays valid v2 unchanged**; refreshed `default.css` design language
+- Canonical `variant`/`tone`/`size` enums across all 47 components + interactive-state quality bar (hover, `focus-visible` ring, disabled, frequency-tiered motion) + consumer migration table
+- `Spec.design` field + pure `design::lint(&Spec)` engine with ~10 intent-keyed rules + `ferro design:lint [--json] [--deny]` CLI
+- `design_lint` MCP tool + `json_ui_catalog`/`generation_context` design-system extensions + `docs/src/design-system/` chapter — the system is **enforced at the agent-authoring boundary** (read via MCP, validated by lint, before human review)
+
+**Requirements:** 8/8 complete (DS-01..08). Phase 252 CLI-formatting UAT re-confirmed live at close (2026-08-12).
+
+**Stats:** 4 phases, 18 plans. No new crate (rules in ferro-json-ui, tokens in ferro-theme); lint diagnostics-only.
+
+**Archive:** [milestones/v16.5-ROADMAP.md](milestones/v16.5-ROADMAP.md) · [milestones/v16.5-REQUIREMENTS.md](milestones/v16.5-REQUIREMENTS.md)
+
+---
+
 ## v16.3 MCP CRUD Data Surface (Track A) (Shipped: 2026-06-24)
 
 **Delivered:** A projection that opts in (`.creatable`/`.updatable`/`.deletable` + `.mcp_write_ability`) derives a complete, safe, tenant-scoped CRUD interface — `create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>` — as MCP tools with zero hand-written tool code. Shipped in 0.2.80. Track A of the four-track MCP capability program.

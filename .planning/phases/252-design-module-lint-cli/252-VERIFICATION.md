@@ -1,7 +1,8 @@
 ---
 phase: 252-design-module-lint-cli
 verified: 2026-07-03T00:00:00Z
-status: human_needed
+status: passed
+resolved: 2026-08-12 — CLI output-formatting UAT re-run live from repo root (matches 252-HUMAN-UAT passed 2026-07-28). Clean tree prints "No findings — all specs are clean." (exit 0); findings-present tree groups by file with indented severity/[rule-id]/message + `→` suggestion + summary line; `--deny` exits 0 on an info-only tree. Readable and correct.
 score: 6/6
 overrides_applied: 0
 human_verification:
@@ -14,7 +15,7 @@ human_verification:
 
 **Phase Goal:** Codify composition patterns as a machine-readable, testable rule set — `Spec` gains an optional `design` field (`intent` + `allow`), a pure `design::lint(&Spec)` engine implements the intent-keyed rules, and `ferro design:lint` surfaces findings from the command line.
 **Verified:** 2026-07-03
-**Status:** human_needed
+**Status:** passed (CLI-formatting UAT confirmed live 2026-08-12; see 252-HUMAN-UAT.md)
 **Re-verification:** No — initial verification
 
 ## Summary
