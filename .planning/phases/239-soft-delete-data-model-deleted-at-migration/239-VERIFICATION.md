@@ -1,8 +1,8 @@
 ---
 phase: 239-soft-delete-data-model-deleted-at-migration
-verified: 2026-06-23T00:00:00Z
-status: human_needed
-score: 4/4
+verified: 2026-07-28T00:00:00Z
+status: complete
+score: 4/4 + human verified
 overrides_applied: 0
 human_verification:
   - test: "Run `db:migrate` against a live Postgres instance after applying Phase 239 commits. Confirm the migration applies clean and the `deleted_at` column is nullable (no NOT NULL constraint, no default) on the `orders` table."

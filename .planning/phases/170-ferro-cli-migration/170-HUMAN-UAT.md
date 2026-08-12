@@ -22,14 +22,19 @@ result: [pending]
 
 ### 3. Static fallback when unconfigured (SC#3 fallback path)
 expected: With all `FERRO_AI_*` and `ANTHROPIC_API_KEY` unset, `ferro make:json-view foo --description "x"` prints the informational message and writes a valid static-template spec (no crash).
-result: [pending]
+result: pass
+evidence: >
+  Confirmed 2026-07-28: ran `ferro make:json-view test_view --description "x"` in /tmp with no AI
+  env vars set. Output: info message "No AI provider configured. Set FERRO_AI_API_KEY..." then
+  "✓ Created src/views/test_view.json". Generated file is valid ferro-json-ui/v2 JSON (2 elements,
+  correct $schema). No crash, correct fallback path. Exit 0.
 
 ## Summary
 
 total: 3
-passed: 0
+passed: 1
 issues: 0
-pending: 3
+pending: 2
 skipped: 0
 blocked: 0
 
