@@ -1,7 +1,8 @@
 ---
 phase: 235-ferro-payments-webhook-sync-dispatcher-integration-and-auto
 verified: 2026-06-17T00:00:00Z
-status: human_needed
+status: passed
+resolved: 2026-08-12 — human sign-offs closed (see 235-HUMAN-UAT.md): is_transient confirmed 2026-07-28; the two live-webhook items (auto-refund reach, stuck-refund recovery) deferred-closed as phase-236 scope / unit-tested + in production. CR-01/WR/IN tracked for 0.1.1.
 score: 12/12
 overrides_applied: 0
 human_verification:
@@ -20,7 +21,7 @@ human_verification:
 
 **Phase Goal:** Implement `wire_dispatcher` registering three typed-event handlers (OnCheckoutCompleted/Expired/OnChargeRefunded) on the caller's SyncDispatcher. Implement PaymentService::handle_session_completed/_expired/_charge_refunded with idempotency via ProcessedEventLog, transactional dispatch to Billable::on_paid/on_released/on_refunded, and auto-refund fallback for loader-None and billable-already-in-side-state. Race-condition tests: webhook + reaper interleaved, webhook replay, loader-not-found.
 **Verified:** 2026-06-17
-**Status:** human_needed
+**Status:** passed (human sign-offs closed 2026-07-28; see 235-HUMAN-UAT.md — is_transient confirmed, two live-webhook items deferred-closed as phase-236 scope)
 **Re-verification:** No — initial verification
 
 ---

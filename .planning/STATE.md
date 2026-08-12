@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v18.0
 milestone_name: Projection-Native Frontend Substrate
 status: complete
-stopped_at: Phase 262 UAT passed (3/3) — 2026-08-02; Phase 263 verified (15/15) — 2026-07-27; v18.0 milestone ready for /gsd-complete-milestone
-last_updated: "2026-08-12T00:00:00.000Z"
+stopped_at: v16.1 ferro-payments archived 2026-08-12 (tag v16.1; 235/236 live-Stripe items resolved first). Remaining backlog oldest-first: v16.2/16.3/16.5/16.6/17.0, then current+complete v18.0.
+last_updated: "2026-08-12T13:00:00.000Z"
 last_activity: 2026-08-12
 progress:
   total_phases: 140
@@ -20,21 +20,52 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 263 — projection-native-inertia-substrate
+**Current focus:** v18.0 complete (Phase 263 verified 15/15) — milestone-close scope pending; archival backlog reconciled below.
 
 ## Current Position
 
-Phase: 263
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-08-02
+Phase: 263 (v18.0, final phase)
+Plan: All complete
+Status: v18.0 complete — Phase 262 UAT 3/3, Phase 263 verified 15/15. Not archived; milestone-close scope pending.
+Last activity: 2026-08-12
 
-Milestone v16.6: touch-first sale-screen builtins in ferro-json-ui (product grid/tile, cart panel, numpad, quantity stepper, category navigation), tablet interaction quality bar on the v16.5 tokens, projection → register within the seven-intent vocabulary, agent-authoring via MCP + design-lint. Consumer-paired with gestiscilo's register/counter mode (seed finding: `253-FRICTION.md` picker-promotion). Phase numbering continues at 254. Out of scope: payment flow, receipts, shift close.
+Current milestone v18.0 Projection-Native Frontend Substrate (Phase 263): derives an Inertia frontend's data, field schema, and permitted-actions from the same `ServiceDef` that drives the visual and MCP renderers; guard-visibility (`permitted_actions`) lifted out of `ferro-mcp-server` into `framework` so MCP `tools/list` and the Inertia substrate evaluate guards in one place. Shipped in-tree, not published (operator-gated publish at milestone close). Out of scope: generic JSON delivery (decoupled SPA / native), projection-derived JSX components (later, separate work).
 
-Latest shipped: v16.6 POS Component Suite (Phases 254–258, published 0.2.89 + ferro-payments 0.1.6 on 2026-07-06; tag v0.2.89 + GitHub Release with binaries). Shipped but **not yet archived** (`/gsd-complete-milestone` backlog): v16.0 (231–232), v16.1 ferro-payments (233–236), v16.2 inertia first-load shell (238), v16.3 MCP CRUD Track A (239–243 + 243.1, 0.2.80), v16.5 JSON-UI Design System (250–253, 0.2.86), v16.6 (254–258). v16.4 Work Distribution (244–249) queued.
+Latest shipped: v18.0 Projection-Native Frontend Substrate (Phase 263), in-tree, unpublished. Prior published: v16.6 POS Component Suite (0.2.89 + ferro-payments 0.1.6, 2026-07-06, tag v0.2.89 + GitHub Release).
 Prior: v15.0 ✅ Agent-Operable App / Consumer MCP (217–221); v14.0 ✅ Channel Projection (215–216); v13.x ✅ (207–214).
 
-Workspace version: 0.2.89 (master; ferro-payments independently versioned at 0.1.6).
+Workspace version: 0.2.89 (master; ferro-payments independently versioned at 0.1.6). v17.0/v18.0 shipped in-tree; not yet published.
+
+## Archival Backlog (reconciled 2026-08-12)
+
+Single source of truth for what is archived vs shipped-but-unarchived. Supersedes any
+inline "not yet archived" note elsewhere in this file.
+
+**Archived** (both `milestones/v*-ROADMAP.md`/`-REQUIREMENTS.md` files *and* a `MILESTONES.md`
+entry): everything **through v16.0**, plus **v16.1 ferro-payments** (archived 2026-08-12,
+tag `v16.1`; 235/236 live-Stripe items resolved first). (The earlier claim that v16.0 was a
+backlog item was stale and is corrected here.)
+
+**Shipped but NOT archived** (marked ✅ in ROADMAP, no `milestones/` files, no `MILESTONES.md`
+entry) — the true `/gsd-complete-milestone` backlog, oldest first:
+
+| Milestone | Phases | Notes |
+|-----------|--------|-------|
+| v16.2 ferro-inertia First-Load Shell | 238 | shipped in 0.2.x — **next to archive** |
+| v16.3 MCP CRUD Data Surface (Track A) | 239–243 + 243.1 | shipped 0.2.80; **`REQUIREMENTS.md` currently holds this milestone** |
+| v16.5 JSON-UI Design System | 250–253 | shipped 0.2.86 |
+| v16.6 POS Component Suite | 254–258 | shipped 0.2.89; **has a PASSED `v16.6-MILESTONE-AUDIT.md` (2026-07-07)** |
+| v17.0 Live Projection Surface | 259–262 | phases complete 2026-07-26; publish operator-gated; **verify Phase 260 LiveFragment Chrome-MCP swap is closed before archiving** |
+| **v18.0 Projection-Native Frontend Substrate** (current) | 263 | complete in-tree; no milestone audit yet; unpublished |
+
+**Queued, NOT shipped:** v16.4 Work Distribution (244–249) — activates only after v18.0.
+
+**REQUIREMENTS.md rotation drift:** the working `.planning/REQUIREMENTS.md` still holds **v16.3**
+requirements. v16.5 / v16.6 / v17.0 / v18.0 roadmaps were brainstorm-created (not
+`/gsd-new-milestone`), so their requirements live inline in ROADMAP and the working file was
+never rotated. On the eventual close, archive v16.3's requirements to
+`milestones/v16.3-REQUIREMENTS.md`; there is no separate REQUIREMENTS.md to archive for the
+later milestones. The file carries a self-describing banner reflecting this.
 
 > **Operator actions pending (from v14.0 / prior milestones):**
 > - 0.2.56 (v13.1 CRUD proc macros + v13.3 scaffold parity) bumped locally, not yet published — push to trigger auto-publish.
@@ -330,7 +361,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-11T02:18:14.989Z
-Stopped at: context exhaustion at 90% (2026-08-11)
+Last session: 2026-08-12 (v16.1 milestone close)
+Stopped at: v16.1 ferro-payments archived (tag v16.1). 235/236 live-Stripe UAT/verification resolved first (236 e2e re-confirmed live via Stripe CLI test mode; 235 webhook items deferred-closed). Continuing the backlog oldest-first.
 Resume file: None
-Next action: `/gsd-complete-milestone v16.6` (archive backlog also holds v16.0/16.1/16.2/16.3/16.5); gestiscilo register phase unblocked on ferro-rs 0.2.89.
+Next action: `/gsd-complete-milestone v16.2` (next in backlog). Remaining after v16.1: v16.2, v16.3, v16.5, v16.6, v17.0, then current+complete v18.0 — see "## Archival Backlog" above for the authoritative list and the REQUIREMENTS.md drift note (working REQUIREMENTS.md still holds v16.3). Before closing v17.0, verify Phase 260 LiveFragment Chrome-MCP swap is closed. gestiscilo register phase unblocked on ferro-rs 0.2.89.

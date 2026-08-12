@@ -1,5 +1,31 @@
 # Project Milestones: Ferro Framework
 
+## v16.1 ferro-payments — Polymorphic Billable Layer (Shipped: 2026-06-21)
+
+**Delivered:** A new project-agnostic workspace crate `ferro-payments` — a polymorphic `PaymentIntent` entity and `Billable` trait letting consumer apps take Stripe payments for any first-class entity, reusing the existing `ferro-stripe` surface. Published as `ferro-payments 0.1.0`.
+
+**Phases completed:** 4 phases (233-236), 18 plans
+
+**Key accomplishments:**
+
+- Polymorphic `payment_intents` entity keyed on `(billable_kind, billable_id)` with a cross-backend migration (Postgres/SQLite/MySQL) and a partial unique index over the active statuses
+- `Billable` / `BillableLoader` traits + `PaymentService<L>` (`start_checkout` via `CheckoutBuilder`, `request_refund`) behind a `StripeGateway` seam for offline unit tests
+- Webhook `SyncDispatcher` integration: idempotent `handle_session_completed`/`_expired`/`_charge_refunded` with a money-safe `is_transient` boundary and auto-refund fallback deduped by `refund_amount_cents IS NULL`
+- `ReleaseExpiredPaymentIntents` + `ReconcileRefundsInFlight` reapers as ferro-queue Job structs; end-to-end integration test against Stripe test mode
+- Published `ferro-payments 0.1.0` (independently versioned; later 0.1.6), unblocking the first consumer (gestiscilo booking upfront payment)
+
+**Requirements:** 19/19 complete (PAY-POLY-DM-01..04, SVC-01..05, WH-01..06, REAP-01..04). Automated verification 235:12/12, 236:8/8; live e2e passed against Stripe test mode (2026-07-28, re-confirmed 2026-08-12).
+
+**Known deferred items (0.1.1 backlog):** CR-01 (`charge_id` not persisted → manual `request_refund` unreachable; the reaper path refunds by `payment_intent_id`, which IS persisted) + WR-01..05 / IN-01..04 code-review findings. Two live-webhook sign-offs deferred-closed (unit-tested + in production).
+
+**Stats:** ferro-payments ≈ 5,963 LOC (src); 4 phases, 18 plans; first commit `44e6d232` (2026-06-17).
+
+**Consumer-paired with:** gestiscilo Phases 218–223 (tenant booking upfront payment).
+
+**Archive:** [milestones/v16.1-ROADMAP.md](milestones/v16.1-ROADMAP.md) · [milestones/v16.1-REQUIREMENTS.md](milestones/v16.1-REQUIREMENTS.md)
+
+---
+
 ## v16.0 Write-Boundary AX (Shipped: 2026-06-16)
 
 **Phases completed:** 2 phases (231-232), 5 plans

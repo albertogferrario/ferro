@@ -1,9 +1,9 @@
 ---
-status: partial
+status: passed
 phase: 235-ferro-payments-webhook-sync-dispatcher-integration-and-auto
 source: [235-VERIFICATION.md]
 started: 2026-06-17
-updated: 2026-06-17
+updated: 2026-08-12
 ---
 
 ## Current Test

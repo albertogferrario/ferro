@@ -1,5 +1,13 @@
 # Requirements — v16.3 MCP CRUD Data Surface (Track A)
 
+> **⚠ Rotation-drift banner (reconciled 2026-08-12).** This working `REQUIREMENTS.md` holds the
+> requirements of **v16.3**, which SHIPPED (Phases 239–243 + 243.1, 0.2.80) but was never archived.
+> It is NOT the current milestone's requirements. The milestones after v16.3 — v16.5, v16.6, v17.0,
+> and the current v18.0 — were brainstorm-created (not `/gsd-new-milestone`) and carry their
+> requirements inline in `ROADMAP.md`, so this file never rotated. On the next milestone close,
+> archive this content to `milestones/v16.3-REQUIREMENTS.md`; there is no separate REQUIREMENTS.md
+> to archive for the later milestones. See `STATE.md` → "## Archival Backlog" for the full picture.
+
 **Milestone goal:** A projection that opts in derives a complete, safe, tenant-scoped
 CRUD interface (create / read+query / update / soft-delete) as MCP tools with zero
 hand-written tool code. Foundational track of the broader MCP capability program

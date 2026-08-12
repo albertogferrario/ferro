@@ -1,7 +1,8 @@
 ---
 phase: 236-ferro-payments-reapers-and-publish-0-1-0
 verified: 2026-06-21T03:00:00Z
-status: human_needed
+status: passed
+resolved: 2026-08-12 — gated e2e run live against Stripe test mode (passed 2026-07-28, re-confirmed 2026-08-12 via Stripe CLI default test-mode profile). CR-01 + WR/IN remain a tracked 0.1.1 backlog (non-blocking).
 score: 8/8 must-haves verified
 overrides_applied: 0
 human_verification:
@@ -17,7 +18,7 @@ known_issues:
 
 **Phase Goal:** Implement `ReleaseExpiredPaymentIntents` (single SQL pass over payment_intents WHERE status='reserved' AND expires_at < now(), dispatches `on_released` per row in a transaction) and `ReconcileRefundsInFlight` (polls Stripe for refund-in-flight intents). Both as ferro-queue-compatible Job structs consumers schedule via cron. Add a tiny example Billable in a workspace test bin to drive end-to-end against ferro-stripe test mode. Version-bump ferro workspace + publish ferro-payments 0.1.0 to crates.io.
 **Verified:** 2026-06-21T03:00:00Z
-**Status:** human_needed
+**Status:** passed (gated e2e run live against Stripe test mode — passed 2026-07-28, re-confirmed 2026-08-12; CR-01/WR/IN tracked for 0.1.1)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
