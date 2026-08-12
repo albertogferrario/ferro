@@ -175,7 +175,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "app"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -188,6 +188,7 @@ dependencies = [
  "ferro-json-ui",
  "ferro-mcp-oauth",
  "ferro-mcp-server",
+ "ferro-projection",
  "ferro-projections",
  "ferro-rs",
  "http-body-util",
@@ -2398,7 +2399,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-a2ui"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "ferro-projections",
  "ferro-theme",
@@ -2408,7 +2409,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-ai"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -2433,7 +2434,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-api-mcp"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "clap",
  "openapiv3",
@@ -2450,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-assets"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "bytes",
  "image",
@@ -2466,7 +2467,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-audit"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "chrono",
  "sea-orm",
@@ -2481,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-broadcast"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "dashmap 6.2.1",
@@ -2501,7 +2502,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-bundle"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "bytes",
  "dashmap 6.2.1",
@@ -2512,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-cache"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "dashmap 6.2.1",
@@ -2528,7 +2529,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-cli"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2567,7 +2568,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-deployments"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2587,7 +2588,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-events"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "inventory",
@@ -2599,7 +2600,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-inertia"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -2609,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-json-ui"
-version = "0.3.4"
+version = "0.3.13"
 dependencies = [
  "ferro-projections",
  "ferro-theme",
@@ -2624,7 +2625,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-lang"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -2635,7 +2636,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-macros"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "ferro-rs",
  "proc-macro2",
@@ -2651,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-mcp"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2685,7 +2686,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-mcp-oauth"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2705,7 +2706,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-mcp-server"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "ferro-ai",
@@ -2726,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-migration"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "sea-orm",
  "sea-orm-migration",
@@ -2736,7 +2737,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-notifications"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2754,7 +2755,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-orm"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "sea-orm",
  "thiserror 2.0.19",
@@ -2781,7 +2782,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-projection"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2802,7 +2803,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-projections"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "insta",
  "proptest",
@@ -2814,7 +2815,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-queue"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2835,7 +2836,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-reservation"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2856,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-rs"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2921,7 +2922,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-storage"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "aws-config",
@@ -2962,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-text"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "ferro-projections",
  "insta",
@@ -2970,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-theme"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -2980,7 +2981,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-wallet"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2997,7 +2998,7 @@ dependencies = [
 
 [[package]]
 name = "ferro-whatsapp"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4743,7 +4744,7 @@ dependencies = [
 
 [[package]]
 name = "minimal-dashboard"
-version = "0.3.4"
+version = "0.3.8"
 dependencies = [
  "ferro-rs",
  "serde_json",
