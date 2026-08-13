@@ -2879,6 +2879,7 @@ dependencies = [
  "ferro-lang",
  "ferro-macros",
  "ferro-notifications",
+ "ferro-projection",
  "ferro-projections",
  "ferro-queue",
  "ferro-storage",

@@ -267,26 +267,30 @@ impl WorkerLoop {
             let shutdown = self.shutdown.clone();
             tokio::spawn(async move {
                 // Registration failure must not panic inside a detached task
-                // (unobservable to the caller). Log and request shutdown instead.
-                let mut sigterm = match tokio::signal::unix::signal(
-                    tokio::signal::unix::SignalKind::terminate(),
-                ) {
-                    Ok(s) => s,
+                // (unobservable to the caller). Log and continue — programmatic
+                // shutdown via `WorkerLoop::shutdown()` still works because it
+                // sets the same AtomicBool directly. Only SIGTERM/Ctrl-C delivery
+                // is unavailable when registration fails (acceptable degradation).
+                let sigterm_result =
+                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate());
+                match sigterm_result {
                     Err(e) => {
-                        error!(error = %e, "failed to install SIGTERM handler — requesting shutdown");
+                        warn!(error = %e, "failed to install SIGTERM handler — programmatic shutdown still available");
+                        // Do NOT set shutdown=true here: the worker must continue running.
+                        // Callers can still invoke WorkerLoop::shutdown() to stop it.
+                    }
+                    Ok(mut sigterm) => {
+                        tokio::select! {
+                            _ = sigterm.recv() => {
+                                info!("SIGTERM received — shutting down WorkerLoop");
+                            }
+                            _ = tokio::signal::ctrl_c() => {
+                                info!("Ctrl-C received — shutting down WorkerLoop");
+                            }
+                        }
                         shutdown.store(true, Ordering::SeqCst);
-                        return;
-                    }
-                };
-                tokio::select! {
-                    _ = sigterm.recv() => {
-                        info!("SIGTERM received — shutting down WorkerLoop");
-                    }
-                    _ = tokio::signal::ctrl_c() => {
-                        info!("Ctrl-C received — shutting down WorkerLoop");
                     }
                 }
-                shutdown.store(true, Ordering::SeqCst);
             })
         };
         // Abort the signal task on any exit path from this function.
@@ -370,6 +374,62 @@ impl WorkerLoop {
             // No jobs found across all queues — idle sleep (D-08).
             tokio::time::sleep(self.config.sleep_duration).await;
         }
+    }
+
+    /// Run claim+execute cycles until the queue is empty, then return.
+    ///
+    /// This is a test-support entry point that bypasses the SIGTERM/Ctrl-C signal
+    /// handler installed by [`Self::run`]. It is not intended for production use.
+    ///
+    /// The loop polls every queue for pending jobs. When a job is found it is
+    /// spawned (with panic isolation) and the loop continues immediately. When no
+    /// pending jobs remain across all queues the loop sleeps one more
+    /// `sleep_duration` tick (to allow in-flight spawned jobs to complete), then
+    /// returns.
+    ///
+    /// Spawned jobs are still run asynchronously via `tokio::spawn`. Call
+    /// `tokio::time::sleep` or wait on the jobs table in your test after this
+    /// returns if you need the results to be persisted before reading them back.
+    #[doc(hidden)]
+    pub async fn drain_for_test(&self) -> Result<(), Error> {
+        let conn: &'static DatabaseConnection = crate::db::Queue::connection();
+
+        crate::db::reap_startup_claims(conn, &self.config.queues)
+            .await
+            .ok(); // ignore errors — test may not have prior claimed rows
+
+        let mut idle_rounds = 0;
+        loop {
+            let mut claimed_any = false;
+            for queue in &self.config.queues {
+                crate::db::reaper(conn, queue, self.config.visibility_timeout)
+                    .await
+                    .ok();
+                match crate::db::claim(conn, queue, &self.worker_id).await {
+                    Ok(Some(job_row)) => {
+                        self.spawn_job(conn, job_row);
+                        claimed_any = true;
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        error!(queue = %queue, error = %e, "claim error in drain_for_test");
+                    }
+                }
+            }
+            if claimed_any {
+                idle_rounds = 0;
+                tokio::task::yield_now().await; // let spawned tasks run
+            } else {
+                idle_rounds += 1;
+                if idle_rounds >= 3 {
+                    // Three consecutive idle rounds with a sleep between each —
+                    // all in-flight jobs have had time to complete.
+                    break;
+                }
+                tokio::time::sleep(self.config.sleep_duration).await;
+            }
+        }
+        Ok(())
     }
 
     /// Spawn a task that executes `job_row` with panic isolation.
