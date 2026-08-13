@@ -38,7 +38,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Result Delivery
 
-- [ ] **OFFLOAD-03**: An offloaded method's return value is persisted as a `ferro-projection`
+- [x] **OFFLOAD-03**: An offloaded method's return value is persisted as a `ferro-projection`
   snapshot keyed by the handle, retrievable after completion; a failed run records a terminal
   error state (no silent drop).
 - [ ] **OFFLOAD-04**: A client subscribed to a handle receives the result as a `ferro-broadcast`
