@@ -288,9 +288,11 @@ pub(crate) fn emit_job_items(
         /// different module changes this key and silently breaks dispatch for jobs
         /// already in the queue. Rename modules with care.
         #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
+        #[serde(bound = "")]
         pub struct #job_ident
         where
             #( #field_types: ::ferro::queue::OffloadSerializable, )*
+            #output_type: ::ferro::queue::OffloadSerializable,
         {
             #( pub #field_names: #field_types, )*
         }
@@ -317,7 +319,10 @@ pub(crate) fn emit_job_items(
             }
         }
 
-        impl ::ferro::queue::Offloadable for #job_ident {
+        impl ::ferro::queue::Offloadable for #job_ident
+        where
+            #output_type: ::ferro::queue::OffloadSerializable,
+        {
             type Output = #output_type;
         }
     }

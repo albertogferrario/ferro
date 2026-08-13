@@ -1,0 +1,495 @@
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = help: see issue #48214
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::de::DeserializeOwned` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = help: see issue #48214
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = help: see issue #48214
+
+error[E0277]: the trait bound `RawHandle: serde::de::DeserializeOwned` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = help: see issue #48214
+
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = help: see issue #48214
+
+error[E0277]: the trait bound `RawHandle: serde::de::DeserializeOwned` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = help: see issue #48214
+
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Deserialize<'de>` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:18:11
+   |
+18 | pub trait MyService {
+   |           ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Deserialize<'de>` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:18:11
+   |
+18 | pub trait MyService {
+   |           ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Serialize` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:18:11
+   |
+18 | pub trait MyService {
+   |           ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Serialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required for `MyServiceProcessJob` to implement `for<'de> Deserialize<'de>`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           ^^^^^^^^^
+   = note: required for `MyServiceProcessJob` to implement `DeserializeOwned`
+note: required by a bound in `Offloadable`
+  --> $WORKSPACE/ferro-queue/src/offload.rs
+   |
+   | pub trait Offloadable: crate::Job + Serialize + DeserializeOwned + Sized {
+   |                                                 ^^^^^^^^^^^^^^^^ required by this bound in `Offloadable`
+   = note: this error originates in the derive macro `::serde::Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `RawHandle: serde::Deserialize<'de>` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:18:11
+   |
+18 | pub trait MyService {
+   |           ^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `RawHandle` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required for `MyServiceProcessJob` to implement `for<'de> Deserialize<'de>`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           ^^^^^^^^^
+   = note: required for `MyServiceProcessJob` to implement `DeserializeOwned`
+note: required by a bound in `Offloadable`
+  --> $WORKSPACE/ferro-queue/src/offload.rs
+   |
+   | pub trait Offloadable: crate::Job + Serialize + DeserializeOwned + Sized {
+   |                                                 ^^^^^^^^^^^^^^^^ required by this bound in `Offloadable`
+   = note: this error originates in the derive macro `::serde::Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `RawHandle` crosses the #[offload] isolation boundary and must be `Serialize + DeserializeOwned`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Serialize` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: offloaded parameters and return types travel as a queue payload; implement `Serialize` and `DeserializeOwned` for `RawHandle` to seal the module across the isolation boundary
+   = help: the following other types implement trait `Serialize`:
+             &'a T
+             &'a mut T
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+             (T0, T1, T2, T3, T4)
+           and $N others
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `::ferro::async_trait` which comes from the expansion of the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `RawHandle` crosses the #[offload] isolation boundary and must be `Serialize + DeserializeOwned`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `for<'de> Deserialize<'de>` is not implemented for `RawHandle`
+  --> tests/ui/offload/fail/non_serializable_param.rs:11:1
+   |
+11 | pub struct RawHandle;
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: offloaded parameters and return types travel as a queue payload; implement `Serialize` and `DeserializeOwned` for `RawHandle` to seal the module across the isolation boundary
+   = help: the following other types implement trait `Deserialize<'de>`:
+             `&'a JsonRawValue` implements `Deserialize<'de>`
+             `&'a [u8]` implements `Deserialize<'de>`
+             `&'a std::path::Path` implements `Deserialize<'de>`
+             `&'a str` implements `Deserialize<'de>`
+             `()` implements `Deserialize<'de>`
+             `(T,)` implements `Deserialize<'de>`
+             `(T0, T1)` implements `Deserialize<'de>`
+             `(T0, T1, T2)` implements `Deserialize<'de>`
+           and $N others
+   = note: required for `RawHandle` to implement `DeserializeOwned`
+   = note: required for `RawHandle` to implement `OffloadSerializable`
+note: required by a bound in `MyServiceProcessJob`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ required by this bound in `MyServiceProcessJob`
+17 | #[async_trait]
+18 | pub trait MyService {
+   |           --------- required by a bound in this struct
+   = note: this error originates in the attribute macro `::ferro::async_trait` which comes from the expansion of the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `Svc: MyService` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `MyService` is not implemented for `Svc`
+  --> tests/ui/offload/fail/non_serializable_param.rs:14:1
+   |
+14 | pub struct Svc;
+   | ^^^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> tests/ui/offload/fail/non_serializable_param.rs:18:1
+   |
+18 | / pub trait MyService {
+19 | |     #[offload]
+20 | |     async fn process(&self, handle: RawHandle);
+21 | | }
+   | |_^
+   = note: required for the cast from `Arc<Svc>` to `Arc<(dyn MyService + 'static)>`
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `RawHandle` doesn't implement `std::fmt::Debug`
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ the trait `std::fmt::Debug` is not implemented for `RawHandle`
+   |
+   = note: add `#[derive(Debug)]` to `RawHandle` or manually `impl std::fmt::Debug for RawHandle`
+help: consider annotating `RawHandle` with `#[derive(Debug)]`
+   |
+11 + #[derive(Debug)]
+12 | pub struct RawHandle;
+   |
+
+error[E0277]: the trait bound `RawHandle: Clone` is not satisfied
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `RawHandle`
+   |
+help: consider annotating `RawHandle` with `#[derive(Clone)]`
+   |
+11 + #[derive(Clone)]
+12 | pub struct RawHandle;
+   |
+
+error[E0599]: no method named `clone` found for struct `RawHandle` in the current scope
+  --> tests/ui/offload/fail/non_serializable_param.rs:16:1
+   |
+11 | pub struct RawHandle;
+   | -------------------- method `clone` not found for this struct
+...
+16 | #[service(Svc)]
+   | ^^^^^^^^^^^^^^^ method not found in `RawHandle`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `clone`, perhaps you need to implement it:
+           candidate #1: `Clone`
+   = note: this error originates in the attribute macro `service` (in Nightly builds, run with -Z macro-backtrace for more info)
