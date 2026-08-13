@@ -3363,13 +3363,13 @@ completion without the request having waited on it.
   3. A failed/panicking offloaded method records a terminal error state on the handle (not a
      silent drop).
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 246-01-PLAN.md — ferro-projection direct snapshot write/read API (snapshot_write/snapshot_read) + unit tests (D-01/02/03)
 - [x] 246-02-PLAN.md — framework offload facade: persist_result/persist_error/read_result + OffloadResult<T> + ferro-projection dep + ::ferro::offload::* wiring (D-07/11/13)
 - [x] 246-03-PLAN.md — ferro-queue handle-key propagation: mint-before-dispatch, jobs.handle_key column, JobRow/enqueue/claim threading (D-04/05/06)
-- [ ] 246-04-PLAN.md — value capture (Job::handle_with_value + macro override) + worker write-back via injected hook + terminal-error path (D-09/10 corrected)
+- [x] 246-04-PLAN.md — value capture (Job::handle_with_value + macro override) + worker write-back via injected hook + terminal-error path (D-09/10 corrected)
 - [ ] 246-05-PLAN.md — integration harness: WorkerLoop drain E2E asserting SC1/SC2/SC3a/SC3b
 
 #### Phase 246.1: Shared-transport broadcast fan-out for multi-replica delta delivery (INSERTED)
