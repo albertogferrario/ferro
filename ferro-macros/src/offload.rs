@@ -276,17 +276,19 @@ pub(crate) fn emit_job_items(
 
     // Build the `handle_with_value()` call expression: captures and serializes the
     // success value so the worker can persist it as an offload result (Phase 246).
-    // `::serde_json::to_value(&v).ok()` yields Option<Value> (None only if the type
-    // is not JSON-serializable, which should not occur for OffloadSerializable types).
-    // For a `()` return, to_value(&()) = Value::Null wrapped as Some(Value::Null).
+    // `::ferro::serde_json::to_value(&v).ok()` yields Option<Value> (None only if the
+    // type is not JSON-serializable, which should not occur for OffloadSerializable
+    // types). For a `()` return, to_value(&()) = Value::Null wrapped as Some(Value::Null).
+    // serde_json is routed through the `::ferro::` facade (the `::ferro::*`-only emission
+    // convention) so consumer crates need not depend on serde_json directly.
     let value_capture_expr: TokenStream2 = match (info.is_async, info.returns_result) {
         (true, false) => quote! {
             let v = svc.#method_ident( #( #field_args ),* ).await;
-            ::std::result::Result::Ok(::serde_json::to_value(&v).ok())
+            ::std::result::Result::Ok(::ferro::serde_json::to_value(&v).ok())
         },
         (true, true) => quote! {
             svc.#method_ident( #( #field_args ),* ).await
-                .map(|v| ::serde_json::to_value(&v).ok())
+                .map(|v| ::ferro::serde_json::to_value(&v).ok())
                 .map_err(|e| ::ferro::queue::Error::job_failed(
                     #job_ident_str,
                     format!("{e}"),
@@ -294,11 +296,11 @@ pub(crate) fn emit_job_items(
         },
         (false, false) => quote! {
             let v = svc.#method_ident( #( #field_args ),* );
-            ::std::result::Result::Ok(::serde_json::to_value(&v).ok())
+            ::std::result::Result::Ok(::ferro::serde_json::to_value(&v).ok())
         },
         (false, true) => quote! {
             svc.#method_ident( #( #field_args ),* )
-                .map(|v| ::serde_json::to_value(&v).ok())
+                .map(|v| ::ferro::serde_json::to_value(&v).ok())
                 .map_err(|e| ::ferro::queue::Error::job_failed(
                     #job_ident_str,
                     format!("{e}"),
@@ -351,11 +353,11 @@ pub(crate) fn emit_job_items(
             async fn handle_with_value(
                 &self,
             ) -> ::std::result::Result<
-                ::std::option::Option<::serde_json::Value>,
+                ::std::option::Option<::ferro::serde_json::Value>,
                 ::ferro::queue::Error,
             > {
                 let svc = ::ferro::App::make::<dyn #trait_ident>()
-                    .map_err(|e| ::ferro::queue::Error::job_failed(#job_ident_str, format!("{e}")))?;
+                    .expect(#expect_msg);
                 #value_capture_expr
             }
         }
