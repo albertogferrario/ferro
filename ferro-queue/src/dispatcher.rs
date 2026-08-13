@@ -29,6 +29,8 @@ pub struct PendingDispatch<J> {
     delay: Option<Duration>,
     /// Explicit tenant ID override. When set, takes precedence over the auto-capture hook.
     tenant_id: Option<i64>,
+    /// Offload handle key to carry to the worker via the jobs table column.
+    handle_key: Option<String>,
 }
 
 impl<J> PendingDispatch<J>
@@ -42,6 +44,7 @@ where
             queue: None,
             delay: None,
             tenant_id: None,
+            handle_key: None,
         }
     }
 
@@ -64,6 +67,12 @@ where
     /// This explicit value takes precedence over the auto-capture hook.
     pub fn for_tenant(mut self, tenant_id: i64) -> Self {
         self.tenant_id = Some(tenant_id);
+        self
+    }
+
+    /// Attach an offload handle key so the worker can persist the result under it.
+    pub fn with_handle_key(mut self, key: String) -> Self {
+        self.handle_key = Some(key);
         self
     }
 
@@ -132,6 +141,7 @@ where
         let conn = crate::db::Queue::connection();
         let queue = self.queue.unwrap_or("default");
         let tenant_id = self.captured_tenant_id();
+        let handle_key = self.handle_key.clone();
         let now = chrono::Utc::now();
         let available_at = match self.delay {
             Some(d) => now + chrono::Duration::from_std(d).unwrap_or_default(),
@@ -150,6 +160,7 @@ where
             max_retries,
             idempotency_key.as_deref(),
             tenant_id,
+            handle_key.as_deref(),
             available_at,
         )
         .await
@@ -404,5 +415,12 @@ mod tests {
         // Could be Some(42) if hook registered, or None if hook was already set by prior test
         // We only assert no panic and that the explicit override path still works.
         assert!(captured.is_none() || captured == Some(42));
+    }
+
+    #[test]
+    fn test_with_handle_key_sets_field() {
+        let (job, _) = TestJob::new();
+        let pending = PendingDispatch::new(job).with_handle_key("abc-123".to_string());
+        assert_eq!(pending.handle_key.as_deref(), Some("abc-123"));
     }
 }

@@ -117,7 +117,10 @@ pub trait Offloadable: crate::Job + Serialize + DeserializeOwned + Sized {
     /// key is minted fresh at each call, independent of `idempotency_key()` (D-07).
     async fn offload(self) -> Result<OffloadHandle<Self::Output>, Error> {
         let key = HandleKey::new();
-        crate::PendingDispatch::new(self).dispatch().await?;
+        crate::PendingDispatch::new(self)
+            .with_handle_key(key.as_str().to_string())
+            .dispatch()
+            .await?;
         Ok(OffloadHandle::new(key))
     }
 }
