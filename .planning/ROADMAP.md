@@ -3297,7 +3297,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
 - [x] **Phase 245: Typed result handle + serializable-contract enforcement** — Calling an (completed 2026-08-13)
   offloaded method returns a typed handle; non-serializable parameter/return types fail at
   compile time with a clear diagnostic (this enforcement is the isolation boundary).
-- [ ] **Phase 246: Result → read-model snapshot** — The worker persists the method's return
+- [x] **Phase 246: Result → read-model snapshot** — The worker persists the method's return (completed 2026-08-13)
   value as a `ferro-projection` snapshot keyed by the handle, retrievable after completion.
 - [ ] **Phase 246.1 (INSERTED): Shared-transport broadcast fan-out** — `ferro-broadcast`
   gains a configurable shared transport so a delta published in one process reaches
@@ -3363,14 +3363,14 @@ completion without the request having waited on it.
   3. A failed/panicking offloaded method records a terminal error state on the handle (not a
      silent drop).
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 246-01-PLAN.md — ferro-projection direct snapshot write/read API (snapshot_write/snapshot_read) + unit tests (D-01/02/03)
 - [x] 246-02-PLAN.md — framework offload facade: persist_result/persist_error/read_result + OffloadResult<T> + ferro-projection dep + ::ferro::offload::* wiring (D-07/11/13)
 - [x] 246-03-PLAN.md — ferro-queue handle-key propagation: mint-before-dispatch, jobs.handle_key column, JobRow/enqueue/claim threading (D-04/05/06)
 - [x] 246-04-PLAN.md — value capture (Job::handle_with_value + macro override) + worker write-back via injected hook + terminal-error path (D-09/10 corrected)
-- [ ] 246-05-PLAN.md — integration harness: WorkerLoop drain E2E asserting SC1/SC2/SC3a/SC3b
+- [x] 246-05-PLAN.md — integration harness: WorkerLoop drain E2E asserting SC1/SC2/SC3a/SC3b
 
 #### Phase 246.1: Shared-transport broadcast fan-out for multi-replica delta delivery (INSERTED)
 **Goal:** Give `ferro-broadcast` a shared fan-out transport so a delta published in one
