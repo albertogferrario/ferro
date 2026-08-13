@@ -117,9 +117,9 @@ Install `ferro-cli`, wire an existing AI agent to `ferro-mcp` via standard MCP c
 ## Current Milestone: v16.4 Work Distribution — `#[offload]` Service Methods
 
 **Status:** Current milestone as of 2026-08-12 — the pointer moved here after the shipped
-v16.x / v17.0 / v18.0 backlog was archived. Phases 244–249, not yet planned or executed.
-Note the inserted prerequisite Phase 246.1 (shared-transport broadcast fan-out) for
-multi-replica delta delivery.
+v16.x / v17.0 / v18.0 backlog was archived. Phase 244 (`#[offload]` macro → Job + payload
+derivation) complete 2026-08-13; phases 245–249 remain. Note the inserted prerequisite
+Phase 246.1 (shared-transport broadcast fan-out) for multi-replica delta delivery.
 
 **Goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable unit of work
 with zero hand-written queue plumbing — the framework derives the `ferro-queue` Job, serializable
