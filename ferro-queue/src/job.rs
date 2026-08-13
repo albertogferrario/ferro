@@ -69,6 +69,16 @@ pub trait Job: Send + Sync + 'static {
         std::time::Duration::from_secs(jitter)
     }
 
+    /// Run the job and return its serialized success value, if any.
+    ///
+    /// Default: run `handle()` and discard the value (`None`). `#[offload]`-derived
+    /// jobs override this to capture and serialize the method's return value so the
+    /// worker can persist it as an offload result (Phase 246). Keeps `handle()`'s
+    /// fixed `Result<(), Error>` signature intact.
+    async fn handle_with_value(&self) -> Result<Option<serde_json::Value>, Error> {
+        self.handle().await.map(|_| None)
+    }
+
     /// Called when the job fails after all retries are exhausted.
     async fn failed(&self, error: &Error) {
         tracing::error!(job = self.name(), error = %error, "Job failed permanently");

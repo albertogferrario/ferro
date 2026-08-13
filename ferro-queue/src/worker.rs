@@ -103,10 +103,11 @@ impl WorkerConfig {
 
 /// Handler closure stored per job type name.
 ///
-/// Returns `(Result<(), Error>, retry_delay_secs)` — the delay is the
-/// per-job `retry_delay(attempt)` value captured at registration time.
+/// Returns `(Result<Option<serde_json::Value>, Error>, retry_delay)` — the value is the
+/// serialized success value from `handle_with_value()`, or `None` for non-offload jobs;
+/// the delay is the per-job `retry_delay(attempt)` value captured at registration time.
 type JobHandler = Arc<
-    dyn Fn(String, u32) -> Pin<Box<dyn Future<Output = (Result<(), Error>, Duration)> + Send>>
+    dyn Fn(String, u32) -> Pin<Box<dyn Future<Output = (Result<Option<serde_json::Value>, Error>, Duration)> + Send>>
         + Send
         + Sync,
 >;
@@ -191,7 +192,7 @@ impl WorkerLoop {
                 };
                 // Capture retry_delay before consuming the job.
                 let delay = job.retry_delay(attempt);
-                let result = job.handle().await;
+                let result = job.handle_with_value().await;
                 (result, delay)
             })
         });
@@ -403,6 +404,7 @@ impl WorkerLoop {
             let job_id = job_row.id;
             let job_type = job_row.job_type.clone();
             let tenant_id = job_row.tenant_id;
+            let handle_key = job_row.handle_key.clone();
             let attempts = job_row.attempts;
             let max_retries = job_row.max_retries;
 
@@ -433,26 +435,59 @@ impl WorkerLoop {
             // AssertUnwindSafe is sound here: the handler closure captures only
             // Arc references and owned data; we don't observe any interior state
             // after a panic.
-            let result = AssertUnwindSafe(async move {
-                // Tenant scope wrap (D-17, T-185-08).
-                match (&tenant_scope, tenant_id) {
-                    (Some(scope), Some(id)) => {
-                        let fut = Box::pin(async move {
-                            let (res, _delay) = handler(job_row.payload.clone(), attempts).await;
-                            res
-                        });
-                        (scope.with_scope(id, fut).await, Duration::from_secs(5))
+            let result: Result<(Result<Option<serde_json::Value>, Error>, Duration), _> =
+                AssertUnwindSafe(async move {
+                    // Tenant scope wrap (D-17, T-185-08).
+                    match (&tenant_scope, tenant_id) {
+                        (Some(scope), Some(id)) => {
+                            // with_scope expects a future returning Result<(), Error>;
+                            // run the handler inside it and discard the value in the
+                            // scoped future, then surface it alongside the fixed delay.
+                            let (value_cell, delay_cell) = (
+                                std::sync::Arc::new(std::sync::Mutex::new(None::<serde_json::Value>)),
+                                std::sync::Arc::new(std::sync::Mutex::new(Duration::from_secs(5))),
+                            );
+                            let vc = value_cell.clone();
+                            let dc = delay_cell.clone();
+                            let fut = Box::pin(async move {
+                                let (res, delay) = handler(job_row.payload.clone(), attempts).await;
+                                *dc.lock().unwrap() = delay;
+                                match res {
+                                    Ok(v) => {
+                                        *vc.lock().unwrap() = v;
+                                        Ok(())
+                                    }
+                                    Err(e) => Err(e),
+                                }
+                            });
+                            let scope_res = scope.with_scope(id, fut).await;
+                            let delay = *delay_cell.lock().unwrap();
+                            match scope_res {
+                                Ok(()) => {
+                                    let v = value_cell.lock().unwrap().take();
+                                    (Ok(v), delay)
+                                }
+                                Err(e) => (Err(e), delay),
+                            }
+                        }
+                        _ => handler(job_row.payload.clone(), attempts).await,
                     }
-                    _ => handler(job_row.payload.clone(), attempts).await,
-                }
-            })
-            .catch_unwind()
-            .await;
+                })
+                .catch_unwind()
+                .await;
 
             match result {
-                // Success path: delete the row (D-04 delete-on-success).
-                Ok((Ok(()), _)) => {
+                // Success path: persist offload result (if any), then delete the row (D-04).
+                Ok((Ok(success_value), _)) => {
                     debug!(job_id = %job_id, job_type = %job_type, "Job succeeded — deleting row");
+                    if let Some(val) = success_value {
+                        crate::dispatcher::persist_offload_outcome(
+                            handle_key.as_deref(),
+                            Ok(val),
+                            conn,
+                        )
+                        .await;
+                    }
                     crate::db::delete_job(conn, job_id).await.ok();
                 }
 
@@ -466,6 +501,7 @@ impl WorkerLoop {
                         max_retries,
                         &e.to_string(),
                         retry_delay,
+                        handle_key.as_deref(),
                     )
                     .await;
                 }
@@ -477,7 +513,7 @@ impl WorkerLoop {
                     // Use a default jitter delay for panics (we can't call retry_delay
                     // because the handler destructured before the panic).
                     let delay = default_jitter_delay(attempts);
-                    handle_failure(conn, job_id, attempts, max_retries, msg, delay).await;
+                    handle_failure(conn, job_id, attempts, max_retries, msg, delay, handle_key.as_deref()).await;
                 }
             }
         });
@@ -485,6 +521,12 @@ impl WorkerLoop {
 }
 
 /// Handle a job failure: either park as failed or release for retry.
+///
+/// On terminal failure (`attempts + 1 >= max_retries`), persists the error
+/// envelope via the offload result hook before marking the row as failed,
+/// so the caller can observe the terminal state via `read_result` (Phase 246).
+/// Persistence failure is non-fatal: the hook logs via `tracing::warn!` and
+/// the job's failed/retried outcome is unchanged (T-246-05).
 async fn handle_failure(
     conn: &'static DatabaseConnection,
     job_id: i64,
@@ -492,13 +534,17 @@ async fn handle_failure(
     max_retries: u32,
     err_msg: &str,
     retry_delay: Duration,
+    handle_key: Option<&str>,
 ) {
     if attempts + 1 >= max_retries {
-        // Exhausted — park as failed.
+        // Exhausted — persist terminal-error envelope, then park as failed.
+        crate::dispatcher::persist_offload_outcome(handle_key, Err(err_msg.to_string()), conn)
+            .await;
         warn!(job_id = %job_id, attempts = attempts, "Job exhausted retries — parking as failed");
         crate::db::fail_job(conn, job_id, err_msg).await.ok();
     } else {
-        // Retry — release with jittered delay.
+        // Transient failure — release for retry. No persistence (D-09: a transient
+        // failure that later succeeds ends in a `completed` snapshot).
         let available_at = Utc::now() + chrono::Duration::from_std(retry_delay).unwrap_or_default();
         debug!(
             job_id = %job_id,
