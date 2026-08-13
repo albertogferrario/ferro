@@ -2,6 +2,8 @@
 
 use crate::{Error, Job, QueueConfig};
 use serde::{de::DeserializeOwned, Serialize};
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -17,6 +19,43 @@ static TENANT_ID_HOOK: OnceLock<fn() -> Option<i64>> = OnceLock::new();
 /// task-local storage without requiring a direct dependency on the framework crate.
 pub fn register_tenant_capture_hook(f: fn() -> Option<i64>) {
     let _ = TENANT_ID_HOOK.set(f);
+}
+
+/// Signature of the offload-result persistence hook.
+///
+/// `outcome` is `Ok(value_json)` for a completed run or `Err(error_message)`
+/// for a terminal failure. Registered once by the framework so `ferro-queue`
+/// never depends on `ferro-projection` (D-11); the worker invokes it after a
+/// job's terminal outcome when the job has a `handle_key`.
+pub type OffloadResultHook = fn(
+    String,                               // handle_key
+    Result<serde_json::Value, String>,    // outcome: Ok = completed value / Err = error msg
+    &'static sea_orm::DatabaseConnection,
+) -> Pin<Box<dyn Future<Output = ()> + Send>>;
+
+static OFFLOAD_RESULT_HOOK: OnceLock<OffloadResultHook> = OnceLock::new();
+
+/// Register the offload-result persistence hook (called once at framework bootstrap).
+///
+/// Re-registration is silently ignored (OnceLock semantics).
+pub fn register_offload_result_hook(f: OffloadResultHook) {
+    let _ = OFFLOAD_RESULT_HOOK.set(f);
+}
+
+/// Invoke the offload-result hook if registered.
+///
+/// No-op when the hook is not registered (queue used without the framework
+/// facade) or when `handle_key` is `None` (non-offload jobs). Never fails —
+/// persistence errors are logged inside the registered hook so the job's
+/// success/failure outcome is unaffected (T-246-05, Pitfall 5).
+pub(crate) async fn persist_offload_outcome(
+    handle_key: Option<&str>,
+    outcome: Result<serde_json::Value, String>,
+    db: &'static sea_orm::DatabaseConnection,
+) {
+    if let (Some(key), Some(hook)) = (handle_key, OFFLOAD_RESULT_HOOK.get()) {
+        hook(key.to_string(), outcome, db).await;
+    }
 }
 
 /// A pending job dispatch.
