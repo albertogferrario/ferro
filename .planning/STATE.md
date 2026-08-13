@@ -4,7 +4,7 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: "Completed 244-02-PLAN.md (#[offload] macro derivation + trybuild harness)"
-last_updated: "2026-08-13T03:17:00.900Z"
+last_updated: "2026-08-13T03:27:19.749Z"
 last_activity: 2026-08-13
 progress:
   total_phases: 114
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 244 (offload-macro-job-payload-derivation) — EXECUTING
-Plan: 2 of 2
+Phase: 245
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-13
 
@@ -156,6 +156,7 @@ Progress: [██████████] 100%
 | 261 | 4 | - | - |
 | 262 | 3 | - | - |
 | 263 | 5 | - | - |
+| 244 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
