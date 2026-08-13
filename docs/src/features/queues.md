@@ -185,6 +185,109 @@ ProcessPayment { order_id: 123, amount: 99.99 }
     .await?;
 ```
 
+## Offloading Service Methods
+
+The `#[offload]` attribute derives a `ferro-queue` Job directly from a `#[service]` trait method
+signature. Instead of writing a Job struct by hand and wiring an enqueue call, mark the method and
+the macro handles the derivation — the trait method itself keeps its in-process signature; `#[offload]`
+layers an enqueue entrypoint on top.
+
+### Authoring surface
+
+```rust
+use ferro::prelude::*;
+
+#[service(impl = ReportBuilder)]
+#[async_trait]
+pub trait ReportsService: Send + Sync {
+    #[offload]
+    async fn build_monthly(&self, tenant_id: i64, month: Month) -> Report;
+    // ^ keeps its in-process signature; #[offload] is additive
+}
+```
+
+The macro derives a Job whose name follows the pattern `<TraitPascalCase><MethodPascalCase>Job`.
+For `trait ReportsService` + method `build_monthly`, the derived struct is
+`ReportsServiceBuildMonthlyJob`. The struct fields mirror the method parameters, each mapped to an
+owned serializable type (borrows become owned equivalents).
+
+The derived Job gains an `.offload()` enqueue entrypoint:
+
+```rust
+let handle: ferro::queue::OffloadHandle<Report> =
+    ReportsServiceBuildMonthlyJob { tenant_id, month }
+        .offload()
+        .await?;
+
+let key = handle.key(); // read-only key; see "Typed handle" below
+```
+
+No separate Job struct, no manual `Queue::register` for the enqueue call — the trait declaration
+is the single source of truth for both the in-process and the background execution contract.
+
+### Typed handle
+
+`.offload()` returns `Result<OffloadHandle<T>, Error>`, where `T` is the method's success type.
+`OffloadHandle<T>` identifies where the result will eventually land — a typed, key-bearing handle
+that carries the success type as a type parameter.
+
+In the current release the handle is **inert**: it exposes `.key()` and `.id()` for reading the
+handle's identity key, but it has no resolve or subscribe methods. Reading the result back and
+streaming it to a client is a later result-path capability; the key returned by `.key()` is where
+a subscriber will later attach.
+
+### Success-type contract
+
+`T` is the success type of the method — the type the worker produces when the job completes
+without error.
+
+| Method return | `OffloadHandle<T>` type |
+|---------------|-------------------------|
+| `-> Report` | `OffloadHandle<Report>` |
+| `-> Result<Report, E>` | `OffloadHandle<Report>` |
+| `-> ()` or no return | `OffloadHandle<()>` |
+
+For `-> Result<Report, E>` the handle is `OffloadHandle<Report>`. The error type `E` is not
+required to be serializable — when the job fails, `E` is recorded as a job failure via its
+`Display` representation (string-serialized). Serializable enforcement targets the success type
+and the parameters, not the error.
+
+### Serializable contract as the isolation boundary
+
+Every parameter type and every success return type crossing the offload boundary must implement
+`Serialize + DeserializeOwned`. The framework enforces this at compile time.
+
+This is framed as the isolation boundary because it is one: the payload of an offloaded job must
+be fully described by serializable data so the work can travel to a background worker — potentially
+in a separate process. A method whose inputs or output cannot serialize cannot be offloaded, and
+the constraint is checked before the code runs. The serializable contract seals the module across
+the boundary.
+
+When a parameter or return type does not satisfy `Serialize + DeserializeOwned`, the compiler
+emits an `E0277` error with a branded message naming the offending type. The `Offloadable`
+supertrait bounds (inherited from `Serialize + DeserializeOwned`) fire first in the error stream
+— serde's own `E0277` messages appear before the branded diagnostic. The branded line appears
+later in the same compilation and names the type explicitly:
+
+```
+error[E0277]: `RawReport` crosses the #[offload] isolation boundary and must be `Serialize + DeserializeOwned`
+  = note: offloaded parameters and return types travel as a queue payload; implement `Serialize` and `DeserializeOwned` for `RawReport` to seal the module across the isolation boundary
+```
+
+The fix is to derive or implement `Serialize` and `DeserializeOwned` (via `serde`) on the
+offending type:
+
+```rust
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Report {
+    pub id: i64,
+    pub tenant_id: i64,
+    // ...
+}
+```
+
+Once the type satisfies the bound the compilation succeeds and the derived Job is available.
+
 ## WorkerLoop Configuration
 
 The framework creates a `WorkerLoop` with `WorkerConfig::default()` when job types are registered. Override the configuration by calling `WorkerLoop::new(config)` directly if you need custom settings.
