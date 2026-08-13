@@ -60,6 +60,9 @@ pub(crate) struct OffloadMethodInfo {
     pub is_async: bool,
     /// Whether the original return type is `Result<_, _>`.
     pub returns_result: bool,
+    /// The method's success type for `type Output` (D-09):
+    /// `T` for `-> T`, the `T` of `Result<T, E>`, and `()` for `-> ()` / default.
+    pub output_type: TokenStream2,
 }
 
 /// Map a (possibly borrowed) parameter type to an owned, serializable type.
@@ -167,19 +170,33 @@ pub(crate) fn collect_info(
 
     let is_async = method.sig.asyncness.is_some();
 
-    // Detect `Result<_, _>` return type by matching the last path segment.
-    let returns_result = match &method.sig.output {
-        ReturnType::Default => false,
+    // Detect `Result<_, _>` and extract the success type for `type Output`.
+    let (returns_result, output_type): (bool, TokenStream2) = match &method.sig.output {
+        ReturnType::Default => (false, quote! { () }),
         ReturnType::Type(_, ty) => {
             if let Type::Path(type_path) = ty.as_ref() {
-                type_path
-                    .path
-                    .segments
-                    .last()
-                    .map(|seg| seg.ident == "Result")
-                    .unwrap_or(false)
+                let last = type_path.path.segments.last();
+                let is_result = last.map(|seg| seg.ident == "Result").unwrap_or(false);
+                if is_result {
+                    // Extract the first generic argument (the `Ok` / success type T).
+                    let ok_ty = last
+                        .and_then(|seg| match &seg.arguments {
+                            syn::PathArguments::AngleBracketed(args) => {
+                                args.args.iter().find_map(|a| match a {
+                                    syn::GenericArgument::Type(t) => Some(quote! { #t }),
+                                    _ => None,
+                                })
+                            }
+                            _ => None,
+                        })
+                        .unwrap_or_else(|| quote! { () });
+                    (true, ok_ty)
+                } else {
+                    (false, quote! { #ty })
+                }
             } else {
-                false
+                // Non-path return type (tuple, etc.): use it verbatim as the Output.
+                (false, quote! { #ty })
             }
         }
     };
@@ -192,6 +209,7 @@ pub(crate) fn collect_info(
         field_forwards,
         is_async,
         returns_result,
+        output_type,
     })
 }
 
@@ -209,6 +227,7 @@ pub(crate) fn emit_job_items(
     let method_ident = &info.method_ident;
     let field_names = &info.field_names;
     let field_types = &info.field_types;
+    let output_type = &info.output_type;
 
     let job_ident_str = job_ident.to_string();
     let trait_ident_str = trait_ident.to_string();
@@ -269,7 +288,10 @@ pub(crate) fn emit_job_items(
         /// different module changes this key and silently breaks dispatch for jobs
         /// already in the queue. Rename modules with care.
         #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
-        pub struct #job_ident {
+        pub struct #job_ident
+        where
+            #( #field_types: ::ferro::queue::OffloadSerializable, )*
+        {
             #( pub #field_names: #field_types, )*
         }
 
@@ -293,6 +315,10 @@ pub(crate) fn emit_job_items(
                 },
                 name: #job_ident_str,
             }
+        }
+
+        impl ::ferro::queue::Offloadable for #job_ident {
+            type Output = #output_type;
         }
     }
 }
