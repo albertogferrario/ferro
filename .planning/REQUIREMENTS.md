@@ -29,7 +29,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Offload Primitive
 
-- [ ] **OFFLOAD-01**: A developer marks a `#[service]` trait method `#[offload]` and the
+- [x] **OFFLOAD-01**: A developer marks a `#[service]` trait method `#[offload]` and the
   framework derives a `ferro-queue` Job + serializable payload from the method signature — no
   hand-written Job struct, no manual enqueue.
 - [ ] **OFFLOAD-02**: Calling an offloaded method returns a typed result handle; a method whose

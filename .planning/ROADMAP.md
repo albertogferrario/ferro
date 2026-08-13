@@ -3325,10 +3325,10 @@ the work is declared once (as the method) and never re-authored as a Job wrapper
   2. Enqueuing the derived Job runs the original method body on a worker (round-trip in a test).
   3. No hand-written Job struct or manual enqueue call is required at the call site.
 
-**Plans:** 2 plans (2 waves)
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 244-01-PLAN.md — ferro-queue inventory registration path (JobRegistrarEntry + from_registry drain) + round-trip/auto-registration tests (OFFLOAD-01-d/e/f)
+- [x] 244-01-PLAN.md — ferro-queue inventory registration path (JobRegistrarEntry + from_registry drain) + round-trip/auto-registration tests (OFFLOAD-01-d/e/f)
 - [ ] 244-02-PLAN.md — #[offload] macro derivation (owned_type, service_impl scan, derived Job + impl Job + inventory::submit!) + trybuild fixtures (OFFLOAD-01-a/b/c)
 
 #### Phase 245: Typed result handle + serializable-contract enforcement
