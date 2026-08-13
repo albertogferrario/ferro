@@ -3294,7 +3294,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
 - [x] **Phase 244: `#[offload]` macro → Job + payload derivation** — Mark a `#[service]` (completed 2026-08-13)
   trait method offloadable; derive the `ferro-queue` Job and its serializable payload from
   the method signature. No hand-written Job struct.
-- [ ] **Phase 245: Typed result handle + serializable-contract enforcement** — Calling an
+- [x] **Phase 245: Typed result handle + serializable-contract enforcement** — Calling an (completed 2026-08-13)
   offloaded method returns a typed handle; non-serializable parameter/return types fail at
   compile time with a clear diagnostic (this enforcement is the isolation boundary).
 - [ ] **Phase 246: Result → read-model snapshot** — The worker persists the method's return
@@ -3343,12 +3343,12 @@ or return type are not serializable, with a diagnostic that names the offending 
      fails to compile (trybuild) with a clear, type-naming message.
   3. The serializable boundary is documented as the module-isolation guarantee.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 245-01-PLAN.md — ferro-queue offload types module (OffloadSerializable + branded diagnostic, HandleKey, OffloadHandle<T>, Offloadable) + ::ferro::queue re-exports + unit tests (OFFLOAD-02d/e)
 - [x] 245-02-PLAN.md — #[offload] macro emission: type Output capture + impl Offloadable + parameter where-clause; trybuild pass/param-fail/return-fail fixtures (OFFLOAD-02a/b/c)
-- [ ] 245-03-PLAN.md — document the serializable contract as the module-isolation guarantee in docs/src/features/queues.md (SC#3)
+- [x] 245-03-PLAN.md — document the serializable contract as the module-isolation guarantee in docs/src/features/queues.md (SC#3)
 
 #### Phase 246: Result → read-model snapshot
 **Goal:** Give offloaded work a result path — the worker writes the method's return value into
