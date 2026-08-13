@@ -71,7 +71,7 @@ impl Job for FailingJob {
         let simulated: Result<(), String> = Err("boom".to_string());
         simulated
             .map(|_| ())
-            .map_err(|e| Error::job_failed("FailingJob", format!("{e}")))
+            .map_err(|e| Error::job_failed("FailingJob", e))
     }
 }
 

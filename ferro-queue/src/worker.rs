@@ -209,7 +209,8 @@ impl WorkerLoop {
     /// items submitted by `#[offload]`-derived jobs.
     pub fn from_registry(config: WorkerConfig) -> Self {
         let mut w = Self::new(config);
-        crate::db::Queue::apply_registrars(&mut w); // runtime Vec path (unchanged)
+        // Runtime Vec path: manual Queue::register calls (unchanged).
+        crate::db::Queue::apply_registrars(&mut w);
         // Inventory path: drain every JobRegistrarEntry submitted by #[offload].
         for entry in inventory::iter::<crate::db::JobRegistrarEntry> {
             (entry.register)(&mut w);
