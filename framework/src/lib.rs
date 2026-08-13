@@ -220,6 +220,11 @@ pub use ferro_events::{
     Listener, ShouldQueue,
 };
 
+/// Offload result persistence and retrieval helpers.
+/// Use `ferro::offload::persist_result`, `ferro::offload::persist_error`,
+/// `ferro::offload::read_result`, and `ferro::offload::OffloadResult`.
+pub mod offload;
+
 /// Background job queue. Use `ferro::queue::Job`, `ferro::queue::dispatch`, etc.
 pub mod queue {
     pub use ferro_queue::{
