@@ -51,6 +51,7 @@ mod dispatcher;
 mod error;
 mod job;
 mod migration;
+mod offload;
 mod worker;
 
 pub use config::QueueConfig;
@@ -66,6 +67,9 @@ pub use error::Error;
 pub use job::{Job, JobPayload};
 pub use migration::CreateJobsTable;
 pub use worker::{TenantScopeProvider, Worker, WorkerConfig, WorkerLoop};
+
+/// Re-export async_trait for convenience
+pub use offload::{HandleKey, OffloadHandle, OffloadSerializable, Offloadable};
 
 /// Re-export async_trait for convenience
 pub use async_trait::async_trait;
