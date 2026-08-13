@@ -364,7 +364,7 @@ async fn claim_postgres(
     let select = Statement::from_sql_and_values(
         DatabaseBackend::Postgres,
         "SELECT id, job_type, payload, queue, attempts, max_retries, idempotency_key, \
-         tenant_id, available_at, created_at FROM jobs \
+         tenant_id, handle_key, available_at, created_at FROM jobs \
          WHERE status = 'pending' AND queue = $1 AND available_at <= NOW() \
          ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED",
         [Value::String(Some(Box::new(queue.to_string())))],
@@ -419,7 +419,7 @@ async fn claim_sqlite(
          WHERE id = ( SELECT id FROM jobs WHERE status='pending' AND queue=?3 \
            AND available_at <= ?1 ORDER BY id LIMIT 1 ) \
          RETURNING id, job_type, payload, queue, attempts, max_retries, \
-           idempotency_key, tenant_id, available_at, created_at",
+           idempotency_key, tenant_id, handle_key, available_at, created_at",
         [
             Value::String(Some(Box::new(now_iso))),
             Value::String(Some(Box::new(worker_id.to_string()))),
@@ -529,6 +529,7 @@ pub async fn enqueue(
     max_retries: u32,
     idempotency_key: Option<&str>,
     tenant_id: Option<i64>,
+    handle_key: Option<&str>,
     available_at: DateTime<Utc>,
 ) -> Result<(), Error> {
     let backend = conn.get_database_backend();
@@ -537,20 +538,21 @@ pub async fn enqueue(
 
     if let Some(idem) = idempotency_key {
         // Idempotent insert: skip if a pending/claimed row with the same key exists.
-        let (p1, p2, p3, p4, p5, p6, p7, p8) = (
+        let (p1, p2, p3, p4, p5, p6, p7, p8, p9) = (
             ph(backend, 1),
             ph(backend, 2),
             ph(backend, 3),
             ph(backend, 4),
             ph(backend, 5),
             ph(backend, 6),
-            ts_ph(backend, 7),
+            ph(backend, 7),
             ts_ph(backend, 8),
+            ts_ph(backend, 9),
         );
         let sql = format!(
             "INSERT INTO jobs (queue, job_type, payload, status, attempts, max_retries, \
-             idempotency_key, tenant_id, available_at, created_at) \
-             SELECT {p1}, {p2}, {p3}, 'pending', 0, {p4}, {p5}, {p6}, {p7}, {p8} \
+             idempotency_key, tenant_id, handle_key, available_at, created_at) \
+             SELECT {p1}, {p2}, {p3}, 'pending', 0, {p4}, {p5}, {p6}, {p7}, {p8}, {p9} \
              WHERE NOT EXISTS ( \
                SELECT 1 FROM jobs WHERE job_type = {p2} AND idempotency_key = {p5} \
                AND status IN ('pending','claimed') \
@@ -566,6 +568,9 @@ pub async fn enqueue(
                 Value::Int(Some(max_retries as i32)),
                 Value::String(Some(Box::new(idem.to_string()))),
                 tenant_id.map_or(Value::BigInt(None), |id| Value::BigInt(Some(id))),
+                handle_key.map_or(Value::String(None), |k| {
+                    Value::String(Some(Box::new(k.to_string())))
+                }),
                 Value::String(Some(Box::new(available_iso))),
                 Value::String(Some(Box::new(now_iso))),
             ],
@@ -573,19 +578,20 @@ pub async fn enqueue(
         conn.execute(stmt).await.map_err(Error::Db)?;
     } else {
         // Plain insert — no deduplication guard.
-        let (p1, p2, p3, p4, p5, p6, p7) = (
+        let (p1, p2, p3, p4, p5, p6, p7, p8) = (
             ph(backend, 1),
             ph(backend, 2),
             ph(backend, 3),
             ph(backend, 4),
             ph(backend, 5),
-            ts_ph(backend, 6),
+            ph(backend, 6),
             ts_ph(backend, 7),
+            ts_ph(backend, 8),
         );
         let sql = format!(
             "INSERT INTO jobs (queue, job_type, payload, status, attempts, max_retries, \
-             tenant_id, available_at, created_at) \
-             VALUES ({p1}, {p2}, {p3}, 'pending', 0, {p4}, {p5}, {p6}, {p7})"
+             tenant_id, handle_key, available_at, created_at) \
+             VALUES ({p1}, {p2}, {p3}, 'pending', 0, {p4}, {p5}, {p6}, {p7}, {p8})"
         );
         let stmt = Statement::from_sql_and_values(
             backend,
@@ -596,6 +602,9 @@ pub async fn enqueue(
                 Value::String(Some(Box::new(payload.to_string()))),
                 Value::Int(Some(max_retries as i32)),
                 tenant_id.map_or(Value::BigInt(None), |id| Value::BigInt(Some(id))),
+                handle_key.map_or(Value::String(None), |k| {
+                    Value::String(Some(Box::new(k.to_string())))
+                }),
                 Value::String(Some(Box::new(available_iso))),
                 Value::String(Some(Box::new(now_iso))),
             ],
@@ -1063,6 +1072,7 @@ mod tests {
             3,
             Some("key-abc"),
             None,
+            None,
             available_at,
         )
         .await
@@ -1074,6 +1084,7 @@ mod tests {
             "{}",
             3,
             Some("key-abc"),
+            None,
             None,
             available_at,
         )
@@ -1104,6 +1115,7 @@ mod tests {
             3,
             None,
             None,
+            None,
             available_at,
         )
         .await
@@ -1114,6 +1126,7 @@ mod tests {
             "OtherJob",
             "{}",
             3,
+            None,
             None,
             None,
             available_at,

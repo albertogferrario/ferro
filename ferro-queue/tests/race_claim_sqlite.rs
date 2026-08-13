@@ -46,7 +46,7 @@ async fn two_workers_claim_each_job_exactly_once() {
     const N: usize = 20;
     let now = chrono::Utc::now();
     for _ in 0..N {
-        enqueue(&conn1, "default", "TestJob", "{}", 3, None, None, now)
+        enqueue(&conn1, "default", "TestJob", "{}", 3, None, None, None, now)
             .await
             .expect("enqueue failed");
     }

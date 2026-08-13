@@ -77,6 +77,7 @@ async fn two_workers_claim_each_job_exactly_once_postgres() {
             3,
             None,
             None,
+            None,
             now,
         )
         .await

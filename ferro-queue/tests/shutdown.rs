@@ -38,6 +38,7 @@ async fn graceful_shutdown_requeues_claimed_jobs() {
         3,
         None,
         None,
+        None,
         now,
     )
     .await
