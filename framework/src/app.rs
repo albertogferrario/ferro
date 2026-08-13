@@ -412,6 +412,11 @@ where
             let conn = Self::get_database_connection().await;
             let _ = ferro_queue::Queue::init(conn).await;
         }
+        // Register the offload-result persistence hook with ferro-queue (Phase 246).
+        // Injects the framework's persist_result_raw / persist_error closures so the
+        // worker can write completed/failed snapshots without ferro-queue depending on
+        // ferro-projection (D-11). OnceLock — re-registration is silently ignored.
+        crate::offload::register_offload_hooks();
         if ferro_queue::Queue::has_registered_jobs() {
             // Warn when jobs are registered (so a WorkerLoop is started) but the
             // queue is in sync mode (WR-04). In sync mode every `dispatch()`

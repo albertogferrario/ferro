@@ -246,6 +246,7 @@ pub(crate) fn emit_job_items(
         .collect();
 
     // Build the `handle()` call expression based on sync/async and Result/non-Result.
+    // handle() keeps a fixed Result<(), Error> return — value is discarded here.
     let call_expr: TokenStream2 = match (info.is_async, info.returns_result) {
         (true, false) => quote! {
             let _ = svc.#method_ident( #( #field_args ),* ).await;
@@ -266,6 +267,38 @@ pub(crate) fn emit_job_items(
         (false, true) => quote! {
             svc.#method_ident( #( #field_args ),* )
                 .map(|_| ())
+                .map_err(|e| ::ferro::queue::Error::job_failed(
+                    #job_ident_str,
+                    format!("{e}"),
+                ))
+        },
+    };
+
+    // Build the `handle_with_value()` call expression: captures and serializes the
+    // success value so the worker can persist it as an offload result (Phase 246).
+    // `::serde_json::to_value(&v).ok()` yields Option<Value> (None only if the type
+    // is not JSON-serializable, which should not occur for OffloadSerializable types).
+    // For a `()` return, to_value(&()) = Value::Null wrapped as Some(Value::Null).
+    let value_capture_expr: TokenStream2 = match (info.is_async, info.returns_result) {
+        (true, false) => quote! {
+            let v = svc.#method_ident( #( #field_args ),* ).await;
+            ::std::result::Result::Ok(::serde_json::to_value(&v).ok())
+        },
+        (true, true) => quote! {
+            svc.#method_ident( #( #field_args ),* ).await
+                .map(|v| ::serde_json::to_value(&v).ok())
+                .map_err(|e| ::ferro::queue::Error::job_failed(
+                    #job_ident_str,
+                    format!("{e}"),
+                ))
+        },
+        (false, false) => quote! {
+            let v = svc.#method_ident( #( #field_args ),* );
+            ::std::result::Result::Ok(::serde_json::to_value(&v).ok())
+        },
+        (false, true) => quote! {
+            svc.#method_ident( #( #field_args ),* )
+                .map(|v| ::serde_json::to_value(&v).ok())
                 .map_err(|e| ::ferro::queue::Error::job_failed(
                     #job_ident_str,
                     format!("{e}"),
@@ -307,6 +340,23 @@ pub(crate) fn emit_job_items(
                 let svc = ::ferro::App::make::<dyn #trait_ident>()
                     .expect(#expect_msg);
                 #call_expr
+            }
+
+            /// Capture the method's return value for offload result persistence (Phase 246).
+            ///
+            /// Overrides the `Job` default (`None`) to serialize the success value so the
+            /// worker can write it to the `projection_snapshots` table under the handle key.
+            /// No `failed()` override is emitted — the async worker path persists terminal
+            /// errors directly from `spawn_job`/`handle_failure` (D-10 correction).
+            async fn handle_with_value(
+                &self,
+            ) -> ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
+                ::ferro::queue::Error,
+            > {
+                let svc = ::ferro::App::make::<dyn #trait_ident>()
+                    .map_err(|e| ::ferro::queue::Error::job_failed(#job_ident_str, format!("{e}")))?;
+                #value_capture_expr
             }
         }
 

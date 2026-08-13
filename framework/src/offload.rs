@@ -144,6 +144,59 @@ pub async fn read_result<T: OffloadSerializable>(
     }
 }
 
+/// Persist a pre-serialized success value under the handle key.
+///
+/// Used by the worker hook, which already has the `serde_json::Value` from
+/// `handle_with_value()` — avoids re-serializing a value that was already
+/// serialized inside the handler closure. Writes the same
+/// `{"status":"completed","value":<v>}` envelope as [`persist_result`].
+///
+/// # Non-fatal contract
+///
+/// Returns [`ProjectionError`] on failure; callers (the hook closure) must
+/// log via `tracing::warn!` and continue — do NOT fail the job.
+pub async fn persist_result_raw(
+    handle_key: &str,
+    value: serde_json::Value,
+    db: &DatabaseConnection,
+) -> Result<(), ProjectionError> {
+    let envelope = serde_json::json!({ "status": "completed", "value": value });
+    snapshot_write(
+        db,
+        OFFLOAD_PROJECTION_NAME,
+        &ProjectionKey::new(handle_key),
+        envelope,
+    )
+    .await
+}
+
+/// Register the offload-result persistence hook with `ferro-queue`.
+///
+/// Called once at framework bootstrap. The hook closure calls
+/// [`persist_result_raw`] or [`persist_error`] based on the outcome, and
+/// logs via `tracing::warn!` on error without changing the job's outcome
+/// (T-246-05 non-fatal contract).
+///
+/// `ferro-queue` must not depend on `ferro-projection` (D-11); this
+/// registration is the injection point that resolves that constraint.
+pub fn register_offload_hooks() {
+    ferro_queue::register_offload_result_hook(|key, outcome, db| {
+        Box::pin(async move {
+            let res = match outcome {
+                Ok(value) => persist_result_raw(&key, value, db).await,
+                Err(msg) => persist_error(&key, &msg, db).await,
+            };
+            if let Err(e) = res {
+                tracing::warn!(
+                    handle_key = %key,
+                    error = %e,
+                    "offload result persist failed — result not stored"
+                );
+            }
+        })
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -107,8 +107,12 @@ impl WorkerConfig {
 /// serialized success value from `handle_with_value()`, or `None` for non-offload jobs;
 /// the delay is the per-job `retry_delay(attempt)` value captured at registration time.
 type JobHandler = Arc<
-    dyn Fn(String, u32) -> Pin<Box<dyn Future<Output = (Result<Option<serde_json::Value>, Error>, Duration)> + Send>>
-        + Send
+    dyn Fn(
+            String,
+            u32,
+        ) -> Pin<
+            Box<dyn Future<Output = (Result<Option<serde_json::Value>, Error>, Duration)> + Send>,
+        > + Send
         + Sync,
 >;
 
@@ -444,7 +448,9 @@ impl WorkerLoop {
                             // run the handler inside it and discard the value in the
                             // scoped future, then surface it alongside the fixed delay.
                             let (value_cell, delay_cell) = (
-                                std::sync::Arc::new(std::sync::Mutex::new(None::<serde_json::Value>)),
+                                std::sync::Arc::new(std::sync::Mutex::new(
+                                    None::<serde_json::Value>,
+                                )),
                                 std::sync::Arc::new(std::sync::Mutex::new(Duration::from_secs(5))),
                             );
                             let vc = value_cell.clone();
@@ -513,7 +519,16 @@ impl WorkerLoop {
                     // Use a default jitter delay for panics (we can't call retry_delay
                     // because the handler destructured before the panic).
                     let delay = default_jitter_delay(attempts);
-                    handle_failure(conn, job_id, attempts, max_retries, msg, delay, handle_key.as_deref()).await;
+                    handle_failure(
+                        conn,
+                        job_id,
+                        attempts,
+                        max_retries,
+                        msg,
+                        delay,
+                        handle_key.as_deref(),
+                    )
+                    .await;
                 }
             }
         });

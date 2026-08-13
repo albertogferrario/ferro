@@ -28,8 +28,8 @@ pub fn register_tenant_capture_hook(f: fn() -> Option<i64>) {
 /// never depends on `ferro-projection` (D-11); the worker invokes it after a
 /// job's terminal outcome when the job has a `handle_key`.
 pub type OffloadResultHook = fn(
-    String,                               // handle_key
-    Result<serde_json::Value, String>,    // outcome: Ok = completed value / Err = error msg
+    String,                            // handle_key
+    Result<serde_json::Value, String>, // outcome: Ok = completed value / Err = error msg
     &'static sea_orm::DatabaseConnection,
 ) -> Pin<Box<dyn Future<Output = ()> + Send>>;
 
