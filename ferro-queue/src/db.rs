@@ -88,6 +88,27 @@ impl Queue {
 }
 
 // ---------------------------------------------------------------------------
+// JobRegistrarEntry — inventory-based compile-time job registration
+// ---------------------------------------------------------------------------
+
+/// Entry for inventory-collected job registrations.
+///
+/// Emitted by `#[offload]` methods via `inventory::submit!`; collected by
+/// [`crate::WorkerLoop::from_registry`] alongside the runtime `JOB_REGISTRARS` Vec.
+///
+/// The runtime [`Queue::register`] path (manual bootstrap) and this compile-time
+/// inventory path run side by side; `from_registry` drains both.
+pub struct JobRegistrarEntry {
+    /// Registers the derived Job type with the given `WorkerLoop`
+    /// (calls `w.register::<J>()`).
+    pub register: fn(&mut crate::WorkerLoop),
+    /// Job struct ident string, for diagnostics only.
+    pub name: &'static str,
+}
+
+inventory::collect!(JobRegistrarEntry);
+
+// ---------------------------------------------------------------------------
 // JobRow — a claimed row from the jobs table
 // ---------------------------------------------------------------------------
 

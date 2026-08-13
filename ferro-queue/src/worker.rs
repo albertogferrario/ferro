@@ -203,10 +203,28 @@ impl WorkerLoop {
     ///
     /// This is the entry point used by the framework's server boot path to create
     /// the auto-started worker when at least one job type has been registered.
+    ///
+    /// Drains both the runtime `JOB_REGISTRARS` Vec (manual `Queue::register` calls)
+    /// and the compile-time inventory collection of [`crate::db::JobRegistrarEntry`]
+    /// items submitted by `#[offload]`-derived jobs.
     pub fn from_registry(config: WorkerConfig) -> Self {
         let mut w = Self::new(config);
-        crate::db::Queue::apply_registrars(&mut w);
+        crate::db::Queue::apply_registrars(&mut w); // runtime Vec path (unchanged)
+        // Inventory path: drain every JobRegistrarEntry submitted by #[offload].
+        for entry in inventory::iter::<crate::db::JobRegistrarEntry> {
+            (entry.register)(&mut w);
+        }
         w
+    }
+
+    /// Return the number of registered job handler types.
+    ///
+    /// This is a test-support accessor used to assert that inventory-submitted
+    /// job types are picked up by [`Self::from_registry`] without manual
+    /// [`crate::db::Queue::register`] calls.
+    #[doc(hidden)]
+    pub fn registered_job_count(&self) -> usize {
+        self.handlers.len()
     }
 
     /// Signal the worker loop to shut down gracefully.
