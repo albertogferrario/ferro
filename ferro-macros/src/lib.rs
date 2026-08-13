@@ -21,6 +21,7 @@ mod inertia;
 mod injectable;
 mod memoize;
 mod model;
+mod offload;
 mod redirect;
 mod request;
 mod resource;
