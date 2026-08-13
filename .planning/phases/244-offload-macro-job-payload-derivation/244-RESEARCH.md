@@ -122,7 +122,7 @@ that applies the attribute (the app crate), which already links `ferro-rs` (whic
 `ferro-queue` types). **No new Cargo dependency in ferro-macros is required.**
 
 [VERIFIED: ferro-macros/Cargo.toml line 25 shows `ferro-rs` in dev-dependencies only; the macro
-generates paths via `quote!{ ::ferro_queue::… }` or `::ferro::queue::…` — no compile-time link]
+generates paths via `quote!{ ::ferro::queue::… }` — no compile-time link]
 
 ---
 
@@ -259,7 +259,7 @@ pub trait Job: Send + Sync + 'static {
 `async fn build_monthly(&self, ...) -> Report` on the impl would look like:
 
 ```rust
-async fn handle(&self) -> Result<(), ferro_queue::Error> {
+async fn handle(&self) -> Result<(), ferro::queue::Error> {
     let svc = ::ferro::App::make::<dyn Reports>()
         .expect("Reports not registered in the container");
     // For -> T:
@@ -268,7 +268,7 @@ async fn handle(&self) -> Result<(), ferro_queue::Error> {
     // For -> Result<T, E>:
     // svc.build_monthly(...).await
     //    .map(|_| ())
-    //    .map_err(|e| ferro_queue::Error::job_failed("ReportsBuildMonthlyJob", e.to_string()))
+    //    .map_err(|e| ferro::queue::Error::job_failed("ReportsBuildMonthlyJob", e.to_string()))
 }
 ```
 
@@ -415,10 +415,10 @@ For the job registrar entry, the emitted code follows the same shape:
 
 ```rust
 // Emitted by the macro for ReportsBuildMonthlyJob:
-::ferro_queue::inventory::submit! {
-    ::ferro_queue::JobRegistrarEntry {
+::ferro::inventory::submit! {
+    ::ferro::queue::JobRegistrarEntry {
         register: || {
-            ::ferro_queue::Queue::register::<ReportsBuildMonthlyJob>();
+            ::ferro::queue::Queue::register::<ReportsBuildMonthlyJob>();
         },
         name: "ReportsBuildMonthlyJob",
     }
@@ -443,9 +443,9 @@ pub struct ReportsBuildMonthlyJob {
     pub month: Month,
 }
 
-#[::ferro_queue::async_trait]
-impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
-    async fn handle(&self) -> ::std::result::Result<(), ::ferro_queue::Error> {
+#[::ferro::async_trait]
+impl ::ferro::queue::Job for ReportsBuildMonthlyJob {
+    async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
         let svc = ::ferro::App::make::<dyn Reports>()
             .expect("Reports not bound in the container — did you annotate the impl with #[service(impl = …)]?");
         // async fn variant (method.sig.asyncness.is_some()):
@@ -453,7 +453,7 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
         // For Result<T,E> variant:
         // svc.build_monthly(...).await
         //    .map(|_| ())
-        //    .map_err(|e| ::ferro_queue::Error::job_failed(
+        //    .map_err(|e| ::ferro::queue::Error::job_failed(
         //        "ReportsBuildMonthlyJob", format!("{e}")))
         Ok(())
     }
@@ -523,7 +523,7 @@ pub fn from_registry(config: WorkerConfig) -> Self {
 | Job serialization/deserialization | Custom serialize/deserialize logic | `#[derive(Serialize, Deserialize)]` emitted by the macro | serde handles edge cases; the derive is what the existing idiom uses |
 | Worker registration | A generate-and-call-once `register_offload_jobs()` fn | `inventory::submit!` + `inventory::iter` | Already used by `#[service]`; zero-wiring is the stated goal |
 | Async wrapping of sync code | A custom `tokio::task::spawn_blocking` wrapper | Call the method body directly (sync fn callable inside async fn) | spawn_blocking adds overhead; non-blocking sync work does not need it; blocking work is a caller responsibility, not a macro concern |
-| Error conversion | A custom error type for method failure | `ferro_queue::Error::job_failed(name, e.to_string())` | The variant exists (error.rs:39–45) and produces the right tracing output |
+| Error conversion | A custom error type for method failure | `ferro::queue::Error::job_failed(name, e.to_string())` | The variant exists (error.rs:39–45) and produces the right tracing output |
 
 ---
 
@@ -578,36 +578,37 @@ signature.
 **Why it happens:** `async_trait` is a macro that rewrites both the trait and every impl. The
 derived `impl Job` is emitted by our macro at compile time, so it must include the attribute.
 
-**How to avoid:** Emit `#[::ferro_queue::async_trait]` on the derived impl block:
+**How to avoid:** Emit `#[::ferro::async_trait]` on the derived impl block:
 
 ```rust
 quote! {
-    #[::ferro_queue::async_trait]
-    impl ::ferro_queue::Job for #job_struct_name { ... }
+    #[::ferro::async_trait]
+    impl ::ferro::queue::Job for #job_struct_name { ... }
 }
 ```
 
-`ferro-queue` already re-exports `async_trait` as `pub use async_trait::async_trait` (lib.rs:71).
+`ferro-queue` already re-exports `async_trait` as `pub use async_trait::async_trait` (lib.rs:71),
+and `ferro` re-exports it at `::ferro::async_trait`.
 
 [VERIFIED: ferro-queue/src/lib.rs:71 — `pub use async_trait::async_trait`; ferro-queue/src/job.rs:43]
 
 ### Pitfall 4: `ferro-queue` does not have `inventory` as a direct dependency
 
-**What goes wrong:** `ferro-macros` emits `::ferro_queue::inventory::submit!`, but `ferro-queue`
-does not re-export `inventory`. The framework crate re-exports it at `::ferro::inventory`.
+**What goes wrong:** The macro emits `::ferro::inventory::submit!`, but `ferro-queue` itself needs
+`inventory` as a direct dep for `JobRegistrarEntry` and `inventory::collect!`.
 
-**Why it happens:** Checking `ferro-queue/Cargo.toml` — `inventory` is not listed. The macro can
-reference it through the framework's re-export path instead.
+**Why it happens:** Checking `ferro-queue/Cargo.toml` — `inventory` is not listed. The macro
+references it through the framework's re-export path (`::ferro::inventory`), which works for
+consumer crates that link `ferro-rs`; but the `JobRegistrarEntry` type and `inventory::collect!`
+call that live inside `ferro-queue` require a direct dep.
 
-**How to avoid:** Two clean options:
-1. Emit `::ferro::inventory::submit!` in the macro (all ferro-queue consumers link ferro-rs which
-   re-exports inventory at `framework/src/lib.rs:311`).
-2. Add `inventory` to `ferro-queue/Cargo.toml` directly (preferred for crate independence — the
-   `JobRegistrarEntry` type and `inventory::collect!` both live in ferro-queue).
+**How to avoid:** Two tasks:
+1. Emit `::ferro::inventory::submit!` in the macro (all consumer crates link `ferro-rs`, which
+   re-exports `inventory` at `framework/src/lib.rs:311`).
+2. Add `inventory` to `ferro-queue/Cargo.toml` directly (the `JobRegistrarEntry` type and
+   `inventory::collect!` both live in ferro-queue).
 
-Option 2 is the architecturally cleaner choice: `ferro-queue` owns its inventory type and
-collection; the macro emits `::ferro_queue::inventory::submit!`. The planner should include a
-task to add `inventory = "0.3"` to `ferro-queue/Cargo.toml`.
+The planner should include a task to add `inventory = "0.3"` to `ferro-queue/Cargo.toml`.
 
 [VERIFIED: ferro-queue/Cargo.toml — no inventory dep; framework/src/lib.rs:310–312 for
 the existing re-export]
@@ -648,13 +649,13 @@ pub struct ReportsBuildMonthlyJob {
     pub month: Month,
 }
 
-#[::ferro_queue::async_trait]
-impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
+#[::ferro::async_trait]
+impl ::ferro::queue::Job for ReportsBuildMonthlyJob {
     fn name(&self) -> &'static str {
         "ReportsBuildMonthlyJob"
     }
 
-    async fn handle(&self) -> ::std::result::Result<(), ::ferro_queue::Error> {
+    async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
         let svc = ::ferro::App::make::<dyn Reports>()
             .expect(
                 "Reports is not registered in the App container. \
@@ -665,9 +666,9 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
     }
 }
 
-::ferro_queue::inventory::submit! {
-    ::ferro_queue::JobRegistrarEntry {
-        register: |w: &mut ::ferro_queue::WorkerLoop| {
+::ferro::inventory::submit! {
+    ::ferro::queue::JobRegistrarEntry {
+        register: |w: &mut ::ferro::queue::WorkerLoop| {
             w.register::<ReportsBuildMonthlyJob>();
         },
         name: "ReportsBuildMonthlyJob",
@@ -680,12 +681,12 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
 ```rust
 // Input: async fn export_csv(&self, report_id: i64) -> Result<CsvFile, ExportError>;
 // Macro emits (in handle()):
-async fn handle(&self) -> ::std::result::Result<(), ::ferro_queue::Error> {
+async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
     let svc = ::ferro::App::make::<dyn Reports>()
         .expect("Reports not registered");
     svc.export_csv(self.report_id.clone()).await
         .map(|_| ())
-        .map_err(|e| ::ferro_queue::Error::job_failed(
+        .map_err(|e| ::ferro::queue::Error::job_failed(
             "ReportsExportCsvJob",
             format!("{e}"),
         ))
@@ -699,7 +700,8 @@ async fn handle(&self) -> ::std::result::Result<(), ::ferro_queue::Error> {
 // Location: ferro-queue/tests/offload_round_trip.rs  OR  a #[ferro_test] in ferro-queue/src/
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use ferro_queue::{dispatch, Job, Error, async_trait};
+use ferro::queue::{dispatch, Job, Error};
+use ferro::async_trait;
 use serde::{Deserialize, Serialize};
 
 // Simulated generated struct (manual in test; real usage is macro-derived)
@@ -824,9 +826,9 @@ security control that Phase 244 must enforce.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **inventory crate version in ferro-queue**
+1. RESOLVED: Add `inventory = "0.3"` as a direct dep to `ferro-queue/Cargo.toml`. **inventory crate version in ferro-queue**
    - What we know: ferro-queue does not currently depend on `inventory`; the framework re-exports
      `inventory 0.3` at `::ferro::inventory`.
    - What's unclear: whether to add `inventory` as a direct dep to ferro-queue (preferred) or emit
@@ -834,7 +836,7 @@ security control that Phase 244 must enforce.
    - Recommendation: add `inventory = "0.3"` to ferro-queue/Cargo.toml. The `JobRegistrarEntry`
      type and its `inventory::collect!` call belong in ferro-queue, not in framework.
 
-2. **`clone()` for payload field forwarding with lifetime-restricted types**
+2. RESOLVED: Emit `self.field.clone()` unconditionally; non-`Clone` types produce a clear compile-time error, which is acceptable for Phase 244. Phase 245 adds explicit diagnostics. **`clone()` for payload field forwarding with lifetime-restricted types**
    - What we know: the macro emits `self.field.clone()` unconditionally for all fields; this works
      for types deriving `Clone`.
    - What's unclear: if a user marks a method with `#[offload]` where a parameter type does not
@@ -843,7 +845,7 @@ security control that Phase 244 must enforce.
    - Recommendation: this is acceptable for Phase 244 (the error is compile-time and actionable).
      Phase 245 adds explicit diagnostic messages.
 
-3. **Interaction with `#[async_trait]` applied to the enclosing trait**
+3. RESOLVED: `#[service]` must be the outermost attribute (listed first in source order); this is already the established convention and documented in CONTEXT.md. **Interaction with `#[async_trait]` applied to the enclosing trait**
    - What we know: the spec example places `#[async_trait]` on the trait; `#[service]` receives
      the trait after `#[async_trait]` has already transformed it (attribute macros apply in order,
      outermost last). If `#[service]` is listed first and `#[async_trait]` second, `#[service]`

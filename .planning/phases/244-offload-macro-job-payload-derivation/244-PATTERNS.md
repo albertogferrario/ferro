@@ -176,13 +176,13 @@ pub struct ReportsBuildMonthlyJob {
     pub month: Month,
 }
 
-#[::ferro_queue::async_trait]
-impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
+#[::ferro::async_trait]
+impl ::ferro::queue::Job for ReportsBuildMonthlyJob {
     fn name(&self) -> &'static str {
         "ReportsBuildMonthlyJob"   // stable string literal, not type_name (Pitfall 2)
     }
 
-    async fn handle(&self) -> ::std::result::Result<(), ::ferro_queue::Error> {
+    async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
         let svc = ::ferro::App::make::<dyn Reports>()
             .expect(
                 "Reports is not registered in the App container. \
@@ -194,14 +194,14 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
         // Result<T,E> variant replaces the two lines above with:
         // svc.build_monthly(self.tenant_id.clone(), self.month.clone()).await
         //     .map(|_| ())
-        //     .map_err(|e| ::ferro_queue::Error::job_failed(
+        //     .map_err(|e| ::ferro::queue::Error::job_failed(
         //         "ReportsBuildMonthlyJob", format!("{e}")))
     }
 }
 
-::ferro_queue::inventory::submit! {
-    ::ferro_queue::JobRegistrarEntry {
-        register: |w: &mut ::ferro_queue::WorkerLoop| {
+::ferro::inventory::submit! {
+    ::ferro::queue::JobRegistrarEntry {
+        register: |w: &mut ::ferro::queue::WorkerLoop| {
             w.register::<ReportsBuildMonthlyJob>();
         },
         name: "ReportsBuildMonthlyJob",
@@ -213,8 +213,8 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob {
 - `#[derive(Clone)]` is mandatory on the struct — `handle()` calls `.clone()` on all fields.
 - `fn name()` must return a string literal, not `std::any::type_name::<Self>()`, to be
   path-stable (Pitfall 2 in RESEARCH.md).
-- The `impl Job` block must be wrapped with `#[::ferro_queue::async_trait]` (Pitfall 3).
-- The `inventory::submit!` path is `::ferro_queue::inventory::submit!` — requires `inventory`
+- The `impl Job` block must be wrapped with `#[::ferro::async_trait]` (Pitfall 3).
+- The `inventory::submit!` path is `::ferro::inventory::submit!` — requires `inventory`
   added to `ferro-queue/Cargo.toml` as a direct dep (Pitfall 4).
 
 ---
@@ -334,7 +334,7 @@ inventory = "0.3"
 ```
 
 No feature flags required. `ferro-macros/Cargo.toml` requires no changes (the macro generates
-`::ferro_queue::inventory::submit!` token paths; it does not link `inventory` itself at
+`::ferro::inventory::submit!` token paths; it does not link `inventory` itself at
 expansion time).
 
 ---
@@ -373,7 +373,7 @@ fn offload_macro_ui() {
 #![allow(unused_imports)]
 extern crate ferro_rs as ferro;
 use ferro::service;
-use ferro_queue::async_trait;
+use ferro::async_trait;
 
 #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
 pub struct Month(pub u32);
@@ -405,7 +405,7 @@ preamble, same `fn main() {}` trailer).
 #![allow(unused_imports)]
 extern crate ferro_rs as ferro;
 use ferro::service;
-use ferro_queue::async_trait;
+use ferro::async_trait;
 
 pub struct Svc;
 impl Default for Svc { fn default() -> Self { Self } }
@@ -438,12 +438,13 @@ through `dispatch_immediately()` in `PendingDispatch::dispatch()`.
 ```rust
 pub async fn dispatch<J: Job + Serialize + DeserializeOwned>(job: J) -> Result<(), Error>
 ```
-Called as `ferro_queue::dispatch(MyJob { … }).await.unwrap()`.
+Called as `ferro::queue::dispatch(MyJob { … }).await.unwrap()`.
 
 **Sync-mode dispatch test pattern** — copy structure from dispatcher test internals:
 ```rust
 use std::sync::atomic::{AtomicBool, Ordering};
-use ferro_queue::{dispatch, Job, Error, async_trait};
+use ferro::queue::{dispatch, Job, Error};
+use ferro::async_trait;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -481,10 +482,8 @@ async fn offload_round_trip_sync_mode() {
 **Source:** `ferro-macros/src/service.rs:168`
 **Apply to:** All `quote!` blocks in `ferro-macros/src/offload.rs` that emit registration code.
 ```rust
-// Always reference inventory via the crate that owns the collection type,
-// not via ::ferro::inventory directly.
-::ferro_queue::inventory::submit! { … }    // for JobRegistrarEntry
-// NOT: ::ferro::inventory::submit! { … }  // would work but couples to framework
+// Reference inventory through the ferro re-export, matching the #[service] convention.
+::ferro::inventory::submit! { … }    // for JobRegistrarEntry
 ```
 
 ### `App::make` container resolution
@@ -498,10 +497,10 @@ let svc = ::ferro::App::make::<dyn TraitName>()
 ### `#[async_trait]` on derived `impl Job` blocks
 **Source:** `ferro-queue/src/lib.rs:71` (`pub use async_trait::async_trait`)
             + `ferro-queue/src/job.rs:43–44`
-**Apply to:** Every `impl ::ferro_queue::Job for <Derived>Job` block emitted by the macro.
+**Apply to:** Every `impl ::ferro::queue::Job for <Derived>Job` block emitted by the macro.
 ```rust
-#[::ferro_queue::async_trait]
-impl ::ferro_queue::Job for ReportsBuildMonthlyJob { … }
+#[::ferro::async_trait]
+impl ::ferro::queue::Job for ReportsBuildMonthlyJob { … }
 ```
 
 ### `Error::job_failed` for `Result<T, E>` mapping
@@ -513,7 +512,7 @@ impl ::ferro_queue::Job for ReportsBuildMonthlyJob { … }
 // pub fn job_failed(job: impl Into<String>, message: impl Into<String>) -> Self
 svc.method(…).await
     .map(|_| ())
-    .map_err(|e| ::ferro_queue::Error::job_failed("TraitMethodJob", format!("{e}")))
+    .map_err(|e| ::ferro::queue::Error::job_failed("TraitMethodJob", format!("{e}")))
 ```
 
 ### `#[derive(Debug, Clone, Serialize, Deserialize)]` on derived structs
