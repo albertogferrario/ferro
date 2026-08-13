@@ -34,6 +34,16 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{FnArg, Pat, ReturnType, TraitItemFn, Type};
 
+/// How a field value should be forwarded to the original method call in `handle()`.
+enum FieldForward {
+    /// Original type was `&str` — field is `String`; forward as `.as_str()`.
+    AsStr,
+    /// Original type was `&[T]` — field is `Vec<T>`; forward as `.as_slice()`.
+    AsSlice,
+    /// All other types — forward via `.clone()`.
+    Clone,
+}
+
 /// Metadata collected from one `#[offload]`-marked trait method.
 pub(crate) struct OffloadMethodInfo {
     /// The derived Job struct ident, e.g. `ReportsBuildMonthlyJob`.
@@ -44,6 +54,8 @@ pub(crate) struct OffloadMethodInfo {
     pub field_names: Vec<proc_macro2::Ident>,
     /// Owned field types (after `owned_type` substitution).
     pub field_types: Vec<TokenStream2>,
+    /// Per-field forwarding strategy for the `handle()` call.
+    field_forwards: Vec<FieldForward>,
     /// Whether the original method is `async fn`.
     pub is_async: bool,
     /// Whether the original return type is `Result<_, _>`.
@@ -82,6 +94,18 @@ pub(crate) fn owned_type(ty: &Type) -> syn::Result<TokenStream2> {
     }
 }
 
+/// Determine how a field value should be forwarded in the `handle()` call.
+fn field_forward(ty: &Type) -> FieldForward {
+    match ty {
+        Type::Reference(r) if r.mutability.is_none() => match r.elem.as_ref() {
+            Type::Path(p) if p.path.is_ident("str") => FieldForward::AsStr,
+            Type::Slice(_) => FieldForward::AsSlice,
+            _ => FieldForward::Clone,
+        },
+        _ => FieldForward::Clone,
+    }
+}
+
 /// Convert a snake_case identifier to PascalCase.
 ///
 /// E.g. `build_monthly` → `BuildMonthly`.
@@ -116,27 +140,28 @@ pub(crate) fn collect_info(
     // Collect non-self parameters.
     let mut field_names: Vec<proc_macro2::Ident> = Vec::new();
     let mut field_types: Vec<TokenStream2> = Vec::new();
+    let mut field_forwards: Vec<FieldForward> = Vec::new();
 
     for arg in method.sig.inputs.iter() {
         match arg {
             FnArg::Receiver(_) => {
                 // &self — excluded from the payload (D-11).
             }
-            FnArg::Typed(pat_type) => {
-                match &*pat_type.pat {
-                    Pat::Ident(pat_ident) => {
-                        let owned = owned_type(&pat_type.ty)?;
-                        field_names.push(pat_ident.ident.clone());
-                        field_types.push(owned);
-                    }
-                    other => {
-                        return Err(syn::Error::new_spanned(
-                            other,
-                            "#[offload] parameters must be simple identifiers",
-                        ));
-                    }
+            FnArg::Typed(pat_type) => match &*pat_type.pat {
+                Pat::Ident(pat_ident) => {
+                    let owned = owned_type(&pat_type.ty)?;
+                    let forward = field_forward(&pat_type.ty);
+                    field_names.push(pat_ident.ident.clone());
+                    field_types.push(owned);
+                    field_forwards.push(forward);
                 }
-            }
+                other => {
+                    return Err(syn::Error::new_spanned(
+                        other,
+                        "#[offload] parameters must be simple identifiers",
+                    ));
+                }
+            },
         }
     }
 
@@ -164,6 +189,7 @@ pub(crate) fn collect_info(
         method_ident,
         field_names,
         field_types,
+        field_forwards,
         is_async,
         returns_result,
     })
@@ -187,14 +213,27 @@ pub(crate) fn emit_job_items(
     let job_ident_str = job_ident.to_string();
     let trait_ident_str = trait_ident.to_string();
 
+    // Build per-field forwarding expressions for the handle() call.
+    // &str fields: self.field.as_str(); &[T] fields: self.field.as_slice(); others: self.field.clone()
+    let field_args: Vec<TokenStream2> = info
+        .field_names
+        .iter()
+        .zip(info.field_forwards.iter())
+        .map(|(name, fwd)| match fwd {
+            FieldForward::AsStr => quote! { self.#name.as_str() },
+            FieldForward::AsSlice => quote! { self.#name.as_slice() },
+            FieldForward::Clone => quote! { self.#name.clone() },
+        })
+        .collect();
+
     // Build the `handle()` call expression based on sync/async and Result/non-Result.
     let call_expr: TokenStream2 = match (info.is_async, info.returns_result) {
         (true, false) => quote! {
-            let _ = svc.#method_ident( #( self.#field_names.clone() ),* ).await;
+            let _ = svc.#method_ident( #( #field_args ),* ).await;
             Ok(())
         },
         (true, true) => quote! {
-            svc.#method_ident( #( self.#field_names.clone() ),* ).await
+            svc.#method_ident( #( #field_args ),* ).await
                 .map(|_| ())
                 .map_err(|e| ::ferro::queue::Error::job_failed(
                     #job_ident_str,
@@ -202,11 +241,11 @@ pub(crate) fn emit_job_items(
                 ))
         },
         (false, false) => quote! {
-            let _ = svc.#method_ident( #( self.#field_names.clone() ),* );
+            let _ = svc.#method_ident( #( #field_args ),* );
             Ok(())
         },
         (false, true) => quote! {
-            svc.#method_ident( #( self.#field_names.clone() ),* )
+            svc.#method_ident( #( #field_args ),* )
                 .map(|_| ())
                 .map_err(|e| ::ferro::queue::Error::job_failed(
                     #job_ident_str,
@@ -217,11 +256,11 @@ pub(crate) fn emit_job_items(
 
     let expect_msg = format!(
         "{trait_ident_str} is not registered in the App container. \
-         Did you annotate the impl with #[service(impl = …)]?"
+         Did you annotate the impl with #[service(impl = \u{2026})]?"
     );
 
     quote! {
-        /// Derived job payload for the `#[offload]`-marked `#[method_ident]` method.
+        /// Derived job payload for the `#[offload]`-marked method.
         ///
         /// # Dispatch key stability
         ///

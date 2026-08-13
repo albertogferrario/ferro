@@ -1,0 +1,5 @@
+error: #[offload] parameters may not be &mut references — Job payloads must be owned and serializable
+  --> tests/ui/offload/fail/mut_ref_param.rs:16:34
+   |
+16 |     async fn mutate(&self, data: &mut String);
+   |                                  ^^^^^^^^^^^

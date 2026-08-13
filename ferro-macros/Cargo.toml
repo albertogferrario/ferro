@@ -23,5 +23,6 @@ regex = "1"
 [dev-dependencies]
 trybuild = "1"
 ferro-rs = { path = "../framework" }
+serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt"] }
 sea-orm = { version = "1.0", default-features = false }

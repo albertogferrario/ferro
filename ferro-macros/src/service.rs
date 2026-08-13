@@ -185,7 +185,11 @@ pub fn service_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut offload_infos: Vec<crate::offload::OffloadMethodInfo> = Vec::new();
     for item in &mut item_trait.items {
         if let syn::TraitItem::Fn(method) = item {
-            if let Some(pos) = method.attrs.iter().position(|a| a.path().is_ident("offload")) {
+            if let Some(pos) = method
+                .attrs
+                .iter()
+                .position(|a| a.path().is_ident("offload"))
+            {
                 method.attrs.remove(pos);
                 match crate::offload::collect_info(&trait_ident, method) {
                     Ok(info) => offload_infos.push(info),
