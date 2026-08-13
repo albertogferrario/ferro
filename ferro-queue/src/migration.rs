@@ -68,6 +68,7 @@ impl MigrationTrait for CreateJobsTable {
                     )
                     .col(ColumnDef::new(Jobs::IdempotencyKey).string().null())
                     .col(ColumnDef::new(Jobs::TenantId).big_integer().null())
+                    .col(ColumnDef::new(Jobs::HandleKey).string().null())
                     .col(
                         ColumnDef::new(Jobs::AvailableAt)
                             .timestamp_with_time_zone()
@@ -155,6 +156,7 @@ pub(crate) enum Jobs {
     MaxRetries,
     IdempotencyKey,
     TenantId,
+    HandleKey,
     AvailableAt,
     ClaimedAt,
     ClaimedBy,

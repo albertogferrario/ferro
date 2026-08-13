@@ -131,6 +131,8 @@ pub struct JobRow {
     pub idempotency_key: Option<String>,
     /// Optional tenant scope.
     pub tenant_id: Option<i64>,
+    /// Optional offload handle key (UUID string). Present for jobs dispatched via Offloadable::offload().
+    pub handle_key: Option<String>,
     /// Earliest time the job may be claimed.
     pub available_at: DateTime<Utc>,
     /// Insertion timestamp.
@@ -236,6 +238,9 @@ fn parse_job_row(row: &sea_orm::QueryResult) -> Result<JobRow, Error> {
     let tenant_id: Option<i64> = row
         .try_get_by::<Option<i64>, _>("tenant_id")
         .map_err(|e| Error::custom(format!("parse tenant_id: {e}")))?;
+    let handle_key: Option<String> = row
+        .try_get_by::<Option<String>, _>("handle_key")
+        .map_err(|e| Error::custom(format!("parse handle_key: {e}")))?;
 
     // available_at / created_at — SQLite stores as ISO-8601 text, Postgres as timestamptz.
     // SeaORM maps both to DateTime<Utc> when the column is timestamp_with_time_zone; on
@@ -252,6 +257,7 @@ fn parse_job_row(row: &sea_orm::QueryResult) -> Result<JobRow, Error> {
         max_retries: max_retries as u32,
         idempotency_key,
         tenant_id,
+        handle_key,
         available_at,
         created_at,
     })
