@@ -72,6 +72,7 @@
 //! [`ferro-events`]: https://docs.rs/ferro-events
 //! [`ferro-broadcast`]: https://docs.rs/ferro-broadcast
 
+mod direct;
 mod entity;
 mod error;
 mod key;
@@ -80,6 +81,7 @@ mod migration;
 mod projection;
 mod runtime;
 
+pub use direct::{snapshot_read, snapshot_write};
 pub use error::ProjectionError;
 pub use key::ProjectionKey;
 pub use migration::Migration as CreateProjectionSnapshotsTable;
