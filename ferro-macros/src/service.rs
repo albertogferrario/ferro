@@ -104,6 +104,23 @@ impl Parse for ServiceArgs {
 /// // In tests:
 /// let _guard = <dyn CacheStore>::fake();  // Binds FakeCache, returns TestContainerGuard
 /// ```
+///
+/// # Attribute ordering with `#[offload]`
+///
+/// `#[service]` must be the **outermost** attribute — listed first in source order,
+/// above `#[async_trait]` — so it parses raw `async fn` signatures for `#[offload]`
+/// derivation. If `#[async_trait]` is listed first, `#[service]` sees the
+/// desugared boxed-future signature instead of the original `async fn` form.
+///
+/// Correct order:
+/// ```rust,ignore
+/// #[service(impl = ReportBuilder)]
+/// #[async_trait]
+/// pub trait Reports {
+///     #[offload]
+///     async fn build_monthly(&self, month: Month);
+/// }
+/// ```
 pub fn service_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as ServiceArgs);
     let mut item_trait = parse_macro_input!(input as ItemTrait);
@@ -158,8 +175,25 @@ pub fn service_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
         item_trait.supertraits.push(static_bound);
     }
 
+    // Clone the trait ident before the mutable borrow of item_trait.items below.
+    let trait_ident = item_trait.ident.clone();
     let trait_name = &item_trait.ident;
     let trait_name_str = trait_name.to_string();
+
+    // Collect #[offload] methods and strip the attribute so rustc never sees it (RQ-1).
+    // The strip MUST happen before #item_trait is re-emitted (Pitfall 1).
+    let mut offload_infos: Vec<crate::offload::OffloadMethodInfo> = Vec::new();
+    for item in &mut item_trait.items {
+        if let syn::TraitItem::Fn(method) = item {
+            if let Some(pos) = method.attrs.iter().position(|a| a.path().is_ident("offload")) {
+                method.attrs.remove(pos);
+                match crate::offload::collect_info(&trait_ident, method) {
+                    Ok(info) => offload_infos.push(info),
+                    Err(e) => return e.to_compile_error().into(),
+                }
+            }
+        }
+    }
 
     // Generate impl registration if impl_type is specified
     let impl_registration = args.impl_type.as_ref().map(|concrete_type| {
@@ -205,10 +239,15 @@ pub fn service_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
         }
     });
 
+    let offload_items = offload_infos
+        .iter()
+        .map(|info| crate::offload::emit_job_items(&trait_ident, info));
+
     let expanded = quote! {
         #item_trait
         #impl_registration
         #fake_impl
+        #( #offload_items )*
     };
 
     TokenStream::from(expanded)
