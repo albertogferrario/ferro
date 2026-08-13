@@ -3343,6 +3343,13 @@ or return type are not serializable, with a diagnostic that names the offending 
      fails to compile (trybuild) with a clear, type-naming message.
   3. The serializable boundary is documented as the module-isolation guarantee.
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 245-01-PLAN.md — ferro-queue offload types module (OffloadSerializable + branded diagnostic, HandleKey, OffloadHandle<T>, Offloadable) + ::ferro::queue re-exports + unit tests (OFFLOAD-02d/e)
+- [ ] 245-02-PLAN.md — #[offload] macro emission: type Output capture + impl Offloadable + parameter where-clause; trybuild pass/param-fail/return-fail fixtures (OFFLOAD-02a/b/c)
+- [ ] 245-03-PLAN.md — document the serializable contract as the module-isolation guarantee in docs/src/features/queues.md (SC#3)
+
 #### Phase 246: Result → read-model snapshot
 **Goal:** Give offloaded work a result path — the worker writes the method's return value into
 a `ferro-projection` snapshot keyed by the handle, so the result is durably retrievable after
