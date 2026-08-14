@@ -59,16 +59,12 @@ async fn transport_url_no_feature_warns() {
     let broadcaster = Broadcaster::with_config(config);
     ferro::App::singleton(broadcaster);
 
-    // TODO(plan-01): call `framework::run_common_boot(None, /*no_worker=*/true).await`
-    // and verify that tracing::warn! fires (initialize tracing_subscriber in Plan 01
-    // once it is added as a dev-dependency, or use the `tracing-test` crate).
-    // here once Plan 01 exposes the symbol.  The assertion below is a
-    // compile-and-run placeholder so this scenario registers in `--list`
-    // at Wave 0 and Plan 01 can un-stub it without structural changes.
-    assert!(
-        true,
-        "D-07 stub: replace with run_common_boot call in Plan 01"
-    );
+    // TODO(plan-01): replace the body below with:
+    //   framework::run_common_boot(None, /*no_worker=*/true).await;
+    // and verify that tracing::warn! fires (add tracing_subscriber as dev-dep
+    // or use the `tracing-test` crate in Plan 01).
+    // At Wave 0 this is a compile-and-run placeholder that ensures the scenario
+    // registers in `--list` so Plan 01 can un-stub it without structural changes.
 
     // Confirm that the Broadcaster was registered (sanity check that the
     // App singleton path we will exercise in Plan 01 is wired correctly now).
