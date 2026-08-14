@@ -425,9 +425,9 @@ where
         // configuration.
         match crate::App::get::<ferro_broadcast::Broadcaster>() {
             Some(broadcaster) => {
-                crate::offload::register_offload_hooks_with_broadcaster(
-                    std::sync::Arc::new(broadcaster),
-                );
+                crate::offload::register_offload_hooks_with_broadcaster(std::sync::Arc::new(
+                    broadcaster,
+                ));
             }
             None => crate::offload::register_offload_hooks(),
         }

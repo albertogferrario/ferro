@@ -39,6 +39,27 @@ use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
 
+// ---------------------------------------------------------------------------
+// ResolveError
+// ---------------------------------------------------------------------------
+
+/// Errors from the race-safe [`resolve`] helper.
+#[derive(Debug, thiserror::Error)]
+pub enum ResolveError {
+    /// The projection snapshot read failed.
+    #[error("projection read failed: {0}")]
+    Projection(#[from] ProjectionError),
+    /// The broadcaster subscribe call failed.
+    #[error("broadcast subscribe failed: {0}")]
+    Broadcast(String),
+    /// The receive channel closed before a terminal result arrived.
+    #[error("resolve channel closed before a result arrived")]
+    ChannelClosed,
+    /// The optional timeout elapsed before a result arrived.
+    #[error("resolve timed out")]
+    Timeout,
+}
+
 /// Worker-side broadcaster for offload result deltas (D-03 Option A).
 ///
 /// The result hook is a `fn` pointer (`ferro_queue::OffloadResultHook`) and cannot
@@ -374,6 +395,104 @@ where
         );
     }
     Ok(handle)
+}
+
+/// Resolve an offloaded result race-safely (D-09).
+///
+/// Subscribes to the handle's broadcast channel FIRST (preventing the TOCTOU
+/// race where a delta fires between the read-back and the await), reads the
+/// snapshot back once to short-circuit an already-terminal handle, then awaits
+/// the delta and reads the authoritative snapshot on wake.
+///
+/// # Subscribe → read-back → await order
+///
+/// 1. **Subscribe first** — any delta fired after this point is buffered in the
+///    `mpsc` receiver and will not be missed.
+/// 2. **Read back once** — if the handle already completed or failed, return
+///    immediately without waiting for a delta.
+/// 3. **Await delta, read authoritative snapshot** — the delta is a redacted
+///    wakeup signal; the snapshot is the authoritative record (D-06). On wake
+///    `read_result` returns the full envelope (raw error included) — this helper
+///    is server-side / in-process. Browser clients use `read_result_redacted`.
+///
+/// # Timeout
+///
+/// `timeout: None` waits until the channel closes or a terminal result arrives.
+/// A terminally failed job records a `failed` snapshot + delta (Plan 02), so the
+/// only unbounded wait is a job that never runs. Pass `Some(dur)` to bound it.
+///
+/// # Errors
+///
+/// - [`ResolveError::Broadcast`] — the `subscribe` call failed.
+/// - [`ResolveError::Projection`] — a snapshot read failed.
+/// - [`ResolveError::ChannelClosed`] — the mpsc receiver closed before a result
+///   was observed. The channel closes when the client is removed (successful path)
+///   or the broadcaster drops.
+/// - [`ResolveError::Timeout`] — the optional timeout elapsed.
+pub async fn resolve<T: OffloadSerializable>(
+    handle: &ferro_queue::OffloadHandle<T>,
+    broadcaster: &Arc<ferro_broadcast::Broadcaster>,
+    db: &DatabaseConnection,
+    timeout: Option<std::time::Duration>,
+) -> Result<OffloadResult<T>, ResolveError> {
+    use ferro_broadcast::ServerMessage;
+    let key = handle.key();
+    let channel = format!("projection.{}.{}", OFFLOAD_PROJECTION_NAME, key);
+    // Unique client id per resolve call (Open Question #2 resolved).
+    let client_id = format!("{}-resolve-{}", key, uuid::Uuid::new_v4());
+
+    // 1. Subscribe FIRST (Pitfall 3 — prevents missing a delta that fires
+    //    between the read-back and the await).
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerMessage>(8);
+    broadcaster.add_client(client_id.clone(), tx);
+    broadcaster
+        .subscribe(&client_id, &channel, None, None)
+        .await
+        .map_err(|e| ResolveError::Broadcast(e.to_string()))?;
+
+    // 2. Read back ONCE — short-circuit an already-terminal handle.
+    match read_result::<T>(key, db).await {
+        Ok(Some(result)) if !matches!(result, OffloadResult::Pending) => {
+            broadcaster.remove_client(&client_id);
+            return Ok(result);
+        }
+        Err(e) => {
+            broadcaster.remove_client(&client_id);
+            return Err(ResolveError::Projection(e));
+        }
+        _ => {} // None or Pending — fall through to await the delta
+    }
+
+    // 3. Await the delta, then read the authoritative snapshot on wake.
+    let wait = async {
+        while let Some(msg) = rx.recv().await {
+            if let ServerMessage::Event(b) = msg {
+                if b.event == "offload.result" {
+                    // Delta received — read the authoritative snapshot.
+                    return read_result::<T>(key, db)
+                        .await
+                        .map(|opt| opt.unwrap_or(OffloadResult::Pending))
+                        .map_err(ResolveError::from);
+                }
+            }
+        }
+        // Channel closed — the client was removed (e.g. broadcaster shut down).
+        // Try a final read before reporting ChannelClosed, in case the result
+        // landed and remove_client fired.
+        read_result::<T>(key, db)
+            .await
+            .map_err(ResolveError::from)
+            .and_then(|opt| opt.ok_or(ResolveError::ChannelClosed))
+    };
+
+    let out = match timeout {
+        Some(d) => tokio::time::timeout(d, wait)
+            .await
+            .map_err(|_| ResolveError::Timeout)?,
+        None => wait.await,
+    };
+    broadcaster.remove_client(&client_id);
+    out
 }
 
 #[cfg(test)]
