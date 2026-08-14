@@ -4,6 +4,10 @@
 
 Artifact shape is opaque — the crate stores and retrieves raw bytes. Static site bundles, JSON-UI spec bundles, SSR manifests, and any other byte sequence all fit without crate-level assumptions about content type.
 
+> **Horizontal scaling with background workers:** For running the application binary's `worker`
+> subcommand at N replicas as an independent queue consumer (the "stateless web tier + replicable
+> workers" recipe), see [Work Distribution (Offload)](offload.md#scaling-model).
+
 ## Setup
 
 ### Migration
