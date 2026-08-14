@@ -10,6 +10,7 @@
 //! ```json
 //! { "status": "completed", "value": <T-as-JSON> }
 //! { "status": "failed",    "error": "<message>"  }
+//! { "status": "pending" }
 //! ```
 //!
 //! A `()` output type serializes to JSON `null`, so a completed-unit result is
@@ -23,11 +24,14 @@
 //! The error type is [`ferro_projection::ProjectionError`] — callers must NOT fail
 //! the job on a persistence error.
 //!
-//! # Security notes (T-246-02)
+//! # Security notes (T-246-02 / T-247-info-disclosure)
 //!
 //! The failed envelope stores the raw error string (`Display` form). In Phase 246
-//! the envelope is retrieved in-process only; Phase 247 must sanitize before any
-//! client-facing exposure.
+//! the envelope is retrieved in-process only. Phase 247 provides
+//! [`read_result_redacted`] as the client-facing sanitized read-back: it replaces
+//! the raw error with a fixed `"terminal error"` marker. The raw error remains only
+//! in the snapshot and the worker logs for authorized/server-side retrieval via
+//! [`read_result`].
 
 use ferro_projection::{snapshot_read, snapshot_write, ProjectionError, ProjectionKey};
 use ferro_queue::OffloadSerializable;
@@ -59,6 +63,11 @@ pub enum OffloadResult<T> {
         /// Display-stringified error message from the worker.
         error: String,
     },
+    /// The work is enqueued but not yet finished (D-07). Written at enqueue by
+    /// [`persist_pending`]; distinguishes an unknown handle (no snapshot →
+    /// [`read_result`] returns `None`) from work in flight (this variant).
+    /// Carries no value.
+    Pending,
 }
 
 /// Persist a completed offload result under the handle key.
@@ -262,6 +271,37 @@ mod tests {
             .await
             .expect("read_result");
         assert!(result.is_none());
+    }
+
+    /// `{"status":"pending"}` deserializes to `OffloadResult::Pending`; existing
+    /// completed/failed envelopes are unaffected (backward-compat, A3 verification).
+    #[tokio::test]
+    async fn offload_result_pending_round_trip() {
+        // New variant round-trips.
+        let pending = serde_json::from_str::<OffloadResult<()>>(r#"{"status":"pending"}"#)
+            .expect("deserialize pending");
+        assert!(
+            matches!(pending, OffloadResult::Pending),
+            "expected Pending, got {pending:?}"
+        );
+
+        // Backward-compat: completed envelope still deserializes correctly.
+        let completed =
+            serde_json::from_str::<OffloadResult<String>>(r#"{"status":"completed","value":"x"}"#)
+                .expect("deserialize completed");
+        assert!(
+            matches!(completed, OffloadResult::Completed { ref value } if value == "x"),
+            "expected Completed {{ value: \"x\" }}, got {completed:?}"
+        );
+
+        // Backward-compat: failed envelope still deserializes correctly.
+        let failed =
+            serde_json::from_str::<OffloadResult<String>>(r#"{"status":"failed","error":"boom"}"#)
+                .expect("deserialize failed");
+        assert!(
+            matches!(failed, OffloadResult::Failed { ref error } if error == "boom"),
+            "expected Failed {{ error: \"boom\" }}, got {failed:?}"
+        );
     }
 
     /// Unit output () round-trips via JSON null (Pitfall 3 / A3 verification).

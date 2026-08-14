@@ -278,6 +278,9 @@ async fn offload_result_round_trip() {
             OffloadResult::Failed { error } => {
                 panic!("SC1: expected Completed, got Failed {{ error: {error:?} }}")
             }
+            OffloadResult::Pending => {
+                panic!("SC1: expected Completed, got Pending")
+            }
         }
     }
 
@@ -338,6 +341,9 @@ async fn offload_result_round_trip() {
             OffloadResult::Completed { .. } => {
                 panic!("SC3a: expected OffloadResult::Failed, got Completed")
             }
+            OffloadResult::Pending => {
+                panic!("SC3a: expected OffloadResult::Failed, got Pending")
+            }
         }
     }
 
@@ -370,6 +376,9 @@ async fn offload_result_round_trip() {
                 panic!(
                     "SC3b: expected OffloadResult::Failed, got Completed — panic silently dropped"
                 )
+            }
+            OffloadResult::Pending => {
+                panic!("SC3b: expected OffloadResult::Failed, got Pending")
             }
         }
     }
