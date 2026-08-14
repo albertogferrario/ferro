@@ -343,6 +343,39 @@ pub fn register_offload_hooks_with_broadcaster(broadcaster: Arc<ferro_broadcast:
     });
 }
 
+/// Enqueue an offloaded job and write its pending marker (D-07/D-08).
+///
+/// The request-side entrypoint: dispatches the job via [`ferro_queue::Offloadable::offload`],
+/// then writes `{"status":"pending"}` under the returned handle key so a read-back can
+/// distinguish an unknown handle (no snapshot) from work in flight (pending). The pending
+/// write is on the framework side (D-11: `ferro-queue` must not depend on
+/// `ferro-projection`). Returns the handle the caller subscribes on. Does NOT await the
+/// result — the request stays non-blocking (SC#2).
+///
+/// A pending-write failure is logged at `warn!` and swallowed: the job is already enqueued,
+/// so a missing pending row degrades a read-back to `None` (unknown) rather than corrupting
+/// state; the result snapshot still lands when the worker finishes.
+///
+/// Resolvable as `::ferro::offload::enqueue_and_mark_pending` (the `offload` module is
+/// `pub mod offload` in `framework/src/lib.rs`).
+pub async fn enqueue_and_mark_pending<J>(
+    job: J,
+    db: &DatabaseConnection,
+) -> Result<ferro_queue::OffloadHandle<J::Output>, ferro_queue::Error>
+where
+    J: ferro_queue::Offloadable,
+{
+    let handle = job.offload().await?;
+    if let Err(e) = persist_pending(handle.key(), db).await {
+        tracing::warn!(
+            handle_key = %handle.key(),
+            error = %e,
+            "offload pending marker write failed; result path unaffected"
+        );
+    }
+    Ok(handle)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
