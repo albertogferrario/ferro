@@ -44,12 +44,14 @@ created: 2026-08-14
 
 | SC / Req | Behavior | Test Type | Automated Command | File Exists | Status |
 |----------|----------|-----------|-------------------|-------------|--------|
-| SC#1 | `<app-bin> worker --queue X` consumes only queue X (jobs on Y not claimed) | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime worker_consumes_only_selected_queue` | ❌ W0 | ⬜ pending |
-| SC#2 | Two worker loops split work, no double-processing | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime two_loops_split_work_no_duplicates` | ❌ W0 | ⬜ pending |
-| SC#3 | Saturating one queue does not stall a disjoint one (fault-domain isolation) | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime queue_fault_isolation` | ❌ W0 | ⬜ pending |
+| SC#1 | `<app-bin> worker --queue X` consumes only queue X (jobs on Y not claimed) | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime` | ❌ W0 | ⬜ pending |
+| SC#2 | Two worker loops split work, no double-processing | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime` | ❌ W0 | ⬜ pending |
+| SC#3 | Saturating one queue does not stall a disjoint one (fault-domain isolation) | Integration (in-process) | `cargo test -p ferro-queue --test worker_runtime` | ❌ W0 | ⬜ pending |
 | SC#4 | No framework-managed autoscaling introduced | Structural / grep | `! grep -rqiE "autoscal\|scale_to_zero\|KEDA" framework/src/` | ✅ | ⬜ pending |
 | WR-01 | `transport_redis_url` set → `RedisTransport` attached at framework boot | Env-gated integration | `cargo test -p framework --features redis-transport --test worker_boot` (skips without `REDIS_URL`) | ❌ W0 | ⬜ pending |
-| D-07 | Feature-off + URL-set → `tracing::warn!`, in-process fallback, no panic | Unit | `cargo test -p framework transport_url_no_feature_warns` | ❌ W0 | ⬜ pending |
+| D-07 | Feature-off + URL-set → `tracing::warn!`, in-process fallback, no panic | Unit | `cargo test -p framework --test worker_boot` | ❌ W0 | ⬜ pending |
+
+> SC#1–SC#3 are named sub-functions of the single `#[tokio::test]` in `worker_runtime.rs` (test-collapse guard), so they are **not** individually filterable — the suite command above runs all three. Confirm resolution with `cargo test -p ferro-queue --test worker_runtime -- --list` (must list ≥1 test) before trusting a green. Likewise D-07 runs inside the `worker_boot` suite.
 | OFFLOAD-05 | Deployable worker process runnable at N real replicas | Human UAT | see Manual-Only | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · ❌ W0 = test file created in Wave 0*

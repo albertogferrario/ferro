@@ -582,22 +582,21 @@ All other claims were verified directly from source files in this session.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three were resolved at plan time by reading the pinned manifests and container source; resolutions are recorded here and in the corresponding PLAN interfaces blocks.
 
 1. **`syn::meta` API compatibility with current `syn` version in ferro-macros**
    - What we know: `ferro-macros` uses `syn` and `quote`; the exact `syn` version determines whether `attr.parse_nested_meta()` or `attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)` is the right API.
-   - What's unclear: the syn version pinned in `ferro-macros/Cargo.toml` (not read in this session).
-   - Recommendation: the planner should read `ferro-macros/Cargo.toml` at plan time and confirm the syn version. Both `syn 1.x` and `syn 2.x` support nested-meta parsing, but the API surface differs. The plan should call this out explicitly.
+   - **RESOLVED:** `ferro-macros/Cargo.toml` pins `syn = "2"`. Use `attr.parse_nested_meta(|meta| { … })`; the syn-1 `NestedMeta` path must NOT be used. Recorded in `248-02-PLAN.md` interfaces block.
 
 2. **`run_worker` as a public framework API vs scaffolded `main.rs` direct call**
    - What we know: The `Application` builder in `framework/src/app.rs` exposes a builder API. The sample `app/src/main.rs` currently bypasses the builder and calls `bootstrap::register()` + `Server::from_config()` directly.
-   - What's unclear: whether Phase 248 should expose `run_worker` through the `Application` builder or as a standalone `pub async fn` directly callable from `main.rs`.
-   - Recommendation: expose as a standalone `pub async fn run_worker(queues: Vec<String>)` at the `framework` / `ferro-rs` facade level, matching how `Server::from_config()` is called today. Keep it parallel to the existing call pattern.
+   - **RESOLVED:** Expose as a standalone `pub async fn run_worker(bootstrap_fn, queues)` at the `framework` / `ferro-rs` facade level, parallel to today's `Server::from_config()` call pattern (not through the builder). Adopted uniformly across all plans; the `worker` CLI arm calls it directly.
 
 3. **`App::singleton` replacement semantics for the transport-attached Broadcaster**
    - What we know: `App::singleton(x)` registers `x` in the container. If a `Broadcaster` was already registered by `bootstrap.rs:187`, calling `App::singleton` again may silently overwrite or panic depending on the implementation.
-   - What's unclear: whether the container supports re-registration.
-   - Recommendation: the planner should read `framework/src/container.rs` (or wherever `App::singleton` is defined) to confirm re-registration semantics before coding the WR-01 path.
+   - **RESOLVED:** `App::singleton` uses `HashMap::insert` keyed by `TypeId` (`framework/src/container/mod.rs:80-84`) → re-registration OVERWRITES silently, no panic. Safe to attach the transport-bearing `Broadcaster` before the HTTP accept loop. Recorded in `248-01-PLAN.md` interfaces block.
 
 ---
 
