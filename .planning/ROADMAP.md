@@ -3305,7 +3305,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
 - [x] **Phase 247: Read-model delta → broadcast streaming** — A client subscribed to a (completed 2026-08-14)
   handle receives the result as a `ferro-broadcast` delta on completion; the originating
   request never blocks awaiting it.
-- [ ] **Phase 248: Deployable `ferro worker` runtime** — A consumer process (same app binary,
+- [x] **Phase 248: Deployable `ferro worker` runtime** — A consumer process (same app binary, (completed 2026-08-14)
   `worker` subcommand, job-class selector) runnable at N replicas against the shared queue;
   capacity scales by adding replicas; independent fault domain per worker class.
 - [ ] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through
@@ -3438,12 +3438,12 @@ workers, with each worker class an independent fault domain.
 > `<app-bin> worker --queue <name>` (repeatable) on the application's own binary (D-01/D-02),
 > and a worker class *is* its queue set — see 248-CONTEXT.md.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [x] 248-00-PLAN.md — Wave 0 test scaffolds (worker_runtime SC#1–3, worker_boot WR-01/D-07, #[offload(queue)] trybuild fixtures)
 - [x] 248-01-PLAN.md — Shared boot factoring (run_common_boot/run_worker) + registered_queue_names() + WR-01 transport wiring (D-05/D-06/D-07)
 - [x] 248-02-PLAN.md — #[offload(queue = "name")] macro parsing + queue emission into JobRegistrarEntry/offload() (D-04)
-- [ ] 248-03-PLAN.md — `worker` subcommand + `serve --no-worker` CLI wiring (D-01/D-02/D-03) + SC#1–3 tests GREEN
+- [x] 248-03-PLAN.md — `worker` subcommand + `serve --no-worker` CLI wiring (D-01/D-02/D-03) + SC#1–3 tests GREEN
 #### Phase 249: `ferro-mcp` introspection + docs
 **Goal:** Close the single-source loop — surface offloadable methods through `ferro-mcp` so an
 agent reads the same trait as the in-process contract, the wire payload, and the offload spec;
