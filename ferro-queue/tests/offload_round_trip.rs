@@ -113,6 +113,7 @@ inventory::submit! {
     JobRegistrarEntry {
         register: |w: &mut WorkerLoop| { w.register::<InventoryJob>(); },
         name: "InventoryJob",
+        queue: None,
     }
 }
 

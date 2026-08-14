@@ -147,6 +147,7 @@ inventory::submit! {
     JobRegistrarEntry {
         register: |w: &mut WorkerLoop| { w.register::<ValueJob>(); },
         name: "ValueJob",
+        queue: None,
     }
 }
 
@@ -177,6 +178,7 @@ inventory::submit! {
     JobRegistrarEntry {
         register: |w: &mut WorkerLoop| { w.register::<FailingJob>(); },
         name: "FailingJob",
+        queue: None,
     }
 }
 

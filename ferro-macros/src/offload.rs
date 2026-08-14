@@ -368,6 +368,7 @@ pub(crate) fn emit_job_items(
                     w.register::<#job_ident>();
                 },
                 name: #job_ident_str,
+                queue: None,
             }
         }
 

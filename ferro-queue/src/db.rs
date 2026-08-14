@@ -77,6 +77,27 @@ impl Queue {
         !JOB_REGISTRARS.lock().unwrap().is_empty()
     }
 
+    /// Derive the distinct set of queue names from all registered job types.
+    ///
+    /// Used by `serve` (D-05) and `worker` with no `--queue` flag (D-03) to
+    /// consume all declared queues. Returns at least `["default"]`.
+    pub fn registered_queue_names() -> Vec<String> {
+        use std::collections::BTreeSet;
+        let mut names: BTreeSet<String> = BTreeSet::new();
+        // Runtime path: manual Queue::register calls have no queue metadata → "default".
+        if !JOB_REGISTRARS.lock().unwrap().is_empty() {
+            names.insert("default".to_string());
+        }
+        // Inventory path: compile-time #[offload]-derived entries carry the declared queue.
+        for entry in inventory::iter::<JobRegistrarEntry> {
+            names.insert(entry.queue.unwrap_or("default").to_string());
+        }
+        if names.is_empty() {
+            names.insert("default".to_string());
+        }
+        names.into_iter().collect() // BTreeSet gives deterministic ordering
+    }
+
     /// Apply all registered job types to the given `WorkerLoop`.
     ///
     /// Used internally by [`WorkerLoop::from_registry`].
@@ -104,6 +125,8 @@ pub struct JobRegistrarEntry {
     pub register: fn(&mut crate::WorkerLoop),
     /// Job struct ident string, for diagnostics only.
     pub name: &'static str,
+    /// Declared queue name. `None` means "default".
+    pub queue: Option<&'static str>,
 }
 
 inventory::collect!(JobRegistrarEntry);
