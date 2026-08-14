@@ -3388,9 +3388,9 @@ single-node and development use.
      hub — single-node and development deployments need no configuration.
   3. Transport selection is configuration-only; publishers and subscribers use one API
      regardless of which transport is active.
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 246.1-01-PLAN.md — transport trait + BusEnvelope + in-memory transport + Broadcaster fan-out wiring + SC1/SC2/SC3/D-06 in-memory proofs (default-build path, no redis)
+- [x] 246.1-01-PLAN.md — transport trait + BusEnvelope + in-memory transport + Broadcaster fan-out wiring + SC1/SC2/SC3/D-06 in-memory proofs (default-build path, no redis)
 - [ ] 246.1-02-PLAN.md — feature-gated RedisTransport (redis 0.27 pub/sub) + optional dep + env-gated live-Redis integration test
 
 #### Phase 247: Read-model delta → broadcast streaming
