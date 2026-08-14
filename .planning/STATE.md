@@ -4,7 +4,7 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: "Completed 247-03-PLAN.md (resolve(), D-12 integration suite, queues.md SC#3)"
-last_updated: "2026-08-14T15:05:51.509Z"
+last_updated: "2026-08-14T15:20:32.627Z"
 last_activity: 2026-08-14
 progress:
   total_phases: 114
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 247 (read-model-delta-broadcast-streaming) — EXECUTING
-Plan: 3 of 3
+Phase: 248
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-14
 
@@ -160,6 +160,7 @@ Progress: [██████████] 100%
 | 245 | 3 | - | - |
 | 246 | 5 | - | - |
 | 246.1 | 2 | - | - |
+| 247 | 3 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |

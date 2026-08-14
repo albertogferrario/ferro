@@ -70,7 +70,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 |--------|-------|--------|
 | OFFLOAD-01 | Phase 244 | Complete |
 | OFFLOAD-02 | Phase 245 | Complete |
-| OFFLOAD-03 | Phase 246 | Not started |
-| OFFLOAD-04 | Phase 247 | Not started |
+| OFFLOAD-03 | Phase 246 | Complete |
+| OFFLOAD-04 | Phase 247 | Complete |
 | OFFLOAD-05 | Phase 248 | Not started |
 | OFFLOAD-06 | Phase 249 | Not started |
