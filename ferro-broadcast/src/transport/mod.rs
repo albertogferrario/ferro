@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 
 pub mod memory;
 
+#[cfg(feature = "redis-transport")]
+pub mod redis;
+
 /// Envelope carried on the shared bus for cross-process delivery (D-10).
 ///
 /// Wraps the existing `ServerMessage` (already `Serialize + Deserialize`) with the
