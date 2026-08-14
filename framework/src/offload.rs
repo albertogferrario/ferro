@@ -37,6 +37,15 @@ use ferro_projection::{snapshot_read, snapshot_write, ProjectionError, Projectio
 use ferro_queue::OffloadSerializable;
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, OnceLock};
+
+/// Worker-side broadcaster for offload result deltas (D-03 Option A).
+///
+/// The result hook is a `fn` pointer (`ferro_queue::OffloadResultHook`) and cannot
+/// capture an `Arc<Broadcaster>`; it reads this static at invocation time instead,
+/// mirroring `ferro_queue`'s `TENANT_ID_HOOK`. Set by
+/// `register_offload_hooks_with_broadcaster` at bootstrap.
+static OFFLOAD_BROADCASTER: OnceLock<Arc<ferro_broadcast::Broadcaster>> = OnceLock::new();
 
 /// Reserved projection name for all offload results (D-13).
 ///
@@ -241,6 +250,10 @@ pub async fn persist_result_raw(
 ///
 /// `ferro-queue` must not depend on `ferro-projection` (D-11); this
 /// registration is the injection point that resolves that constraint.
+///
+/// When broadcasting is configured, use [`register_offload_hooks_with_broadcaster`]
+/// instead — it also emits a delta on `projection.offload.result.{handle}` after
+/// the snapshot persists (D-01/D-02).
 pub fn register_offload_hooks() {
     ferro_queue::register_offload_result_hook(|key, outcome, db| {
         Box::pin(async move {
@@ -254,6 +267,77 @@ pub fn register_offload_hooks() {
                     error = %e,
                     "offload result persist failed — result not stored"
                 );
+            }
+        })
+    });
+}
+
+/// Broadcast a result delta on `projection.offload.result.{handle}` (D-01/D-02/D-04).
+///
+/// Best-effort: a send failure is logged at `warn!` and swallowed — the snapshot is the
+/// authoritative record and the job must never fail on a broadcast error (D-02, Pitfall 5).
+async fn broadcast_delta(
+    broadcaster: &Arc<ferro_broadcast::Broadcaster>,
+    handle_key: &str,
+    payload: serde_json::Value,
+) {
+    let channel = format!("projection.{}.{}", OFFLOAD_PROJECTION_NAME, handle_key);
+    let send_result = ferro_broadcast::Broadcast::new(broadcaster.clone())
+        .channel(channel.clone())
+        .event("offload.result")
+        .data(payload)
+        .send()
+        .await;
+    if let Err(e) = send_result {
+        tracing::warn!(
+            handle_key = %handle_key,
+            error = %e,
+            channel = %channel,
+            "offload delta broadcast failed; snapshot persisted"
+        );
+    }
+}
+
+/// Register the offload-result persistence hook with an attached broadcaster (D-01..D-05).
+///
+/// Sets `OFFLOAD_BROADCASTER` (D-03 Option A) so the result hook — which is a `fn` pointer
+/// and cannot close over an `Arc<Broadcaster>` — can read it at invocation time. The hook
+/// persists the snapshot first (D-02), then best-effort broadcasts a redacted delta on
+/// `projection.offload.result.{handle}`.
+///
+/// Delta payload:
+/// - Completed: `{"status":"completed","value":<v>}` (client receives the answer directly).
+/// - Failed: `{"status":"failed"}` with NO `error` field (D-05 redaction; raw error stays
+///   in the snapshot via [`persist_error`] for authorized server-side retrieval).
+///
+/// A broadcast failure is `tracing::warn!`-logged and swallowed — it never fails the job
+/// or rolls back the snapshot (D-02 / Pitfall 5). When broadcasting is not configured,
+/// use [`register_offload_hooks`] instead.
+pub fn register_offload_hooks_with_broadcaster(broadcaster: Arc<ferro_broadcast::Broadcaster>) {
+    let _ = OFFLOAD_BROADCASTER.set(broadcaster);
+    ferro_queue::register_offload_result_hook(|key, outcome, db| {
+        Box::pin(async move {
+            // Build the client-facing (redacted) delta payload BEFORE consuming `outcome`.
+            let delta = match &outcome {
+                Ok(value) => serde_json::json!({ "status": "completed", "value": value }),
+                Err(_) => serde_json::json!({ "status": "failed" }), // D-05: no raw error
+            };
+            // 1. Persist first (D-02).
+            let res = match outcome {
+                Ok(value) => persist_result_raw(&key, value, db).await,
+                Err(msg) => persist_error(&key, &msg, db).await, // raw error stays in snapshot
+            };
+            if let Err(e) = res {
+                tracing::warn!(
+                    handle_key = %key,
+                    error = %e,
+                    "offload result persist failed — result not stored"
+                );
+                return; // do not broadcast a delta the snapshot cannot back
+            }
+            // 2. Broadcast best-effort (D-02).
+            if let Some(b) = OFFLOAD_BROADCASTER.get() {
+                broadcast_delta(b, &key, delta).await;
             }
         })
     });
