@@ -835,7 +835,12 @@ serde_json::json!({ "status": "failed" })
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> All three resolved during planning (247-01/02/03):
+> - Q1 → Plan 247-02 Task 3: `Broadcaster` is registered via `App::singleton(..)` inside `bootstrap_fn` (runs at `app.rs:405`, before the `:419` hook site); the bootstrap uses `match App::get::<Broadcaster>()` with a persist-only fallback (mirrors `websocket.rs:24`).
+> - Q2 → Plan 247-03 Task 1: resolve-helper client id is `format!("{}-resolve-{}", handle.key(), uuid::Uuid::new_v4())`.
+> - Q3 → Plan 247-01 Task 1: a `serde_json::from_str::<OffloadResult<()>>(r#"{"status":"pending"}"#)` round-trip unit test confirms the new variant is backward-compatible.
 
 1. **App container: is `Broadcaster` available at line 419 of `app.rs`?**
    - What we know: `app.rs:419` calls `crate::offload::register_offload_hooks()` after the
