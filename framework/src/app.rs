@@ -581,7 +581,25 @@ where
     }
 
     async fn get_database_connection() -> sea_orm::DatabaseConnection {
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        // WR-01: both the `serve` (in-process) and `worker` boot paths route
+        // through here via `run_common_boot`. A bare `.expect(...)` panic on a
+        // misconfigured DATABASE_URL — a common first-run failure mode for a
+        // deployable worker — is an operational regression relative to the
+        // consumer `main.rs`, which prints actionable remediation and exits(1).
+        // Mirror that behaviour so both paths surface the same guidance.
+        let database_url = match env::var("DATABASE_URL") {
+            Ok(url) => url,
+            Err(e) => {
+                eprintln!("Error: DATABASE_URL not set");
+                eprintln!("  Cause: {e}");
+                eprintln!();
+                eprintln!("How to fix:");
+                eprintln!("  1. Add DATABASE_URL to .env file");
+                eprintln!("  2. Example: DATABASE_URL=sqlite://./database.db");
+                eprintln!("  3. Example: DATABASE_URL=postgres://user:pass@localhost/db");
+                std::process::exit(1);
+            }
+        };
 
         // For SQLite, ensure the database file can be created
         let database_url = if database_url.starts_with("sqlite://") {
@@ -603,9 +621,19 @@ where
             database_url
         };
 
-        sea_orm::Database::connect(&database_url)
-            .await
-            .expect("Failed to connect to database")
+        match sea_orm::Database::connect(&database_url).await {
+            Ok(conn) => conn,
+            Err(e) => {
+                eprintln!("Error: Failed to connect to database at {database_url}");
+                eprintln!("  Cause: {e}");
+                eprintln!();
+                eprintln!("How to fix:");
+                eprintln!("  1. Check that the database server is running");
+                eprintln!("  2. Verify the DATABASE_URL is correct");
+                eprintln!("  3. Ensure database credentials are valid");
+                std::process::exit(1);
+            }
+        }
     }
 
     /// Run migrations during server boot without success logging.
