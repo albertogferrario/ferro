@@ -445,10 +445,15 @@ pub async fn resolve<T: OffloadSerializable>(
     //    between the read-back and the await).
     let (tx, mut rx) = tokio::sync::mpsc::channel::<ServerMessage>(8);
     broadcaster.add_client(client_id.clone(), tx);
-    broadcaster
+    // subscribe can fail after add_client succeeded — clean up the client
+    // before returning so a failed subscribe does not leak an entry (WR-02).
+    if let Err(e) = broadcaster
         .subscribe(&client_id, &channel, None, None)
         .await
-        .map_err(|e| ResolveError::Broadcast(e.to_string()))?;
+    {
+        broadcaster.remove_client(&client_id);
+        return Err(ResolveError::Broadcast(e.to_string()));
+    }
 
     // 2. Read back ONCE — short-circuit an already-terminal handle.
     match read_result::<T>(key, db).await {
@@ -486,9 +491,15 @@ pub async fn resolve<T: OffloadSerializable>(
     };
 
     let out = match timeout {
-        Some(d) => tokio::time::timeout(d, wait)
-            .await
-            .map_err(|_| ResolveError::Timeout)?,
+        Some(d) => match tokio::time::timeout(d, wait).await {
+            Ok(inner) => inner,
+            // On timeout, clean up the client before returning so a timed-out
+            // resolve does not leak a broadcaster entry (WR-01).
+            Err(_) => {
+                broadcaster.remove_client(&client_id);
+                return Err(ResolveError::Timeout);
+            }
+        },
         None => wait.await,
     };
     broadcaster.remove_client(&client_id);
