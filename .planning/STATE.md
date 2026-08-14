@@ -4,7 +4,7 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: "Completed 248-03-PLAN.md (Worker CLI subcommand + SC#1-SC#3 gate)"
-last_updated: "2026-08-14T19:16:48.730Z"
+last_updated: "2026-08-14T20:47:42.800Z"
 last_activity: 2026-08-14
 progress:
   total_phases: 114
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 248 (deployable-ferro-worker-runtime) — EXECUTING
-Plan: 4 of 4
+Phase: 249
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-14
 
@@ -161,6 +161,7 @@ Progress: [██████████] 100%
 | 246 | 5 | - | - |
 | 246.1 | 2 | - | - |
 | 247 | 3 | - | - |
+| 248 | 4 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
