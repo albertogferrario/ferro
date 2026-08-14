@@ -3302,7 +3302,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
 - [x] **Phase 246.1 (INSERTED): Shared-transport broadcast fan-out** — `ferro-broadcast` (completed 2026-08-14)
   gains a configurable shared transport so a delta published in one process reaches
   subscribers in another; prerequisite for Phase 247 at more than one replica.
-- [ ] **Phase 247: Read-model delta → broadcast streaming** — A client subscribed to a
+- [x] **Phase 247: Read-model delta → broadcast streaming** — A client subscribed to a (completed 2026-08-14)
   handle receives the result as a `ferro-broadcast` delta on completion; the originating
   request never blocks awaiting it.
 - [ ] **Phase 248: Deployable `ferro worker` runtime** — A consumer process (same app binary,
@@ -3405,12 +3405,12 @@ at a single replica).
   2. The originating request returns before the worker finishes (non-blocking, asserted in a test).
   3. The subscribe-then-await-result client pattern is documented.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 247-01-PLAN.md — data-layer primitives: OffloadResult::Pending, persist_pending (D-07), read_result_redacted (D-05/D-10) + unit tests
 - [x] 247-02-PLAN.md — broadcast emission at the result hook (D-01..D-05), enqueue_and_mark_pending (D-08), broadcaster-aware bootstrap wiring
-- [ ] 247-03-PLAN.md — race-safe resolve() (D-09), multi-replica + non-blocking + redaction integration suite (D-12), queues.md subscribe-then-await docs (SC#3)
+- [x] 247-03-PLAN.md — race-safe resolve() (D-09), multi-replica + non-blocking + redaction integration suite (D-12), queues.md subscribe-then-await docs (SC#3)
 
 #### Phase 248: Deployable `ferro worker` runtime
 **Goal:** Make background capacity horizontally scalable — a deployable consumer process (the
