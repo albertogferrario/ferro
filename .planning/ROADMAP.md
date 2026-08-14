@@ -3405,11 +3405,11 @@ at a single replica).
   2. The originating request returns before the worker finishes (non-blocking, asserted in a test).
   3. The subscribe-then-await-result client pattern is documented.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 247-01-PLAN.md — data-layer primitives: OffloadResult::Pending, persist_pending (D-07), read_result_redacted (D-05/D-10) + unit tests
-- [ ] 247-02-PLAN.md — broadcast emission at the result hook (D-01..D-05), enqueue_and_mark_pending (D-08), broadcaster-aware bootstrap wiring
+- [x] 247-02-PLAN.md — broadcast emission at the result hook (D-01..D-05), enqueue_and_mark_pending (D-08), broadcaster-aware bootstrap wiring
 - [ ] 247-03-PLAN.md — race-safe resolve() (D-09), multi-replica + non-blocking + redaction integration suite (D-12), queues.md subscribe-then-await docs (SC#3)
 
 #### Phase 248: Deployable `ferro worker` runtime
