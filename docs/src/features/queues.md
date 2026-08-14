@@ -288,6 +288,97 @@ pub struct Report {
 
 Once the type satisfies the bound the compilation succeeds and the derived Job is available.
 
+## Subscribe and await an offloaded result
+
+When a method is marked `#[offload]`, the request side returns an `OffloadHandle<T>` immediately — the work runs in the background. A client that needs the result subscribes to the handle's channel and awaits the completion delta.
+
+### Channel convention
+
+Each handle has a dedicated broadcast channel:
+
+```
+projection.offload.result.{handle_key}
+```
+
+where `handle_key` is the UUID v4 returned by `handle.key()`. The key is minted server-side and returned only to the enqueuing caller, so it functions as a capability token: unguessable and single-use.
+
+### Request side
+
+Use `::ferro::offload::enqueue_and_mark_pending` as the request-side entrypoint. It enqueues the job and immediately writes a `{"status":"pending"}` snapshot under the handle key — so a read-back can distinguish an unknown handle (no snapshot) from work in progress (pending snapshot). The call returns before the worker executes.
+
+```rust
+use ferro::offload::enqueue_and_mark_pending;
+
+// In a request handler:
+let handle = enqueue_and_mark_pending(ReportsServiceBuildMonthlyJob { tenant_id, month }, db)
+    .await?;
+
+// Serialize the key and send it to the client — the client uses it as the subscription key.
+let key = handle.key().to_string();
+```
+
+### Server-side consumer: race-safe resolve
+
+For a server-side consumer (e.g. a handler polling on behalf of the client), use `::ferro::offload::resolve`. It encapsulates the correct subscribe → read-back → await order so the TOCTOU race is impossible:
+
+```rust
+use ferro::offload::{resolve, OffloadResult};
+use std::sync::Arc;
+use std::time::Duration;
+
+// Reconstruct the handle from the key stored in the session/DB, then:
+let result = resolve(&handle, &Arc::new(broadcaster), db, Some(Duration::from_secs(30))).await?;
+
+match result {
+    OffloadResult::Completed { value } => { /* use value */ }
+    OffloadResult::Failed { error } => { /* log error, surface non-sensitive marker */ }
+    OffloadResult::Pending => { /* still in progress (timeout path) */ }
+}
+```
+
+`resolve` performs three steps internally:
+
+1. **Subscribe first** — buffers any delta that fires before the read-back, preventing missed events.
+2. **Read back once** — if the handle already reached a terminal state, returns immediately without awaiting a delta.
+3. **Await the delta, read the authoritative snapshot on wake** — the delta is a redacted wakeup signal; `resolve` reads `read_result` (full envelope, raw error included) for the authoritative result.
+
+Pass `timeout: None` to wait indefinitely, or `Some(Duration)` to bound the wait. A terminally failed job always produces a `failed` delta and snapshot, so the only unbounded wait is a job that never runs.
+
+### Browser / client-side read-back
+
+Browser clients receive the redacted delta via the WebSocket subscription and can reconcile by reading the handle's snapshot via an application route that calls `read_result_redacted`:
+
+```rust
+use ferro::offload::read_result_redacted;
+
+// In a route handler that receives the handle key from the client:
+let result = read_result_redacted::<Report>(&key, db).await?;
+```
+
+`read_result_redacted` replaces a failed result's raw error with the fixed non-sensitive marker `"terminal error"`. Completed values and the pending marker pass through unchanged. The raw error is retained in the snapshot and worker logs for authorized server-side access via `read_result`.
+
+### Delta payload and redaction
+
+The delta broadcast on `projection.offload.result.{handle_key}` carries:
+
+| Outcome | Delta payload | `error` field |
+|---------|--------------|---------------|
+| Completed | `{"status":"completed","value":<T>}` | absent |
+| Failed | `{"status":"failed"}` | **absent** — raw error never broadcast |
+
+The raw error is stored only in the authoritative snapshot (`read_result`). This separation lets the delta be safely sent to any subscribed client without leaking internal diagnostic strings.
+
+### Migration for `CreateProjectionSnapshotsTable`
+
+The offload result path requires the `projection_snapshots` table. Register the migration alongside your application's own migrations:
+
+```rust
+use ferro_projection::CreateProjectionSnapshotsTable;
+
+// In your Migrator::migrations():
+Box::new(CreateProjectionSnapshotsTable),
+```
+
 ## WorkerLoop Configuration
 
 The framework creates a `WorkerLoop` with `WorkerConfig::default()` when job types are registered. Override the configuration by calling `WorkerLoop::new(config)` directly if you need custom settings.
