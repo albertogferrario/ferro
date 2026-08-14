@@ -3433,6 +3433,17 @@ workers, with each worker class an independent fault domain.
   3. Saturating one worker class does not stall an unrelated class (fault-domain isolation).
   4. No framework-managed autoscaling is introduced; N is an external concern (documented).
 
+
+> SC#1 note: the `ferro worker --class` phrasing is loose shorthand; the decided surface is
+> `<app-bin> worker --queue <name>` (repeatable) on the application's own binary (D-01/D-02),
+> and a worker class *is* its queue set — see 248-CONTEXT.md.
+
+**Plans:** 4 plans
+Plans:
+- [ ] 248-00-PLAN.md — Wave 0 test scaffolds (worker_runtime SC#1–3, worker_boot WR-01/D-07, #[offload(queue)] trybuild fixtures)
+- [ ] 248-01-PLAN.md — Shared boot factoring (run_common_boot/run_worker) + registered_queue_names() + WR-01 transport wiring (D-05/D-06/D-07)
+- [ ] 248-02-PLAN.md — #[offload(queue = "name")] macro parsing + queue emission into JobRegistrarEntry/offload() (D-04)
+- [ ] 248-03-PLAN.md — `worker` subcommand + `serve --no-worker` CLI wiring (D-01/D-02/D-03) + SC#1–3 tests GREEN
 #### Phase 249: `ferro-mcp` introspection + docs
 **Goal:** Close the single-source loop — surface offloadable methods through `ferro-mcp` so an
 agent reads the same trait as the in-process contract, the wire payload, and the offload spec;
