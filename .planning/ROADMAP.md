@@ -3310,6 +3310,13 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   capacity scales by adding replicas; independent fault domain per worker class.
 - [ ] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through
   `list_services`; document the authoring surface, result path, scaling model, and non-goals.
+- [ ] **Phase 249.1: Offload surface convergence (remove transitional paths)** — Converge the
+  offload surface built across 244–249 on a single canonical code path by removing the
+  transitional and fallback branches introduced during incremental delivery: the persist-only
+  broadcaster fallback in bootstrap (`framework/src/app.rs`), any dual/deprecated code paths, and
+  "compatibility"-framed handling, per the feature-branch convention (delete rather than deprecate).
+  No behavioral change to the fire-and-forward delivery loop; the Phase 247 integration suite is
+  the regression guard. Runs last in v16.4 so it can sweep 248/249 output as well.
 
 ### Phase Details
 
@@ -3438,6 +3445,29 @@ and document the authoring surface, result path, scaling model, and non-goals.
      deployable worker / scaling model, and the deferred elastic direction.
   3. The "many-user" scaling answer (stateless tier + replicable workers + cache + queue) is
      documented as the framework's capacity story.
+
+#### Phase 249.1: Offload surface convergence (remove transitional paths)
+**Goal:** Leave the work-distribution surface with one canonical code path. Incremental delivery
+across 244–249 introduced transitional and fallback branches so each phase's slice would function
+before the next landed; this phase removes them, per the feature-branch convention that old code
+is deleted rather than deprecated.
+**Depends on:** Phases 244–249 (sweeps the whole milestone's output; runs last).
+**Requirements:** none — architecture-convergence sweep, no new capability. OFFLOAD-01..06 stay
+mapped to their delivering phases.
+**Known targets (extend during planning):**
+  - The persist-only broadcaster fallback in bootstrap (`framework/src/app.rs` `None` arm) — make
+    the broadcaster-aware result hook the single registration path.
+  - The "backward-compatible with existing rows" framing on `OffloadResult::Pending` — confirm it
+    is a plain additive variant with no dead compatibility handling, and remove any that exists.
+  - A sweep of the offload/queue/broadcast surface for dual code paths, deprecated aliases,
+    versioned names, and "for compatibility" comments introduced during 244–249 (and 248/249).
+**Success Criteria** (what must be TRUE):
+  1. The offload result-hook registration has a single path (no fallback branch selecting between
+     persist-only and persist-then-broadcast).
+  2. No deprecated aliases, dual code paths, or compatibility shims remain on the offload surface
+     (structural grep is clean).
+  3. The Phase 247 integration suite and the full offload unit suite pass unchanged — the delivery
+     loop's observable behavior is identical.
 
 ### Requirement → Phase Mapping (v16.4)
 
