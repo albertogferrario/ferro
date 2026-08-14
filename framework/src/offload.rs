@@ -178,6 +178,34 @@ pub async fn read_result<T: OffloadSerializable>(
     }
 }
 
+/// Read back a result by handle, redacting the raw error for client-facing use (D-05/D-10).
+///
+/// Mirrors [`read_result`] but replaces a failed envelope's raw `Display` error with the
+/// fixed non-sensitive marker `"terminal error"`. Completed values and the pending marker
+/// pass through unchanged. The raw error remains only in the snapshot (via [`persist_error`])
+/// and the worker logs, for authorized/server-side retrieval through [`read_result`].
+///
+/// This is the browser read-back leg of the subscribe → read-back → await pattern (D-09):
+/// a client that receives the redacted delta reconciles by reading this back.
+///
+/// # Errors
+///
+/// [`ProjectionError::Db`] on a SeaORM error.
+/// [`ProjectionError::Json`] if the stored envelope cannot be deserialized.
+pub async fn read_result_redacted<T: OffloadSerializable>(
+    handle_key: &str,
+    db: &DatabaseConnection,
+) -> Result<Option<OffloadResult<T>>, ProjectionError> {
+    match read_result::<T>(handle_key, db).await? {
+        None => Ok(None),
+        Some(OffloadResult::Completed { value }) => Ok(Some(OffloadResult::Completed { value })),
+        Some(OffloadResult::Failed { .. }) => Ok(Some(OffloadResult::Failed {
+            error: "terminal error".to_string(),
+        })),
+        Some(OffloadResult::Pending) => Ok(Some(OffloadResult::Pending)),
+    }
+}
+
 /// Persist a pre-serialized success value under the handle key.
 ///
 /// Used by the worker hook, which already has the `serde_json::Value` from
@@ -373,6 +401,65 @@ mod tests {
         let absent = read_result::<()>("nope", &db)
             .await
             .expect("read_result for unknown handle");
+        assert!(
+            absent.is_none(),
+            "expected None for unknown handle, got {absent:?}"
+        );
+    }
+
+    /// `read_result_redacted` replaces the raw failed error with `"terminal error"`;
+    /// completed values and the pending marker pass through unchanged (D-05/D-10).
+    #[tokio::test]
+    async fn read_result_redacted_hides_error() {
+        let db = fresh_db().await;
+
+        // Failed path: raw error must NOT appear; fixed marker must appear.
+        persist_error("kf", "sensitive-secret-value", &db)
+            .await
+            .expect("persist_error");
+        let redacted = read_result_redacted::<String>("kf", &db)
+            .await
+            .expect("read_result_redacted failed");
+        match redacted {
+            Some(OffloadResult::Failed { error }) => {
+                assert_eq!(
+                    error, "terminal error",
+                    "redacted error must be the fixed marker"
+                );
+                assert_ne!(
+                    error, "sensitive-secret-value",
+                    "raw error must not appear in the redacted output"
+                );
+            }
+            other => panic!("expected Some(Failed), got {other:?}"),
+        }
+
+        // Completed path: value passes through unchanged.
+        persist_result("kc", &"hello".to_string(), &db)
+            .await
+            .expect("persist_result");
+        let completed = read_result_redacted::<String>("kc", &db)
+            .await
+            .expect("read_result_redacted completed");
+        assert!(
+            matches!(completed, Some(OffloadResult::Completed { ref value }) if value == "hello"),
+            "expected Some(Completed {{ value: \"hello\" }}), got {completed:?}"
+        );
+
+        // Pending path: passes through as Some(Pending).
+        persist_pending("kp", &db).await.expect("persist_pending");
+        let pending = read_result_redacted::<String>("kp", &db)
+            .await
+            .expect("read_result_redacted pending");
+        assert!(
+            matches!(pending, Some(OffloadResult::Pending)),
+            "expected Some(Pending), got {pending:?}"
+        );
+
+        // Unknown handle: returns None.
+        let absent = read_result_redacted::<String>("absent", &db)
+            .await
+            .expect("read_result_redacted absent");
         assert!(
             absent.is_none(),
             "expected None for unknown handle, got {absent:?}"

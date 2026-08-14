@@ -221,8 +221,10 @@ pub use ferro_events::{
 };
 
 /// Offload result persistence and retrieval helpers.
-/// Use `ferro::offload::persist_result`, `ferro::offload::persist_error`,
-/// `ferro::offload::read_result`, and `ferro::offload::OffloadResult`.
+///
+/// Key functions: `persist_result`, `persist_error`, `persist_pending` (D-07
+/// pending marker), `read_result` (full envelope, server-side), and
+/// `read_result_redacted` (client-safe redacted read-back, D-05/D-10).
 /// Framework bootstrap calls `register_offload_hooks()` automatically via
 /// `App::run`; tests that bypass full boot must call it explicitly.
 pub mod offload;
