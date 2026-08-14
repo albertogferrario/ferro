@@ -4,7 +4,7 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: Completed 246.1-02-PLAN.md (RedisTransport + redis-transport feature + env-gated integration test)
-last_updated: "2026-08-14T03:30:56.669Z"
+last_updated: "2026-08-14T03:52:30.882Z"
 last_activity: 2026-08-14
 progress:
   total_phases: 114
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 246.1 (shared-transport-broadcast-fan-out-for-multi-replica-delta-d) — EXECUTING
-Plan: 2 of 2
+Phase: 247
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-14
 
@@ -159,6 +159,7 @@ Progress: [██████████] 100%
 | 244 | 2 | - | - |
 | 245 | 3 | - | - |
 | 246 | 5 | - | - |
+| 246.1 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
