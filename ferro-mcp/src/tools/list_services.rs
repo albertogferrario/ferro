@@ -151,9 +151,9 @@ fn scan_services_from_files(project_root: &Path) -> Vec<ServiceItem> {
                 if trimmed.starts_with("#[service(") {
                     if let Some(start) = trimmed.find('(') {
                         if let Some(end) = trimmed.find(')') {
-                            let impl_name = &trimmed[start + 1..end];
+                            let impl_name = extract_service_impl_name(&trimmed[start + 1..end]);
                             services.push(ServiceItem {
-                                name: impl_name.trim().to_string(),
+                                name: impl_name,
                                 binding_type: "trait_binding".to_string(),
                                 methods: Vec::new(),
                             });
@@ -248,6 +248,28 @@ fn owned_type(ty: &str) -> String {
         return ty[1..].to_string();
     }
     ty.to_string()
+}
+
+/// Extract the concrete impl type name from a `#[service(...)]` argument list.
+///
+/// Mirrors the two forms the `#[service]` macro accepts
+/// (ferro-macros/src/service.rs): the positional form `#[service(ReportBuilder)]`
+/// (returned verbatim) and the named form
+/// `#[service(impl = ReportBuilder, fake = FakeBuilder)]` (the `impl =` value is
+/// returned; `fake =` and any other keys are ignored). Without this
+/// normalization the named form would surface as the malformed service name
+/// `"impl = ReportBuilder"` and break concrete-name correlation of offload
+/// methods.
+fn extract_service_impl_name(inner: &str) -> String {
+    let inner = inner.trim();
+    for part in inner.split(',') {
+        if let Some(rest) = part.trim().strip_prefix("impl") {
+            if let Some(value) = rest.trim_start().strip_prefix('=') {
+                return value.trim().to_string();
+            }
+        }
+    }
+    inner.to_string()
 }
 
 /// Parse non-self parameters from the text between the outer `(` and matching `)`.
@@ -365,7 +387,7 @@ fn scan_offload_methods_from_files(project_root: &Path, services: &mut [ServiceI
             if trimmed.starts_with("#[service(") {
                 if let Some(start) = trimmed.find('(') {
                     if let Some(end) = trimmed.find(')') {
-                        let impl_name = trimmed[start + 1..end].trim().to_string();
+                        let impl_name = extract_service_impl_name(&trimmed[start + 1..end]);
                         // Flush any previous block
                         flush_block(
                             &current_concrete,
@@ -589,6 +611,28 @@ mod tests {
         );
         // Non-offload line returns None
         assert_eq!(detect_offload_attr("#[service(ReportBuilder)]"), None);
+    }
+
+    #[test]
+    fn extract_service_impl_name_positional_and_named() {
+        // Positional form returned verbatim
+        assert_eq!(extract_service_impl_name("ReportBuilder"), "ReportBuilder");
+        // Named form: the `impl =` value is returned, `fake =` ignored
+        assert_eq!(
+            extract_service_impl_name("impl = ReportBuilder"),
+            "ReportBuilder"
+        );
+        assert_eq!(
+            extract_service_impl_name("impl = ReportBuilder, fake = FakeBuilder"),
+            "ReportBuilder"
+        );
+        // Key order does not matter
+        assert_eq!(
+            extract_service_impl_name("fake = FakeBuilder, impl = ReportBuilder"),
+            "ReportBuilder"
+        );
+        // A positional type whose name merely starts with "impl" is not misread
+        assert_eq!(extract_service_impl_name("ImplRegistry"), "ImplRegistry");
     }
 
     #[test]
