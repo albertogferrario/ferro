@@ -22,6 +22,7 @@
 
 - [Events & Listeners](features/events.md)
 - [Queues & Background Jobs](features/queues.md)
+- [Work Distribution (Offload)](features/offload.md)
 - [Notifications](features/notifications.md)
 - [Broadcasting](features/broadcasting.md)
 - [Storage](features/storage.md)
