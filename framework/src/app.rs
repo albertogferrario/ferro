@@ -412,11 +412,25 @@ where
             let conn = Self::get_database_connection().await;
             let _ = ferro_queue::Queue::init(conn).await;
         }
-        // Register the offload-result persistence hook with ferro-queue (Phase 246).
+        // Register the offload-result persistence hook with ferro-queue (Phase 246/247).
         // Injects the framework's persist_result_raw / persist_error closures so the
         // worker can write completed/failed snapshots without ferro-queue depending on
         // ferro-projection (D-11). OnceLock — re-registration is silently ignored.
-        crate::offload::register_offload_hooks();
+        //
+        // Phase 247: register the broadcaster-aware result hook so a completed/failed
+        // snapshot also emits a delta on projection.offload.result.{handle}. Falls back
+        // to persist-only when broadcasting is not configured (no Broadcaster in the
+        // container). The Broadcaster is registered by bootstrap_fn (runs at line 405
+        // above) before this point, so App::get::<Broadcaster>() reflects the consumer's
+        // configuration.
+        match crate::App::get::<ferro_broadcast::Broadcaster>() {
+            Some(broadcaster) => {
+                crate::offload::register_offload_hooks_with_broadcaster(
+                    std::sync::Arc::new(broadcaster),
+                );
+            }
+            None => crate::offload::register_offload_hooks(),
+        }
         if ferro_queue::Queue::has_registered_jobs() {
             // Warn when jobs are registered (so a WorkerLoop is started) but the
             // queue is in sync mode (WR-04). In sync mode every `dispatch()`
