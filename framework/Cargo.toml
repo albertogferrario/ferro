@@ -27,6 +27,9 @@ confirmation = []
 stripe = ["dep:ferro-stripe"]
 theme = ["dep:ferro-theme"]
 whatsapp = ["dep:ferro-whatsapp"]
+# Enables the Redis shared-transport integration test variant (env-gated, REDIS_URL required).
+# Forwards to ferro-broadcast's redis-transport feature.
+redis-transport = ["ferro-broadcast/redis-transport"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
