@@ -6,16 +6,19 @@
 //! # Usage
 //!
 //! ```bash
-//! ./app                    # Run web server with auto-migrate (default)
-//! ./app serve              # Run web server with auto-migrate
-//! ./app serve --no-migrate # Run web server without auto-migrate
-//! ./app db:migrate         # Run pending migrations
-//! ./app db:status          # Show migration status
-//! ./app db:rollback        # Rollback last migration
-//! ./app db:fresh           # Drop all tables and re-run migrations
-//! ./app schedule:work      # Run scheduler daemon
-//! ./app schedule:run       # Run due tasks once
-//! ./app schedule:list      # List registered tasks
+//! ./app                         # Run web server with auto-migrate (default)
+//! ./app serve                   # Run web server with auto-migrate
+//! ./app serve --no-migrate      # Run web server without auto-migrate
+//! ./app serve --no-worker       # Run web server without in-process worker
+//! ./app worker                  # Run background job consumer (all queues)
+//! ./app worker --queue reports  # Run consumer for the "reports" queue only
+//! ./app db:migrate              # Run pending migrations
+//! ./app db:status               # Show migration status
+//! ./app db:rollback             # Rollback last migration
+//! ./app db:fresh                # Drop all tables and re-run migrations
+//! ./app schedule:work           # Run scheduler daemon
+//! ./app schedule:run            # Run due tasks once
+//! ./app schedule:list           # List registered tasks
 //! ```
 
 use clap::{Parser, Subcommand};
@@ -74,6 +77,15 @@ enum Commands {
         /// Skip running migrations on startup
         #[arg(long)]
         no_migrate: bool,
+        /// Do not start an in-process background worker (use a separate `worker` process)
+        #[arg(long)]
+        no_worker: bool,
+    },
+    /// Run a background job consumer
+    Worker {
+        /// Queue to consume; repeatable. Omit to consume all registered queues.
+        #[arg(long, action = clap::ArgAction::Append)]
+        queue: Vec<String>,
     },
     /// Run pending database migrations
     #[command(name = "db:migrate")]
@@ -113,14 +125,27 @@ async fn main() {
     config::register_all();
 
     match cli.command {
-        None | Some(Commands::Serve { no_migrate: false }) => {
-            // Default: run server with auto-migrate
+        None | Some(Commands::Serve { no_migrate: false, no_worker: false }) => {
+            // Default: run server with auto-migrate and in-process worker
             run_migrations_silent().await;
-            run_server().await;
+            run_server(false).await;
         }
-        Some(Commands::Serve { no_migrate: true }) => {
+        Some(Commands::Serve { no_migrate: false, no_worker: true }) => {
+            // Run server with auto-migrate but no in-process worker
+            run_migrations_silent().await;
+            run_server(true).await;
+        }
+        Some(Commands::Serve { no_migrate: true, no_worker }) => {
             // Run server without migrations
-            run_server().await;
+            run_server(no_worker).await;
+        }
+        Some(Commands::Worker { queue }) => {
+            run_migrations_silent().await;
+            ferro::run_worker(
+                Some(Box::new(|| Box::pin(bootstrap::register()))),
+                queue,
+            )
+            .await;
         }
         Some(Commands::DbMigrate) => {
             run_migrations().await;
@@ -146,9 +171,11 @@ async fn main() {
     }
 }
 
-async fn run_server() {
-    // Register services and global middleware
-    bootstrap::register().await;
+async fn run_server(no_worker: bool) {
+    // Shared boot seam: registers services, initialises the queue DB connection,
+    // wires the WR-01 broadcast transport, and (when !no_worker) spawns the
+    // in-process WorkerLoop over all registered queues.
+    ferro::run_common_boot(Some(Box::new(|| Box::pin(bootstrap::register()))), no_worker).await;
 
     let router = routes::register();
 
