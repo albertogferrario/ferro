@@ -57,6 +57,7 @@ mod config;
 mod error;
 mod message;
 mod sign;
+pub mod transport;
 
 pub use broadcast::{Broadcast, BroadcastBuilder};
 pub use broadcaster::{AuthData, Broadcaster, ChannelAuthorizer, Client};
@@ -64,6 +65,7 @@ pub use channel::{ChannelInfo, ChannelType, PresenceMember};
 pub use config::BroadcastConfig;
 pub use error::Error;
 pub use message::{BroadcastMessage, ClientMessage, ServerMessage};
+pub use transport::{BroadcastTransport, BusEnvelope};
 
 /// Re-export async_trait for convenience.
 pub use async_trait::async_trait;
