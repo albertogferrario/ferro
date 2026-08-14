@@ -3,6 +3,7 @@
 use crate::channel::{ChannelInfo, ChannelType, PresenceMember};
 use crate::config::BroadcastConfig;
 use crate::message::{BroadcastMessage, ServerMessage};
+use crate::transport::{BroadcastTransport, BusEnvelope};
 use crate::Error;
 use dashmap::DashMap;
 use serde::Serialize;
@@ -30,6 +31,10 @@ struct BroadcasterInner {
     authorizer: Option<Arc<dyn ChannelAuthorizer>>,
     /// Configuration.
     config: BroadcastConfig,
+    /// Process-unique origin id for echo suppression (D-03).
+    origin_id: String,
+    /// Optional shared fan-out transport. `None` = in-process hub only (D-01/D-02).
+    transport: Option<Arc<dyn BroadcastTransport + Send + Sync>>,
 }
 
 /// The broadcaster manages channels and client connections.
@@ -52,6 +57,8 @@ impl Broadcaster {
                 channels: DashMap::new(),
                 authorizer: None,
                 config,
+                origin_id: uuid::Uuid::new_v4().to_string(),
+                transport: None,
             }),
         }
     }
@@ -64,6 +71,8 @@ impl Broadcaster {
                 channels: DashMap::new(),
                 authorizer: Some(Arc::new(authorizer)),
                 config: self.inner.config.clone(),
+                origin_id: self.inner.origin_id.clone(),
+                transport: self.inner.transport.clone(),
             }),
         }
     }
@@ -71,6 +80,43 @@ impl Broadcaster {
     /// Get the configuration.
     pub fn config(&self) -> &BroadcastConfig {
         &self.inner.config
+    }
+
+    /// Attach a shared fan-out transport and start its background SUBSCRIBE loop.
+    ///
+    /// With no transport (default), behaviour is identical to today (SC2). With a
+    /// transport, published `ServerMessage::Event`s are also fanned out to the bus,
+    /// and bus-received events from OTHER origins are delivered to local subscribers.
+    pub fn with_transport(self, transport: Arc<dyn BroadcastTransport + Send + Sync>) -> Self {
+        let inner = Arc::new(BroadcasterInner {
+            clients: DashMap::new(),
+            channels: DashMap::new(),
+            authorizer: self.inner.authorizer.clone(),
+            config: self.inner.config.clone(),
+            origin_id: self.inner.origin_id.clone(),
+            transport: Some(transport.clone()),
+        });
+        let broadcaster = Self { inner };
+        // Spawn the origin-filtered SUBSCRIBE loop.
+        let (tx, mut rx) = mpsc::channel::<BusEnvelope>(256);
+        let loop_transport = transport.clone();
+        tokio::spawn(async move {
+            if let Err(e) = loop_transport.subscribe_loop(tx).await {
+                warn!(error = %e, "broadcast transport subscribe loop ended with error");
+            }
+        });
+        let deliver_broadcaster = broadcaster.clone();
+        tokio::spawn(async move {
+            while let Some(envelope) = rx.recv().await {
+                if envelope.origin == deliver_broadcaster.inner.origin_id {
+                    continue; // drop own echo (D-03)
+                }
+                deliver_broadcaster
+                    .send_to_channel_local_only(&envelope.channel, &envelope.message)
+                    .await;
+            }
+        });
+        broadcaster
     }
 
     /// Register a new client connection.
@@ -317,11 +363,14 @@ impl Broadcaster {
 
     /// Send a message to all subscribers of a channel.
     async fn send_to_channel(&self, channel_name: &str, msg: &ServerMessage) {
+        // 1. Local delivery — always first, independent of the bus (D-03).
         if let Some(channel) = self.inner.channels.get(channel_name) {
             for socket_id in channel.subscribers.iter() {
                 self.send_to_client(socket_id, msg.clone()).await;
             }
         }
+        // 2. Fan out to the shared bus (D-04: Event only).
+        self.fan_out(channel_name, msg).await;
     }
 
     /// Send a message to all subscribers except one.
@@ -336,6 +385,41 @@ impl Broadcaster {
                 if socket_id.as_str() != except_socket_id {
                     self.send_to_client(socket_id, msg.clone()).await;
                 }
+            }
+        }
+        // Fan out to the shared bus; except-socket exclusion is a local concern —
+        // remote replicas have no such socket, so the whole event is correct (D-04).
+        self.fan_out(channel_name, msg).await;
+    }
+
+    /// Publish an Event to the shared bus if a transport is configured (D-04, D-06).
+    async fn fan_out(&self, channel_name: &str, msg: &ServerMessage) {
+        let Some(transport) = &self.inner.transport else {
+            return;
+        };
+        if !matches!(msg, ServerMessage::Event(_)) {
+            return; // presence membership stays per-process (D-05)
+        }
+        let envelope = BusEnvelope {
+            origin: self.inner.origin_id.clone(),
+            channel: channel_name.to_string(),
+            message: msg.clone(),
+        };
+        if let Err(e) = transport.publish(&envelope).await {
+            warn!(error = %e, channel = %channel_name,
+                  "bus publish failed — local delivery already complete");
+            // D-06: never fail the caller.
+        }
+    }
+
+    /// Deliver a bus-received message to local subscribers WITHOUT re-publishing (D-03).
+    ///
+    /// Identical body to `send_to_channel`'s local loop, minus the `fan_out` call —
+    /// this breaks the recursive publish that would otherwise amplify the message.
+    async fn send_to_channel_local_only(&self, channel_name: &str, msg: &ServerMessage) {
+        if let Some(channel) = self.inner.channels.get(channel_name) {
+            for socket_id in channel.subscribers.iter() {
+                self.send_to_client(socket_id, msg.clone()).await;
             }
         }
     }

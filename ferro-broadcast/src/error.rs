@@ -29,6 +29,10 @@ pub enum Error {
     #[error("channel is full")]
     ChannelFull,
 
+    /// Shared-transport error (bus publish/subscribe).
+    #[error("transport error: {0}")]
+    Transport(String),
+
     /// Generic error.
     #[error("{0}")]
     Other(String),
@@ -43,5 +47,10 @@ impl Error {
     /// Create an authorization failed error.
     pub fn unauthorized(msg: impl Into<String>) -> Self {
         Self::AuthorizationFailed(msg.into())
+    }
+
+    /// Construct a transport error from any displayable message.
+    pub fn transport(msg: impl Into<String>) -> Self {
+        Self::Transport(msg.into())
     }
 }

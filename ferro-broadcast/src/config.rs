@@ -25,6 +25,11 @@ pub struct BroadcastConfig {
     /// authorizer-only path, which trusts the client-supplied token and is
     /// therefore **development-only**.
     pub signing_secret: Option<String>,
+    /// Redis URL for the shared fan-out transport. `None` = in-process hub only (SC2 default).
+    ///
+    /// `from_env` reads `BROADCAST_REDIS_URL`, falling back to `REDIS_URL` (shared with
+    /// `ferro-cache`, D-09). Absence of both leaves the in-process hub as the only transport.
+    pub transport_redis_url: Option<String>,
 }
 
 impl Default for BroadcastConfig {
@@ -36,6 +41,7 @@ impl Default for BroadcastConfig {
             client_timeout: Duration::from_secs(60),
             allow_client_events: true,
             signing_secret: None,
+            transport_redis_url: None,
         }
     }
 }
@@ -54,6 +60,7 @@ impl BroadcastConfig {
     /// - `BROADCAST_HEARTBEAT_INTERVAL`: Heartbeat interval in seconds (default: 30)
     /// - `BROADCAST_CLIENT_TIMEOUT`: Client timeout in seconds (default: 60)
     /// - `BROADCAST_ALLOW_CLIENT_EVENTS`: Allow whisper messages (default: true)
+    /// - `BROADCAST_REDIS_URL` / `REDIS_URL`: Shared fan-out transport Redis URL (default: None)
     ///
     /// # Example
     ///
@@ -94,6 +101,10 @@ impl BroadcastConfig {
                 .or_else(|_| env::var("APP_KEY"))
                 .ok()
                 .filter(|s| !s.is_empty()),
+            transport_redis_url: env::var("BROADCAST_REDIS_URL")
+                .or_else(|_| env::var("REDIS_URL"))
+                .ok()
+                .filter(|s| !s.is_empty()),
         }
     }
 
@@ -130,6 +141,12 @@ impl BroadcastConfig {
     /// Set whether client events (whisper) are allowed.
     pub fn allow_client_events(mut self, allow: bool) -> Self {
         self.allow_client_events = allow;
+        self
+    }
+
+    /// Set the shared-transport Redis URL.
+    pub fn transport_redis_url(mut self, url: impl Into<String>) -> Self {
+        self.transport_redis_url = Some(url.into());
         self
     }
 }
