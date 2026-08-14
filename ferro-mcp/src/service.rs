@@ -602,8 +602,12 @@ impl FerroMcpService {
         name = "list_services",
         description = "List all registered dependency injection container services.\n\n\
             **When to use:** Understanding available services, checking DI bindings, \
-            planning new service dependencies, debugging resolution errors.\n\n\
-            **Returns:** Singleton registrations, trait-to-concrete bindings, scopes.\n\n\
+            planning new service dependencies, debugging resolution errors, or \
+            discovering which service methods are offloadable.\n\n\
+            **Returns:** Singleton registrations, trait-to-concrete bindings. \
+            Service entries with `#[offload]`-marked methods include a `methods` array \
+            listing each method's name, declared queue, and typed parameter list \
+            (`[{ name, rust_type }]`). Plain services omit the `methods` field.\n\n\
             **Combine with:** `get_handler` to see service usage, `application_info` for service overview."
     )]
     pub async fn list_services(&self) -> String {

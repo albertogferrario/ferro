@@ -18,6 +18,9 @@ pub struct GenerationContext {
     /// Live projection surface guidance for v17.0 capabilities (D-03). Prose drift-guarded
     /// by `live_projection_drift_guard`.
     pub live_projection: LiveProjectionGuidance,
+    /// Work distribution: offloadable service methods and the deployable worker model.
+    /// Read-only summary; see docs/src/features/offload.md for the full authoring surface.
+    pub offload: &'static str,
 }
 
 /// Naming conventions for different framework artifacts
@@ -592,6 +595,11 @@ use serde::{Deserialize, Serialize};"#.to_string(),
         design_system,
         register_composition,
         live_projection,
+        offload: "Mark a #[service] trait method with #[offload] to derive a ferro-queue Job \
+            from its signature — the trait method keeps its in-process contract; #[offload] adds \
+            an offload enqueue entrypoint returning a typed result handle. Queue defaults to \
+            \"default\"; override with #[offload(queue = \"name\")]. Deploy workers as \
+            `<app-bin> worker --queue <name>` at N replicas. See docs/src/features/offload.md.",
     }
 }
 
