@@ -317,6 +317,41 @@ pub(crate) fn emit_job_items(
          Did you annotate the impl with #[service(impl = \u{2026})]?"
     );
 
+    // Derive queue-related token fragments from the declared queue name (D-04).
+    // queue_name_tokens: the value emitted into JobRegistrarEntry.queue.
+    // on_queue_tokens: an optional .on_queue("name") call in Offloadable::offload().
+    let queue_name_tokens: TokenStream2 = match info.declared_queue.as_deref() {
+        Some(q) => quote! { Some(#q) },
+        None => quote! { None },
+    };
+    let on_queue_tokens: TokenStream2 = match info.declared_queue.as_deref() {
+        Some(q) => quote! { .on_queue(#q) },
+        None => quote! {},
+    };
+
+    // The offload() override is only needed when a queue is declared; for the default
+    // queue, the trait-provided impl (ferro-queue/src/offload.rs) is correct as-is.
+    let offload_override: TokenStream2 = if info.declared_queue.is_some() {
+        quote! {
+            async fn offload(
+                self,
+            ) -> ::std::result::Result<
+                ::ferro::queue::OffloadHandle<Self::Output>,
+                ::ferro::queue::Error,
+            > {
+                let key = ::ferro::queue::HandleKey::new();
+                ::ferro::queue::PendingDispatch::new(self)
+                    .with_handle_key(key.as_str().to_string())
+                    #on_queue_tokens
+                    .dispatch()
+                    .await?;
+                Ok(::ferro::queue::OffloadHandle::new(key))
+            }
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         /// Derived job payload for the `#[offload]`-marked method.
         ///
@@ -372,15 +407,17 @@ pub(crate) fn emit_job_items(
                     w.register::<#job_ident>();
                 },
                 name: #job_ident_str,
-                queue: None,
+                queue: #queue_name_tokens,
             }
         }
 
+        #[::ferro::async_trait]
         impl ::ferro::queue::Offloadable for #job_ident
         where
             #output_type: ::ferro::queue::OffloadSerializable,
         {
             type Output = #output_type;
+            #offload_override
         }
     }
 }
