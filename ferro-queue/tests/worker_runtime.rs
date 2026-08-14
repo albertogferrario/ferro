@@ -76,14 +76,34 @@ async fn worker_consumes_only_selected_queue() {
     const M_DEFAULT: usize = 5;
 
     for _ in 0..N_REPORTS {
-        enqueue(&conn, "reports", "ReportJob", "{}", 3, None, None, None, now)
-            .await
-            .expect("enqueue reports job failed");
+        enqueue(
+            &conn,
+            "reports",
+            "ReportJob",
+            "{}",
+            3,
+            None,
+            None,
+            None,
+            now,
+        )
+        .await
+        .expect("enqueue reports job failed");
     }
     for _ in 0..M_DEFAULT {
-        enqueue(&conn, "default", "DefaultJob", "{}", 3, None, None, None, now)
-            .await
-            .expect("enqueue default job failed");
+        enqueue(
+            &conn,
+            "default",
+            "DefaultJob",
+            "{}",
+            3,
+            None,
+            None,
+            None,
+            now,
+        )
+        .await
+        .expect("enqueue default job failed");
     }
 
     // Drain only the "reports" queue.
@@ -294,10 +314,7 @@ async fn queue_fault_isolation() {
         barrier_media.wait().await;
         loop {
             // Acquire permit before each claim to model saturation.
-            let _permit = slow_sem_clone
-                .acquire()
-                .await
-                .expect("semaphore closed");
+            let _permit = slow_sem_clone.acquire().await.expect("semaphore closed");
             match claim(&conn_media, "media", "media-worker").await {
                 Ok(Some(row)) => {
                     media_out.lock().unwrap().push(row.id);
