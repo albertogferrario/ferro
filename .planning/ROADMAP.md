@@ -3308,7 +3308,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
 - [x] **Phase 248: Deployable `ferro worker` runtime** — A consumer process (same app binary, (completed 2026-08-14)
   `worker` subcommand, job-class selector) runnable at N replicas against the shared queue;
   capacity scales by adding replicas; independent fault domain per worker class.
-- [ ] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through
+- [x] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through (completed 2026-08-14)
   `list_services`; document the authoring surface, result path, scaling model, and non-goals.
 - [ ] **Phase 249.1: Offload surface convergence (remove transitional paths)** — Converge the
   offload surface built across 244–249 on a single canonical code path by removing the
@@ -3450,11 +3450,11 @@ agent reads the same trait as the in-process contract, the wire payload, and the
 and document the authoring surface, result path, scaling model, and non-goals.
 **Depends on:** Phases 244–248.
 **Requirements:** OFFLOAD-06.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 249-01-PLAN.md — ferro-mcp introspection: static offload parser + list_services extension + tool description + generation_context mention (Wave 1)
-- [ ] 249-02-PLAN.md — docs: canonical offload.md + queues.md pointer + deployments.md cross-link + SUMMARY.md nav (Wave 2)
+- [x] 249-02-PLAN.md — docs: canonical offload.md + queues.md pointer + deployments.md cross-link + SUMMARY.md nav (Wave 2)
 **Success Criteria** (what must be TRUE):
   1. `list_services` marks offloadable methods and exposes their derived payload schema.
   2. Docs cover: authoring an `#[offload]` method, the result handle + streaming pattern, the
