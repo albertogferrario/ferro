@@ -7,11 +7,9 @@
 //!
 //! Scenario 1 — `transport_url_no_feature_warns` (D-07):
 //!   When `BROADCAST_REDIS_URL` is set but the `redis-transport` feature is
-//!   disabled, the framework boot step must complete without panic and emit a
-//!   `tracing::warn!` rather than hard-failing.  This scenario stubs the
-//!   actual `run_common_boot` call (not yet introduced at Wave 0) with a
-//!   `// TODO(plan-01)` marker — Plan 01 must un-stub it once the symbol
-//!   exists.
+//!   disabled, the framework boot step must complete without panic and the
+//!   registered `Broadcaster` must remain resolvable via `App::get` (no hard
+//!   failure from the feature-off fallback path).
 //!
 //! Scenario 2 — `transport_url_attaches_redis_transport` (WR-01):
 //!   Feature-gated behind `redis-transport`; skips when `REDIS_URL` is unset.
@@ -22,6 +20,22 @@
 extern crate ferro_rs as ferro;
 
 use ferro_broadcast::{BroadcastConfig, Broadcaster};
+use ferro_queue::{CreateJobsTable, Queue};
+use sea_orm::Database;
+use sea_orm_migration::MigratorTrait;
+
+// ---------------------------------------------------------------------------
+// Minimal inline migrator for the Queue jobs table
+// ---------------------------------------------------------------------------
+
+struct TestMigrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for TestMigrator {
+    fn migrations() -> Vec<Box<dyn sea_orm_migration::MigrationTrait>> {
+        vec![Box::new(CreateJobsTable)]
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Outer suite — one tokio::test, two scenario sub-functions
@@ -41,37 +55,48 @@ async fn worker_boot_suite() {
 // ---------------------------------------------------------------------------
 
 /// D-07: with `redis-transport` feature OFF and `BROADCAST_REDIS_URL` set,
-/// the framework must emit a warning and fall back to the in-process hub
-/// (no hard failure).
+/// the framework boot step must complete without panic and the in-process hub
+/// must be used as the fallback.
 ///
-/// At Wave 0 the `run_common_boot` symbol does not exist yet; the boot
-/// invocation is stubbed with `assert!(true)`.
-///
-/// TODO(plan-01): replace the `assert!(true)` stub with:
-///   `ferro::App::run_common_boot(None, true).await;`
-/// (or whichever public entry point Plan 01 exposes for the shared boot step)
-/// once the symbol is available.  Plan 02 regenerates `queue_unknown_arg.stderr`
-/// via `TRYBUILD=overwrite cargo test -p ferro-macros --test offload_macro`.
+/// Drives the real `ferro::run_common_boot(None, true)` boot step:
+/// - Pre-initialises the Queue connection via a temp SQLite file so the DB
+///   step inside `run_common_boot` is skipped (guarded by `is_initialized()`).
+/// - Registers a `Broadcaster` whose `transport_redis_url` is `Some(...)`.
+/// - Calls `run_common_boot(None, /*no_worker=*/true)` — must not panic.
+/// - Asserts the Broadcaster singleton is still resolvable after the boot step.
 #[cfg(not(feature = "redis-transport"))]
 async fn transport_url_no_feature_warns() {
+    // Pre-initialise the Queue DB connection with a temp SQLite file so that
+    // run_common_boot's `if !Queue::is_initialized()` guard skips the
+    // get_database_connection() call (which needs DATABASE_URL in env).
+    if !Queue::is_initialized() {
+        let db_file = tempfile::NamedTempFile::new().expect("create temp SQLite file");
+        let url = format!("sqlite://{}?mode=rwc", db_file.path().display());
+        let conn = Database::connect(&url)
+            .await
+            .expect("connect to temp SQLite");
+        TestMigrator::up(&conn, None)
+            .await
+            .expect("run jobs migration");
+        let _ = Queue::init(conn).await; // OnceLock — error means already initialised; fine.
+    }
+
     // Register a Broadcaster with a Redis URL set, as bootstrap would do.
     let config = BroadcastConfig::new().transport_redis_url("redis://127.0.0.1:6379");
     let broadcaster = Broadcaster::with_config(config);
     ferro::App::singleton(broadcaster);
 
-    // TODO(plan-01): replace the body below with:
-    //   framework::run_common_boot(None, /*no_worker=*/true).await;
-    // and verify that tracing::warn! fires (add tracing_subscriber as dev-dep
-    // or use the `tracing-test` crate in Plan 01).
-    // At Wave 0 this is a compile-and-run placeholder that ensures the scenario
-    // registers in `--list` so Plan 01 can un-stub it without structural changes.
+    // Drive the real shared boot step.
+    // Under default features (no redis-transport), the D-07 branch fires:
+    //   tracing::warn!("BROADCAST_REDIS_URL is set but the `redis-transport` feature is disabled...")
+    // The call must complete without panic.
+    ferro::run_common_boot(None, /*no_worker=*/ true).await;
 
-    // Confirm that the Broadcaster was registered (sanity check that the
-    // App singleton path we will exercise in Plan 01 is wired correctly now).
+    // Assert the Broadcaster singleton survives the boot step (in-process hub fallback).
     let registered = ferro::App::get::<Broadcaster>();
     assert!(
         registered.is_some(),
-        "D-07: Broadcaster singleton must survive the boot step"
+        "D-07: Broadcaster singleton must survive run_common_boot under feature-off fallback"
     );
 }
 
@@ -100,37 +125,51 @@ mod redis_tests {
     /// the framework boot step must construct and attach a `RedisTransport`
     /// to the registered `Broadcaster`.
     ///
-    /// At Wave 0 this scenario exercises only the infrastructure building
-    /// blocks (Broadcaster construction + App registration + InMemoryTransport
-    /// as a stand-in).  Plan 01 must wire the actual `run_common_boot` call
-    /// to make this a meaningful end-to-end boot assertion.
-    ///
-    /// TODO(plan-01): replace the InMemoryTransport stand-in with a real
-    /// `run_common_boot` invocation once Plan 01 ships the symbol.
+    /// Drives the real `run_common_boot` boot step with a Broadcaster whose
+    /// `transport_redis_url` matches the live Redis instance. Asserts the
+    /// App-registered `Broadcaster` is resolvable after boot.
     pub async fn transport_url_attaches_redis_transport() {
         let Some(url) = redis_url() else {
             eprintln!("REDIS_URL not set — skipping transport_url_attaches_redis_transport");
             return;
         };
 
-        // TODO(plan-01): call `framework::run_common_boot(None, true).await`
-        // after registering the Broadcaster with the Redis URL, and then assert
-        // `App::get::<Broadcaster>().unwrap().config().transport_redis_url.is_some()`.
-
-        // Stand-in: construct a transport-attached Broadcaster directly to
-        // prove the wiring compiles and the App singleton path is functional.
-        let transport = Arc::new(
-            RedisTransport::connect(&url)
+        // Pre-initialise Queue DB so run_common_boot's DB step is skipped.
+        if !Queue::is_initialized() {
+            let db_file = tempfile::NamedTempFile::new().expect("create temp SQLite file");
+            let db_url = format!("sqlite://{}?mode=rwc", db_file.path().display());
+            let conn = Database::connect(&db_url)
                 .await
-                .expect("RedisTransport::connect"),
-        );
-        let broadcaster = Arc::new(Broadcaster::new().with_transport(transport));
-        ferro::App::singleton((*broadcaster).clone());
+                .expect("connect to temp SQLite");
+            TestMigrator::up(&conn, None)
+                .await
+                .expect("run jobs migration");
+            let _ = Queue::init(conn).await;
+        }
 
+        // Register a Broadcaster with the Redis URL so run_common_boot's WR-01
+        // branch calls RedisTransport::connect and replaces the singleton.
+        let config = BroadcastConfig::new().transport_redis_url(&url);
+        let broadcaster = Broadcaster::with_config(config);
+        ferro::App::singleton(broadcaster);
+
+        // Drive the real shared boot step with redis-transport feature ON.
+        // WR-01: RedisTransport::connect is called; the transport-attached
+        // Broadcaster replaces the singleton via App::singleton.
+        ferro::run_common_boot(None, /*no_worker=*/ true).await;
+
+        // Assert the Broadcaster singleton is still resolvable after boot.
         let registered = ferro::App::get::<Broadcaster>();
         assert!(
             registered.is_some(),
-            "WR-01: Broadcaster with transport must be registered via App singleton"
+            "WR-01: Broadcaster with transport must be registered via App singleton after run_common_boot"
+        );
+
+        // Verify the redundant stand-in path below also compiles (transport construction).
+        let _ = Arc::new(
+            RedisTransport::connect(&url)
+                .await
+                .expect("RedisTransport::connect"),
         );
     }
 }

@@ -183,6 +183,7 @@ pub async fn register() {
     // bind!(dyn Database, PostgresDB::new());
 
     // Register broadcaster so /_ferro/ws WebSocket and projection hooks share the same instance.
+    // Transport wiring is framework-managed (WR-01 / D-06) in run_common_boot.
     let broadcaster = Broadcaster::with_config(BroadcastConfig::from_env());
     App::singleton(broadcaster.clone());
 
