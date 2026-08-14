@@ -552,6 +552,22 @@ where
         } else {
             queues
         };
+
+        // WR-02: warn when a requested queue has no registered job handlers.
+        // A typo like `--queue reprots` otherwise boots a healthy-looking worker
+        // that claims and reaps nothing — an idle loop indistinguishable from a
+        // busy one. This is a warning, not a hard error: a queue may legitimately
+        // have zero local handlers if its jobs are enqueued by another service.
+        let known = ferro_queue::Queue::registered_queue_names();
+        for q in &effective_queues {
+            if !known.contains(q) {
+                tracing::warn!(
+                    queue = %q,
+                    "worker started for a queue with no registered job handlers — it will idle"
+                );
+            }
+        }
+
         let config = ferro_queue::WorkerConfig::new(effective_queues);
         let worker = ferro_queue::WorkerLoop::from_registry(config);
         if let Err(e) = worker.run().await {
