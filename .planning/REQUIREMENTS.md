@@ -52,7 +52,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Introspection & Docs
 
-- [ ] **OFFLOAD-06**: Offloadable methods are introspectable through `ferro-mcp` (`list_services`,
+- [x] **OFFLOAD-06**: Offloadable methods are introspectable through `ferro-mcp` (`list_services`,
   derived payload schema); docs cover the authoring surface, result path, scaling model
   (stateless tier + replicable workers + cache + queue), and the non-goals / deferred elastic
   direction.

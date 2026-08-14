@@ -3450,10 +3450,10 @@ agent reads the same trait as the in-process contract, the wire payload, and the
 and document the authoring surface, result path, scaling model, and non-goals.
 **Depends on:** Phases 244–248.
 **Requirements:** OFFLOAD-06.
-**Plans:** 2 plans (2 waves)
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 249-01-PLAN.md — ferro-mcp introspection: static offload parser + list_services extension + tool description + generation_context mention (Wave 1)
+- [x] 249-01-PLAN.md — ferro-mcp introspection: static offload parser + list_services extension + tool description + generation_context mention (Wave 1)
 - [ ] 249-02-PLAN.md — docs: canonical offload.md + queues.md pointer + deployments.md cross-link + SUMMARY.md nav (Wave 2)
 **Success Criteria** (what must be TRUE):
   1. `list_services` marks offloadable methods and exposes their derived payload schema.
