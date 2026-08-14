@@ -79,7 +79,7 @@ pub use api::openapi::{
     build_openapi_spec, openapi_docs_response, openapi_json_response, OpenApiConfig,
 };
 
-pub use app::Application;
+pub use app::{run_common_boot, run_worker, Application};
 pub use auth::{
     Auth, AuthMiddleware, AuthUser, Authenticatable, GuestMiddleware, ModelUserProvider,
     OptionalUser, UserProvider,

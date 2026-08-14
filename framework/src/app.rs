@@ -396,22 +396,84 @@ where
         }
     }
 
-    async fn run_server_internal(
-        bootstrap_fn: Option<BootstrapFn>,
-        routes_fn: Option<Box<dyn FnOnce() -> Router + Send>>,
-    ) {
-        // Run bootstrap
+    /// Shared boot step executed by both `serve` and `run_worker`.
+    ///
+    /// Runs bootstrap, initialises the queue DB connection, wires the WR-01
+    /// broadcast transport when configured, and registers the offload result hooks.
+    /// When `no_worker` is `false` (serve path) it also spawns an in-process
+    /// `WorkerLoop` over all registered queues (D-05).
+    ///
+    /// # WR-01 transport attach
+    ///
+    /// After `bootstrap_fn` runs (so the app-registered `Broadcaster` is
+    /// available), the framework checks whether `BroadcastConfig.transport_redis_url`
+    /// is set:
+    ///
+    /// - `redis-transport` feature ON + URL set → `RedisTransport::connect`; on
+    ///   success the transport-attached `Broadcaster` replaces the singleton and
+    ///   the broadcaster-aware hook is registered; on connect failure a `warn!` is
+    ///   emitted and the in-process hub is used.
+    /// - `redis-transport` feature OFF + URL set → one `warn!`, in-process hub.
+    /// - No URL → no change.
+    ///
+    /// The `None`-broadcaster fallback (`register_offload_hooks()`) is preserved
+    /// for headless worker-only deployments with no broadcaster. Phase 249.1
+    /// removes it in the convergence sweep.
+    #[doc(hidden)]
+    pub async fn run_common_boot(bootstrap_fn: Option<BootstrapFn>, no_worker: bool) {
+        // Run bootstrap — registers the Broadcaster singleton and any other app services.
         if let Some(bootstrap_fn) = bootstrap_fn {
             bootstrap_fn().await;
         }
 
-        // Initialize the queue DB connection + spawn the WorkerLoop if jobs are
-        // registered (D-09). Guard with is_initialized() so a consumer bootstrap
-        // that already called Queue::init() does not cause a double-init error.
+        // Initialize the queue DB connection. Guard with is_initialized() so a
+        // consumer bootstrap that already called Queue::init() does not cause a
+        // double-init error.
         if !ferro_queue::Queue::is_initialized() {
             let conn = Self::get_database_connection().await;
             let _ = ferro_queue::Queue::init(conn).await;
         }
+
+        // WR-01: attach the Redis broadcast transport when configured.
+        // Must run after bootstrap_fn (so the Broadcaster is registered) and
+        // before the offload hooks (so the hooks see the transport-attached instance).
+        // Must also run before Server::from_config().run() so no WebSocket clients
+        // have connected yet (Pitfall WR-03: with_transport discards existing clients).
+        #[cfg(feature = "redis-transport")]
+        {
+            if let Some(bc) = crate::App::get::<ferro_broadcast::Broadcaster>() {
+                if let Some(ref url) = bc.config().transport_redis_url {
+                    match ferro_broadcast::transport::redis::RedisTransport::connect(url).await {
+                        Ok(t) => {
+                            let bc2 = bc.with_transport(std::sync::Arc::new(t));
+                            crate::App::singleton(bc2.clone());
+                            crate::offload::register_offload_hooks_with_broadcaster(
+                                std::sync::Arc::new(bc2),
+                            );
+                            // Hook registered; skip the fallback block below.
+                            if !no_worker && ferro_queue::Queue::has_registered_jobs() {
+                                Self::spawn_in_process_worker();
+                            }
+                            return;
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                error = %e,
+                                "BROADCAST_REDIS_URL set but Redis connect failed — in-process hub only"
+                            );
+                            crate::offload::register_offload_hooks_with_broadcaster(
+                                std::sync::Arc::new(bc),
+                            );
+                            if !no_worker && ferro_queue::Queue::has_registered_jobs() {
+                                Self::spawn_in_process_worker();
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         // Register the offload-result persistence hook with ferro-queue (Phase 246/247).
         // Injects the framework's persist_result_raw / persist_error closures so the
         // worker can write completed/failed snapshots without ferro-queue depending on
@@ -420,40 +482,89 @@ where
         // Phase 247: register the broadcaster-aware result hook so a completed/failed
         // snapshot also emits a delta on projection.offload.result.{handle}. Falls back
         // to persist-only when broadcasting is not configured (no Broadcaster in the
-        // container). The Broadcaster is registered by bootstrap_fn (runs at line 405
-        // above) before this point, so App::get::<Broadcaster>() reflects the consumer's
-        // configuration.
-        match crate::App::get::<ferro_broadcast::Broadcaster>() {
-            Some(broadcaster) => {
-                crate::offload::register_offload_hooks_with_broadcaster(std::sync::Arc::new(
-                    broadcaster,
-                ));
-            }
-            None => crate::offload::register_offload_hooks(),
-        }
-        if ferro_queue::Queue::has_registered_jobs() {
-            // Warn when jobs are registered (so a WorkerLoop is started) but the
-            // queue is in sync mode (WR-04). In sync mode every `dispatch()`
-            // runs inline in the request path — `.delay()`/`.on_queue()` are
-            // ignored — while the WorkerLoop polls an empty queue. This is the
-            // default when QUEUE_CONNECTION is unset, which is a foot-gun in
-            // production.
-            if ferro_queue::QueueConfig::is_sync_mode() {
-                eprintln!(
-                    "WARNING: queue jobs are registered but QUEUE_CONNECTION is sync \
-                     (or unset, which defaults to sync). dispatch() will run jobs inline \
-                     in the request path and ignore delay/on_queue. Set QUEUE_CONNECTION \
-                     to a non-sync value (e.g. 'db') to enable background processing."
+        // container). The Broadcaster is registered by bootstrap_fn above, so
+        // App::get::<Broadcaster>() reflects the consumer's configuration.
+        if let Some(bc) = crate::App::get::<ferro_broadcast::Broadcaster>() {
+            // D-07: feature-off + URL-set → warn, then proceed with in-process hub.
+            #[cfg(not(feature = "redis-transport"))]
+            if bc.config().transport_redis_url.is_some() {
+                tracing::warn!(
+                    "BROADCAST_REDIS_URL is set but the `redis-transport` feature is disabled \
+                     — falling back to in-process hub"
                 );
             }
-            let config = ferro_queue::WorkerConfig::default();
-            let worker = ferro_queue::WorkerLoop::from_registry(config);
-            tokio::spawn(async move {
-                if let Err(e) = worker.run().await {
-                    eprintln!("WorkerLoop exited with error: {e}");
-                }
-            });
+            crate::offload::register_offload_hooks_with_broadcaster(std::sync::Arc::new(bc));
+        } else {
+            // None-broadcaster fallback: valid for headless worker-only deployments.
+            // Phase 249.1 convergence sweep removes this path.
+            crate::offload::register_offload_hooks();
         }
+
+        // D-05: serve spawns an in-process worker over all registered queues.
+        if !no_worker && ferro_queue::Queue::has_registered_jobs() {
+            Self::spawn_in_process_worker();
+        }
+    }
+
+    /// Spawn an in-process `WorkerLoop` over all registered queues (D-05).
+    ///
+    /// The loop runs on a detached `tokio::spawn`; serve continues to the HTTP
+    /// accept loop. Any `WorkerLoop` error is printed but does not terminate the
+    /// process.
+    fn spawn_in_process_worker() {
+        // Warn when jobs are registered (so a WorkerLoop is started) but the
+        // queue is in sync mode (WR-04). In sync mode every `dispatch()`
+        // runs inline in the request path — `.delay()`/`.on_queue()` are
+        // ignored — while the WorkerLoop polls an empty queue. This is the
+        // default when QUEUE_CONNECTION is unset, which is a foot-gun in
+        // production.
+        if ferro_queue::QueueConfig::is_sync_mode() {
+            eprintln!(
+                "WARNING: queue jobs are registered but QUEUE_CONNECTION is sync \
+                 (or unset, which defaults to sync). dispatch() will run jobs inline \
+                 in the request path and ignore delay/on_queue. Set QUEUE_CONNECTION \
+                 to a non-sync value (e.g. 'db') to enable background processing."
+            );
+        }
+        let all_queues = ferro_queue::Queue::registered_queue_names();
+        let config = ferro_queue::WorkerConfig::new(all_queues);
+        let worker = ferro_queue::WorkerLoop::from_registry(config);
+        tokio::spawn(async move {
+            if let Err(e) = worker.run().await {
+                eprintln!("WorkerLoop exited with error: {e}");
+            }
+        });
+    }
+
+    /// Run the background worker process.
+    ///
+    /// Executes the shared boot step (`run_common_boot`) with `no_worker = true`
+    /// so the serve in-process worker is not spawned. Then runs a `WorkerLoop`
+    /// directly (blocking until SIGTERM / Ctrl-C).
+    ///
+    /// `queues` controls which queues this worker consumes:
+    /// - Empty → all registered queues (D-03).
+    /// - Non-empty → exactly the named queues.
+    pub async fn run_worker(bootstrap_fn: Option<BootstrapFn>, queues: Vec<String>) {
+        Self::run_common_boot(bootstrap_fn, /*no_worker=*/ true).await;
+        let effective_queues = if queues.is_empty() {
+            ferro_queue::Queue::registered_queue_names() // D-03: all registered
+        } else {
+            queues
+        };
+        let config = ferro_queue::WorkerConfig::new(effective_queues);
+        let worker = ferro_queue::WorkerLoop::from_registry(config);
+        if let Err(e) = worker.run().await {
+            eprintln!("Worker exited with error: {e}");
+            std::process::exit(1);
+        }
+    }
+
+    async fn run_server_internal(
+        bootstrap_fn: Option<BootstrapFn>,
+        routes_fn: Option<Box<dyn FnOnce() -> Router + Send>>,
+    ) {
+        Self::run_common_boot(bootstrap_fn, /*no_worker=*/ false).await;
 
         // Get router
         let router = if let Some(routes_fn) = routes_fn {
@@ -583,4 +694,28 @@ where
         eprintln!("No scheduled tasks registered.");
         eprintln!("Create a scheduled task with: ferro make:task <name>");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Module-level entry points (facade re-exports)
+// ---------------------------------------------------------------------------
+
+/// Run the background worker process.
+///
+/// Convenience free function over [`Application::run_worker`]. Executes the
+/// shared boot step and then runs a `WorkerLoop` over `queues` (or all
+/// registered queues when `queues` is empty).
+///
+/// Re-exported at the `ferro` facade level as `ferro::run_worker`.
+pub async fn run_worker(bootstrap_fn: Option<BootstrapFn>, queues: Vec<String>) {
+    Application::<NoMigrator>::run_worker(bootstrap_fn, queues).await;
+}
+
+/// Shared boot step for both `serve` and `run_worker`.
+///
+/// Exposed `pub` so integration tests can drive the boot step directly.
+/// Not part of the stable public API — prefer [`Application`] for production use.
+#[doc(hidden)]
+pub async fn run_common_boot(bootstrap_fn: Option<BootstrapFn>, no_worker: bool) {
+    Application::<NoMigrator>::run_common_boot(bootstrap_fn, no_worker).await;
 }
