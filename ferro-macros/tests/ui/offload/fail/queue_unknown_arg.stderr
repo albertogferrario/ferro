@@ -1,0 +1,12 @@
+# PLACEHOLDER — regenerate after Plan 02 implements the `queue = "name"` parser.
+#
+# Run:
+#   TRYBUILD=overwrite cargo test -p ferro-macros --test offload_macro
+#
+# Expected error message (per RESEARCH.md Pattern 3):
+#   unknown #[offload] argument; expected `queue = "name"`
+#
+# The fail fixture uses `retries = 3`, which the macro must reject with the
+# message above.  Until Plan 02 lands, the macro currently accepts or silently
+# ignores unknown arguments — the fixture may produce a different error or no
+# error at all.  Plan 02 must regenerate this file via TRYBUILD=overwrite.
