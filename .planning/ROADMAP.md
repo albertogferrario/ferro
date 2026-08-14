@@ -3438,11 +3438,11 @@ workers, with each worker class an independent fault domain.
 > `<app-bin> worker --queue <name>` (repeatable) on the application's own binary (D-01/D-02),
 > and a worker class *is* its queue set — see 248-CONTEXT.md.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 Plans:
 - [x] 248-00-PLAN.md — Wave 0 test scaffolds (worker_runtime SC#1–3, worker_boot WR-01/D-07, #[offload(queue)] trybuild fixtures)
 - [x] 248-01-PLAN.md — Shared boot factoring (run_common_boot/run_worker) + registered_queue_names() + WR-01 transport wiring (D-05/D-06/D-07)
-- [ ] 248-02-PLAN.md — #[offload(queue = "name")] macro parsing + queue emission into JobRegistrarEntry/offload() (D-04)
+- [x] 248-02-PLAN.md — #[offload(queue = "name")] macro parsing + queue emission into JobRegistrarEntry/offload() (D-04)
 - [ ] 248-03-PLAN.md — `worker` subcommand + `serve --no-worker` CLI wiring (D-01/D-02/D-03) + SC#1–3 tests GREEN
 #### Phase 249: `ferro-mcp` introspection + docs
 **Goal:** Close the single-source loop — surface offloadable methods through `ferro-mcp` so an
