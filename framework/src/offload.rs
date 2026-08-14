@@ -128,11 +128,36 @@ pub async fn persist_error(
     .await
 }
 
+/// Persist a `{"status":"pending"}` marker under the handle key at enqueue (D-07).
+///
+/// Lets a read-back distinguish an unknown handle (no snapshot →
+/// [`read_result`] returns `None`) from work that has not finished yet
+/// (pending row → `Some(OffloadResult::Pending)`).
+///
+/// Written by the framework enqueue wrapper (Plan 02), never by `ferro-queue` (D-11).
+///
+/// # Non-fatal contract
+///
+/// Returns [`ProjectionError`] rather than panicking; callers log and continue.
+pub async fn persist_pending(
+    handle_key: &str,
+    db: &DatabaseConnection,
+) -> Result<(), ProjectionError> {
+    let envelope = serde_json::json!({ "status": "pending" });
+    snapshot_write(
+        db,
+        OFFLOAD_PROJECTION_NAME,
+        &ProjectionKey::new(handle_key),
+        envelope,
+    )
+    .await
+}
+
 /// Read back a result by handle key, deserialized to [`OffloadResult<T>`].
 ///
-/// Returns `Ok(None)` when no snapshot exists yet — the handle is either
-/// unknown or the work has not finished (D-08: "not done" is indistinguishable
-/// from "unknown handle" in Phase 246; Phase 247 adds a pending marker).
+/// Returns `Ok(None)` when no snapshot exists for the handle — the handle is
+/// either unknown or was never registered. Returns `Some(OffloadResult::Pending)`
+/// when the work is enqueued but not yet finished (D-07). See [`persist_pending`].
 ///
 /// # Errors
 ///
@@ -324,5 +349,33 @@ mod tests {
             Some(OffloadResult::Completed { value: () }) => {}
             other => panic!("expected Completed {{ value: () }}, got {other:?}"),
         }
+    }
+
+    /// `persist_pending` writes a retrievable pending snapshot; `read_result` returns
+    /// `Some(Pending)` for a pending handle and `None` for an unknown handle (D-07).
+    #[tokio::test]
+    async fn offload_pending_round_trip() {
+        let db = fresh_db().await;
+
+        // Write the pending marker.
+        persist_pending("k1", &db).await.expect("persist_pending");
+
+        // Read back: must be Some(Pending), not None.
+        let result = read_result::<()>("k1", &db)
+            .await
+            .expect("read_result after persist_pending");
+        assert!(
+            matches!(result, Some(OffloadResult::Pending)),
+            "expected Some(Pending), got {result:?}"
+        );
+
+        // A never-written handle must still return None — distinct from not-done.
+        let absent = read_result::<()>("nope", &db)
+            .await
+            .expect("read_result for unknown handle");
+        assert!(
+            absent.is_none(),
+            "expected None for unknown handle, got {absent:?}"
+        );
     }
 }
