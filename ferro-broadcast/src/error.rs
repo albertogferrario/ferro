@@ -33,6 +33,11 @@ pub enum Error {
     #[error("transport error: {0}")]
     Transport(String),
 
+    /// Redis transport error (requires the `redis-transport` feature).
+    #[cfg(feature = "redis-transport")]
+    #[error("redis error: {0}")]
+    Redis(#[from] redis::RedisError),
+
     /// Generic error.
     #[error("{0}")]
     Other(String),
