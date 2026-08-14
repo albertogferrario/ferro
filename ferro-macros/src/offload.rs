@@ -63,6 +63,8 @@ pub(crate) struct OffloadMethodInfo {
     /// The method's success type for `type Output` (D-09):
     /// `T` for `-> T`, the `T` of `Result<T, E>`, and `()` for `-> ()` / default.
     pub output_type: TokenStream2,
+    /// Declared queue name from `#[offload(queue = "name")]`. `None` = "default".
+    pub declared_queue: Option<String>,
 }
 
 /// Map a (possibly borrowed) parameter type to an owned, serializable type.
@@ -132,6 +134,7 @@ fn to_pascal_case(s: &str) -> String {
 pub(crate) fn collect_info(
     trait_ident: &proc_macro2::Ident,
     method: &TraitItemFn,
+    declared_queue: Option<String>,
 ) -> syn::Result<OffloadMethodInfo> {
     let method_ident = method.sig.ident.clone();
 
@@ -210,6 +213,7 @@ pub(crate) fn collect_info(
         is_async,
         returns_result,
         output_type,
+        declared_queue,
     })
 }
 

@@ -190,8 +190,27 @@ pub fn service_impl(attr: TokenStream, input: TokenStream) -> TokenStream {
                 .iter()
                 .position(|a| a.path().is_ident("offload"))
             {
+                // Parse the optional `queue = "name"` argument BEFORE stripping the
+                // attribute — once removed, the argument data is gone.
+                let attr = &method.attrs[pos];
+                let mut declared_queue: Option<String> = None;
+                if attr.meta.require_path_only().is_err() {
+                    // The attribute has arguments: parse key = value pairs.
+                    if let Err(e) = attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("queue") {
+                            let value: syn::LitStr = meta.value()?.parse()?;
+                            declared_queue = Some(value.value());
+                            Ok(())
+                        } else {
+                            Err(meta
+                                .error("unknown #[offload] argument; expected `queue = \"name\"`"))
+                        }
+                    }) {
+                        return e.to_compile_error().into();
+                    }
+                }
                 method.attrs.remove(pos);
-                match crate::offload::collect_info(&trait_ident, method) {
+                match crate::offload::collect_info(&trait_ident, method, declared_queue) {
                     Ok(info) => offload_infos.push(info),
                     Err(e) => return e.to_compile_error().into(),
                 }
