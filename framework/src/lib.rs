@@ -225,8 +225,8 @@ pub use ferro_events::{
 /// Key functions: `persist_result`, `persist_error`, `persist_pending` (D-07
 /// pending marker), `read_result` (full envelope, server-side), and
 /// `read_result_redacted` (client-safe redacted read-back, D-05/D-10).
-/// Framework bootstrap calls `register_offload_hooks()` automatically via
-/// `App::run`; tests that bypass full boot must call it explicitly.
+/// Framework bootstrap calls `register_offload_hooks_with_broadcaster()` automatically via
+/// `App::run`; tests that bypass full boot must call it with a `Broadcaster::new()` instance.
 pub mod offload;
 
 /// Background job queue. Use `ferro::queue::Job`, `ferro::queue::dispatch`, etc.

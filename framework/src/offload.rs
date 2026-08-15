@@ -542,7 +542,7 @@ mod tests {
     }
 
     /// `{"status":"pending"}` deserializes to `OffloadResult::Pending`; existing
-    /// completed/failed envelopes are unaffected (backward-compat, A3 verification).
+    /// completed/failed envelopes still deserialize correctly (serde additivity check).
     #[tokio::test]
     async fn offload_result_pending_round_trip() {
         // New variant round-trips.
@@ -553,7 +553,7 @@ mod tests {
             "expected Pending, got {pending:?}"
         );
 
-        // Backward-compat: completed envelope still deserializes correctly.
+        // Serde additivity: completed envelope still deserializes correctly.
         let completed =
             serde_json::from_str::<OffloadResult<String>>(r#"{"status":"completed","value":"x"}"#)
                 .expect("deserialize completed");
@@ -562,7 +562,7 @@ mod tests {
             "expected Completed {{ value: \"x\" }}, got {completed:?}"
         );
 
-        // Backward-compat: failed envelope still deserializes correctly.
+        // Serde additivity: failed envelope still deserializes correctly.
         let failed =
             serde_json::from_str::<OffloadResult<String>>(r#"{"status":"failed","error":"boom"}"#)
                 .expect("deserialize failed");
