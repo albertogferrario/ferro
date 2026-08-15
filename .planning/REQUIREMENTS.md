@@ -75,7 +75,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 | OFFLOAD-02 | Phase 245 | Complete |
 | OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Complete |
 | OFFLOAD-04 | Phase 247 | Complete |
-| OFFLOAD-05 | Phase 248 → 249.2 | Pending (serve-path gap closure) |
+| OFFLOAD-05 | Phase 248 → 249.2 | Complete |
 | OFFLOAD-06 | Phase 249 (scanner hardened by 249.4) | Complete |
 
 **Gap-closure / hardening phases (2026-08-15 audit):** 249.2 closes the OFFLOAD-05 serve-path
