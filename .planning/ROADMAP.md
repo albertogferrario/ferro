@@ -3589,6 +3589,11 @@ repairs the primary offload E2E flow on the `QUEUE_CONNECTION=db` path.
   3. Hand-written (non-derived) jobs still dispatch unchanged; the full offload unit + integration suite
      passes.
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 249.5-01-PLAN.md — reconcile derived `Job::name()` to `type_name::<Self>()` (one-line macro fix + doc reconcile) and add the discriminating db-path enqueue→claim→dispatch integration test for a real `#[offload]`-derived job in a nested module (test lives in `framework/tests/`, not `ferro-queue/tests/` — dependency cycle)
+
 ### Requirement → Phase Mapping (v16.4)
 
 | Requirement | Phase |
