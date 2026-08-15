@@ -416,91 +416,75 @@ where
     /// - `redis-transport` feature OFF + URL set → one `warn!`, in-process hub.
     /// - No URL → no change.
     ///
-    /// The `None`-broadcaster fallback (`register_offload_hooks()`) is preserved
-    /// for headless worker-only deployments with no broadcaster. Phase 249.1
-    /// removes it in the convergence sweep.
+    /// A framework-default in-process `Broadcaster` is installed when bootstrap
+    /// registered none, so the broadcaster-aware result hook is always the registration path.
     #[doc(hidden)]
     pub async fn run_common_boot(bootstrap_fn: Option<BootstrapFn>, no_worker: bool) {
-        // Run bootstrap — registers the Broadcaster singleton and any other app services.
+        // Step 1: bootstrap — registers the Broadcaster singleton and any other app services.
         if let Some(bootstrap_fn) = bootstrap_fn {
             bootstrap_fn().await;
         }
-
-        // Initialize the queue DB connection. Guard with is_initialized() so a
-        // consumer bootstrap that already called Queue::init() does not cause a
-        // double-init error.
+        // Initialise the queue DB connection. Guard with is_initialized() so a consumer
+        // bootstrap that already called Queue::init() does not double-init.
         if !ferro_queue::Queue::is_initialized() {
             let conn = Self::get_database_connection().await;
             let _ = ferro_queue::Queue::init(conn).await;
         }
 
-        // WR-01: attach the Redis broadcast transport when configured.
-        // Must run after bootstrap_fn (so the Broadcaster is registered) and
-        // before the offload hooks (so the hooks see the transport-attached instance).
-        // Must also run before Server::from_config().run() so no WebSocket clients
-        // have connected yet (Pitfall WR-03: with_transport discards existing clients).
+        // Step 2: ensure a Broadcaster (D-01). Worker-only boots that registered none get a
+        // framework-default in-process hub, so App::get::<Broadcaster>() is always Some by the
+        // time the offload hook registers. The hub publishes to nobody in that case, which is
+        // harmless — the broadcast path is best-effort and swallows zero-subscriber sends, and
+        // the snapshot remains the authoritative record (247 D-02 / Pitfall 5).
+        if crate::App::get::<ferro_broadcast::Broadcaster>().is_none() {
+            crate::App::singleton(ferro_broadcast::Broadcaster::new());
+        }
+
+        // Step 3: attach the shared broadcast transport when configured (WR-01: after bootstrap so
+        // the Broadcaster is present, before hook registration so the hook sees the transport-
+        // attached instance; WR-03: before any WebSocket client connects — run_common_boot returns
+        // before Server::from_config().run()). App::get is now guaranteed Some (Step 2).
         #[cfg(feature = "redis-transport")]
         {
-            if let Some(bc) = crate::App::get::<ferro_broadcast::Broadcaster>() {
-                if let Some(ref url) = bc.config().transport_redis_url {
-                    match ferro_broadcast::transport::redis::RedisTransport::connect(url).await {
-                        Ok(t) => {
-                            let bc2 = bc.with_transport(std::sync::Arc::new(t));
-                            crate::App::singleton(bc2.clone());
-                            crate::offload::register_offload_hooks_with_broadcaster(
-                                std::sync::Arc::new(bc2),
-                            );
-                            // Hook registered; skip the fallback block below.
-                            if !no_worker && ferro_queue::Queue::has_registered_jobs() {
-                                Self::spawn_in_process_worker();
-                            }
-                            return;
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                error = %e,
-                                "BROADCAST_REDIS_URL set but Redis connect failed — in-process hub only"
-                            );
-                            crate::offload::register_offload_hooks_with_broadcaster(
-                                std::sync::Arc::new(bc),
-                            );
-                            if !no_worker && ferro_queue::Queue::has_registered_jobs() {
-                                Self::spawn_in_process_worker();
-                            }
-                            return;
-                        }
+            let bc = crate::App::get::<ferro_broadcast::Broadcaster>()
+                .expect("Broadcaster ensured in Step 2");
+            if let Some(ref url) = bc.config().transport_redis_url {
+                match ferro_broadcast::transport::redis::RedisTransport::connect(url).await {
+                    Ok(t) => {
+                        let bc2 = bc.with_transport(std::sync::Arc::new(t));
+                        crate::App::singleton(bc2);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "BROADCAST_REDIS_URL set but Redis connect failed — in-process hub only"
+                        );
                     }
                 }
             }
         }
-
-        // Register the offload-result persistence hook with ferro-queue (Phase 246/247).
-        // Injects the framework's persist_result_raw / persist_error closures so the
-        // worker can write completed/failed snapshots without ferro-queue depending on
-        // ferro-projection (D-11). OnceLock — re-registration is silently ignored.
-        //
-        // Phase 247: register the broadcaster-aware result hook so a completed/failed
-        // snapshot also emits a delta on projection.offload.result.{handle}. Falls back
-        // to persist-only when broadcasting is not configured (no Broadcaster in the
-        // container). The Broadcaster is registered by bootstrap_fn above, so
-        // App::get::<Broadcaster>() reflects the consumer's configuration.
-        if let Some(bc) = crate::App::get::<ferro_broadcast::Broadcaster>() {
-            // D-07: feature-off + URL-set → warn, then proceed with in-process hub.
-            #[cfg(not(feature = "redis-transport"))]
+        // D-07: feature-off + URL-set → one warn, then proceed with the in-process hub.
+        #[cfg(not(feature = "redis-transport"))]
+        {
+            let bc = crate::App::get::<ferro_broadcast::Broadcaster>()
+                .expect("Broadcaster ensured in Step 2");
             if bc.config().transport_redis_url.is_some() {
                 tracing::warn!(
                     "BROADCAST_REDIS_URL is set but the `redis-transport` feature is disabled \
                      — falling back to in-process hub"
                 );
             }
-            crate::offload::register_offload_hooks_with_broadcaster(std::sync::Arc::new(bc));
-        } else {
-            // None-broadcaster fallback: valid for headless worker-only deployments.
-            // Phase 249.1 convergence sweep removes this path.
-            crate::offload::register_offload_hooks();
         }
 
-        // D-05: serve spawns an in-process worker over all registered queues.
+        // Step 4: register the offload result hook ONCE. The Broadcaster is guaranteed present
+        // (Step 2) and transport-attached if configured (Step 3). ferro-queue keeps the hook in a
+        // OnceLock — re-registration is silently ignored, and this is the single production site.
+        let bc = crate::App::get::<ferro_broadcast::Broadcaster>()
+            .expect("Broadcaster ensured in Step 2");
+        crate::offload::register_offload_hooks_with_broadcaster(std::sync::Arc::new(bc));
+
+        // Step 5: serve spawns an in-process worker over all registered queues ONCE (D-05).
+        // run_worker passes no_worker = true and starts its own WorkerLoop, so this is skipped there.
         if !no_worker && ferro_queue::Queue::has_registered_jobs() {
             Self::spawn_in_process_worker();
         }

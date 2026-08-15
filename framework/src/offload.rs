@@ -262,37 +262,6 @@ pub async fn persist_result_raw(
     .await
 }
 
-/// Register the offload-result persistence hook with `ferro-queue`.
-///
-/// Called once at framework bootstrap. The hook closure calls
-/// [`persist_result_raw`] or [`persist_error`] based on the outcome, and
-/// logs via `tracing::warn!` on error without changing the job's outcome
-/// (T-246-05 non-fatal contract).
-///
-/// `ferro-queue` must not depend on `ferro-projection` (D-11); this
-/// registration is the injection point that resolves that constraint.
-///
-/// When broadcasting is configured, use [`register_offload_hooks_with_broadcaster`]
-/// instead — it also emits a delta on `projection.offload.result.{handle}` after
-/// the snapshot persists (D-01/D-02).
-pub fn register_offload_hooks() {
-    ferro_queue::register_offload_result_hook(|key, outcome, db| {
-        Box::pin(async move {
-            let res = match outcome {
-                Ok(value) => persist_result_raw(&key, value, db).await,
-                Err(msg) => persist_error(&key, &msg, db).await,
-            };
-            if let Err(e) = res {
-                tracing::warn!(
-                    handle_key = %key,
-                    error = %e,
-                    "offload result persist failed — result not stored"
-                );
-            }
-        })
-    });
-}
-
 /// Broadcast a result delta on `projection.offload.result.{handle}` (D-01/D-02/D-04).
 ///
 /// Best-effort: a send failure is logged at `warn!` and swallowed — the snapshot is the
@@ -332,8 +301,7 @@ async fn broadcast_delta(
 ///   in the snapshot via [`persist_error`] for authorized server-side retrieval).
 ///
 /// A broadcast failure is `tracing::warn!`-logged and swallowed — it never fails the job
-/// or rolls back the snapshot (D-02 / Pitfall 5). When broadcasting is not configured,
-/// use [`register_offload_hooks`] instead.
+/// or rolls back the snapshot (D-02 / Pitfall 5).
 pub fn register_offload_hooks_with_broadcaster(broadcaster: Arc<ferro_broadcast::Broadcaster>) {
     let _ = OFFLOAD_BROADCASTER.set(broadcaster);
     ferro_queue::register_offload_result_hook(|key, outcome, db| {

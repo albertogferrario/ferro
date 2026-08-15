@@ -20,13 +20,15 @@
 
 extern crate ferro_rs as ferro;
 
-use ferro::offload::{read_result, register_offload_hooks, OffloadResult};
+use ferro::offload::{read_result, register_offload_hooks_with_broadcaster, OffloadResult};
+use ferro_broadcast::Broadcaster;
 use ferro_queue::{
     async_trait, Error, Job, JobRegistrarEntry, Offloadable, Queue, WorkerConfig, WorkerLoop,
 };
 use sea_orm::{ConnectionTrait, Database, DatabaseConnection, Statement};
 use sea_orm_migration::MigratorTrait;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 // ---------------------------------------------------------------------------
 // TestMigrator — registers BOTH required migrations
@@ -239,7 +241,7 @@ async fn offload_result_round_trip() {
     let (conn, _db_file) = setup_db().await; // _db_file keeps temp SQLite alive
     Queue::init(conn).await.expect("Queue::init");
     // Register the persistence hook before any WorkerLoop drain.
-    register_offload_hooks();
+    register_offload_hooks_with_broadcaster(Arc::new(Broadcaster::new()));
 
     let db = Queue::connection();
 
