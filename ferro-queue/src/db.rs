@@ -72,9 +72,13 @@ impl Queue {
             .push(Box::new(|w: &mut crate::WorkerLoop| w.register::<J>()));
     }
 
-    /// Returns `true` if at least one job type has been registered via [`Queue::register`].
+    /// Returns `true` if at least one job type has been registered — via the
+    /// runtime [`Queue::register`] path (manual bootstrap) OR the compile-time
+    /// `#[offload]` inventory path ([`JobRegistrarEntry`]). Consistent with
+    /// [`Queue::registered_queue_names`], which also consults both sources.
     pub fn has_registered_jobs() -> bool {
         !JOB_REGISTRARS.lock().unwrap().is_empty()
+            || inventory::iter::<JobRegistrarEntry>.into_iter().next().is_some()
     }
 
     /// Derive the distinct set of queue names from all registered job types.
