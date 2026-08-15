@@ -3329,11 +3329,19 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   (`QUEUE_CONNECTION=sync`) dispatch ignores the handle key and writes no snapshot (246 WR-01);
   reaper-parked (timeout-killed) jobs never record a failed envelope (246 WR-02). Hardens OFFLOAD-03's
   "no silent drop" guarantee at its edges.
-- [ ] **Phase 249.4 (HARDENING): MCP service scanner — named-impl & multi-line robustness** — The
-  `ferro-mcp` static scanner extracts `impl = X` literally from `#[service(impl = ReportBuilder)]`
-  (the blessed authoring form in `offload.md`) and silently drops multi-line `#[service(...)]`
-  attributes (249 WR-01/WR-02), degrading offload introspection for the documented surface. Fix both.
+- [ ] **Phase 249.4 (HARDENING): MCP service scanner — multi-line `#[service(...)]` robustness** — The
+  `ferro-mcp` static scanner silently drops multi-line `#[service(...)]` attributes because it requires
+  `(` and `)` on the same trimmed line (249 WR-02), degrading offload introspection for that authoring
+  form. (WR-01, the `#[service(impl = X)]` named form, was already shipped in 249/249.1 —
+  `extract_service_impl_name` with passing tests — so this phase is scoped to WR-02 only.)
   Hardens OFFLOAD-06.
+- [ ] **Phase 249.5 (GAP CLOSURE): Offload dispatch-key reconciliation (DISPATCH-KEY-01)** — Critical,
+  milestone-breaking. `#[offload]` overrides `Job::name()` to the bare struct ident; enqueue writes that
+  as the DB `job_type` (`ferro-queue/src/dispatcher.rs`), but the worker registers and looks up handlers
+  by fully-qualified `std::any::type_name::<J>()` (`ferro-queue/src/worker.rs`). The lookup always misses,
+  so a dispatched offloaded job is released-and-retried forever and never runs — no snapshot, no delta.
+  Reconcile the two keys and add the missing enqueue→claim→dispatch integration test for a derived job in
+  a non-crate-root module. Restores OFFLOAD-01's db-path dispatch and unblocks OFFLOAD-04/05 at runtime.
 
 ### Phase Details
 
@@ -3541,37 +3549,64 @@ never an indefinite `Ok(None)`. Two edges currently drop silently: (a) in sync m
      subscribed caller observes the failure rather than waiting to timeout (asserted in a test).
   3. The full offload unit + integration suite passes unchanged for the non-degraded paths.
 
-#### Phase 249.4: MCP service scanner — named-impl & multi-line robustness (HARDENING)
-**Goal:** Make the `ferro-mcp` static offload scanner correct for the documented authoring surface.
-It currently extracts the concrete impl name as the raw substring between `(` and `)`, so
-`#[service(impl = ReportBuilder)]` yields the concrete name `"impl = ReportBuilder"` — and that named
-form is exactly the canonical example in `docs/src/features/offload.md` (249 WR-01). It also silently
-drops multi-line `#[service(...)]` attributes (249 WR-02).
+#### Phase 249.4: MCP service scanner — multi-line `#[service(...)]` robustness (HARDENING)
+**Goal:** Make the `ferro-mcp` static offload scanner parse multi-line `#[service(...)]` attributes,
+which it currently drops because it requires `(` and `)` on the same trimmed line
+(`ferro-mcp/src/tools/list_services.rs:151-153, 387-389`) — degrading offload introspection for that
+authoring form.
+**Scope note (2026-08-15 audit):** WR-01 (the `#[service(impl = X)]` named form) is ALREADY shipped in
+249/249.1 — `extract_service_impl_name` (`list_services.rs:263-273`) with passing tests (`:617-635`).
+This phase is therefore scoped to **WR-02 only**; do not re-implement the named-impl extraction.
 **Depends on:** Phase 249 (`ferro-mcp` offload introspection).
-**Hardens:** OFFLOAD-06 (offloadable-method introspection quality for the blessed surface).
+**Hardens:** OFFLOAD-06 (offloadable-method introspection quality for the multi-line authoring form).
 **Success Criteria** (what must be TRUE):
-  1. `list_services` reports the correct concrete impl name for `#[service(impl = X)]`, and correlates
-     the trait's `#[offload]` methods to that service (asserted against the `offload.md` example form).
-  2. A multi-line `#[service(...)]` attribute is parsed, not dropped (asserted in a scanner test).
-  3. No regression to single-line `#[service]` / `#[service(Type)]` parsing.
+  1. A multi-line `#[service(...)]` attribute (opening `(` and closing `)` on different source lines) is
+     parsed and its service surfaced, not dropped (asserted in a scanner test).
+  2. The trait's `#[offload]` methods are correlated to the service parsed from the multi-line form.
+  3. No regression to single-line `#[service]` / `#[service(Type)]` / `#[service(impl = X)]` parsing.
+
+#### Phase 249.5: Offload dispatch-key reconciliation — DISPATCH-KEY-01 (GAP CLOSURE)
+**Goal:** Make an `#[offload]`-derived job enqueued on the db path actually get claimed and run by the
+worker. Today the two ends of the dispatch handshake use different keys: enqueue writes
+`job_type = self.job.name()` (`ferro-queue/src/dispatcher.rs:191`), and the derived `name()` returns the
+**bare** struct ident (`ferro-macros/src/offload.rs:376-378`, e.g. `ReportBuilderBuildMonthlyJob`); the
+worker registers and looks up handlers by fully-qualified `std::any::type_name::<J>()`
+(`ferro-queue/src/worker.rs:184`, e.g. `myapp::services::ReportBuilderBuildMonthlyJob`). The lookup in
+`spawn_job` (`worker.rs:484`) always misses → "No handler registered — releasing job for retry" → the job
+release-loops until visibility-timeout exhaustion, never producing a snapshot or delta. Only derived jobs
+are affected (they override `name()`); hand-written jobs use the default `name()` = `type_name` and are fine.
+**Depends on:** Phase 244 (macro Job derivation), Phase 248 (worker handler registration/dispatch).
+**Closes (2026-08-15 audit gaps):** DISPATCH-KEY-01 (integration seam 3, critical); restores OFFLOAD-01
+(db-path dispatch); unblocks OFFLOAD-04 (delta fires) and OFFLOAD-05 (worker dispatches offloaded work);
+repairs the primary offload E2E flow on the `QUEUE_CONNECTION=db` path.
+**Success Criteria** (what must be TRUE):
+  1. For an `#[offload]`-derived job, the enqueued DB `job_type` and the worker's handler-lookup key are
+     equal, so `handlers.get(&job_type)` in `spawn_job` resolves to the registered handler (one canonical
+     key; the macro doc comment matches the emitted `name()`).
+  2. An integration test enqueues a derived job **declared in a non-crate-root module**, runs a worker,
+     and asserts the job is claimed and dispatched exactly once (produces its terminal snapshot) — never
+     release-looped. This is the enqueue→claim→dispatch coverage the milestone lacked.
+  3. Hand-written (non-derived) jobs still dispatch unchanged; the full offload unit + integration suite
+     passes.
 
 ### Requirement → Phase Mapping (v16.4)
 
 | Requirement | Phase |
 |-------------|-------|
-| OFFLOAD-01 (`#[offload]` macro → Job + payload) | Phase 244 |
+| OFFLOAD-01 (`#[offload]` macro → Job + payload) | Phase 244; db-path dispatch fixed by **Phase 249.5** |
 | OFFLOAD-02 (typed result handle + serializable enforcement) | Phase 245 |
 | OFFLOAD-03 (result → read-model snapshot) | Phase 246 (edges hardened by Phase 249.3) |
-| OFFLOAD-04 (read-model delta → broadcast streaming) | Phases 246.1 (prerequisite), 247 |
-| OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248, serve-path gap closed by **Phase 249.2** |
+| OFFLOAD-04 (read-model delta → broadcast streaming) | Phases 246.1 (prerequisite), 247; runtime unblocked by **Phase 249.5** |
+| OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248, serve-path gap closed by **Phase 249.2**, dispatch unblocked by **Phase 249.5** |
 | OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 (scanner hardened by Phase 249.4) |
 
 ✓ 6/6 requirements mapped, no orphans, no duplicates.
 
-**Gap-closure / hardening phases (from the 2026-08-15 milestone audit):**
+**Gap-closure / hardening phases (from the 2026-08-15 milestone audits):**
 - Phase 249.2 — blocker: serve worker inventory-registration gate (OFFLOAD-05).
 - Phase 249.3 — hardening: offload result-path terminal-state completeness (OFFLOAD-03 edges).
-- Phase 249.4 — hardening: MCP service scanner named-impl & multi-line robustness (OFFLOAD-06).
+- Phase 249.4 — hardening: MCP service scanner multi-line `#[service(...)]` robustness (OFFLOAD-06, WR-02).
+- Phase 249.5 — blocker: offload dispatch-key reconciliation, DISPATCH-KEY-01 (OFFLOAD-01/04/05, db path). **Execute first.**
 
 ## ✅ v16.5 JSON-UI Design System (Phases 250–253) — Shipped 2026-07-04 (0.2.86) [CONSUMER-PAIRED with gestiscilo Phase 232]
 
