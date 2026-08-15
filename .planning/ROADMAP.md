@@ -3310,7 +3310,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   capacity scales by adding replicas; independent fault domain per worker class.
 - [x] **Phase 249: `ferro-mcp` introspection + docs** — Surface offloadable methods through (completed 2026-08-14)
   `list_services`; document the authoring surface, result path, scaling model, and non-goals.
-- [ ] **Phase 249.1: Offload surface convergence (remove transitional paths)** — Converge the
+- [x] **Phase 249.1: Offload surface convergence (remove transitional paths)** — Converge the (completed 2026-08-15)
   offload surface built across 244–249 on a single canonical code path by removing the
   transitional and fallback branches introduced during incremental delivery: the persist-only
   broadcaster fallback in bootstrap (`framework/src/app.rs`), any dual/deprecated code paths, and
@@ -3484,9 +3484,9 @@ mapped to their delivering phases.
      (structural grep is clean).
   3. The Phase 247 integration suite and the full offload unit suite pass unchanged — the delivery
      loop's observable behavior is identical.
-**Plans:** 1 plan (1 wave — a tightly-coupled single-subsystem sweep; sequenced so each commit compiles).
+**Plans:** 1/1 plans complete
 Plans:
-- [ ] 249.1-01-PLAN.md — single registration path (default broadcaster + linearize `run_common_boot` + delete persist-only fn + fix hidden test caller), neutralize offload-surface comments, full gate + SC#2 grep evidence
+- [x] 249.1-01-PLAN.md — single registration path (default broadcaster + linearize `run_common_boot` + delete persist-only fn + fix hidden test caller), neutralize offload-surface comments, full gate + SC#2 grep evidence
 
 ### Requirement → Phase Mapping (v16.4)
 

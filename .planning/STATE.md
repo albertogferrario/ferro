@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
-stopped_at: Phase 249.1 context gathered
-last_updated: "2026-08-15T01:10:45.296Z"
+stopped_at: Completed 249.1-01-PLAN.md
+last_updated: "2026-08-15T02:09:09.622Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 115
-  completed_phases: 103
-  total_plans: 416
-  completed_plans: 415
+  completed_phases: 104
+  total_plans: 417
+  completed_plans: 416
   percent: 100
 ---
 
@@ -20,12 +20,12 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 249 — ferro-mcp-introspection-docs
+**Current focus:** Phase 249.1 — offload-surface-convergence-remove-transitional-paths
 
 ## Current Position
 
-Phase: 249.1
-Plan: Not started
+Phase: 249.1 (offload-surface-convergence-remove-transitional-paths) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-08-15
 
@@ -324,6 +324,7 @@ Progress: [██████████] 100%
 | Phase 248 P03 | 3332 | 2 tasks | 1 files |
 | Phase 249 P01 | 502 | 3 tasks | 3 files |
 | Phase 249 P02 | 10 | 3 tasks | 4 files |
+| Phase 249.1 P01 | 1466 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -388,7 +389,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-15T01:10:45.264Z
-Stopped at: Phase 249.1 context gathered
-Resume file: .planning/phases/249.1-offload-surface-convergence-remove-transitional-paths/249.1-CONTEXT.md
+Last session: 2026-08-15T02:09:09.612Z
+Stopped at: Completed 249.1-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
