@@ -3523,6 +3523,9 @@ inventory registration); flow (offload E2E on the default `serve` path).
   3. A regression test registers a job via inventory only (no manual `Queue::register()`) and asserts
      both the predicate and the serve-boot worker spawn — guarding against reintroduction.
 
+**Plans:** 1 plan
+- [ ] 249.2-01-PLAN.md — fix has_registered_jobs() to consult the #[offload] inventory + inventory-only regression test
+
 #### Phase 249.3: Offload result-path terminal-state completeness (HARDENING)
 **Goal:** Guarantee an `OffloadHandle` always resolves to a terminal state (completed or failed),
 never an indefinite `Ok(None)`. Two edges currently drop silently: (a) in sync mode
