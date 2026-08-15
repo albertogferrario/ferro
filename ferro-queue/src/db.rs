@@ -78,7 +78,10 @@ impl Queue {
     /// [`Queue::registered_queue_names`], which also consults both sources.
     pub fn has_registered_jobs() -> bool {
         !JOB_REGISTRARS.lock().unwrap().is_empty()
-            || inventory::iter::<JobRegistrarEntry>.into_iter().next().is_some()
+            || inventory::iter::<JobRegistrarEntry>
+                .into_iter()
+                .next()
+                .is_some()
     }
 
     /// Derive the distinct set of queue names from all registered job types.
