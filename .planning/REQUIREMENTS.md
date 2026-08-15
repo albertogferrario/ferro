@@ -46,7 +46,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Scalable Execution
 
-- [ ] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
+- [x] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
   replicas against the shared queue; capacity scales by adding replicas; each worker class is an
   independent fault domain. No framework-managed autoscaling (N is external).
   _Re-opened by the 2026-08-15 audit: satisfied for the dedicated `worker` process, but the default

@@ -3318,7 +3318,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   "compatibility"-framed handling, per the feature-branch convention (delete rather than deprecate).
   No behavioral change to the fire-and-forward delivery loop; the Phase 247 integration suite is
   the regression guard. Runs last in v16.4 so it can sweep 248/249 output as well.
-- [ ] **Phase 249.2 (GAP CLOSURE): Serve worker inventory-registration gate** — Fix the audit
+- [x] **Phase 249.2 (GAP CLOSURE): Serve worker inventory-registration gate** — Fix the audit (completed 2026-08-15)
   blocker. `has_registered_jobs()` (`ferro-queue/src/db.rs`) checks only the manual `JOB_REGISTRARS`
   Vec, so the default `serve` path never auto-spawns the in-process worker for an app whose jobs
   register exclusively through `#[offload]` (inventory) — jobs enqueue and sit unclaimed with no
@@ -3523,8 +3523,8 @@ inventory registration); flow (offload E2E on the default `serve` path).
   3. A regression test registers a job via inventory only (no manual `Queue::register()`) and asserts
      both the predicate and the serve-boot worker spawn — guarding against reintroduction.
 
-**Plans:** 1 plan
-- [ ] 249.2-01-PLAN.md — fix has_registered_jobs() to consult the #[offload] inventory + inventory-only regression test
+**Plans:** 1/1 plans complete
+- [x] 249.2-01-PLAN.md — fix has_registered_jobs() to consult the #[offload] inventory + inventory-only regression test
 
 #### Phase 249.3: Offload result-path terminal-state completeness (HARDENING)
 **Goal:** Guarantee an `OffloadHandle` always resolves to a terminal state (completed or failed),
