@@ -1,10 +1,11 @@
 ---
 phase: 249
 slug: ferro-mcp-introspection-docs
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: verified
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-15
+audited: 2026-08-15
 ---
 
 # Phase 249 — Validation Strategy
@@ -41,13 +42,17 @@ Task IDs are assigned by the planner. The rows below bind each phase behavior to
 automated (or manual) check; the planner maps them onto concrete plan/task numbers.
 Expected plan split: **Plan 01 = MCP introspection (deliverable A)**, **Plan 02 = docs (deliverable B)**.
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 249-01-* | 01 | 1 | OFFLOAD-06 (MCP) | — | Offload-attr detection returns declared queue, default `"default"` when arg absent | unit | `cargo test -p ferro-mcp detect_offload` | ❌ W0 | ⬜ pending |
-| 249-01-* | 01 | 1 | OFFLOAD-06 (MCP) | — | Method-param extraction is bracket-aware (handles `Vec<T>`, tuples) | unit | `cargo test -p ferro-mcp extract_method_params` | ❌ W0 | ⬜ pending |
-| 249-01-* | 01 | 1 | OFFLOAD-06 (MCP) | — | Full static parse recovers both offload methods from a two-method fixture | unit | `cargo test -p ferro-mcp scan_offload_methods` | ❌ W0 | ⬜ pending |
-| 249-01-* | 01 | 1 | OFFLOAD-06 (MCP) | — | Non-offload service output byte-for-byte unchanged (additive-only, D-02) | unit | `cargo test -p ferro-mcp plain_service_unchanged` | ❌ W0 | ⬜ pending |
-| 249-02-* | 02 | 2 | OFFLOAD-06 (docs) | — | `offload.md` exists and is registered in `docs/src/SUMMARY.md` nav | manual | doc existence + `grep offload.md docs/src/SUMMARY.md` | ❌ W0 | ⬜ pending |
+Verified via `cargo test -p ferro-mcp list_services` on 2026-08-15: **7 passed, 0 failed**
+(the six planned inline tests plus a bonus `extract_service_impl_name_positional_and_named`).
+Tests live inline in `ferro-mcp/src/tools/list_services.rs` (`#[cfg(test)] mod tests`, L594).
+
+| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Test Fn(s) | Automated Command | File Exists | Status |
+|---------|------|------|-------------|------------|-----------------|-----------|------------|-------------------|-------------|--------|
+| 249-01-1/2 | 01 | 1 | OFFLOAD-06 (MCP) | T-249-02 | Offload-attr detection returns declared queue, default `"default"` when arg absent | unit | `detect_offload_attr_bare_returns_default`, `detect_offload_attr_reads_declared_queue` | `cargo test -p ferro-mcp detect_offload` | ✅ inline | ✅ green |
+| 249-01-1/2 | 01 | 1 | OFFLOAD-06 (MCP) | — | Method-param extraction is bracket-aware + owned-type substitution (`Vec<T>`, `&str`→`String`) | unit | `extract_method_params_bracket_aware`, `extract_method_params_owned_substitution` | `cargo test -p ferro-mcp extract_method_params` | ✅ inline | ✅ green |
+| 249-01-1/2 | 01 | 1 | OFFLOAD-06 (MCP) | T-249-03 | Full static parse recovers both offload methods from a two-method fixture | unit | `scan_offload_methods` | `cargo test -p ferro-mcp scan_offload_methods` | ✅ inline | ✅ green |
+| 249-01-1/2 | 01 | 1 | OFFLOAD-06 (MCP) | — | Non-offload service output byte-for-byte unchanged (additive-only, D-02) | unit | `plain_service_unchanged` | `cargo test -p ferro-mcp plain_service_unchanged` | ✅ inline | ✅ green |
+| 249-02-1/2 | 02 | 2 | OFFLOAD-06 (docs) | T-249-04 | `offload.md` exists and is registered in `docs/src/SUMMARY.md` nav | manual | — | doc existence + `grep offload.md docs/src/SUMMARY.md` | ✅ present | ✅ verified |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -55,8 +60,8 @@ Expected plan split: **Plan 01 = MCP introspection (deliverable A)**, **Plan 02 
 
 ## Wave 0 Requirements
 
-- [ ] `ferro-mcp/src/tools/list_services.rs` — add `#[cfg(test)] mod tests` block covering the four MCP unit behaviors above (matching the inline-`mod tests` pattern in `route_dependencies.rs`). No new test file — tests live inline with the module.
-- [ ] Test fixtures: a sample source string with two `#[offload]` methods (one with `queue = "…"`, one without), interleaved non-offload methods, and varied param arities (0 / 1 / N, including a bracketed generic type).
+- [x] `ferro-mcp/src/tools/list_services.rs` — `#[cfg(test)] mod tests` block (L594) covering the four MCP unit behaviors above (inline-`mod tests` pattern from `route_dependencies.rs`). No new test file — tests live inline with the module.
+- [x] Test fixtures: `scan_offload_methods` builds a temp-dir source tree with two `#[offload]` methods (one with `queue = "reports"`, one bare) plus a non-offload method, and asserts `methods.len() == 2`.
 
 *Existing infrastructure (`cargo test`) covers execution; the module currently has zero tests, so the inline test block is the only Wave 0 addition.*
 
@@ -73,11 +78,27 @@ Expected plan split: **Plan 01 = MCP introspection (deliverable A)**, **Plan 02 
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s (list_services suite finished in 0.01s)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** verified 2026-08-15
+
+---
+
+## Validation Audit 2026-08-15
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+State A audit: the four automated MCP behaviors were already covered by inline
+tests, confirmed green empirically (`cargo test -p ferro-mcp list_services` →
+7 passed, 0 failed). The single docs behavior remains manual-only (mdBook nav +
+prose correctness are not unit-testable) with its artifact and nav entry present.
+No gaps to fill — no auditor spawn required. `nyquist_compliant: true`.
