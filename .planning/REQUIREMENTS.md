@@ -10,9 +10,9 @@
 
 ## v16.4 Work Distribution
 
-**Status:** Current milestone as of 2026-08-12 — the pointer moved here after the shipped
-v16.x / v17.0 / v18.0 backlog was archived. Phases 244–249 are not yet planned or executed;
-numbering continues after Phase 263.
+**Status:** Current milestone. Phases 244–249.1 are executed and verified. The 2026-08-15
+milestone audit returned `gaps_found` (a serve-path integration blocker) plus selected tech debt;
+gap-closure / hardening Phases 249.2–249.4 were added and precede `/gsd-complete-milestone`.
 
 **Milestone goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable
 unit of work with zero hand-written queue plumbing — the framework derives the `ferro-queue`
@@ -46,9 +46,12 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Scalable Execution
 
-- [x] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
+- [ ] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
   replicas against the shared queue; capacity scales by adding replicas; each worker class is an
   independent fault domain. No framework-managed autoscaling (N is external).
+  _Re-opened by the 2026-08-15 audit: satisfied for the dedicated `worker` process, but the default
+  `serve` path does not auto-spawn its in-process worker for `#[offload]`-only apps
+  (`has_registered_jobs()` is inventory-blind). Closed by Phase 249.2._
 
 ### Introspection & Docs
 
@@ -70,7 +73,11 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 |--------|-------|--------|
 | OFFLOAD-01 | Phase 244 | Complete |
 | OFFLOAD-02 | Phase 245 | Complete |
-| OFFLOAD-03 | Phase 246 | Complete |
+| OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Complete |
 | OFFLOAD-04 | Phase 247 | Complete |
-| OFFLOAD-05 | Phase 248 | Complete |
-| OFFLOAD-06 | Phase 249 | Complete |
+| OFFLOAD-05 | Phase 248 → 249.2 | Pending (serve-path gap closure) |
+| OFFLOAD-06 | Phase 249 (scanner hardened by 249.4) | Complete |
+
+**Gap-closure / hardening phases (2026-08-15 audit):** 249.2 closes the OFFLOAD-05 serve-path
+blocker; 249.3 hardens OFFLOAD-03 result-path terminal-state edges (sync-mode, reaper); 249.4
+hardens OFFLOAD-06 MCP scanner (`#[service(impl = X)]`, multi-line attributes).

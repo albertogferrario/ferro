@@ -3260,10 +3260,11 @@ CRUD-01..07 — full details archived in [milestones/v16.3-ROADMAP.md](milestone
 Delivered: an opted-in projection derives `create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>` MCP tools with zero hand-written tool code, dispatched through the single `framework::write` kernel via `derive_crud_plan` (no second dispatcher). Soft-delete + confirmation gating + server-injected tenant + non-disclosure; Phase 243.1 added computed/derived fields.
 
 
-## 🚧 v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249) — CURRENT (as of 2026-08-12)
+## 🚧 v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249.4) — CURRENT (as of 2026-08-12)
 
-**Status:** Queued behind v16.3 Phase 243 (v16.3 stays the current milestone until 243
-closes; these phases continue the numbering and are planned/executed after it).
+**Status:** Phases 244–249.1 executed and verified; the 2026-08-15 milestone audit returned
+`gaps_found` (one serve-path integration blocker) and selected tech debt. Phases 249.2–249.4
+close those and precede `/gsd-complete-milestone`.
 
 **Goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable unit of
 work with zero hand-written queue plumbing — the framework derives the `ferro-queue` Job,
@@ -3317,6 +3318,22 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   "compatibility"-framed handling, per the feature-branch convention (delete rather than deprecate).
   No behavioral change to the fire-and-forward delivery loop; the Phase 247 integration suite is
   the regression guard. Runs last in v16.4 so it can sweep 248/249 output as well.
+- [ ] **Phase 249.2 (GAP CLOSURE): Serve worker inventory-registration gate** — Fix the audit
+  blocker. `has_registered_jobs()` (`ferro-queue/src/db.rs`) checks only the manual `JOB_REGISTRARS`
+  Vec, so the default `serve` path never auto-spawns the in-process worker for an app whose jobs
+  register exclusively through `#[offload]` (inventory) — jobs enqueue and sit unclaimed with no
+  error, while its sibling `registered_queue_names()` already checks inventory. Restores OFFLOAD-05's
+  "serve keeps its in-process worker" guarantee for the milestone's canonical usage.
+- [ ] **Phase 249.3 (HARDENING): Offload result-path terminal-state completeness** — Close two
+  silent-drop edges so an `OffloadHandle` always resolves to a terminal state: sync-mode
+  (`QUEUE_CONNECTION=sync`) dispatch ignores the handle key and writes no snapshot (246 WR-01);
+  reaper-parked (timeout-killed) jobs never record a failed envelope (246 WR-02). Hardens OFFLOAD-03's
+  "no silent drop" guarantee at its edges.
+- [ ] **Phase 249.4 (HARDENING): MCP service scanner — named-impl & multi-line robustness** — The
+  `ferro-mcp` static scanner extracts `impl = X` literally from `#[service(impl = ReportBuilder)]`
+  (the blessed authoring form in `offload.md`) and silently drops multi-line `#[service(...)]`
+  attributes (249 WR-01/WR-02), degrading offload introspection for the documented surface. Fix both.
+  Hardens OFFLOAD-06.
 
 ### Phase Details
 
@@ -3488,18 +3505,70 @@ mapped to their delivering phases.
 Plans:
 - [x] 249.1-01-PLAN.md — single registration path (default broadcaster + linearize `run_common_boot` + delete persist-only fn + fix hidden test caller), neutralize offload-surface comments, full gate + SC#2 grep evidence
 
+#### Phase 249.2: Serve worker inventory-registration gate (GAP CLOSURE)
+**Goal:** Restore OFFLOAD-05's "serve keeps its in-process worker" guarantee for apps that register
+jobs exclusively through `#[offload]`. Today `framework/src/app.rs` gates `spawn_in_process_worker()`
+on `ferro_queue::Queue::has_registered_jobs()`, which inspects only the manual `JOB_REGISTRARS` Vec;
+`#[offload]`-derived jobs register solely via `inventory::iter::<JobRegistrarEntry>`, so a pure-offload
+app on the default `serve` path spawns no worker and its jobs are never claimed (no error). The sibling
+`registered_queue_names()` already checks inventory, so the two predicates disagree.
+**Depends on:** Phases 244 (inventory registration), 248 (worker gate).
+**Closes (2026-08-15 audit gaps):** OFFLOAD-05 (partial → satisfied); integration seam (serve gate ↔
+inventory registration); flow (offload E2E on the default `serve` path).
+**Success Criteria** (what must be TRUE):
+  1. `has_registered_jobs()` returns `true` when jobs are registered only via `#[offload]` (inventory),
+     consistent with `registered_queue_names()`.
+  2. Default `serve` (no `--no-worker`) spawns the in-process `WorkerLoop` for an inventory-only app;
+     `serve --no-worker` still skips it, and `run_worker` is unaffected.
+  3. A regression test registers a job via inventory only (no manual `Queue::register()`) and asserts
+     both the predicate and the serve-boot worker spawn — guarding against reintroduction.
+
+#### Phase 249.3: Offload result-path terminal-state completeness (HARDENING)
+**Goal:** Guarantee an `OffloadHandle` always resolves to a terminal state (completed or failed),
+never an indefinite `Ok(None)`. Two edges currently drop silently: (a) in sync mode
+(`QUEUE_CONNECTION=sync`, the unset default) `dispatch_immediately()` calls `handle()` rather than
+`handle_with_value()`, ignores the handle key, and writes no snapshot (246 WR-01); (b) reaper-parked
+(timeout-killed) jobs never record a failed envelope (246 WR-02).
+**Depends on:** Phase 246 (result snapshot), Phase 247 (terminal/redaction path).
+**Hardens:** OFFLOAD-03 ("failed run records a terminal error state — no silent drop") at its edges.
+**Success Criteria** (what must be TRUE):
+  1. An offloaded call in sync mode persists its outcome under the handle key; a caller holding the
+     handle reads a terminal result, not `Ok(None)` (asserted in a test).
+  2. A job parked/killed by the reaper records a terminal error envelope under its handle key; a
+     subscribed caller observes the failure rather than waiting to timeout (asserted in a test).
+  3. The full offload unit + integration suite passes unchanged for the non-degraded paths.
+
+#### Phase 249.4: MCP service scanner — named-impl & multi-line robustness (HARDENING)
+**Goal:** Make the `ferro-mcp` static offload scanner correct for the documented authoring surface.
+It currently extracts the concrete impl name as the raw substring between `(` and `)`, so
+`#[service(impl = ReportBuilder)]` yields the concrete name `"impl = ReportBuilder"` — and that named
+form is exactly the canonical example in `docs/src/features/offload.md` (249 WR-01). It also silently
+drops multi-line `#[service(...)]` attributes (249 WR-02).
+**Depends on:** Phase 249 (`ferro-mcp` offload introspection).
+**Hardens:** OFFLOAD-06 (offloadable-method introspection quality for the blessed surface).
+**Success Criteria** (what must be TRUE):
+  1. `list_services` reports the correct concrete impl name for `#[service(impl = X)]`, and correlates
+     the trait's `#[offload]` methods to that service (asserted against the `offload.md` example form).
+  2. A multi-line `#[service(...)]` attribute is parsed, not dropped (asserted in a scanner test).
+  3. No regression to single-line `#[service]` / `#[service(Type)]` parsing.
+
 ### Requirement → Phase Mapping (v16.4)
 
 | Requirement | Phase |
 |-------------|-------|
 | OFFLOAD-01 (`#[offload]` macro → Job + payload) | Phase 244 |
 | OFFLOAD-02 (typed result handle + serializable enforcement) | Phase 245 |
-| OFFLOAD-03 (result → read-model snapshot) | Phase 246 |
+| OFFLOAD-03 (result → read-model snapshot) | Phase 246 (edges hardened by Phase 249.3) |
 | OFFLOAD-04 (read-model delta → broadcast streaming) | Phases 246.1 (prerequisite), 247 |
-| OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248 |
-| OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 |
+| OFFLOAD-05 (deployable scalable `ferro worker`) | Phase 248, serve-path gap closed by **Phase 249.2** |
+| OFFLOAD-06 (`ferro-mcp` introspection + docs) | Phase 249 (scanner hardened by Phase 249.4) |
 
 ✓ 6/6 requirements mapped, no orphans, no duplicates.
+
+**Gap-closure / hardening phases (from the 2026-08-15 milestone audit):**
+- Phase 249.2 — blocker: serve worker inventory-registration gate (OFFLOAD-05).
+- Phase 249.3 — hardening: offload result-path terminal-state completeness (OFFLOAD-03 edges).
+- Phase 249.4 — hardening: MCP service scanner named-impl & multi-line robustness (OFFLOAD-06).
 
 ## ✅ v16.5 JSON-UI Design System (Phases 250–253) — Shipped 2026-07-04 (0.2.86) [CONSUMER-PAIRED with gestiscilo Phase 232]
 
