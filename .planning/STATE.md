@@ -4,8 +4,8 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: Completed 249-02-PLAN.md
-last_updated: "2026-08-14T23:50:08.804Z"
-last_activity: 2026-08-14
+last_updated: "2026-08-15T00:01:25.974Z"
+last_activity: 2026-08-15
 progress:
   total_phases: 114
   completed_phases: 103
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 249 (ferro-mcp-introspection-docs) — EXECUTING
-Plan: 2 of 2
+Phase: 249.1
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-08-14
+Last activity: 2026-08-15
 
 Current milestone v16.4 Work Distribution (Phases 244–249): mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). OFFLOAD-01..06. Note the inserted Phase 246.1 (shared-transport broadcast fan-out) prerequisite for multi-replica delta delivery. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Next: `/gsd-plan-phase 244`.
 
@@ -162,6 +162,7 @@ Progress: [██████████] 100%
 | 246.1 | 2 | - | - |
 | 247 | 3 | - | - |
 | 248 | 4 | - | - |
+| 249 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
