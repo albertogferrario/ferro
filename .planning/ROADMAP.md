@@ -3484,6 +3484,9 @@ mapped to their delivering phases.
      (structural grep is clean).
   3. The Phase 247 integration suite and the full offload unit suite pass unchanged — the delivery
      loop's observable behavior is identical.
+**Plans:** 1 plan (1 wave — a tightly-coupled single-subsystem sweep; sequenced so each commit compiles).
+Plans:
+- [ ] 249.1-01-PLAN.md — single registration path (default broadcaster + linearize `run_common_boot` + delete persist-only fn + fix hidden test caller), neutralize offload-surface comments, full gate + SC#2 grep evidence
 
 ### Requirement → Phase Mapping (v16.4)
 
