@@ -3653,10 +3653,10 @@ neither requirement is reopened (both remain satisfied).
   4. `OffloadHandle<T>` compiles for a result type that is `OffloadSerializable` but not `Clone + Debug + Eq`.
   5. The `ferro-queue` re-export doc comment names the offload surface correctly; full offload suite passes.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 249.6-01-PLAN.md — ferro-macros: WR-01 owned_type spanned error + fail fixture; WR-03 both handle .expect()→? sites (SC#1, SC#3)
+- [x] 249.6-01-PLAN.md — ferro-macros: WR-01 owned_type spanned error + fail fixture; WR-03 both handle .expect()→? sites (SC#1, SC#3)
 - [ ] 249.6-02-PLAN.md — ferro-queue: 245-WR-01 T-free OffloadHandle impls; WR-02 registration idempotency test; 245-IN-01 doc comment (SC#2, SC#4, SC#5)
 - [ ] 249.6-03-PLAN.md — cross-crate: SC#4 serde-only pass fixture, SC#1 .stderr bless, SC#3 code-property, macro-gate + workspace gate
 
