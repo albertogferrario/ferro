@@ -3571,6 +3571,11 @@ This phase is therefore scoped to **WR-02 only**; do not re-implement the named-
   2. The trait's `#[offload]` methods are correlated to the service parsed from the multi-line form.
   3. No regression to single-line `#[service]` / `#[service(Type)]` / `#[service(impl = X)]` parsing.
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 249.4-01-PLAN.md — normalize_service_lines pre-pass joins multi-line `#[service(...)]`; both scan functions consume the normalized stream; helper unit test + multi-line fixture correlation test (SC#1-3)
+
 #### Phase 249.5: Offload dispatch-key reconciliation — DISPATCH-KEY-01 (GAP CLOSURE)
 **Goal:** Make an `#[offload]`-derived job enqueued on the db path actually get claimed and run by the
 worker. Today the two ends of the dispatch handshake use different keys: enqueue writes
