@@ -1,0 +1,5 @@
+error: #[offload] parameters must be fully owned — double references (&&T) and reference-wrapping types (&Ref<'a>) are not supported as job payload fields
+  --> tests/ui/offload/fail/double_ref_param.rs:20:35
+   |
+20 |     async fn process(&self, data: &&Inner);
+   |                                   ^^^^^^^
