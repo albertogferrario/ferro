@@ -391,7 +391,7 @@ pub(crate) fn emit_job_items(
 
             async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
                 let svc = ::ferro::App::make::<dyn #trait_ident>()
-                    .expect(#expect_msg);
+                    .ok_or_else(|| ::ferro::queue::Error::job_failed(#job_ident_str, #expect_msg))?;
                 #call_expr
             }
 
@@ -408,7 +408,7 @@ pub(crate) fn emit_job_items(
                 ::ferro::queue::Error,
             > {
                 let svc = ::ferro::App::make::<dyn #trait_ident>()
-                    .expect(#expect_msg);
+                    .ok_or_else(|| ::ferro::queue::Error::job_failed(#job_ident_str, #expect_msg))?;
                 #value_capture_expr
             }
         }
