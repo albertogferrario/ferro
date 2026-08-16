@@ -817,7 +817,11 @@ pub trait ReportsService: Send + Sync {
         let _ = fs::remove_dir_all(&tmp);
 
         let svc = services.iter().find(|s| s.name == "ReportBuilder").unwrap();
-        assert_eq!(svc.methods.len(), 2, "should correlate exactly 2 offload methods");
+        assert_eq!(
+            svc.methods.len(),
+            2,
+            "should correlate exactly 2 offload methods"
+        );
         assert!(svc.methods.iter().any(|m| m.name == "build_monthly"));
         let export = svc.methods.iter().find(|m| m.name == "export_csv").unwrap();
         assert_eq!(export.queue, "reports");
@@ -852,7 +856,10 @@ pub trait ReportsService: Send + Sync {
         let t = out[0].trim();
         let start = t.find('(').unwrap();
         let end = t.find(')').unwrap();
-        assert_eq!(extract_service_impl_name(&t[start + 1..end]), "ReportBuilder");
+        assert_eq!(
+            extract_service_impl_name(&t[start + 1..end]),
+            "ReportBuilder"
+        );
 
         // Ordinary lines and a comment containing the prefix pass through unchanged
         let src = "pub trait Foo {}\n// see #[service(Bar)]\nasync fn x() {}";
