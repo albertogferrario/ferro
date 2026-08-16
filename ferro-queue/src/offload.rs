@@ -68,12 +68,37 @@ impl Default for HandleKey {
 /// `Send + Sync` regardless of `T`. The phantom is `#[serde(skip)]` so serde does
 /// not require `T: Serialize`, allowing the handle to round-trip even when `T` is
 /// not serializable (OFFLOAD-02e).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub struct OffloadHandle<T> {
     key: HandleKey,
     #[serde(skip)]
     _phantom: PhantomData<fn() -> T>,
 }
+
+impl<T> Clone for OffloadHandle<T> {
+    fn clone(&self) -> Self {
+        Self {
+            key: self.key.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> std::fmt::Debug for OffloadHandle<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OffloadHandle")
+            .field("key", &self.key)
+            .finish()
+    }
+}
+
+impl<T> PartialEq for OffloadHandle<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl<T> Eq for OffloadHandle<T> {}
 
 impl<T> OffloadHandle<T> {
     /// Wrap a minted key in a typed handle.
