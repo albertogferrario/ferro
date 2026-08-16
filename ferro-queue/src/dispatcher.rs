@@ -197,12 +197,8 @@ where
             Err(e) => {
                 tracing::error!(job = %job_name, error = %e, "Job failed");
                 if let Some(conn) = conn {
-                    persist_offload_outcome(
-                        self.handle_key.as_deref(),
-                        Err(e.to_string()),
-                        conn,
-                    )
-                    .await;
+                    persist_offload_outcome(self.handle_key.as_deref(), Err(e.to_string()), conn)
+                        .await;
                 }
                 self.job.failed(&e).await;
                 Err(e) // D-03: dual signal — still return Err
