@@ -48,7 +48,7 @@ pub fn register_offload_result_hook(f: OffloadResultHook) {
 /// facade) or when `handle_key` is `None` (non-offload jobs). Never fails —
 /// persistence errors are logged inside the registered hook so the job's
 /// success/failure outcome is unaffected (T-246-05, Pitfall 5).
-pub(crate) async fn persist_offload_outcome(
+pub async fn persist_offload_outcome(
     handle_key: Option<&str>,
     outcome: Result<serde_json::Value, String>,
     db: &'static sea_orm::DatabaseConnection,

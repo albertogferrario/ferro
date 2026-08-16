@@ -61,8 +61,8 @@ pub use db::{
     JobInfo, JobRegistrarEntry, JobRow, JobState, Queue, QueueStats, SingleQueueStats,
 };
 pub use dispatcher::{
-    dispatch, dispatch_later, dispatch_to, register_offload_result_hook,
-    register_tenant_capture_hook, OffloadResultHook, PendingDispatch,
+    dispatch, dispatch_later, dispatch_to, persist_offload_outcome,
+    register_offload_result_hook, register_tenant_capture_hook, OffloadResultHook, PendingDispatch,
 };
 pub use error::Error;
 pub use job::{Job, JobPayload};
