@@ -94,12 +94,15 @@ pub(crate) fn owned_type(ty: &Type) -> syn::Result<TokenStream2> {
                     Ok(quote! { Vec<#inner> })
                 }
                 other => {
+                    // Only a literal double reference (`&&T`) is detectable here: syn parses
+                    // its inner element as `Type::Reference`. A named reference-wrapping type
+                    // (`&Ref<'a, T>`) parses as `Type::Path` and cannot be recognized without
+                    // name resolution — it instead fails downstream at the serializable bound.
                     if matches!(other, Type::Reference(_)) {
                         return Err(syn::Error::new_spanned(
                             ty,
-                            "#[offload] parameters must be fully owned — \
-                             double references (&&T) and reference-wrapping types (&Ref<'a>) \
-                             are not supported as job payload fields",
+                            "#[offload] parameters may not be double references (&&T) — \
+                             the job payload must be fully owned and serializable",
                         ));
                     }
                     Ok(quote! { #other })
