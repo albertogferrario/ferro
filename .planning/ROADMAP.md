@@ -3335,7 +3335,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   form. (WR-01, the `#[service(impl = X)]` named form, was already shipped in 249/249.1 —
   `extract_service_impl_name` with passing tests — so this phase is scoped to WR-02 only.)
   Hardens OFFLOAD-06.
-- [ ] **Phase 249.5 (GAP CLOSURE): Offload dispatch-key reconciliation (DISPATCH-KEY-01)** — Critical,
+- [x] **Phase 249.5 (GAP CLOSURE): Offload dispatch-key reconciliation (DISPATCH-KEY-01)** — Critical, (completed 2026-08-16)
   milestone-breaking. `#[offload]` overrides `Job::name()` to the bare struct ident; enqueue writes that
   as the DB `job_type` (`ferro-queue/src/dispatcher.rs`), but the worker registers and looks up handlers
   by fully-qualified `std::any::type_name::<J>()` (`ferro-queue/src/worker.rs`). The lookup always misses,
@@ -3589,10 +3589,10 @@ repairs the primary offload E2E flow on the `QUEUE_CONNECTION=db` path.
   3. Hand-written (non-derived) jobs still dispatch unchanged; the full offload unit + integration suite
      passes.
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 249.5-01-PLAN.md — reconcile derived `Job::name()` to `type_name::<Self>()` (one-line macro fix + doc reconcile) and add the discriminating db-path enqueue→claim→dispatch integration test for a real `#[offload]`-derived job in a nested module (test lives in `framework/tests/`, not `ferro-queue/tests/` — dependency cycle)
+- [x] 249.5-01-PLAN.md — reconcile derived `Job::name()` to `type_name::<Self>()` (one-line macro fix + doc reconcile) and add the discriminating db-path enqueue→claim→dispatch integration test for a real `#[offload]`-derived job in a nested module (test lives in `framework/tests/`, not `ferro-queue/tests/` — dependency cycle)
 
 ### Requirement → Phase Mapping (v16.4)
 

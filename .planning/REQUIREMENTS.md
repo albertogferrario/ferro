@@ -31,7 +31,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Offload Primitive
 
-- [ ] **OFFLOAD-01**: A developer marks a `#[service]` trait method `#[offload]` and the
+- [x] **OFFLOAD-01**: A developer marks a `#[service]` trait method `#[offload]` and the
   framework derives a `ferro-queue` Job + serializable payload from the method signature — no
   hand-written Job struct, no manual enqueue.
   _Re-opened by the 2026-08-15 re-audit: the macro derivation is correct, but the derived Job's
@@ -49,7 +49,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
   _Re-opened by the 2026-08-15 re-audit: two silent-drop edges remain — sync-mode dispatch
   (`QUEUE_CONNECTION` unset default) ignores the handle key, and reaper-parked jobs record no
   terminal envelope. Closed by Phase 249.3._
-- [ ] **OFFLOAD-04**: A client subscribed to a handle receives the result as a `ferro-broadcast`
+- [x] **OFFLOAD-04**: A client subscribed to a handle receives the result as a `ferro-broadcast`
   delta on completion; the originating request returns immediately and never blocks awaiting it.
   _Re-opened by the 2026-08-15 re-audit: the persist→broadcast→subscribe machinery is correct in
   isolation, but the delta never fires on the db path because the job never dispatches
@@ -57,7 +57,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Scalable Execution
 
-- [ ] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
+- [x] **OFFLOAD-05**: Offloaded work runs on a deployable `ferro worker` process runnable at N
   replicas against the shared queue; capacity scales by adding replicas; each worker class is an
   independent fault domain. No framework-managed autoscaling (N is external).
   _Re-opened twice by the 2026-08-15 audits: (1) the default `serve` path did not auto-spawn its
@@ -83,11 +83,11 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| OFFLOAD-01 | Phase 244; db-path dispatch fixed by 249.5 | Pending |
+| OFFLOAD-01 | Phase 244; db-path dispatch fixed by 249.5 | Complete |
 | OFFLOAD-02 | Phase 245 | Complete |
 | OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Pending |
-| OFFLOAD-04 | Phase 247; runtime unblocked by 249.5 | Pending |
-| OFFLOAD-05 | Phase 248 → 249.2; dispatch unblocked by 249.5 | Pending |
+| OFFLOAD-04 | Phase 247; runtime unblocked by 249.5 | Complete |
+| OFFLOAD-05 | Phase 248 → 249.2; dispatch unblocked by 249.5 | Complete |
 | OFFLOAD-06 | Phase 249 (scanner hardened by 249.4, WR-02) | Complete |
 
 **Gap-closure / hardening phases (2026-08-15 audits):** 249.2 closes the OFFLOAD-05 serve-path

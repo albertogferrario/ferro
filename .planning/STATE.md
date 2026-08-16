@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
-stopped_at: Completed 249.2-01-PLAN.md
-last_updated: "2026-08-15T09:37:41.445Z"
-last_activity: 2026-08-15
+stopped_at: Completed 249.5-01-PLAN.md
+last_updated: "2026-08-16T17:18:40.176Z"
+last_activity: 2026-08-16
 progress:
-  total_phases: 118
-  completed_phases: 105
-  total_plans: 418
-  completed_plans: 417
+  total_phases: 119
+  completed_phases: 106
+  total_plans: 419
+  completed_plans: 418
   percent: 100
 ---
 
@@ -20,14 +20,14 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 249.2 — serve-worker-inventory-registration-gate
+**Current focus:** Phase 249.5 — offload-dispatch-key-reconciliation
 
 ## Current Position
 
-Phase: 249.3
-Plan: Not started
+Phase: 249.5 (offload-dispatch-key-reconciliation) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
-Last activity: 2026-08-15
+Last activity: 2026-08-16
 
 Current milestone v16.4 Work Distribution (Phases 244–249): mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). OFFLOAD-01..06. Note the inserted Phase 246.1 (shared-transport broadcast fan-out) prerequisite for multi-replica delta delivery. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Next: `/gsd-plan-phase 244`.
 
@@ -328,6 +328,7 @@ Progress: [██████████] 100%
 | Phase 249 P02 | 10 | 3 tasks | 4 files |
 | Phase 249.1 P01 | 1466 | 3 tasks | 4 files |
 | Phase 249.2-serve-worker-inventory-registration-gate P01 | 1511 | 3 tasks | 2 files |
+| Phase 249.5 P01 | 1029 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -337,6 +338,7 @@ See PROJECT.md Key Decisions table for full history.
 
 Recent decisions affecting current work:
 
+- [v16.4 Phase 249.5 Plan 01] DISPATCH-KEY-01 closed: derived `Job::name()` now emits `::std::any::type_name::<Self>()` (one-line macro fix in `ferro-macros/src/offload.rs`), matching the worker's `type_name::<J>()` registration key. Test at `framework/tests/dispatch_key_derived_job.rs` (real `#[offload]`-derived job in `mod reports`, db path, bootstrap + drain) is the discriminating gate — RED before fix, GREEN after. OFFLOAD-01/04/05 unblocked at runtime.
 - [v16.5 Phase 251 Plan 04] Phase 251 closed (4/4): D-17 migration table + canonical three-enum section live in `docs/src/json-ui/components.md` (gestiscilo Phase 232 reference); actions.md/forms.md swept; pre-existing doc drift fixed (column_format badge/image/icon, GapSize xs, StatCard tone). `ferro-base.css` regenerated once after all class changes (D-04) — border-l-success, disabled:pointer-events-none, peer-focus:ring-ring/30, focus-visible:ring-inset newly surfaced; input.css unchanged (safelist already complete, dynamic-construction grep 0). Full CI-exact gate green (fmt/clippy --all-features/test --all-features; drift guard 1/1, ferro-mcp json_ui 47/47). Schema churn = v16.3 CRUD export drift, discarded per audit finding. Known cosmetic: retired classes (duration-150/300, ring-primary family) leak into the generated CSS as DEAD utility definitions from negative test assertions — left as-is, Phase 252 lint candidate. Visual checkpoint auto-approved under the auto chain with served-HTML/CSS evidence (light+dark `--color-ring` verified; zero retired classes in markup); pixel-level pass suggested at Phase 253 pre-publish review. D-18 skip recorded: ferro-cli's only `variant` hits are shadcn `.tsx.tpl` templates (different vocabulary) — intentionally unchanged.
 - [v16.5 Phase 251 Plan 02] Interactive-state pass shipped (DS-04): shared class constants in `render/classes.rs` (FOCUS_RING, MOTION_FAST, MOTION_BASE, DISABLED_BASE, INTERACTIVE_BASE) with a composition drift-guard test; every render/layout/runtime site migrated to `focus-visible:ring-ring` + `duration-fast`/`duration-base` + `ease-base`; `motion-reduce:transition-none` deleted everywhere tokens take over (D-15). Discretion calls: SegmentedControl ring is INSET (offset would clip in overflow-hidden cluster); Collapsible chevron = `transition-transform duration-base ease-base`; compact icon buttons gained `rounded-md` with the ring. D-16: disabled GET-action Button skips the anchor wrap (aria-disabled + `pointer-events-none opacity-50`); form controls use `disabled:pointer-events-none`. OQ-5: toast dismissal via `transitionend` + 500ms fallback; OQ-4: NO modal/dropdown animation added (explicit non-addition). StatCard tone renderer accent shipped (Plan 01 Known Stub resolved; neutral = untinted default). Form error rings (`ring-destructive`, Switch `peer-focus:ring-destructive/30`) preserved. `ferro-base.css` regen deferred to Plan 04 (D-04). New literals for the Plan 04 regen: `focus-visible:ring-ring`, `focus-visible:ring-inset`, `peer-focus:ring-ring/30`, `duration-fast/base`, `ease-base`, `disabled:pointer-events-none`.
 - [v16.5 Phase 251 Plan 01] Canonical `Variant`/`Tone`/`Size`/`CardAppearance` enums shipped in ferro-json-ui; all nine old enums (ButtonVariant, AlertVariant, BadgeVariant, ToastVariant, CardVariant, ActionCardVariant, old Size, DialogVariant, NotifyVariant) deleted with no aliases — retired values (`xs`, `default`, `link`, `info`, `error`) proven rejected at serde parse. Discretion calls: neutral badge = outlined (`border-border`); Alert neutral = `bg-surface` tint (plan's `bg-muted` adjusted — no `--color-muted` token exists); Toast neutral keeps Info classes (zero visual change, class pass is Plan 02); relationship buttons `link`→`ghost` (D-07); projection badge tones all collapse to neutral (D-09). OQ-1 normalized (ConfirmDialog/Notify carry `tone: Tone`, Notify absent-tone default stays success); OQ-2 StatCard `tone` added schema-only (renderer accent = Plan 02), CalendarCell skipped; OQ-3 `dot_colors` raw-Tailwind note handed to Plan 04. Known handoff: retired prop NAMES on renamed fields (Alert `variant`) are serde-ignored, not rejected — D-19 guard (Plan 03) should decide stale-prop detection scope.
@@ -392,7 +394,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-15T09:32:15.450Z
-Stopped at: Completed 249.2-01-PLAN.md
+Last session: 2026-08-16T17:18:40.167Z
+Stopped at: Completed 249.5-01-PLAN.md
 Resume file: None
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
