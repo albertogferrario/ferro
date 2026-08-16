@@ -235,13 +235,40 @@ async fn subscriber_observes_reaper_failure(
 }
 
 // ---------------------------------------------------------------------------
+// RAII guard — ensures QUEUE_CONNECTION is removed on drop even on panic, so a
+// leaked "db" value cannot silently alter dispatch in later serial tests (WR-01).
+// ---------------------------------------------------------------------------
+
+struct EnvGuard {
+    vars: Vec<String>,
+}
+
+impl EnvGuard {
+    fn set(key: &str, value: &str) -> Self {
+        std::env::set_var(key, value);
+        Self {
+            vars: vec![key.to_string()],
+        }
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        for var in &self.vars {
+            std::env::remove_var(var);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main integration test — both scenarios in one test function
 // ---------------------------------------------------------------------------
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[serial_test::serial]
 async fn reaper_terminal_envelope() {
-    std::env::set_var("QUEUE_CONNECTION", "db");
+    // Guard ensures QUEUE_CONNECTION is removed even if a scenario panics (WR-01).
+    let _env = EnvGuard::set("QUEUE_CONNECTION", "db");
 
     let broadcaster = Arc::new(Broadcaster::new());
     register_offload_hooks_with_broadcaster(broadcaster.clone());

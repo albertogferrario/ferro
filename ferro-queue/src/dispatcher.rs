@@ -48,6 +48,11 @@ pub fn register_offload_result_hook(f: OffloadResultHook) {
 /// facade) or when `handle_key` is `None` (non-offload jobs). Never fails —
 /// persistence errors are logged inside the registered hook so the job's
 /// success/failure outcome is unaffected (T-246-05, Pitfall 5).
+///
+/// Public only so integration tests can drive the reaper→persistence loop
+/// directly; it is an internal implementation seam, not part of the supported
+/// surface. Hidden from rustdoc.
+#[doc(hidden)]
 pub async fn persist_offload_outcome(
     handle_key: Option<&str>,
     outcome: Result<serde_json::Value, String>,
