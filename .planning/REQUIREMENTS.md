@@ -43,7 +43,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 ### Result Delivery
 
-- [ ] **OFFLOAD-03**: An offloaded method's return value is persisted as a `ferro-projection`
+- [x] **OFFLOAD-03**: An offloaded method's return value is persisted as a `ferro-projection`
   snapshot keyed by the handle, retrievable after completion; a failed run records a terminal
   error state (no silent drop).
   _Re-opened by the 2026-08-15 re-audit: two silent-drop edges remain — sync-mode dispatch
@@ -85,7 +85,7 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 |--------|-------|--------|
 | OFFLOAD-01 | Phase 244; db-path dispatch fixed by 249.5 | Complete |
 | OFFLOAD-02 | Phase 245 | Complete |
-| OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Pending |
+| OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Complete |
 | OFFLOAD-04 | Phase 247; runtime unblocked by 249.5 | Complete |
 | OFFLOAD-05 | Phase 248 → 249.2; dispatch unblocked by 249.5 | Complete |
 | OFFLOAD-06 | Phase 249 (scanner hardened by 249.4, WR-02) | Complete |

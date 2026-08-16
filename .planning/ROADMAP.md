@@ -3549,10 +3549,10 @@ never an indefinite `Ok(None)`. Two edges currently drop silently: (a) in sync m
      subscribed caller observes the failure rather than waiting to timeout (asserted in a test).
   3. The full offload unit + integration suite passes unchanged for the non-degraded paths.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 249.3-01-PLAN.md — sync-mode edge: rework `dispatch_immediately()` to call `handle_with_value()` and persist the terminal envelope on both branches via `persist_offload_outcome` (SC#1)
+- [x] 249.3-01-PLAN.md — sync-mode edge: rework `dispatch_immediately()` to call `handle_with_value()` and persist the terminal envelope on both branches via `persist_offload_outcome` (SC#1)
 - [ ] 249.3-02-PLAN.md — reaper edge: `reaper()` returns parked handle-key rows (in-txn SELECT-before-park); both worker call-sites persist a terminal-error envelope best-effort post-commit; SC#2 subscriber-observation test (SC#2)
 
 #### Phase 249.4: MCP service scanner — multi-line `#[service(...)]` robustness (HARDENING)
