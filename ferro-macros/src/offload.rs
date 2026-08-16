@@ -93,7 +93,17 @@ pub(crate) fn owned_type(ty: &Type) -> syn::Result<TokenStream2> {
                     let inner = &s.elem;
                     Ok(quote! { Vec<#inner> })
                 }
-                other => Ok(quote! { #other }),
+                other => {
+                    if matches!(other, Type::Reference(_)) {
+                        return Err(syn::Error::new_spanned(
+                            ty,
+                            "#[offload] parameters must be fully owned — \
+                             double references (&&T) and reference-wrapping types (&Ref<'a>) \
+                             are not supported as job payload fields",
+                        ));
+                    }
+                    Ok(quote! { #other })
+                }
             }
         }
         other => Ok(quote! { #other }),
