@@ -69,7 +69,7 @@ pub use job::{Job, JobPayload};
 pub use migration::CreateJobsTable;
 pub use worker::{TenantScopeProvider, Worker, WorkerConfig, WorkerLoop};
 
-/// Re-export async_trait for convenience
+/// Typed offload handle and serializable-contract primitives.
 pub use offload::{HandleKey, OffloadHandle, OffloadSerializable, Offloadable};
 
 /// Re-export async_trait for convenience

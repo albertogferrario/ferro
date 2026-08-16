@@ -127,3 +127,31 @@ async fn offload_job_auto_registers_via_inventory() {
         "InventoryJob must be auto-registered by from_registry via the inventory path"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Test D — WR-02: two successive from_registry calls register each job once (SC#2)
+//
+// Each from_registry starts with a fresh HashMap; HashMap::insert is per-key
+// idempotent, so re-running the same registrar overwrites with an identical handler
+// and leaves the count unchanged. This test asserts that invariant explicitly.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[serial_test::serial]
+async fn double_from_registry_does_not_double_register() {
+    // InventoryJob is already submitted to inventory (Test C in this file).
+    // Two WorkerLoop instances each start with a fresh HashMap; HashMap::insert
+    // is per-key idempotent so re-running the same registrar overwrites with an
+    // identical handler, leaving count unchanged.
+    let w1 = WorkerLoop::from_registry(WorkerConfig::default());
+    let count1 = w1.registered_job_count();
+
+    let w2 = WorkerLoop::from_registry(WorkerConfig::default());
+    let count2 = w2.registered_job_count();
+
+    assert_eq!(
+        count1, count2,
+        "second from_registry must not double-register: expected {count1}, got {count2}"
+    );
+    assert!(count1 >= 1, "at least InventoryJob must be registered");
+}
