@@ -83,11 +83,11 @@ scale-to-zero / KEDA / CRIU is **out of scope** (cost-optimization, not capacity
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| OFFLOAD-01 | Phase 244; db-path dispatch fixed by 249.5 | Complete |
-| OFFLOAD-02 | Phase 245 | Complete |
+| OFFLOAD-01 | Phase 244; db-path dispatch fixed by 249.5; macro hardened by 249.6, E2E covered by 249.8 | Complete |
+| OFFLOAD-02 | Phase 245; handle hardened by 249.6 | Complete |
 | OFFLOAD-03 | Phase 246 (edges hardened by 249.3) | Complete |
-| OFFLOAD-04 | Phase 247; runtime unblocked by 249.5 | Complete |
-| OFFLOAD-05 | Phase 248 → 249.2; dispatch unblocked by 249.5 | Complete |
+| OFFLOAD-04 | Phase 247; runtime unblocked by 249.5; transport hardened by 249.7 | Complete |
+| OFFLOAD-05 | Phase 248 → 249.2; dispatch unblocked by 249.5; E2E covered by 249.8 | Complete |
 | OFFLOAD-06 | Phase 249 (scanner hardened by 249.4, WR-02) | Complete |
 
 **Gap-closure / hardening phases (2026-08-15 audits):** 249.2 closes the OFFLOAD-05 serve-path
@@ -95,3 +95,12 @@ blocker; 249.3 hardens OFFLOAD-03 result-path terminal-state edges (sync-mode, r
 hardens OFFLOAD-06 MCP scanner (multi-line `#[service(...)]`, WR-02 — WR-01 already shipped in
 249/249.1); **249.5 (blocker) reconciles the offload dispatch key (DISPATCH-KEY-01) so derived jobs
 dispatch on the db path — restores OFFLOAD-01 and unblocks OFFLOAD-04/05 at runtime. Execute first.**
+
+**Tech-debt closure phases (2026-08-16 `tech_debt` re-audit — all six requirements already satisfied;
+no requirement is reopened, Status stays Complete):** 249.6 closes latent macro/handle defects
+(244 WR-01/02/03; 245 WR-01, IN-01) on the OFFLOAD-01/02 write path; 249.7 closes the broadcast
+shared-transport race and registration drop (246.1 WR-02/03) on the OFFLOAD-04 cross-process path;
+249.8 adds the missing inventory→from_registry→dispatch E2E and an `EnvGuard` nit (OFFLOAD-01/05
+evidence); 249.9 is process/validation only (Nyquist sweep across the 8 partial phases + SUMMARY
+`requirements-completed` backfill). The two live-infra human-UAT proofs (multi-process OFFLOAD-05,
+cross-replica Redis OFFLOAD-04) are tracked outside the phase list — CI cannot provision them.

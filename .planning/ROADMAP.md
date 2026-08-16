@@ -3260,11 +3260,15 @@ CRUD-01..07 — full details archived in [milestones/v16.3-ROADMAP.md](milestone
 Delivered: an opted-in projection derives `create_`/`update_`/`delete_<svc>` + query-polished `list_<svc>` MCP tools with zero hand-written tool code, dispatched through the single `framework::write` kernel via `derive_crud_plan` (no second dispatcher). Soft-delete + confirmation gating + server-injected tenant + non-disclosure; Phase 243.1 added computed/derived fields.
 
 
-## 🚧 v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249.4) — CURRENT (as of 2026-08-12)
+## 🚧 v16.4 Work Distribution — `#[offload]` Service Methods (Phases 244–249.9) — CURRENT (as of 2026-08-12)
 
-**Status:** Phases 244–249.1 executed and verified; the 2026-08-15 milestone audit returned
-`gaps_found` (one serve-path integration blocker) and selected tech debt. Phases 249.2–249.4
-close those and precede `/gsd-complete-milestone`.
+**Status:** Phases 244–249.5 executed and verified; the 2026-08-16 re-audit returned
+`tech_debt` — all six OFFLOAD requirements satisfied, no FAIL-gate gaps (the three prior
+critical defects are closed by 249.3/249.4/249.5). Phases 249.6–249.9 close accrued
+non-blocking tech debt (latent macro/handle defects, a broadcast-transport race, an E2E
+coverage gap, and Nyquist validation drafts) before `/gsd-complete-milestone`. The two
+human-UAT deployment-topology proofs (multi-process OFFLOAD-05, cross-replica Redis
+OFFLOAD-04) require live infra CI cannot provision and are tracked outside the phase list.
 
 **Goal:** A `#[service]` trait method marked `#[offload]` becomes a distributable unit of
 work with zero hand-written queue plumbing — the framework derives the `ferro-queue` Job,
@@ -3342,6 +3346,30 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   so a dispatched offloaded job is released-and-retried forever and never runs — no snapshot, no delta.
   Reconcile the two keys and add the missing enqueue→claim→dispatch integration test for a derived job in
   a non-crate-root module. Restores OFFLOAD-01's db-path dispatch and unblocks OFFLOAD-04/05 at runtime.
+- [ ] **Phase 249.6 (HARDENING): Offload macro derivation hardening** — Close the latent
+  macro/handle defects carried in the 244/245 REVIEW.md files, all on the `#[offload]` write-boundary
+  path: `owned_type` emits `T` verbatim for `&&T` / `&Ref<'a>` with no spanned diagnostic (244 WR-01);
+  `JOB_REGISTRARS` is not cleared after `apply_registrars`, so a second `from_registry` double-registers
+  (244 WR-02); the generated `handle()` panics via `.expect(...)` instead of returning `Error` (244 WR-03);
+  `OffloadHandle<T>`'s std-derives inject `T: Clone + Debug + Eq` bounds beyond `OffloadSerializable`
+  (245 WR-01); and the `ferro-queue` re-export doc comment mislabels the offload surface (245 IN-01).
+  Hardens OFFLOAD-01/02 without reopening them (both remain satisfied).
+- [ ] **Phase 249.7 (HARDENING): Broadcast shared-transport race & registration-drop fix** — Close the
+  two 246.1 REVIEW.md concurrency defects in `ferro-broadcast`: the lost-wakeup window between the
+  SUBSCRIBE-loop spawn and the first Redis subscription, currently papered with `sleep`s (246.1 WR-02),
+  replaced with a deterministic ready signal; and `with_transport` silently discarding clients/channels
+  registered before it is called (246.1 WR-03). Hardens OFFLOAD-04's cross-process delta path.
+- [ ] **Phase 249.8 (HARDENING): Offload E2E dispatch coverage + test hygiene** — Add the single
+  integration test the milestone lacks: one flow spanning `#[offload]` inventory → `from_registry` →
+  enqueue → claim → dispatch (key-match and inventory-drain are currently covered only separately —
+  249.5 coverage nit), and apply an `EnvGuard` RAII to the `QUEUE_CONNECTION` env var in
+  `dispatch_key_derived_job.rs` for consistency with the 249.3 tests. Strengthens the OFFLOAD-01/05
+  runtime evidence.
+- [ ] **Phase 249.9 (VALIDATION): Nyquist validation sweep + SUMMARY frontmatter backfill** — Flip the
+  eight phases carrying `nyquist_compliant: false` validation-STRATEGY drafts (244, 245, 246, 246.1, 248,
+  249.3, 249.4, 249.5) to formal compliance via `/gsd-validate-phase`, and backfill the absent
+  `requirements-completed` frontmatter on the milestone's SUMMARY files so the traceability record no
+  longer relies solely on the VERIFICATION.md coverage tables. Process/hygiene closure; no source change.
 
 ### Phase Details
 
@@ -3605,6 +3633,94 @@ repairs the primary offload E2E flow on the `QUEUE_CONNECTION=db` path.
 Plans:
 - [x] 249.5-01-PLAN.md — reconcile derived `Job::name()` to `type_name::<Self>()` (one-line macro fix + doc reconcile) and add the discriminating db-path enqueue→claim→dispatch integration test for a real `#[offload]`-derived job in a nested module (test lives in `framework/tests/`, not `ferro-queue/tests/` — dependency cycle)
 
+#### Phase 249.6: Offload macro derivation hardening (HARDENING)
+**Goal:** Repair the five latent macro/handle defects recorded in the 244 and 245 REVIEW.md files without
+altering the derivation's external contract, so the `#[offload]` write-boundary surface fails loudly and
+constrains correctly. `owned_type` (`ferro-macros/src/offload.rs`) emits `T` verbatim for `&&T` / `&Ref<'a>`
+receiver forms with no spanned diagnostic, so an unsupported form miscompiles downstream instead of erroring
+at the macro; `JOB_REGISTRARS` is not cleared after `apply_registrars`, so a second `from_registry` re-runs
+every registrar and double-registers; the generated `handle()` unwraps via `.expect(...)`, turning a
+recoverable serialization failure into a panic instead of an `Err`; `OffloadHandle<T>`'s `#[derive]`s inject
+`T: Clone + Debug + Eq` bounds that exceed the `OffloadSerializable` contract, rejecting otherwise-valid
+result types; and the `ferro-queue` re-export doc comment mislabels the offload surface.
+**Depends on:** Phase 244 (macro Job derivation), Phase 245 (typed handle).
+**Closes (2026-08-16 re-audit tech debt):** 244 WR-01, WR-02, WR-03; 245 WR-01, IN-01. Hardens OFFLOAD-01/02;
+neither requirement is reopened (both remain satisfied).
+**Success Criteria** (what must be TRUE):
+  1. An unsupported receiver form (`&&T` / `&Ref<'a>`) produces a spanned compile error, not silent verbatim `T`.
+  2. Two successive `from_registry` calls register each job exactly once (no double-registration); asserted by test.
+  3. The generated `handle()` returns `Err` on serialization failure rather than panicking.
+  4. `OffloadHandle<T>` compiles for a result type that is `OffloadSerializable` but not `Clone + Debug + Eq`.
+  5. The `ferro-queue` re-export doc comment names the offload surface correctly; full offload suite passes.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (create with `/gsd-plan-phase 249.6`)
+
+#### Phase 249.7: Broadcast shared-transport race & registration-drop fix (HARDENING)
+**Goal:** Remove the two concurrency defects recorded in the 246.1 REVIEW.md from `ferro-broadcast`'s shared
+transport. The SUBSCRIBE loop is spawned and then assumed subscribed after a `sleep`, leaving a lost-wakeup
+window in which a delta published before the first Redis subscription completes is dropped; replace the
+timing assumption with a deterministic ready signal so publication observes an established subscription.
+Separately, `with_transport` installs the transport but discards any clients/channels registered before it
+is called, so registration order silently changes delivery; make pre-registered subscribers survive
+transport installation.
+**Depends on:** Phase 246.1 (shared-transport broadcast fan-out).
+**Closes (2026-08-16 re-audit tech debt):** 246.1 WR-02 (lost-wakeup window), WR-03 (`with_transport` drop).
+Hardens OFFLOAD-04's cross-process delta path.
+**Success Criteria** (what must be TRUE):
+  1. A delta published immediately after subscribe is delivered — no `sleep`-dependent window — asserted by a
+     test that would flake under the old timing assumption.
+  2. Clients/channels registered before `with_transport` still receive deltas after the transport is installed.
+  3. No regression to single-process in-memory broadcast; the Phase 247 integration suite passes.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (create with `/gsd-plan-phase 249.7`)
+
+#### Phase 249.8: Offload E2E dispatch coverage + test hygiene (HARDENING)
+**Goal:** Supply the single end-to-end test the milestone lacks and close the matching hygiene nit. Key-match
+and inventory-drain are each covered in isolation, but no test spans the whole derived-job path
+`#[offload]` inventory → `WorkerLoop::from_registry` → enqueue → claim → dispatch in one flow; add that test
+so the inventory-registration path (not just explicit `worker.register::<>()`) is exercised to dispatch.
+Apply an `EnvGuard` RAII to the `QUEUE_CONNECTION` env var in `dispatch_key_derived_job.rs` to match the
+249.3 tests' isolation discipline.
+**Depends on:** Phase 249.2 (inventory-registration gate), Phase 249.5 (dispatch-key reconciliation).
+**Closes (2026-08-16 re-audit tech debt):** 249.5 coverage nit (no single inventory→from_registry→dispatch
+E2E) and the `QUEUE_CONNECTION` env-var-without-RAII cosmetic. Strengthens OFFLOAD-01/05 runtime evidence.
+**Success Criteria** (what must be TRUE):
+  1. One integration test drives a derived job registered via inventory through `from_registry` to dispatch
+     exactly once (jobs table empty after), spanning the full path in a single flow.
+  2. The `QUEUE_CONNECTION` env var in `dispatch_key_derived_job.rs` is set through an `EnvGuard` RAII (no leak).
+  3. Existing offload integration tests still pass.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (create with `/gsd-plan-phase 249.8`)
+
+#### Phase 249.9: Nyquist validation sweep + SUMMARY frontmatter backfill (VALIDATION)
+**Goal:** Close the milestone's process/validation debt without touching source. Eight phases (244, 245, 246,
+246.1, 248, 249.3, 249.4, 249.5) carry validation-STRATEGY drafts with `nyquist_compliant: false` that no
+formal `/gsd-validate-phase` pass has flipped; run the validation per phase so each records a compliant
+result. Backfill the absent `requirements-completed` frontmatter across the milestone's SUMMARY files so the
+requirements record no longer rests solely on the VERIFICATION.md coverage tables.
+**Depends on:** all executed v16.4 phases (validation is retroactive).
+**Closes (2026-08-16 re-audit tech debt):** Nyquist partial (8/12) and SUMMARY `requirements-completed`
+frontmatter absent (27/27). Non-blocking hygiene; no requirement mapping change.
+**Success Criteria** (what must be TRUE):
+  1. The eight partial phases carry a formal `/gsd-validate-phase` result (compliant, or an explicitly
+     recorded justified gap) — none left as an unreviewed draft.
+  2. Milestone SUMMARY files carry `requirements-completed` frontmatter consistent with their VERIFICATION tables.
+  3. No source or behavioral change.
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (create with `/gsd-plan-phase 249.9`)
+
 ### Requirement → Phase Mapping (v16.4)
 
 | Requirement | Phase |
@@ -3623,6 +3739,17 @@ Plans:
 - Phase 249.3 — hardening: offload result-path terminal-state completeness (OFFLOAD-03 edges).
 - Phase 249.4 — hardening: MCP service scanner multi-line `#[service(...)]` robustness (OFFLOAD-06, WR-02).
 - Phase 249.5 — blocker: offload dispatch-key reconciliation, DISPATCH-KEY-01 (OFFLOAD-01/04/05, db path). **Execute first.**
+
+**Tech-debt closure phases (from the 2026-08-16 `tech_debt` re-audit — no FAIL-gate gaps; all six
+requirements already satisfied):**
+- Phase 249.6 — hardening: offload macro derivation defects (244 WR-01/02/03; 245 WR-01, IN-01).
+- Phase 249.7 — hardening: broadcast shared-transport race & registration drop (246.1 WR-02/03).
+- Phase 249.8 — hardening: offload E2E dispatch coverage + `EnvGuard` hygiene (249.5 coverage nit).
+- Phase 249.9 — validation: Nyquist sweep (8 partial phases) + SUMMARY `requirements-completed` backfill.
+
+**Not phases — tracked outside the phase list (live-infra human UAT, CI cannot provision):** multi-process
+OFFLOAD-05 proof (shared DB across OS processes) and cross-replica Redis OFFLOAD-04 broadcast (live redis +
+two processes). Both are now runnable since the dispatch path is fixed; run at completion, not as CI phases.
 
 ## ✅ v16.5 JSON-UI Design System (Phases 250–253) — Shipped 2026-07-04 (0.2.86) [CONSUMER-PAIRED with gestiscilo Phase 232]
 
