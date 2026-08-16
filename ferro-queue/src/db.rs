@@ -487,7 +487,7 @@ pub async fn reaper(
     conn: &DatabaseConnection,
     queue: &str,
     visibility_timeout: std::time::Duration,
-) -> Result<(), Error> {
+) -> Result<Vec<(i64, String)>, Error> {
     let now = Utc::now();
     let duration = chrono::Duration::from_std(visibility_timeout)
         .map_err(|e| Error::custom(format!("visibility_timeout out of range: {e}")))?;
@@ -519,6 +519,36 @@ pub async fn reaper(
     );
     txn.execute(requeue).await.map_err(Error::Db)?;
 
+    // Collect park candidates that carry a handle_key, so the worker can persist
+    // a terminal-error envelope for each after the txn commits (D-05). Running
+    // inside the same txn as the park UPDATE guarantees the same visible row set
+    // (RESEARCH.md Pitfall 5). Independent placeholder numbering starting from 1.
+    let (sc1, sc2) = (ts_ph(backend, 1), ph(backend, 2));
+    let candidates_sql = format!(
+        "SELECT id, handle_key FROM jobs \
+         WHERE status='claimed' AND claimed_at < {sc1} \
+         AND attempts + 1 >= max_retries AND queue = {sc2} \
+         AND handle_key IS NOT NULL"
+    );
+    let candidates_stmt = Statement::from_sql_and_values(
+        backend,
+        &candidates_sql,
+        [
+            Value::String(Some(Box::new(cutoff.clone()))),
+            Value::String(Some(Box::new(queue.to_string()))),
+        ],
+    );
+    let candidate_rows = txn.query_all(candidates_stmt).await.map_err(Error::Db)?;
+    let mut parked_handles: Vec<(i64, String)> = Vec::with_capacity(candidate_rows.len());
+    for row in candidate_rows {
+        if let (Ok(id), Ok(Some(key))) = (
+            row.try_get_by::<i64, _>("id"),
+            row.try_get_by::<Option<String>, _>("handle_key"),
+        ) {
+            parked_handles.push((id, key));
+        }
+    }
+
     // Step 2: park exhausted rows as failed, recording the failure time.
     // Use fresh placeholders (independent statement, not continuing p1..p3).
     let (pp1, pp2, pp3) = (ts_ph(backend, 1), ts_ph(backend, 2), ph(backend, 3));
@@ -538,7 +568,8 @@ pub async fn reaper(
     );
     txn.execute(park).await.map_err(Error::Db)?;
 
-    txn.commit().await.map_err(Error::Db)
+    txn.commit().await.map_err(Error::Db)?;
+    Ok(parked_handles)
 }
 
 // ---------------------------------------------------------------------------
@@ -1045,6 +1076,41 @@ mod tests {
         row.try_get_by::<i64, _>("id").expect("insert id")
     }
 
+    /// Insert a job row with an explicit `handle_key` (test-only).
+    ///
+    /// Keeps `insert_job` unchanged (existing call-sites unaffected, OQ2).
+    #[allow(clippy::too_many_arguments)]
+    async fn insert_job_with_handle(
+        conn: &DatabaseConnection,
+        queue: &str,
+        job_type: &str,
+        status: &str,
+        attempts: i32,
+        max_retries: i32,
+        claimed_at: Option<&str>,
+        available_at: &str,
+        handle_key: &str,
+    ) -> i64 {
+        let now = Utc::now().to_rfc3339();
+        let claimed_at_sql = match claimed_at {
+            Some(ts) => format!("'{ts}'"),
+            None => "NULL".to_string(),
+        };
+        let sql = format!(
+            "INSERT INTO jobs (queue, job_type, payload, status, attempts, max_retries, \
+             available_at, claimed_at, created_at, handle_key) \
+             VALUES ('{queue}', '{job_type}', '{{}}', '{status}', {attempts}, {max_retries}, \
+             '{available_at}', {claimed_at_sql}, '{now}', '{handle_key}') \
+             RETURNING id"
+        );
+        let row = conn
+            .query_one(Statement::from_string(DatabaseBackend::Sqlite, sql))
+            .await
+            .expect("insert_job_with_handle query")
+            .expect("insert_job_with_handle row");
+        row.try_get_by::<i64, _>("id").expect("insert id")
+    }
+
     #[test]
     fn ts_ph_casts_timestamp_placeholders_on_postgres_only() {
         // Regression guard for the Postgres timestamptz binding bug. The jobs
@@ -1196,7 +1262,7 @@ mod tests {
         .await;
 
         // Run reaper with 5-minute visibility timeout.
-        reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
+        let _parked = reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
             .await
             .expect("reaper failed");
 
@@ -1239,7 +1305,7 @@ mod tests {
         )
         .await;
 
-        reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
+        let _parked = reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
             .await
             .expect("reaper failed");
 
@@ -1261,6 +1327,37 @@ mod tests {
             attempts, 2,
             "parked job keeps its attempt count (no further requeue)"
         );
+    }
+
+    #[tokio::test]
+    async fn reaper_returns_parked_handle_key_rows() {
+        // A reaper-parked row that carries a handle_key must be returned so
+        // the worker can persist a terminal-error envelope (WR-02, OFFLOAD-03).
+        let conn = setup().await;
+        let ten_min_ago = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
+        let now = Utc::now().to_rfc3339();
+        let handle_key = "test-handle-key-reaper-unit";
+
+        insert_job_with_handle(
+            &conn,
+            "default",
+            "HandleJob",
+            "claimed",
+            2, // attempts
+            3, // max_retries
+            Some(&ten_min_ago),
+            &now,
+            handle_key,
+        )
+        .await;
+
+        let parked = reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
+            .await
+            .expect("reaper failed");
+
+        assert_eq!(parked.len(), 1, "one parked row with a handle_key expected");
+        let (_, key) = &parked[0];
+        assert_eq!(key, handle_key, "returned handle_key must match inserted value");
     }
 
     #[tokio::test]
@@ -1405,7 +1502,7 @@ mod tests {
         .await;
 
         // Run reaper.
-        reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
+        let _parked = reaper(&conn, "default", std::time::Duration::from_secs(5 * 60))
             .await
             .expect("reaper failed");
 

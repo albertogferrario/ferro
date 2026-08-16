@@ -346,7 +346,20 @@ impl WorkerLoop {
             for queue in &self.config.queues {
                 // Run reaper before each claim attempt (D-14).
                 match crate::db::reaper(conn, queue, self.config.visibility_timeout).await {
-                    Ok(()) => {}
+                    Ok(parked) => {
+                        // Best-effort: persist a terminal-error envelope for every parked
+                        // row that carried an offload handle key. The park is authoritative
+                        // and already committed — a persistence/broadcast failure here must
+                        // never block it (D-07).
+                        for (_, handle_key) in parked {
+                            crate::dispatcher::persist_offload_outcome(
+                                Some(&handle_key),
+                                Err("visibility timeout exceeded".to_string()),
+                                conn,
+                            )
+                            .await;
+                        }
+                    }
                     Err(e) => {
                         error!(queue = %queue, error = %e, "reaper error");
                         if self.config.stop_on_error {
@@ -402,9 +415,18 @@ impl WorkerLoop {
         loop {
             let mut claimed_any = false;
             for queue in &self.config.queues {
-                crate::db::reaper(conn, queue, self.config.visibility_timeout)
-                    .await
-                    .ok();
+                if let Ok(parked) =
+                    crate::db::reaper(conn, queue, self.config.visibility_timeout).await
+                {
+                    for (_, handle_key) in parked {
+                        crate::dispatcher::persist_offload_outcome(
+                            Some(&handle_key),
+                            Err("visibility timeout exceeded".to_string()),
+                            conn,
+                        )
+                        .await;
+                    }
+                }
                 match crate::db::claim(conn, queue, &self.worker_id).await {
                     Ok(Some(job_row)) => {
                         self.spawn_job(conn, job_row);
