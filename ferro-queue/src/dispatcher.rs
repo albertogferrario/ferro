@@ -146,10 +146,7 @@ where
         let job_name = self.job.name();
 
         if self.delay.is_some() {
-            tracing::debug!(
-                job = %job_name,
-                "Job delay ignored in sync mode"
-            );
+            tracing::debug!(job = %job_name, "Job delay ignored in sync mode");
         }
 
         if self.tenant_id.is_some() {
@@ -162,15 +159,53 @@ where
 
         tracing::debug!(job = %job_name, "Executing job synchronously");
 
-        match self.job.handle().await {
-            Ok(()) => {
+        // Fetch once. None means the queue is used without the framework boot path
+        // (e.g. ferro-queue unit tests that dispatch without Queue::init). The guard
+        // avoids a panic on Queue::connection() (RESEARCH.md Pitfall 1);
+        // persist_offload_outcome would no-op anyway on an unregistered hook or
+        // None handle_key.
+        let conn = if crate::db::Queue::is_initialized() {
+            Some(crate::db::Queue::connection())
+        } else {
+            None
+        };
+
+        match self.job.handle_with_value().await {
+            Ok(success_value) => {
                 tracing::debug!(job = %job_name, "Job completed successfully");
+                if let Some(conn) = conn {
+                    match success_value {
+                        Some(val) => {
+                            persist_offload_outcome(self.handle_key.as_deref(), Ok(val), conn)
+                                .await;
+                        }
+                        None if self.handle_key.is_some() => {
+                            // Unit-return job carrying a handle key: persist Ok(Null) so the
+                            // handle always resolves terminally (RESEARCH.md Pitfall 4).
+                            persist_offload_outcome(
+                                self.handle_key.as_deref(),
+                                Ok(serde_json::Value::Null),
+                                conn,
+                            )
+                            .await;
+                        }
+                        None => {}
+                    }
+                }
                 Ok(())
             }
             Err(e) => {
                 tracing::error!(job = %job_name, error = %e, "Job failed");
+                if let Some(conn) = conn {
+                    persist_offload_outcome(
+                        self.handle_key.as_deref(),
+                        Err(e.to_string()),
+                        conn,
+                    )
+                    .await;
+                }
                 self.job.failed(&e).await;
-                Err(e)
+                Err(e) // D-03: dual signal — still return Err
             }
         }
     }
