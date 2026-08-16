@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: executing
-stopped_at: Completed 249.6-01-PLAN.md (WR-01 + WR-03 fixes; double_ref_param.rs fixture; .stderr deferred to Plan 03)
-last_updated: "2026-08-16T21:55:43.925Z"
+stopped_at: Completed 249.6-02-PLAN.md (WR-02 test, 245-WR-01 T-free impls, 245-IN-01 doc fix)
+last_updated: "2026-08-16T22:00:25.907Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 123
   completed_phases: 108
   total_plans: 425
-  completed_plans: 422
-  percent: 99
+  completed_plans: 423
+  percent: 100
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 ## Current Position
 
 Phase: 249.6 (offload-macro-derivation-hardening) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -336,6 +336,7 @@ Progress: [██████████] 100%
 | Phase 249.3 P02 | 1856 | 4 tasks | 5 files |
 | Phase 249.4 P01 | 1357 | 3 tasks | 1 files |
 | Phase 249.6 P01 | 90s | 2 tasks | 2 files |
+| Phase 249.6 P02 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -401,7 +402,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-16T21:55:43.915Z
-Stopped at: Completed 249.6-01-PLAN.md (WR-01 + WR-03 fixes; double_ref_param.rs fixture; .stderr deferred to Plan 03)
+Last session: 2026-08-16T22:00:25.897Z
+Stopped at: Completed 249.6-02-PLAN.md (WR-02 test, 245-WR-01 T-free impls, 245-IN-01 doc fix)
 Resume file: None
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
