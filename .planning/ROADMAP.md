@@ -3329,7 +3329,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   (`QUEUE_CONNECTION=sync`) dispatch ignores the handle key and writes no snapshot (246 WR-01);
   reaper-parked (timeout-killed) jobs never record a failed envelope (246 WR-02). Hardens OFFLOAD-03's
   "no silent drop" guarantee at its edges.
-- [ ] **Phase 249.4 (HARDENING): MCP service scanner — multi-line `#[service(...)]` robustness** — The
+- [x] **Phase 249.4 (HARDENING): MCP service scanner — multi-line `#[service(...)]` robustness** — The (completed 2026-08-16)
   `ferro-mcp` static scanner silently drops multi-line `#[service(...)]` attributes because it requires
   `(` and `)` on the same trimmed line (249 WR-02), degrading offload introspection for that authoring
   form. (WR-01, the `#[service(impl = X)]` named form, was already shipped in 249/249.1 —
@@ -3571,10 +3571,10 @@ This phase is therefore scoped to **WR-02 only**; do not re-implement the named-
   2. The trait's `#[offload]` methods are correlated to the service parsed from the multi-line form.
   3. No regression to single-line `#[service]` / `#[service(Type)]` / `#[service(impl = X)]` parsing.
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
-- [ ] 249.4-01-PLAN.md — normalize_service_lines pre-pass joins multi-line `#[service(...)]`; both scan functions consume the normalized stream; helper unit test + multi-line fixture correlation test (SC#1-3)
+- [x] 249.4-01-PLAN.md — normalize_service_lines pre-pass joins multi-line `#[service(...)]`; both scan functions consume the normalized stream; helper unit test + multi-line fixture correlation test (SC#1-3)
 
 #### Phase 249.5: Offload dispatch-key reconciliation — DISPATCH-KEY-01 (GAP CLOSURE)
 **Goal:** Make an `#[offload]`-derived job enqueued on the db path actually get claimed and run by the

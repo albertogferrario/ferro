@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
-stopped_at: Phase 249.4 context gathered
-last_updated: "2026-08-16T19:37:02.129Z"
+stopped_at: Completed 249.4-01-PLAN.md
+last_updated: "2026-08-16T20:18:09.156Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 119
-  completed_phases: 107
-  total_plans: 421
-  completed_plans: 420
+  completed_phases: 108
+  total_plans: 422
+  completed_plans: 421
   percent: 100
 ---
 
@@ -20,12 +20,12 @@ progress:
 
 See: .planning/PROJECT.md and .planning/VISION.md
 
-**Current focus:** Phase 249.3 — offload-result-path-terminal-state-completeness
+**Current focus:** Phase 249.4 — mcp-service-scanner-named-impl-multiline-robustness
 
 ## Current Position
 
-Phase: 249.4
-Plan: Not started
+Phase: 249.4 (mcp-service-scanner-named-impl-multiline-robustness) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-08-16
 
@@ -333,6 +333,7 @@ Progress: [██████████] 100%
 | Phase 249.5 P01 | 1029 | 2 tasks | 2 files |
 | Phase 249.3 P01 | 27m | 3 tasks | 2 files |
 | Phase 249.3 P02 | 1856 | 4 tasks | 5 files |
+| Phase 249.4 P01 | 1357 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -398,7 +399,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-16T19:37:02.080Z
-Stopped at: Phase 249.4 context gathered
-Resume file: .planning/phases/249.4-mcp-service-scanner-named-impl-multiline-robustness/249.4-CONTEXT.md
+Last session: 2026-08-16T20:18:09.145Z
+Stopped at: Completed 249.4-01-PLAN.md
+Resume file: None
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
