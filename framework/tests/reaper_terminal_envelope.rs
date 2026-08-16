@@ -95,6 +95,7 @@ async fn subscribe_client(
 ///
 /// A local copy — the `#[cfg(test)]` helper in `ferro-queue/src/db.rs` is not
 /// reachable from this integration test.
+#[allow(clippy::too_many_arguments)]
 async fn insert_job_with_handle(
     conn: &DatabaseConnection,
     queue: &str,

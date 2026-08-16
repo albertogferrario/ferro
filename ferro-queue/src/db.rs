@@ -1357,7 +1357,10 @@ mod tests {
 
         assert_eq!(parked.len(), 1, "one parked row with a handle_key expected");
         let (_, key) = &parked[0];
-        assert_eq!(key, handle_key, "returned handle_key must match inserted value");
+        assert_eq!(
+            key, handle_key,
+            "returned handle_key must match inserted value"
+        );
     }
 
     #[tokio::test]
