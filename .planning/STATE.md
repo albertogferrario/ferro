@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
-status: executing
-stopped_at: Completed 249.6-02-PLAN.md (WR-02 test, 245-WR-01 T-free impls, 245-IN-01 doc fix)
-last_updated: "2026-08-16T22:00:25.907Z"
+status: verifying
+stopped_at: "Completed 249.6-03-PLAN.md (SC#1 bless + SC#4 fixture + SC#3 code-property + incremental gate)"
+last_updated: "2026-08-16T23:02:35.883Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 123
-  completed_phases: 108
+  completed_phases: 109
   total_plans: 425
-  completed_plans: 423
+  completed_plans: 424
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Phase: 249.6 (offload-macro-derivation-hardening) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-16
 
 Current milestone v16.4 Work Distribution (Phases 244–249): mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). OFFLOAD-01..06. Note the inserted Phase 246.1 (shared-transport broadcast fan-out) prerequisite for multi-replica delta delivery. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Next: `/gsd-plan-phase 244`.
@@ -337,6 +337,7 @@ Progress: [██████████] 100%
 | Phase 249.4 P01 | 1357 | 3 tasks | 1 files |
 | Phase 249.6 P01 | 90s | 2 tasks | 2 files |
 | Phase 249.6 P02 | 4 | 2 tasks | 3 files |
+| Phase 249.6 P03 | 20 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -402,7 +403,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-16T22:00:25.897Z
-Stopped at: Completed 249.6-02-PLAN.md (WR-02 test, 245-WR-01 T-free impls, 245-IN-01 doc fix)
+Last session: 2026-08-16T23:02:35.874Z
+Stopped at: Completed 249.6-03-PLAN.md (SC#1 bless + SC#4 fixture + SC#3 code-property + incremental gate)
 Resume file: None
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).

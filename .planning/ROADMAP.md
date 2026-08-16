@@ -3346,7 +3346,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   so a dispatched offloaded job is released-and-retried forever and never runs — no snapshot, no delta.
   Reconcile the two keys and add the missing enqueue→claim→dispatch integration test for a derived job in
   a non-crate-root module. Restores OFFLOAD-01's db-path dispatch and unblocks OFFLOAD-04/05 at runtime.
-- [ ] **Phase 249.6 (HARDENING): Offload macro derivation hardening** — Close the latent
+- [x] **Phase 249.6 (HARDENING): Offload macro derivation hardening** — Close the latent (completed 2026-08-16)
   macro/handle defects carried in the 244/245 REVIEW.md files, all on the `#[offload]` write-boundary
   path: `owned_type` emits `T` verbatim for `&&T` / `&Ref<'a>` with no spanned diagnostic (244 WR-01);
   `JOB_REGISTRARS` is not cleared after `apply_registrars`, so a second `from_registry` double-registers
@@ -3653,12 +3653,12 @@ neither requirement is reopened (both remain satisfied).
   4. `OffloadHandle<T>` compiles for a result type that is `OffloadSerializable` but not `Clone + Debug + Eq`.
   5. The `ferro-queue` re-export doc comment names the offload surface correctly; full offload suite passes.
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 249.6-01-PLAN.md — ferro-macros: WR-01 owned_type spanned error + fail fixture; WR-03 both handle .expect()→? sites (SC#1, SC#3)
 - [x] 249.6-02-PLAN.md — ferro-queue: 245-WR-01 T-free OffloadHandle impls; WR-02 registration idempotency test; 245-IN-01 doc comment (SC#2, SC#4, SC#5)
-- [ ] 249.6-03-PLAN.md — cross-crate: SC#4 serde-only pass fixture, SC#1 .stderr bless, SC#3 code-property, macro-gate + workspace gate
+- [x] 249.6-03-PLAN.md — cross-crate: SC#4 serde-only pass fixture, SC#1 .stderr bless, SC#3 code-property, macro-gate + workspace gate
 
 #### Phase 249.7: Broadcast shared-transport race & registration-drop fix (HARDENING)
 **Goal:** Remove the two concurrency defects recorded in the 246.1 REVIEW.md from `ferro-broadcast`'s shared
