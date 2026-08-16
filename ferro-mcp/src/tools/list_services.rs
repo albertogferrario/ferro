@@ -272,6 +272,72 @@ fn extract_service_impl_name(inner: &str) -> String {
     inner.to_string()
 }
 
+/// Join any multi-line `#[service(...)]` attribute into a single logical line.
+///
+/// Keys on the `#[service(` prefix only. Walks physical lines; when a `#[service(`
+/// line's parens are not balanced on that line, accumulates subsequent trimmed lines
+/// (joined by a single space) until paren depth returns to `<= 0`, then emits the
+/// joined text as one logical line. All other lines — including `fn` signatures and
+/// other attributes — pass through unchanged. Counts only `(` / `)` (never `[` / `]`),
+/// so the `)]` close and `<...>` generics inside an impl type are handled correctly.
+/// Mirrors the paren-depth balancing in `extract_inner_params`.
+fn normalize_service_lines(content: &str) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    let mut accumulating: Option<String> = None;
+    let mut paren_depth: i32 = 0;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if let Some(ref mut acc) = accumulating {
+            // Continuation of a multi-line #[service(...)]
+            if !acc.is_empty() {
+                acc.push(' ');
+            }
+            acc.push_str(trimmed);
+            for ch in trimmed.chars() {
+                match ch {
+                    '(' => paren_depth += 1,
+                    ')' => paren_depth -= 1,
+                    _ => {}
+                }
+            }
+            if paren_depth <= 0 {
+                // Attribute closed — emit the joined line
+                result.push(accumulating.take().unwrap());
+                paren_depth = 0;
+            }
+        } else if trimmed.starts_with("#[service(") {
+            // Compute paren depth contributed by this line alone
+            let mut depth: i32 = 0;
+            for ch in trimmed.chars() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => depth -= 1,
+                    _ => {}
+                }
+            }
+            if depth <= 0 {
+                // Attribute closed on this line — pass through unchanged (preserve indentation)
+                result.push(line.to_string());
+            } else {
+                // Attribute continues onto subsequent lines — start accumulation
+                accumulating = Some(trimmed.to_string());
+                paren_depth = depth;
+            }
+        } else {
+            result.push(line.to_string());
+        }
+    }
+
+    // If the file ends mid-attribute (malformed input), flush to avoid losing content
+    if let Some(acc) = accumulating {
+        result.push(acc);
+    }
+
+    result
+}
+
 /// Parse non-self parameters from the text between the outer `(` and matching `)`.
 ///
 /// Performs a bracket-aware split on `,` so that generic types such as
@@ -711,6 +777,39 @@ pub trait ReportsService: Send + Sync {
         // get_status is non-offload — must be absent
         let get_status = svc.methods.iter().find(|m| m.name == "get_status");
         assert!(get_status.is_none(), "non-offload method must not appear");
+    }
+
+    #[test]
+    fn normalize_service_lines() {
+        // Single-line positional passes through unchanged
+        let out = super::normalize_service_lines("#[service(ReportBuilder)]");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].trim(), "#[service(ReportBuilder)]");
+
+        // Single-line named passes through unchanged
+        let out = super::normalize_service_lines("#[service(impl = X, fake = Y)]");
+        assert_eq!(out.len(), 1);
+
+        // Multi-line positional collapses to one logical line
+        let src = "#[service(\n    ReportBuilder\n)]";
+        let out = super::normalize_service_lines(src);
+        assert_eq!(out.len(), 1);
+        assert!(out[0].contains("#[service("));
+        assert!(out[0].contains(')'));
+
+        // Multi-line named with trailing comma collapses; inner extracts to ReportBuilder
+        let src = "#[service(\n    impl = ReportBuilder,\n    fake = FakeBuilder,\n)]";
+        let out = super::normalize_service_lines(src);
+        assert_eq!(out.len(), 1);
+        let t = out[0].trim();
+        let start = t.find('(').unwrap();
+        let end = t.find(')').unwrap();
+        assert_eq!(extract_service_impl_name(&t[start + 1..end]), "ReportBuilder");
+
+        // Ordinary lines and a comment containing the prefix pass through unchanged
+        let src = "pub trait Foo {}\n// see #[service(Bar)]\nasync fn x() {}";
+        let out = super::normalize_service_lines(src);
+        assert_eq!(out.len(), 3);
     }
 
     #[test]
