@@ -24,11 +24,12 @@
 //!
 //! `WorkerLoop::register::<J>()` stores the handler keyed by
 //! `std::any::type_name::<J>()`, which includes the fully-qualified module path.
-//! The derived struct overrides `fn name()` to return a stable plain-name literal
-//! (e.g. `"ReportsBuildMonthlyJob"`) for human-readable logging, but the DB
-//! `job_type` column is populated by `type_name` at enqueue time. Moving the
-//! enclosing trait to a different module changes `type_name` and silently breaks
-//! dispatch for jobs already in the queue. Rename modules with care.
+//! The derived `fn name()` returns `std::any::type_name::<Self>()`, which is
+//! exactly what enqueue writes to the `job_type` column and what
+//! `WorkerLoop::register::<J>()` keys on — one canonical key on both sides.
+//! Moving the enclosing trait to a different module changes `type_name` and
+//! silently breaks dispatch for jobs already enqueued under the old key.
+//! Rename modules with care.
 
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
@@ -357,8 +358,9 @@ pub(crate) fn emit_job_items(
         ///
         /// # Dispatch key stability
         ///
-        /// `WorkerLoop` stores the handler keyed by `std::any::type_name::<Self>()`,
-        /// which includes the full module path. Moving the enclosing trait to a
+        /// The derived `fn name()` returns `std::any::type_name::<Self>()`, which is
+        /// also the key `WorkerLoop::register::<J>()` uses — one canonical key on
+        /// both the enqueue side and the worker side. Moving the enclosing trait to a
         /// different module changes this key and silently breaks dispatch for jobs
         /// already in the queue. Rename modules with care.
         #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
@@ -374,7 +376,7 @@ pub(crate) fn emit_job_items(
         #[::ferro::async_trait]
         impl ::ferro::queue::Job for #job_ident {
             fn name(&self) -> &'static str {
-                #job_ident_str
+                ::std::any::type_name::<Self>()
             }
 
             async fn handle(&self) -> ::std::result::Result<(), ::ferro::queue::Error> {
