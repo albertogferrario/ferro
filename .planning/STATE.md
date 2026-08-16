@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
-stopped_at: Completed 249.3-02-PLAN.md
-last_updated: "2026-08-16T19:30:12.403Z"
+stopped_at: Phase 249.4 context gathered
+last_updated: "2026-08-16T19:37:02.129Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 119
@@ -398,7 +398,7 @@ None active. Research flags above are pre-phase checks, not blockers.
 
 ## Session Continuity
 
-Last session: 2026-08-16T19:17:32.375Z
-Stopped at: Completed 249.3-02-PLAN.md
-Resume file: None
+Last session: 2026-08-16T19:37:02.080Z
+Stopped at: Phase 249.4 context gathered
+Resume file: .planning/phases/249.4-mcp-service-scanner-named-impl-multiline-robustness/249.4-CONTEXT.md
 Next action: `/gsd-plan-phase 244` to start v16.4 (note inserted prerequisite Phase 246.1 shared-transport broadcast fan-out). Archival sweep is DONE and pushed (master `be02d251`, tags v16.1..v18.0 on remote). Publish is DONE too — crates.io `ferro-rs` is at **0.3.9** (published 2026-08-12; the 0.3.x line already includes the v17.0/v18.0 code), so the earlier "operator-gated publish pending" is moot. Docs site (mdBook → Vercel, docs.ferro-rs.dev) builds clean locally with both mdBook v0.4.40 (Vercel's pin) and v0.5.2 — no repo-side docs error. ferro-cli debug binary built. Disk note: gestiscilo app/target was cargo-clean'd (~29G, snapshot-held).
