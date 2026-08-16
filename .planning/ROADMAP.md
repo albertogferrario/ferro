@@ -3324,7 +3324,7 @@ scale-to-zero is explicitly deferred (spec "Future direction").
   register exclusively through `#[offload]` (inventory) — jobs enqueue and sit unclaimed with no
   error, while its sibling `registered_queue_names()` already checks inventory. Restores OFFLOAD-05's
   "serve keeps its in-process worker" guarantee for the milestone's canonical usage.
-- [ ] **Phase 249.3 (HARDENING): Offload result-path terminal-state completeness** — Close two
+- [x] **Phase 249.3 (HARDENING): Offload result-path terminal-state completeness** — Close two (completed 2026-08-16)
   silent-drop edges so an `OffloadHandle` always resolves to a terminal state: sync-mode
   (`QUEUE_CONNECTION=sync`) dispatch ignores the handle key and writes no snapshot (246 WR-01);
   reaper-parked (timeout-killed) jobs never record a failed envelope (246 WR-02). Hardens OFFLOAD-03's
@@ -3549,11 +3549,11 @@ never an indefinite `Ok(None)`. Two edges currently drop silently: (a) in sync m
      subscribed caller observes the failure rather than waiting to timeout (asserted in a test).
   3. The full offload unit + integration suite passes unchanged for the non-degraded paths.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 249.3-01-PLAN.md — sync-mode edge: rework `dispatch_immediately()` to call `handle_with_value()` and persist the terminal envelope on both branches via `persist_offload_outcome` (SC#1)
-- [ ] 249.3-02-PLAN.md — reaper edge: `reaper()` returns parked handle-key rows (in-txn SELECT-before-park); both worker call-sites persist a terminal-error envelope best-effort post-commit; SC#2 subscriber-observation test (SC#2)
+- [x] 249.3-02-PLAN.md — reaper edge: `reaper()` returns parked handle-key rows (in-txn SELECT-before-park); both worker call-sites persist a terminal-error envelope best-effort post-commit; SC#2 subscriber-observation test (SC#2)
 
 #### Phase 249.4: MCP service scanner — multi-line `#[service(...)]` robustness (HARDENING)
 **Goal:** Make the `ferro-mcp` static offload scanner parse multi-line `#[service(...)]` attributes,
