@@ -143,8 +143,9 @@ fn scan_services_from_files(project_root: &Path) -> Vec<ServiceItem> {
         .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
     {
         if let Ok(content) = fs::read_to_string(entry.path()) {
+            let logical_lines = normalize_service_lines(&content);
             // Find #[service(ConcreteType)] on traits
-            for line in content.lines() {
+            for line in logical_lines.iter().map(String::as_str) {
                 let trimmed = line.trim();
 
                 // Match #[service(SomeType)]
@@ -425,6 +426,7 @@ fn scan_offload_methods_from_files(project_root: &Path, services: &mut [ServiceI
         let Ok(content) = fs::read_to_string(entry.path()) else {
             continue;
         };
+        let logical_lines = normalize_service_lines(&content);
 
         // Track current service block: (concrete_name, trait_name)
         let mut current_concrete: Option<String> = None;
@@ -446,7 +448,7 @@ fn scan_offload_methods_from_files(project_root: &Path, services: &mut [ServiceI
 
         let mut state = State::Idle;
 
-        for line in content.lines() {
+        for line in logical_lines.iter().map(String::as_str) {
             let trimmed = line.trim();
 
             // Detect start of a #[service(...)] block (sets concrete name)
@@ -777,6 +779,52 @@ pub trait ReportsService: Send + Sync {
         // get_status is non-offload — must be absent
         let get_status = svc.methods.iter().find(|m| m.name == "get_status");
         assert!(get_status.is_none(), "non-offload method must not appear");
+    }
+
+    #[test]
+    fn scan_offload_methods_multiline_service_attr() {
+        let tmp = std::env::temp_dir().join("ferro_mcp_offload_test_multiline");
+        let src_dir = tmp.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+
+        let fixture = r#"
+#[service(
+    impl = ReportBuilder,
+    fake = FakeBuilder,
+)]
+pub trait ReportsService: Send + Sync {
+    #[offload]
+    async fn build_monthly(&self, tenant_id: i64, month: Month) -> Report;
+
+    #[offload(queue = "reports")]
+    async fn export_csv(&self, tenant_id: i64) -> CsvFile;
+
+    async fn get_status(&self) -> Status;
+}
+"#;
+        fs::write(src_dir.join("reports.rs"), fixture).unwrap();
+
+        // SC#1: scan_services_from_files must surface the multi-line-attributed service.
+        let mut services = scan_services_from_files(&tmp);
+        assert!(
+            services.iter().any(|s| s.name == "ReportBuilder"),
+            "multi-line #[service(...)] must surface ReportBuilder; got: {:?}",
+            services.iter().map(|s| &s.name).collect::<Vec<_>>()
+        );
+
+        // SC#2: its #[offload] methods must correlate to that service.
+        scan_offload_methods_from_files(&tmp, &mut services);
+        let _ = fs::remove_dir_all(&tmp);
+
+        let svc = services.iter().find(|s| s.name == "ReportBuilder").unwrap();
+        assert_eq!(svc.methods.len(), 2, "should correlate exactly 2 offload methods");
+        assert!(svc.methods.iter().any(|m| m.name == "build_monthly"));
+        let export = svc.methods.iter().find(|m| m.name == "export_csv").unwrap();
+        assert_eq!(export.queue, "reports");
+        assert!(
+            svc.methods.iter().all(|m| m.name != "get_status"),
+            "non-offload method must not appear"
+        );
     }
 
     #[test]
