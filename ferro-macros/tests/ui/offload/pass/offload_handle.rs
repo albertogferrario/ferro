@@ -13,6 +13,12 @@ pub struct Report {
     pub total: i64,
 }
 
+// Serde-only: deliberately missing Clone, Debug, PartialEq, Eq.
+#[derive(Serialize, Deserialize)]
+pub struct SerdeOnly {
+    pub x: i32,
+}
+
 #[derive(Default)]
 pub struct Reports;
 
@@ -40,5 +46,14 @@ fn main() {
     // And the handle type is what .offload() yields:
     fn _handle_ty(h: OffloadHandle<Report>) -> OffloadHandle<Report> {
         h
+    }
+
+    // SC#4 regression: OffloadHandle<SerdeOnly> must support Clone, Debug, PartialEq
+    // even though SerdeOnly does not implement those traits itself.
+    fn _check_serde_only(h: OffloadHandle<SerdeOnly>) {
+        let _ = h.clone();
+        let _ = format!("{:?}", h);
+        let h2 = h.clone();
+        let _ = h == h2;
     }
 }
