@@ -4,7 +4,7 @@ milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
 status: verifying
 stopped_at: Completed 249.3-02-PLAN.md
-last_updated: "2026-08-16T19:17:32.385Z"
+last_updated: "2026-08-16T19:30:12.403Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 119
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 ## Current Position
 
-Phase: 249.3 (offload-result-path-terminal-state-completeness) — EXECUTING
-Plan: 2 of 2
+Phase: 249.4
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-16
 
@@ -166,6 +166,7 @@ Progress: [██████████] 100%
 | 249.1 | 1 | - | - |
 | 249.2 | 1 | - | - |
 | 249.5 | 1 | - | - |
+| 249.3 | 2 | - | - |
 
 *Updated after each plan completion*
 | Phase 217-tenant-context-per-tenant-api-key-auth P00 | 35 | 3 tasks | 11 files |
