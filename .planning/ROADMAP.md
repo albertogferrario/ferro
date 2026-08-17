@@ -3677,10 +3677,11 @@ Hardens OFFLOAD-04's cross-process delta path.
   2. Clients/channels registered before `with_transport` still receive deltas after the transport is installed.
   3. No regression to single-process in-memory broadcast; the Phase 247 integration suite passes.
 
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
-- [ ] TBD (create with `/gsd-plan-phase 249.7`)
+- [ ] 249.7-01-PLAN.md — ferro-broadcast source fix: readiness signal (WR-02) + interior-mutable async broadcaster (WR-03) + all call-site .await
+- [ ] 249.7-02-PLAN.md — deterministic SC#1/SC#2 tests (no-sleep delivery, pre-registration, clone divergence) + sleep removal + full CI gate (SC#3)
 
 #### Phase 249.8: Offload E2E dispatch coverage + test hygiene (HARDENING)
 **Goal:** Supply the single end-to-end test the milestone lacks and close the matching hygiene nit. Key-match
