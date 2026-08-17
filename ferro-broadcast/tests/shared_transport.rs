@@ -12,11 +12,19 @@ use tokio::sync::mpsc;
 /// Validates: a `ServerMessage::Event` published via `broadcast()` on replica A
 /// crosses the shared in-memory bus and is received exactly once by a client
 /// wired to replica B within the timeout window.
+///
+/// No sleep: `with_transport` awaits the readiness signal from `subscribe_loop`
+/// before returning, so the subscription is established by construction when
+/// `broadcast` fires (WR-02 closed).
 #[tokio::test]
 async fn sc1_cross_process_delivery() {
     let bus = Arc::new(InMemoryTransport::new(64));
-    let a = Broadcaster::with_config(Default::default()).with_transport(bus.clone());
-    let b = Broadcaster::with_config(Default::default()).with_transport(bus.clone());
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus.clone())
+        .await;
+    let b = Broadcaster::with_config(Default::default())
+        .with_transport(bus.clone())
+        .await;
 
     // Wire a client to replica B and subscribe it to "orders.1".
     let (tx_b, mut rx_b) = mpsc::channel(16);
@@ -25,9 +33,7 @@ async fn sc1_cross_process_delivery() {
         .await
         .unwrap();
 
-    // Give the background SUBSCRIBE loops a moment to attach (broadcast channel
-    // receivers only see messages sent AFTER subscribe).
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    // No sleep needed — readiness is guaranteed by construction (WR-02 closed).
 
     // Replica A publishes; A has no local subscriber on "orders.1".
     a.broadcast("orders.1", "OrderUpdated", serde_json::json!({"id": 1}))
@@ -59,12 +65,14 @@ async fn sc1_cross_process_delivery() {
 #[tokio::test]
 async fn sc1_own_echo_suppressed() {
     let bus = Arc::new(InMemoryTransport::new(64));
-    let a = Broadcaster::with_config(Default::default()).with_transport(bus.clone());
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus.clone())
+        .await;
 
     let (tx, mut rx) = mpsc::channel(16);
     a.add_client("socket_a".into(), tx);
     a.subscribe("socket_a", "chat", None, None).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    // No sleep needed — readiness guaranteed by construction (WR-02 closed).
 
     a.broadcast("chat", "Msg", serde_json::json!({}))
         .await
@@ -97,8 +105,12 @@ async fn presence_stays_per_process() {
     let bus = Arc::new(InMemoryTransport::new(64));
     let cfg_a = BroadcastConfig::new().signing_secret("test-secret");
     let cfg_b = BroadcastConfig::new().signing_secret("test-secret");
-    let a = Broadcaster::with_config(cfg_a).with_transport(bus.clone());
-    let b = Broadcaster::with_config(cfg_b).with_transport(bus.clone());
+    let a = Broadcaster::with_config(cfg_a)
+        .with_transport(bus.clone())
+        .await;
+    let b = Broadcaster::with_config(cfg_b)
+        .with_transport(bus.clone())
+        .await;
 
     // Observer on replica B, subscribed to the SAME presence channel name.
     // If MemberAdded were fanned out, this observer's rx would receive it.
@@ -116,8 +128,7 @@ async fn presence_stays_per_process() {
     .await
     .unwrap();
 
-    // Let both background SUBSCRIBE loops attach before A publishes.
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    // No sleep needed — readiness guaranteed by construction (WR-02 closed).
 
     // Drain the local MemberAdded that B's own presence subscribe delivered to
     // its existing members (a local, per-process event) so the assertion window
@@ -169,7 +180,12 @@ impl ferro_broadcast::BroadcastTransport for FailingTransport {
     async fn subscribe_loop(
         &self,
         sink: tokio::sync::mpsc::Sender<ferro_broadcast::BusEnvelope>,
+        ready: tokio::sync::oneshot::Sender<()>,
     ) -> Result<(), ferro_broadcast::Error> {
+        // Drop ready without firing — with_transport receives Err(RecvError) and
+        // degrades to local-only per D-02/D-06. The subscription path is not under
+        // test here; only the publish-error propagation is tested.
+        drop(ready);
         sink.closed().await; // park until the receiver is dropped
         Ok(())
     }
@@ -177,7 +193,9 @@ impl ferro_broadcast::BroadcastTransport for FailingTransport {
 
 #[tokio::test]
 async fn publish_error_does_not_propagate() {
-    let a = Broadcaster::with_config(Default::default()).with_transport(Arc::new(FailingTransport));
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(Arc::new(FailingTransport))
+        .await;
     let (tx, mut rx) = mpsc::channel(16);
     a.add_client("socket_a".into(), tx);
     a.subscribe("socket_a", "chat", None, None).await.unwrap();

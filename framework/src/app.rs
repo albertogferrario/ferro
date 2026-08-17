@@ -451,7 +451,7 @@ where
             if let Some(ref url) = bc.config().transport_redis_url {
                 match ferro_broadcast::transport::redis::RedisTransport::connect(url).await {
                     Ok(t) => {
-                        let bc2 = bc.with_transport(std::sync::Arc::new(t));
+                        let bc2 = bc.with_transport(std::sync::Arc::new(t)).await;
                         crate::App::singleton(bc2);
                     }
                     Err(e) => {

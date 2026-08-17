@@ -370,8 +370,8 @@ async fn offload_delta_broadcast_suite() {
 
     // Shared in-memory transport — connects the two replica broadcasters.
     let bus = Arc::new(InMemoryTransport::new(64));
-    let broadcaster_a = Arc::new(Broadcaster::new().with_transport(bus.clone())); // worker
-    let broadcaster_b = Arc::new(Broadcaster::new().with_transport(bus)); // client
+    let broadcaster_a = Arc::new(Broadcaster::new().with_transport(bus.clone()).await); // worker
+    let broadcaster_b = Arc::new(Broadcaster::new().with_transport(bus).await); // client
 
     // Register the broadcaster-aware result hook once for the whole suite.
     register_offload_hooks_with_broadcaster(broadcaster_a.clone());
@@ -428,8 +428,8 @@ mod redis_tests {
                 .expect("RedisTransport B"),
         );
 
-        let broadcaster_a = Arc::new(Broadcaster::new().with_transport(bus_a));
-        let broadcaster_b = Broadcaster::new().with_transport(bus_b);
+        let broadcaster_a = Arc::new(Broadcaster::new().with_transport(bus_a).await);
+        let broadcaster_b = Broadcaster::new().with_transport(bus_b).await;
 
         register_offload_hooks_with_broadcaster(broadcaster_a.clone());
 

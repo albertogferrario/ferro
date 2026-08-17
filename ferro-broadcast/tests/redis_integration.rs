@@ -42,8 +42,12 @@ async fn redis_integration_cross_process_delivery() {
             .expect("connect B"),
     );
 
-    let a = Broadcaster::with_config(Default::default()).with_transport(bus_a);
-    let b = Broadcaster::with_config(Default::default()).with_transport(bus_b);
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus_a)
+        .await;
+    let b = Broadcaster::with_config(Default::default())
+        .with_transport(bus_b)
+        .await;
 
     let (tx_b, mut rx_b) = mpsc::channel(16);
     b.add_client("socket_b".into(), tx_b);
@@ -51,8 +55,7 @@ async fn redis_integration_cross_process_delivery() {
         .await
         .unwrap();
 
-    // Let both SUBSCRIBE connections attach to Redis.
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    // No sleep — with_transport awaited readiness from Redis pubsub.subscribe().
 
     a.broadcast("orders.9", "OrderUpdated", serde_json::json!({"id": 9}))
         .await
