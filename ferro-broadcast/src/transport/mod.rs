@@ -40,8 +40,15 @@ pub trait BroadcastTransport: Send + Sync {
     /// Run the background SUBSCRIBE loop, forwarding every received envelope to
     /// `sink`. Returns when `sink` is dropped (clean shutdown) or on a fatal error.
     /// Origin filtering (echo suppression) is performed by the caller, not here.
+    ///
+    /// Fires `ready` immediately after the underlying subscription is established —
+    /// before entering the receive loop. `with_transport` awaits this signal to
+    /// eliminate the lost-wakeup window (WR-02). If the implementation errors before
+    /// establishing the subscription, it returns `Err` and `ready` is dropped without
+    /// firing, which `with_transport` handles as a degraded-to-local-only path (D-06).
     async fn subscribe_loop(
         &self,
         sink: tokio::sync::mpsc::Sender<BusEnvelope>,
+        ready: tokio::sync::oneshot::Sender<()>,
     ) -> Result<(), Error>;
 }

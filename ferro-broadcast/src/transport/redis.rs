@@ -72,10 +72,12 @@ impl BroadcastTransport for RedisTransport {
     async fn subscribe_loop(
         &self,
         sink: tokio::sync::mpsc::Sender<BusEnvelope>,
+        ready: tokio::sync::oneshot::Sender<()>,
     ) -> Result<(), Error> {
         // Dedicated pub/sub connection (D-09) — cannot share the multiplexed manager.
         let mut pubsub = self.client.get_async_pubsub().await?;
-        pubsub.subscribe(&self.channel).await?;
+        pubsub.subscribe(&self.channel).await?; // subscription established
+        let _ = ready.send(()); // D-01: signal before entering receive loop; Err = caller timed out
         let mut stream = pubsub.into_on_message();
         while let Some(msg) = stream.next().await {
             let payload: String = match msg.get_payload() {

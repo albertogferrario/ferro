@@ -6,8 +6,10 @@ use crate::message::{BroadcastMessage, ServerMessage};
 use crate::transport::{BroadcastTransport, BusEnvelope};
 use crate::Error;
 use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::Serialize;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
@@ -27,14 +29,16 @@ struct BroadcasterInner {
     clients: DashMap<String, Client>,
     /// Channels by name.
     channels: DashMap<String, ChannelInfo>,
-    /// Optional authorization callback.
-    authorizer: Option<Arc<dyn ChannelAuthorizer>>,
+    /// Optional authorization callback. Interior-mutable so `with_authorizer` mutates
+    /// the shared inner in place without discarding pre-registered clients (WR-03).
+    authorizer: RwLock<Option<Arc<dyn ChannelAuthorizer>>>,
     /// Configuration.
     config: BroadcastConfig,
     /// Process-unique origin id for echo suppression (D-03).
     origin_id: String,
-    /// Optional shared fan-out transport. `None` = in-process hub only (D-01/D-02).
-    transport: Option<Arc<dyn BroadcastTransport + Send + Sync>>,
+    /// Optional shared fan-out transport. Interior-mutable so `with_transport` mutates
+    /// the shared inner in place without discarding pre-registered clients (WR-03).
+    transport: RwLock<Option<Arc<dyn BroadcastTransport + Send + Sync>>>,
 }
 
 /// The broadcaster manages channels and client connections.
@@ -55,26 +59,21 @@ impl Broadcaster {
             inner: Arc::new(BroadcasterInner {
                 clients: DashMap::new(),
                 channels: DashMap::new(),
-                authorizer: None,
+                authorizer: RwLock::new(None),
                 config,
                 origin_id: uuid::Uuid::new_v4().to_string(),
-                transport: None,
+                transport: RwLock::new(None),
             }),
         }
     }
 
     /// Set the channel authorizer.
+    ///
+    /// Mutates the shared `Arc<BroadcasterInner>` in place so pre-registered
+    /// clients and channels are preserved (WR-03 / D-04).
     pub fn with_authorizer<A: ChannelAuthorizer + 'static>(self, authorizer: A) -> Self {
-        Self {
-            inner: Arc::new(BroadcasterInner {
-                clients: DashMap::new(),
-                channels: DashMap::new(),
-                authorizer: Some(Arc::new(authorizer)),
-                config: self.inner.config.clone(),
-                origin_id: self.inner.origin_id.clone(),
-                transport: self.inner.transport.clone(),
-            }),
-        }
+        *self.inner.authorizer.write() = Some(Arc::new(authorizer));
+        self
     }
 
     /// Get the configuration.
@@ -84,39 +83,62 @@ impl Broadcaster {
 
     /// Attach a shared fan-out transport and start its background SUBSCRIBE loop.
     ///
-    /// With no transport (default), behaviour is identical to today (SC2). With a
-    /// transport, published `ServerMessage::Event`s are also fanned out to the bus,
-    /// and bus-received events from OTHER origins are delivered to local subscribers.
-    pub fn with_transport(self, transport: Arc<dyn BroadcastTransport + Send + Sync>) -> Self {
-        let inner = Arc::new(BroadcasterInner {
-            clients: DashMap::new(),
-            channels: DashMap::new(),
-            authorizer: self.inner.authorizer.clone(),
-            config: self.inner.config.clone(),
-            origin_id: self.inner.origin_id.clone(),
-            transport: Some(transport.clone()),
-        });
-        let broadcaster = Self { inner };
-        // Spawn the origin-filtered SUBSCRIBE loop.
+    /// Becomes `async` so it can await the transport's readiness signal before
+    /// returning (WR-02 / D-02). Mutates the shared `Arc<BroadcasterInner>` in
+    /// place so pre-registered clients, channels, and all existing clones are
+    /// preserved and observe the installed transport (WR-03 / D-03).
+    ///
+    /// With no transport (default), behaviour is identical to the in-process hub.
+    /// With a transport, published `ServerMessage::Event`s are also fanned out to
+    /// the bus and bus-received events from OTHER origins are delivered locally.
+    ///
+    /// On readiness failure (loop ends before firing the signal) or a timeout, logs
+    /// `warn!` and returns the broadcaster degraded to local-only (D-06 / D-02).
+    pub async fn with_transport(self, transport: Arc<dyn BroadcastTransport + Send + Sync>) -> Self {
+        /// Bounded wait for the bus subscription to establish (D-02).
+        const READY_TIMEOUT: Duration = Duration::from_secs(5);
+
+        // WR-03: mutate the shared inner — existing clients/channels/clones preserved.
+        *self.inner.transport.write() = Some(transport.clone());
+
+        // WR-02: readiness channel + delivery plumbing.
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel::<()>();
         let (tx, mut rx) = mpsc::channel::<BusEnvelope>(256);
         let loop_transport = transport.clone();
         tokio::spawn(async move {
-            if let Err(e) = loop_transport.subscribe_loop(tx).await {
+            if let Err(e) = loop_transport.subscribe_loop(tx, ready_tx).await {
                 warn!(error = %e, "broadcast transport subscribe loop ended with error");
             }
         });
-        let deliver_broadcaster = broadcaster.clone();
+        let deliver = self.clone();
         tokio::spawn(async move {
             while let Some(envelope) = rx.recv().await {
-                if envelope.origin == deliver_broadcaster.inner.origin_id {
+                if envelope.origin == deliver.inner.origin_id {
                     continue; // drop own echo (D-03)
                 }
-                deliver_broadcaster
+                deliver
                     .send_to_channel_local_only(&envelope.channel, &envelope.message)
                     .await;
             }
         });
-        broadcaster
+
+        // WR-02 / D-02: await readiness; degrade gracefully on failure (D-06).
+        match tokio::time::timeout(READY_TIMEOUT, ready_rx).await {
+            Ok(Ok(())) => {}
+            Ok(Err(_)) => {
+                warn!(
+                    "broadcast transport subscribe loop ended before signalling ready \
+                     — degraded to local-only"
+                );
+            }
+            Err(_) => {
+                warn!(
+                    "timed out waiting for broadcast transport to attach \
+                     — degraded to local-only"
+                );
+            }
+        }
+        self
     }
 
     /// Register a new client connection.
@@ -185,7 +207,13 @@ impl Broadcaster {
                         "Invalid channel authorization signature",
                     ));
                 }
-            } else if let Some(authorizer) = &self.inner.authorizer {
+            } else if let Some(authorizer) = {
+                // Clone the Arc out from under the read guard before .await so no
+                // parking_lot guard is held across the yield point (clippy::await_holding_lock).
+                // The scoped block ensures the guard is dropped at the closing `}`.
+                let guard = self.inner.authorizer.read();
+                guard.clone()
+            } {
                 // Legacy path (no signing secret configured): the app authorizer
                 // runs against the client-supplied token. This trusts the client
                 // and is development-only — set a signing secret in production.
@@ -394,7 +422,10 @@ impl Broadcaster {
 
     /// Publish an Event to the shared bus if a transport is configured (D-04, D-06).
     async fn fan_out(&self, channel_name: &str, msg: &ServerMessage) {
-        let Some(transport) = &self.inner.transport else {
+        // Clone the Arc out from under the read guard before any .await so no
+        // parking_lot guard is held across a yield point (clippy::await_holding_lock).
+        let transport = self.inner.transport.read().clone(); // guard drops at semicolon
+        let Some(transport) = transport else {
             return;
         };
         if !matches!(msg, ServerMessage::Event(_)) {
@@ -450,7 +481,14 @@ impl Broadcaster {
         if !channel_type.requires_auth() {
             return true;
         }
-        if let Some(authorizer) = &self.inner.authorizer {
+        // Clone the Arc out from under the read guard before .await so no
+        // parking_lot guard is held across a yield point (clippy::await_holding_lock).
+        // The scoped block ensures the guard is dropped before the async call.
+        let authorizer = {
+            let guard = self.inner.authorizer.read();
+            guard.clone()
+        };
+        if let Some(authorizer) = authorizer {
             authorizer.authorize(auth_data).await
         } else {
             false

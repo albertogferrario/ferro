@@ -31,8 +31,10 @@ impl BroadcastTransport for InMemoryTransport {
     async fn subscribe_loop(
         &self,
         sink: tokio::sync::mpsc::Sender<BusEnvelope>,
+        ready: tokio::sync::oneshot::Sender<()>,
     ) -> Result<(), Error> {
-        let mut rx = self.tx.subscribe();
+        let mut rx = self.tx.subscribe(); // subscription established
+        let _ = ready.send(()); // D-01: signal immediately; Err = caller timed out, ignore
         loop {
             match rx.recv().await {
                 Ok(envelope) => {
