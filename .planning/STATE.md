@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v16.4
 milestone_name: "Work Distribution — `#[offload]` Service Methods"
-status: verifying
+status: executing
 stopped_at: Phase 249.7 context gathered
-last_updated: "2026-08-17T00:34:23.614Z"
-last_activity: 2026-08-17
+last_updated: "2026-08-17T00:58:22.587Z"
+last_activity: 2026-08-17 -- Phase 249.7 planning complete
 progress:
   total_phases: 123
   completed_phases: 109
-  total_plans: 425
+  total_plans: 427
   completed_plans: 424
-  percent: 100
+  percent: 99
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md and .planning/VISION.md
 
 Phase: 249.7
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-08-17
+Status: Ready to execute
+Last activity: 2026-08-17 -- Phase 249.7 planning complete
 
 Current milestone v16.4 Work Distribution (Phases 244–249): mark a `#[service]` trait method `#[offload]`; the macro derives the `ferro-queue` Job + serializable payload + a typed result handle from the method signature, with a fire-and-forward result path (worker → `ferro-projection` snapshot → `ferro-broadcast` delta). OFFLOAD-01..06. Note the inserted Phase 246.1 (shared-transport broadcast fan-out) prerequisite for multi-replica delta delivery. Anchor spec: `docs/superpowers/specs/2026-06-24-offload-work-distribution-design.md`. Next: `/gsd-plan-phase 244`.
 
