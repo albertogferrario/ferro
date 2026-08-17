@@ -212,3 +212,109 @@ async fn publish_error_does_not_propagate() {
         .expect("channel closed");
     assert!(matches!(first, ServerMessage::Event(_)));
 }
+
+/// SC#1 no-sleep delivery test (WR-02 discriminating proof).
+///
+/// Publishes immediately after `with_transport(...).await` with NO sleep and
+/// asserts cross-process delivery within a hard 100ms timeout.  If the
+/// readiness `.await` in `with_transport` were removed, the in-memory SUBSCRIBE
+/// loop would not yet be attached at publish time and this test would time out.
+#[tokio::test]
+async fn sc1_cross_process_delivery_no_sleep() {
+    let bus = Arc::new(InMemoryTransport::new(64));
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus.clone())
+        .await;
+    let b = Broadcaster::with_config(Default::default())
+        .with_transport(bus.clone())
+        .await;
+    let (tx_b, mut rx_b) = mpsc::channel(16);
+    b.add_client("socket_b".into(), tx_b);
+    b.subscribe("socket_b", "orders.1", None, None)
+        .await
+        .unwrap();
+    // No sleep — readiness is guaranteed by construction (WR-02 closed).
+    a.broadcast("orders.1", "OrderUpdated", serde_json::json!({"id": 1}))
+        .await
+        .unwrap();
+    let msg = tokio::time::timeout(Duration::from_millis(100), rx_b.recv())
+        .await
+        .expect("timed out — lost-wakeup window not closed")
+        .expect("channel closed");
+    match msg {
+        ServerMessage::Event(m) => assert_eq!(m.channel, "orders.1"),
+        other => panic!("expected Event, got {other:?}"),
+    }
+}
+
+/// SC#2 pre-registration survival test (WR-03 discriminating proof).
+///
+/// Registers a client and subscribes it to a channel BEFORE `with_transport`,
+/// then installs the transport and asserts that the pre-registered client is
+/// still present (`client_count() == 1`) and still receives a peer-published
+/// delta.  Under the old code, `with_transport` allocated a fresh
+/// `BroadcasterInner` with empty `DashMap`s — `client_count()` would be 0 and
+/// delivery would fail.
+#[tokio::test]
+async fn sc2_pre_registered_survives_transport() {
+    let bus = Arc::new(InMemoryTransport::new(64));
+    // Register BEFORE transport install.
+    let b = Broadcaster::with_config(Default::default());
+    let (tx_b, mut rx_b) = mpsc::channel(16);
+    b.add_client("socket_b".into(), tx_b);
+    b.subscribe("socket_b", "orders.1", None, None)
+        .await
+        .unwrap();
+    assert_eq!(b.client_count(), 1);
+    // Install transport AFTER registration — state must be preserved.
+    let b = b.with_transport(bus.clone()).await;
+    assert_eq!(
+        b.client_count(),
+        1,
+        "pre-registered client was dropped by with_transport"
+    );
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus)
+        .await;
+    a.broadcast("orders.1", "OrderUpdated", serde_json::json!({}))
+        .await
+        .unwrap();
+    let msg = tokio::time::timeout(Duration::from_millis(100), rx_b.recv())
+        .await
+        .expect("pre-registered client did not receive delta")
+        .expect("channel closed");
+    assert!(matches!(msg, ServerMessage::Event(_)));
+}
+
+/// SC#2 clone-divergence guard (WR-03 clone-coherence proof).
+///
+/// Clones a `Broadcaster` BEFORE `with_transport`, installs the transport on
+/// the original, then asserts the clone also fans out to its subscribers.
+/// Under the old code, `Broadcaster::clone` held an independent
+/// `Arc<BroadcasterInner>` with `transport: None` and would never fan out.
+#[tokio::test]
+async fn sc2_clone_divergence_guard() {
+    let bus = Arc::new(InMemoryTransport::new(64));
+    let b = Broadcaster::with_config(Default::default());
+    let b_clone = b.clone(); // clone before transport install
+    let b = b.with_transport(bus.clone()).await; // install on original
+    // b_clone shares Arc<BroadcasterInner> — it must observe the write.
+    let (tx_c, mut rx_c) = mpsc::channel(16);
+    b_clone.add_client("socket_c".into(), tx_c);
+    b_clone
+        .subscribe("socket_c", "orders.2", None, None)
+        .await
+        .unwrap();
+    let a = Broadcaster::with_config(Default::default())
+        .with_transport(bus)
+        .await;
+    a.broadcast("orders.2", "Evt", serde_json::json!({}))
+        .await
+        .unwrap();
+    let msg = tokio::time::timeout(Duration::from_millis(100), rx_c.recv())
+        .await
+        .expect("clone taken before with_transport did not fan out after install")
+        .expect("channel closed");
+    assert!(matches!(msg, ServerMessage::Event(_)));
+    let _ = &b; // silence unused-variable warning
+}
