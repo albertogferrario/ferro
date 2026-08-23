@@ -303,13 +303,28 @@ input, select, textarea {
 
   .fjui-tabs {
     display: flex;
+    flex-wrap: nowrap;
+    /* Tabs never wrap onto a second line: when the strip is wider than its
+     * container it scrolls horizontally. Scrollbar chrome is hidden; scrolling
+     * stays functional via touch/wheel/trackpad. */
+    overflow-x: auto;
+    scrollbar-width: none;
     border-bottom: 1px solid var(--color-border);
     gap: 0;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .fjui-tab {
     font-size: var(--text-body-size);
     font-weight: 500;
+    /* Keep each tab at its natural width so the label never wraps; the strip
+     * (fjui-tabs) scrolls horizontally instead. The mobile kanban switcher
+     * opts back into equal-width fill via the later `.flex-1` utility. */
+    white-space: nowrap;
+    flex-shrink: 0;
     padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
     border: none;
     background: none;

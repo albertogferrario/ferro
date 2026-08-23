@@ -209,6 +209,81 @@ pub(crate) fn render_modal(el: &Element, spec: &Spec, data: &Value, depth: usize
     html
 }
 
+/// How a single control in an `fjui-tabs` strip renders. Content tabs wire ARIA
+/// `role="tab"` + `aria-controls`; the server-driven variant degrades to a
+/// `?tab=` link for SSR-only specs; the kanban switch carries a count badge.
+pub(crate) enum TabControl {
+    /// `<button data-tab role="tab" aria-controls>` — client-side panel switch.
+    ClientTab,
+    /// `<a href="?tab=X">` — full-page reload fallback (no JS).
+    ServerTab,
+    /// `<button data-tab flex-1>` + `(count)` badge — kanban column switch.
+    KanbanSwitch { count: u32 },
+}
+
+/// One control in an `fjui-tabs` strip. The panels that follow the strip differ
+/// per caller and are rendered by the caller, not here.
+pub(crate) struct TabStripItem {
+    pub value: String,
+    pub label: String,
+    pub active: bool,
+    pub control: TabControl,
+}
+
+/// Renders the shared `<nav class="fjui-tabs">` strip used by both the content
+/// `Tabs` component and the `KanbanBoard` mobile column switcher. Centralizing
+/// it keeps the strip markup, the `fjui-tab` / `fjui-tab--active` classes, and
+/// the nav spacing from drifting between the two call sites.
+pub(crate) fn render_tab_strip(
+    items: &[TabStripItem],
+    role_tablist: bool,
+    nav_extra_class: &str,
+) -> String {
+    let mut html = String::new();
+    html.push_str(&format!(
+        "<nav class=\"fjui-tabs{}\"{}>",
+        if nav_extra_class.is_empty() {
+            String::new()
+        } else {
+            format!(" {nav_extra_class}")
+        },
+        if role_tablist { " role=\"tablist\"" } else { "" },
+    ));
+
+    for item in items {
+        let v = html_escape(&item.value);
+        let label = html_escape(&item.label);
+        let mut class = String::from("fjui-tab");
+        if item.active {
+            class.push_str(" fjui-tab--active");
+        }
+        if matches!(item.control, TabControl::KanbanSwitch { .. }) {
+            class.push_str(" flex-1");
+        }
+        match &item.control {
+            TabControl::ClientTab => html.push_str(&format!(
+                "<button type=\"button\" role=\"tab\" id=\"tab-btn-{v}\" aria-controls=\"tab-panel-{v}\" data-tab=\"{v}\" \
+                 class=\"{class}\" \
+                 aria-selected=\"{}\">{label}</button>",
+                item.active
+            )),
+            TabControl::ServerTab => html.push_str(&format!(
+                "<a href=\"?tab={v}\" role=\"tab\" id=\"tab-btn-{v}\" aria-controls=\"tab-panel-{v}\" \
+                 class=\"{class}\" \
+                 aria-selected=\"{}\">{label}</a>",
+                item.active
+            )),
+            TabControl::KanbanSwitch { count } => html.push_str(&format!(
+                "<button type=\"button\" data-tab=\"{v}\" class=\"{class}\" aria-selected=\"{}\">{label} <span class=\"ml-1 fjui-text--micro\">({count})</span></button>",
+                item.active
+            )),
+        }
+    }
+
+    html.push_str("</nav>");
+    html
+}
+
 /// Renders a `Tabs` container. Per-tab children come from
 /// `Tab.children: Vec<String>`.
 ///
@@ -249,40 +324,28 @@ pub(crate) fn render_tabs(el: &Element, spec: &Spec, data: &Value, depth: usize)
     // D-08 migration: Tabs container emits fjui-tabs (nav strip) + fjui-tab per button.
     // Active tab carries fjui-tab--active modifier. Skin handles all appearance.
     let mut html = String::from("<div data-tabs>");
-    html.push_str("<nav class=\"fjui-tabs\" role=\"tablist\">");
-
-    for tab in &props.tabs {
-        let is_active = tab.value == props.default_tab;
-        let active_class = if is_active { " fjui-tab--active" } else { "" };
-
-        if has_any_content && (is_active || !tab.children.is_empty()) {
-            // Client-side tab trigger
-            html.push_str(&format!(
-                "<button type=\"button\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" data-tab=\"{}\" \
-                 class=\"fjui-tab{active_class}\" \
-                 aria-selected=\"{}\">{}</button>",
-                html_escape(&tab.value),
-                html_escape(&tab.value),
-                html_escape(&tab.value),
-                is_active,
-                html_escape(&tab.label),
-            ));
-        } else {
-            // Server-driven tab: link with ?tab= query param
-            html.push_str(&format!(
-                "<a href=\"?tab={}\" role=\"tab\" id=\"tab-btn-{}\" aria-controls=\"tab-panel-{}\" \
-                 class=\"fjui-tab{active_class}\" \
-                 aria-selected=\"{}\">{}</a>",
-                html_escape(&tab.value),
-                html_escape(&tab.value),
-                html_escape(&tab.value),
-                is_active,
-                html_escape(&tab.label),
-            ));
-        }
-    }
-
-    html.push_str("</nav>");
+    // Strip markup is shared with the kanban mobile switcher via render_tab_strip.
+    // Per-tab control: client-side <button> when this tab (or the active one) has
+    // panel content, otherwise a server-driven ?tab= link.
+    let strip_items: Vec<TabStripItem> = props
+        .tabs
+        .iter()
+        .map(|tab| {
+            let active = tab.value == props.default_tab;
+            let control = if has_any_content && (active || !tab.children.is_empty()) {
+                TabControl::ClientTab
+            } else {
+                TabControl::ServerTab
+            };
+            TabStripItem {
+                value: tab.value.clone(),
+                label: tab.label.clone(),
+                active,
+                control,
+            }
+        })
+        .collect();
+    html.push_str(&render_tab_strip(&strip_items, true, ""));
 
     // Render all tab panels — inactive panels are hidden via CSS.
     for tab in &props.tabs {
@@ -551,23 +614,19 @@ pub(crate) fn render_kanban_board(el: &Element, spec: &Spec, data: &Value, depth
     html.push_str("</div>");
     html.push_str("</div>");
 
-    // Mobile view: tab-based column switching with fjui-tabs/fjui-tab classes.
+    // Mobile view: tab-based column switching. The strip reuses render_tab_strip
+    // (shared with the content Tabs component); only the panels below differ.
     html.push_str("<div class=\"block md:hidden\" data-tabs>");
-    html.push_str("<nav class=\"fjui-tabs mb-4\">");
-
-    for lane in &lanes {
-        let is_default = lane.id == default_id;
-        let active_class = if is_default { " fjui-tab--active" } else { "" };
-        html.push_str(&format!(
-            "<button type=\"button\" data-tab=\"{}\" class=\"fjui-tab{active_class} flex-1\" aria-selected=\"{}\">{} <span class=\"ml-1 fjui-text--micro\">({})</span></button>",
-            html_escape(&lane.id),
-            is_default,
-            html_escape(&lane.title),
-            lane.count,
-        ));
-    }
-
-    html.push_str("</nav>");
+    let switch_items: Vec<TabStripItem> = lanes
+        .iter()
+        .map(|lane| TabStripItem {
+            value: lane.id.clone(),
+            label: lane.title.clone(),
+            active: lane.id == default_id,
+            control: TabControl::KanbanSwitch { count: lane.count },
+        })
+        .collect();
+    html.push_str(&render_tab_strip(&switch_items, false, "mb-4"));
 
     for lane in &lanes {
         let is_default = lane.id == default_id;
